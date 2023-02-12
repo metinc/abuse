@@ -13,7 +13,6 @@
 #ifndef __NETFACE_HPP_
 #define __NETFACE_HPP_
 
-#include <SDL_config.h>//AR (#include <SDL_config.h>)
 
 #define PACKET_MAX_SIZE 1024    // this is a game data packet (udp/ipx)
 #define READ_PACKET_SIZE 1024   // this is a file service packet (tcp/spx)

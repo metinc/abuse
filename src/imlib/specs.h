@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <SDL_config.h>//AR (#include <SDL_config.h>)
+#include <cstdint>
 #include <string.h>
 
 #include "linked.h"
