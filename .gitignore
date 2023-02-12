@@ -4,3 +4,5 @@
 # Ignore various backup files
 *.bak
 *~
+
+/build
