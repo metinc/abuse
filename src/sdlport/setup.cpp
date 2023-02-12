@@ -115,7 +115,7 @@ Settings::Settings()
 	this->volume_music		= 127;
 
 	//random
-	this->local_save		= true;
+	this->local_save		= false;
 	this->grab_input		= false;	// don't grab the input
 	this->editor			= false;	// disable editor mode
 	this->physics_update	= 65;		// original 65ms/15 FPS
