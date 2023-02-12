@@ -259,7 +259,7 @@ void image::PutPart(image *im, ivec2 pos, ivec2 aa, ivec2 bb, int transparent)
     ivec2 caa, cbb;
     GetClip(caa, cbb);
 
-    // see if the are to be put is outside of actual image, if so adjust
+    // see if the area to be put is outside of actual image, if so adjust
     // to fit in the image
     pos += Min(aa, ivec2(0));
     aa += Min(aa, ivec2(0));
