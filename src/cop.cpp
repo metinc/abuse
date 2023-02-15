@@ -217,14 +217,14 @@ static int player_fire_weapon(game_object *o, int type, game_object *target, int
   // fire try to move up to gun level
 
   int32_t x2=o->x,y2=firey;
-//  current_level->foreground_intersect(other->x,other->y,x2,y2);      // find first location we can actuall "see"
+//  current_level->foreground_intersect(other->x,other->y,x2,y2);      // find first location we can actually "see"
 //  current_level->all_boundary_setback(o,other->x,other->y,x2,y2);       // to make we don't fire through walls
   other->y=y2;
 
   if (other->y==firey)             // now try to move out to end of gun if we were not blocked above
   {
     x2=firex;
-    current_level->foreground_intersect(other->x,other->y,x2,y2);      // find first location we can actuall "see"
+    current_level->foreground_intersect(other->x,other->y,x2,y2);      // find first location we can actually "see"
     current_level->all_boundary_setback(other,other->x,other->y,x2,y2);       // to make we don't fire through walls
     o->x=x2;
   }
@@ -257,7 +257,7 @@ void *laser_ufun(void *args)
 
   if (signal==l_FIRE)
   {
-    if (!o->lvars[fire_delay1])                   // make sur we are not waiting of previous fire
+    if (!o->lvars[fire_delay1])                   // make sure we are not waiting of previous fire
     {
       int32_t value=lnumber_value(CAR(args)->Eval());
       if (value)                                   // do we have ammo ?
@@ -299,7 +299,7 @@ void *top_ufun(void *args)                       // generic top character ai GRE
 
   if (signal==l_FIRE)
   {
-    if (!o->lvars[fire_delay1])                   // make sur we are not waiting of previous fire
+    if (!o->lvars[fire_delay1])                   // make sure we are not waiting of previous fire
     {
       int32_t value=lnumber_value(CAR(args)->Eval());
       if (value)                                   // do we have ammo ?
@@ -326,7 +326,7 @@ void *plaser_ufun(void *args)
 
   if (signal==l_FIRE)
   {
-    if (!o->lvars[fire_delay1])                   // make sur we are not waiting of previous fire
+    if (!o->lvars[fire_delay1])                   // make sure we are not waiting of previous fire
     {
       int32_t value=lnumber_value(CAR(args)->Eval());
       if (value)                                   // do we have ammo ?
@@ -350,7 +350,7 @@ void *lsaber_ufun(void *args)
 
   if (signal==l_FIRE)
   {
-    if (!o->lvars[fire_delay1])                   // make sur we are not waiting of previous fire
+    if (!o->lvars[fire_delay1])                   // make sure we are not waiting of previous fire
     {
       int32_t value=lnumber_value(CAR(args)->Eval());
       if (value)                                   // do we have ammo ?
@@ -377,7 +377,7 @@ void *player_rocket_ufun(void *args)
   int xd,yd,cl=0xfffffff,d;
   if (signal==l_FIRE)
   {
-    if (!o->lvars[fire_delay1])                   // make sur we are not waiting of previous fire
+    if (!o->lvars[fire_delay1])                   // make sure we are not waiting of previous fire
     {
       int32_t value=lnumber_value(CAR(args)->Eval());
       if (value)                                   // do we have ammo ?
