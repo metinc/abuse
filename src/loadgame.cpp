@@ -276,7 +276,11 @@ int load_game(int show_all, char const *title)   // return 0 if the player escap
     int quit=0;
     do
     {
+      if (wm->IsPending())
+      {
         wm->flush_screen();
+        do
+        {
         wm->get_event(ev);
         if (ev.type==EV_MESSAGE && ev.message.id>=ID_LOAD_GAME_NUMBER && ev.message.id<ID_LOAD_GAME_PREVIEW)
             got_level=ev.message.id-ID_LOAD_GAME_NUMBER+1;
@@ -315,7 +319,14 @@ int load_game(int show_all, char const *title)   // return 0 if the player escap
 			}
 		}
 		//
-
+        } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
+      }
+      else
+      {
+        // add timer so that load dialog doesn't grab 100% of CPU
+        Timer tmp;
+        tmp.WaitMs(30);
+      }
     } while (!got_level && !quit);
 
 	//AR let me know we leaving

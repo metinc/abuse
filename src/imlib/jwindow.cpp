@@ -195,10 +195,6 @@ void WindowManager::get_event(Event &ev)
     } else if (ev.type==EV_MOUSE_MOVE)
     {
        move_window(drag_window,ev.mouse_move.x+drag_mousex,ev.mouse_move.y+drag_mousey);
-       flush_screen();
-       ev.type=EV_DRAG_WINDOW;
-       ev.window_position.x=ev.mouse_move.x+drag_mousex;
-       ev.window_position.y=ev.mouse_move.y+drag_mousey;
     }
   }
 }

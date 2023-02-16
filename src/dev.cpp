@@ -212,10 +212,14 @@ int confirm_quit()
 
     while(!fin)
     {
+      if (wm->IsPending())
+      {
         wm->flush_screen();
-
+        
         Event ev;
-        wm->get_event(ev);
+        do
+        {
+                wm->get_event(ev);
         if(ev.type == EV_MESSAGE && ev.message.id == ID_QUIT_OK)
             fin = quit = 1;
         else if(ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL)
@@ -244,6 +248,14 @@ int confirm_quit()
 				wm->SetMousePos(ivec2(mx,my));
 			}
 		}
+        } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
+      }
+      else
+      {
+        // add timer so that quit dialog doesn't grab 100% of CPU
+        Timer tmp;
+        tmp.WaitMs(30);
+      }
     }
 
     delete ok_image;
