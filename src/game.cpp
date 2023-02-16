@@ -1594,7 +1594,7 @@ void Game::update_screen()
 // FIXME: refactor this to use the Lol Engine main fixed-framerate loop?
 int Game::calc_speed()
 {
-	//AR update entities using SDL_GetTicks() after custom time
+	//AR update entities using SDL_GetTicks64() after custom time
 	return 1;
 	
 	/*static Timer frame_timer;
@@ -2531,9 +2531,9 @@ int main(int argc, char *argv[])
             g->update_screen(); // redraw the screen with any changes
         }
 
-		Uint32 ar_lastupdate = 0;
+		Uint64 ar_lastupdate = 0;
 		float ar_bullettime = 0.0f;
-		Uint32 ar_bt_timer = 0;
+		Uint64 ar_bt_timer = 0;
 
 		while(!g->done())
 		{
@@ -2573,29 +2573,29 @@ int main(int argc, char *argv[])
 			//AR bullet time
 			if(settings.bullet_time)
 			{
-				if(SDL_GetTicks()-ar_bt_timer>50)
+				if(SDL_GetTicks64()-ar_bt_timer>50)
 				{
 					ar_bullettime += 0.15;
-					ar_bt_timer = SDL_GetTicks();
+					ar_bt_timer = SDL_GetTicks64();
 				}
 				if(ar_bullettime>settings.bullet_time_add) ar_bullettime = settings.bullet_time_add;
 			}
 			else
 			{
-				if(SDL_GetTicks()-ar_bt_timer>50)
+				if(SDL_GetTicks64()-ar_bt_timer>50)
 				{
 					ar_bullettime -= 0.15;
-					ar_bt_timer = SDL_GetTicks();
+					ar_bt_timer = SDL_GetTicks64();
 				}
 				if(ar_bullettime<0) ar_bullettime = 0;
 			}
 			//
 			
 			// process all the objects in the world
-			if(SDL_GetTicks()-ar_lastupdate>=(settings.physics_update + ar_bullettime*settings.physics_update))
+			if(SDL_GetTicks64()-ar_lastupdate>=(settings.physics_update + ar_bullettime*settings.physics_update))
 			{
 				//AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
-				ar_lastupdate = SDL_GetTicks();
+				ar_lastupdate = SDL_GetTicks64();
 				
 				g->step();//AR there are loops inside, it doesn't leave the menu loop, until menu says so!
 			}

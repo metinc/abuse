@@ -52,7 +52,7 @@ private:
         SYS_TIMEBASE_GET(cycles0);
 #else
         SDL_Init(SDL_INIT_TIMER);
-        ticks0 = SDL_GetTicks();
+        ticks0 = SDL_GetTicks64();
 #endif
     }
 
@@ -91,7 +91,7 @@ private:
             sys_timer_usleep((int)(towait * 1e3f));
 #else
         /* The crappy SDL fallback */
-        Uint32 ticks = SDL_GetTicks();
+        Uint64 ticks = SDL_GetTicks64();
         ret = ticks - ticks0;
         if (update)
             ticks0 = ticks;
@@ -124,7 +124,7 @@ private:
 #elif defined __CELLOS_LV2__
     uint64_t cycles0;
 #else
-    Uint32 ticks0;
+    Uint64 ticks0;
 #endif
 };
 
