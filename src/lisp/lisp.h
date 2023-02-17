@@ -21,10 +21,6 @@
 #define Cell void
 #define MAX_LISP_TOKEN_LEN 200
 
-#define FIXED_TRIG_SIZE 360               // 360 degrees stored in table
-extern int32_t sin_table[FIXED_TRIG_SIZE];   // this should be filled in by external module
-#define TBS 1662                          // atan table granularity
-extern uint16_t atan_table[TBS];
 #define NILP(x) ((x)==NULL)
 #define DEFINEDP(x) ((x)!=l_undefined)
 class bFILE;

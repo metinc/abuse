@@ -645,106 +645,18 @@ void *lisp_equal(void *n1, void *n2)
 
 int32_t lisp_cos(int32_t x)
 {
-  x=(x+FIXED_TRIG_SIZE/4)%FIXED_TRIG_SIZE;
-  if (x<0) return sin_table[FIXED_TRIG_SIZE+x];
-  else return sin_table[x];
+    return lround(cosf(x * (M_PI / 180.0)) * 0xffff);
 }
 
 int32_t lisp_sin(int32_t x)
 {
-  x=x%FIXED_TRIG_SIZE;
-  if (x<0) return sin_table[FIXED_TRIG_SIZE+x];
-  else return sin_table[x];
+    return lround(sinf(x * (M_PI / 180.0)) * 0xffff);
 }
 
 int32_t lisp_atan2(int32_t dy, int32_t dx)
 {
-  if (dy==0)
-  {
-    if (dx>0) return 0;
-    else return 180;
-  } else if (dx==0)
-  {
-    if (dy>0) return 90;
-    else return 270;
-  } else
-  {
-    if (dx>0)
-    {
-      if (dy>0)
-      {
-    if (abs(dx)>abs(dy))
-    {
-      int32_t a=dx*29/dy;
-      if (a>=TBS) return 0;
-      else return 45-atan_table[a];
-    }
-    else
-    {
-      int32_t a=dy*29/dx;
-      if (a>=TBS) return 90;
-      else return 45+atan_table[a];
-    }
-      } else
-      {
-    if (abs(dx)>abs(dy))
-    {
-      int32_t a=dx*29/abs(dy);
-      if (a>=TBS)
-        return 0;
-      else
-        return 315+atan_table[a];
-    }
-    else
-    {
-      int32_t a=abs(dy)*29/dx;
-      if (a>=TBS)
-        return 260;
-      else
-        return 315-atan_table[a];
-    }
-      }
-    } else
-    {
-      if (dy>0)
-      {
-    if (abs(dx)>abs(dy))
-    {
-      int32_t a=-dx*29/dy;
-      if (a>=TBS)
-        return 135+45;
-      else
-        return 135+atan_table[a];
-    }
-    else
-    {
-      int32_t a=dy*29/-dx;
-      if (a>=TBS)
-        return 135-45;
-      else
-        return 135-atan_table[a];
-    }
-      } else
-      {
-    if (abs(dx)>abs(dy))
-    {
-      int32_t a=-dx*29/abs(dy);
-      if (a>=TBS)
-        return 225-45;
-      else return 225-atan_table[a];
-    }
-    else
-    {
-      int32_t a=abs(dy)*29/abs(dx);
-      if (a>=TBS)
-        return 225+45;
-      else return 225+atan_table[a];
-    }
-      }
-    }
-  }
+    return (atan2f(-dy, -dx) + M_PI) * 180.0 / M_PI;
 }
-
 
 /*
 LSymbol *find_symbol(char const *name)
