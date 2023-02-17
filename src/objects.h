@@ -116,12 +116,38 @@ public :
   int32_t x_center();
   int32_t height();
 
-  void stop_acel() { set_xacel(0);  set_yacel(0); set_fxacel(0); set_fyacel(0); }
-  void stop_vel() {  set_xvel(0);   set_yvel(0); set_fxvel(0);  set_fyvel(0); }
-  void stop_x() {  set_xvel(0);  set_fxvel(0); set_xacel(0); set_fxacel(0); }
+  // zero acceleration
+  void stop_acel()
+  {
+    set_xacel(0);
+    set_yacel(0);
+    set_fxacel(0);
+    set_fyacel(0);
+  }
+
+  // zero velocity
+  void stop_vel()
+  {
+    set_xvel(0);
+    set_yvel(0);
+    set_fxvel(0);
+    set_fyvel(0);
+  }
+
+  // zero acceleration and velocity in x-direction
+  void stop_x()
+  {
+    set_xvel(0);
+    set_fxvel(0);
+    set_xacel(0);
+    set_fxacel(0);
+  }
+
+  // zero acceleration and velocity
   void stop()
-  { set_xvel(0);   set_yvel(0); set_fxvel(0);  set_fyvel(0);
-    set_xacel(0);  set_yacel(0); set_fxacel(0); set_fyacel(0);
+  {
+    stop_vel();
+    stop_acel();
   }
 
   int move(int cx, int cy, int button);  // return blocked status
