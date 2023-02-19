@@ -534,11 +534,8 @@ void showHelp(const char* executableName)
     printf( "  -mono             Disable stereo sound\n" );
     printf( "  -nosound          Disable sound\n" );
     printf( "  -scale <arg>      Scale to <arg>\n" );
-//    printf( "  -x <arg>          Set the width to <arg>\n" );
-//    printf( "  -y <arg>          Set the height to <arg>\n" );
-    printf( "\n" );
-    printf( "Anthony Kruize <trandor@labyrinth.net.au>\n" );
-    printf( "\n" );
+    // printf( "  -x <arg>          Set the width to <arg>\n" );
+    // printf( "  -y <arg>          Set the height to <arg>\n" );
 }
 
 //
@@ -546,15 +543,55 @@ void showHelp(const char* executableName)
 //
 void parseCommandLine(int argc, char **argv)
 {
-	//AR this is called before settings.ReadConfigFile(), so I can override stuff via console
+    // this is called after settings.ReadConfigFile(), so we can override stuff via console
 
-	for(int i=1;i<argc;i++)
-	{
+    for (int i = 1; i < argc; i++)
+    {
 		if(!strcasecmp(argv[i],"-remote_save"))
 		{
 			settings.local_save = false;
 		}
-	}
+        if (!strcasecmp(argv[i], "-fullscreen"))
+        {
+            settings.fullscreen = 1;
+        }
+        else if (!strcasecmp(argv[i], "-size"))
+        {
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &xres))
+            {
+                xres = 320;
+            }
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &yres))
+            {
+                yres = 200;
+            }
+        }
+        else if (!strcasecmp(argv[i], "-nosound"))
+        {
+            settings.no_sound = 1;
+        }
+        else if (!strcasecmp(argv[i], "-antialias"))
+        {
+            settings.linear_filter = 1;
+        }
+        else if (!strcasecmp(argv[i], "-mono"))
+        {
+            settings.mono = 1;
+        }
+        else if (!strcasecmp(argv[i], "-datadir"))
+        {
+            char datadir[255];
+            if (i + 1 < argc && sscanf(argv[++i], "%s", datadir))
+            {
+                set_filename_prefix(datadir);
+            }
+        }
+        else if (!strcasecmp(argv[i], "-h") || !strcasecmp(argv[i], "--help"))
+        {
+            showHelp(argv[0]);
+            exit(0);
+        }
+    }
 }
 
 //
@@ -666,13 +703,11 @@ void setup( int argc, char **argv )
     set_filename_prefix( ASSETDIR );
 #endif
 
-	//handle command-line parameters
-    parseCommandLine(argc,argv);
+    // AR override save game directory to local directory
+    if (settings.local_save)
+        set_save_filename_prefix("user/");
 
-	//AR override save game directory to local directory
-	if(settings.local_save) set_save_filename_prefix("user/");
-
-	printf("Setting save dir to %s\n", get_save_filename_prefix());
+    printf("Setting save dir to %s\n", get_save_filename_prefix());
 
     // Load the users configuration
     settings.ReadConfigFile(get_save_filename_prefix());
@@ -683,6 +718,9 @@ void setup( int argc, char **argv )
 	yres = settings.yres;
 	sfx_volume = settings.volume_sound;
 	music_volume = settings.volume_music;
+
+    // handle command-line parameters
+    parseCommandLine(argc, argv);
 }
 
 //
