@@ -1597,7 +1597,7 @@ bFILE *level::create_dir(char *filename, int save_all,
 
 
 
-  // how many objects are we goint to save, use a int32_t to specify how many
+  // how many objects are we going to save, use a int32_t to specify how many
   sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY,"object_list",NULL,4,0));
 
   int32_t t=0;

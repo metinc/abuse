@@ -943,12 +943,12 @@ int game_object::tick()      // returns blocked status
   }
 
   // check to see if this advancement causes him to collide with objects
-  int32_t old_vy=yvel(),old_vx=xvel();  // save the correct veloicties
+  int32_t old_vy=yvel(),old_vx=xvel();  // save the correct velocities
 
   if (old_vx || old_vy)
   {
     int up=0;
-    if (yvel()<=0)  // if we are going up or a strait across check up and down
+    if (yvel()<=0)  // if we are going up or a straight across check up and down
     up=2;
     int32_t xv=xvel(),yv=yvel();
     game_object *h=try_move(x,y,xv,yv,1|up);       // now find out what velocity is safe to use
