@@ -116,11 +116,19 @@ void set_mode(int argc, char **argv)
 	//AR OpenGL
 	glcontext = SDL_GL_CreateContext(window);
 
-	if(settings.vsync) SDL_GL_SetSwapInterval(1);
+    if (settings.vsync)
+    {
+        // try enabling adaptive vsync
+        if (SDL_GL_SetSwapInterval(-1) == -1)
+            // fallback to normal vsync
+            SDL_GL_SetSwapInterval(1);
+    }
+    else
+        SDL_GL_SetSwapInterval(0);
 
-	glPushAttrib(GL_ENABLE_BIT);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
+    glPushAttrib(GL_ENABLE_BIT);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
 
 	glViewport(0,0,window_w,window_h);
 	glMatrixMode(GL_PROJECTION);
