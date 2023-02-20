@@ -1991,8 +1991,6 @@ void Game::step()
 		{
 			if(f->m_focus)
 			{
-				f->update_scroll();	
-				
 				//AR
 				settings.in_game = true;
 
