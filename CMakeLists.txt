@@ -20,6 +20,9 @@ find_package(SDL2_mixer 2.0.0 REQUIRED)
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(GLEW REQUIRED)
+include_directories(${GLEW_INCLUDE_DIRS})
+link_libraries(${GLEW_LIBRARIES})
 
 include(CheckIncludeFiles)
 
