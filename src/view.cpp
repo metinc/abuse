@@ -40,6 +40,8 @@
 #include "sbar.h"
 #include "nfserver.h"
 #include "chat.h"
+#include <SDL_timer.h>
+#include "helpers.h"
 
 #define SHIFT_DOWN_DEFAULT 24
 #define SHIFT_RIGHT_DEFAULT 0
@@ -159,23 +161,31 @@ int32_t view::interpolated_yoff()
                     - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y);
 }
 
-
-void view::update_scroll()
+// updates the camera position to smoothly follow the player
+void view::update_scroll(float delta)
 {
+    const float cameraScrollX = 3.0f;
+    const float cameraScrollY = 9.0f;
+
     if (!m_focus)
         return;
 
     m_lastlastpos = m_lastpos;
 
-    if (m_focus->x > m_lastpos.x)
-        m_lastpos.x = Max(m_lastpos.x, m_focus->x - no_xright);
-    else if (m_focus->x < m_lastpos.x)
-        m_lastpos.x = Min(m_lastpos.x, m_focus->x + no_xleft);
+    if ((m_lastpos.x != m_focus->x))
+        m_lastpos.x += RoundNotZero((m_focus->x - m_lastpos.x) * delta * cameraScrollX);
+    if ((m_lastpos.y != m_focus->y))
+        m_lastpos.y += RoundNotZero((m_focus->y - m_lastpos.y) * delta * cameraScrollY);
+}
 
-    if (m_focus->y > m_lastpos.y)
-        m_lastpos.y = Max(m_lastpos.y, m_focus->y - no_ybottom);
-    else if (m_focus->y < m_lastpos.y)
-        m_lastpos.y = Min(m_lastpos.y, m_focus->y + no_ytop);
+// updates the camera position instantly
+void view::focus_scroll()
+{
+    if (m_focus)
+    {
+        m_lastpos.x = m_focus->x;
+        m_lastpos.y = m_focus->y;
+    }
 }
 
 static char cur_user_name[20] = { 0 };

@@ -110,7 +110,8 @@ public :
   //AR - game state, so I don't have to rely on the original mess with individual update loops
   int ar_state, ar_stateold;
 
-  void step();
+  void Step();
+  void StepRender(float delta);
   void show_help(char const *st);
   void draw_value(image *screen, int x, int y, int w, int h, int val, int max);
   unsigned char get_color(int x) { return x; }

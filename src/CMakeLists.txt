@@ -55,6 +55,7 @@ add_executable(abuse
     smallfnt.cpp
     automap.cpp automap.h
     help.cpp help.h
+    helpers.cpp helpers.h
     intsect.cpp intsect.h
     loader2.cpp loader2.h
     seq.cpp seq.h

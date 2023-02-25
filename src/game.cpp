@@ -578,6 +578,11 @@ void Game::load_level(char const *name)
 
     base->current_tick=(current_level->tick_counter()&0xff);
 
+    // set camera on player
+    view *v;
+    for (v = first_view; v; v = v->next)
+        v->focus_scroll();
+
     current_level->level_loaded_notify();
     the_game->help_text_frames = 0;
 }
@@ -1974,7 +1979,7 @@ void net_receive()
   }
 }
 
-void Game::step()
+void Game::Step()
 {
 	//AR virtual crosshair inside a circle, solves atan2(axisy,axisx) aiming dead zone problems	
 	static float aimx = 0, aimy = 0;
@@ -2058,30 +2063,44 @@ void Game::step()
 				set_state(MENU_STATE);
 				set_key_down(JK_ESC, 0);
 			}
-			ambient_ramp = 0;
-			view *v;
-			for(v = first_view; v; v = v->next)
-				v->update_scroll();
+            ambient_ramp = 0;
 
-			cache.prof_poll_start();
-			current_level->tick();
-			sbar.step();
-		} else
-			dev_scroll();
-	} else if(state == JOY_CALB_STATE)
-	{
-		Event ev;
-		joy_calb(ev);
-	} else if(state == MENU_STATE)
-	{
-		settings.in_game = false;
-		main_menu();//AR this is a main menu LOOP, it handles events and rendering inside !
-	}
+            cache.prof_poll_start();
+            current_level->tick();
+            sbar.step();
+        }
+        else
+            dev_scroll();
+    }
+    else if (state == JOY_CALB_STATE)
+    {
+        Event ev;
+        joy_calb(ev);
+    }
+    else if (state == MENU_STATE)
+    {
+        settings.in_game = false;
+        main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
+    }
 
-	if((key_down('x') || key_down(JK_F4))
-		&& (key_down(JK_ALT_L) || key_down(JK_ALT_R))
-		&& confirm_quit())
-		finished = true;
+    if ((key_down('x') || key_down(JK_F4)) && (key_down(JK_ALT_L) || key_down(JK_ALT_R)) && confirm_quit())
+        finished = true;
+}
+
+void Game::StepRender(float delta)
+{
+    if (current_level)
+    {
+        if (state == RUN_STATE)
+        {
+            if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
+            {
+                view *v;
+                for (v = first_view; v; v = v->next)
+                    v->update_scroll(delta);
+            }
+        }
+    }
 }
 
 extern void *current_demo;
@@ -2524,86 +2543,110 @@ int main(int argc, char *argv[])
         net_send(1);
         if (net_start())
         {
-            g->step(); // process all the objects in the world
+            g->Step(); // process all the objects in the world
             g->calc_speed();
             g->update_screen(); // redraw the screen with any changes
         }
 
-		Uint64 ar_lastupdate = 0;
-		float ar_bullettime = 0.0f;
-		Uint64 ar_bt_timer = 0;
+        Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
+        Uint64 lastUpdate = SDL_GetTicks64();      // last render update
+        float ar_bullettime = 0.0f;
+        Uint64 ar_bt_timer = 0;
 
-		while(!g->done())
-		{
-			music_check();
+        while (!g->done())
+        {
+            music_check();
 
-			if (req_end)
-			{
-				delete current_level; current_level = NULL;
+            if (req_end)
+            {
+                delete current_level;
+                current_level = NULL;
 
-				show_end();
+                show_end();
 
-				the_game->set_state(MENU_STATE);
-				req_end = 0;
-			}
+                the_game->set_state(MENU_STATE);
+                req_end = 0;
+            }
 
-			if (demo_man.current_state() == demo_manager::NORMAL)
-				net_receive();
+            if (demo_man.current_state() == demo_manager::NORMAL)
+                net_receive();
 
-			// see if a request for a level load was made during the last tick
-			if (req_name[0])
-			{
-				g->load_level(req_name);
-				req_name[0] = 0;
-				g->draw(g->state == SCENE_STATE);
-			}
+            // see if a request for a level load was made during the last tick
+            if (req_name[0])
+            {
+                g->load_level(req_name);
+                req_name[0] = 0;
+                g->draw(g->state == SCENE_STATE);
+            }
 
-			//if (demo_man.current_state() != demo_manager::PLAYING)
-			g->get_input();
+            // if (demo_man.current_state() != demo_manager::PLAYING)
+            g->get_input();
 
-			if (demo_man.current_state() == demo_manager::NORMAL)
-				net_send();
-			else
-				demo_man.do_inputs();
+            if (demo_man.current_state() == demo_manager::NORMAL)
+                net_send();
+            else
+                demo_man.do_inputs();
 
-			service_net_request();
+            service_net_request();
 
-			//AR bullet time
-			if(settings.bullet_time)
-			{
-				if(SDL_GetTicks64()-ar_bt_timer>50)
-				{
-					ar_bullettime += 0.15;
-					ar_bt_timer = SDL_GetTicks64();
-				}
-				if(ar_bullettime>settings.bullet_time_add) ar_bullettime = settings.bullet_time_add;
-			}
-			else
-			{
-				if(SDL_GetTicks64()-ar_bt_timer>50)
-				{
-					ar_bullettime -= 0.15;
-					ar_bt_timer = SDL_GetTicks64();
-				}
-				if(ar_bullettime<0) ar_bullettime = 0;
-			}
-			//
-			
-			// process all the objects in the world
-			if(SDL_GetTicks64()-ar_lastupdate>=(settings.physics_update + ar_bullettime*settings.physics_update))
-			{
-				//AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
-				ar_lastupdate = SDL_GetTicks64();
-				
-				g->step();//AR there are loops inside, it doesn't leave the menu loop, until menu says so!
-			}
+            // AR bullet time
+            if (settings.bullet_time)
+            {
+                if (SDL_GetTicks64() - ar_bt_timer > 50)
+                {
+                    ar_bullettime += 0.15;
+                    ar_bt_timer = SDL_GetTicks64();
+                }
+                if (ar_bullettime > settings.bullet_time_add)
+                    ar_bullettime = settings.bullet_time_add;
+            }
+            else
+            {
+                if (SDL_GetTicks64() - ar_bt_timer > 50)
+                {
+                    ar_bullettime -= 0.15;
+                    ar_bt_timer = SDL_GetTicks64();
+                }
+                if (ar_bullettime < 0)
+                    ar_bullettime = 0;
+            }
+            //
 
-			server_check();
-			g->calc_speed();
+            // elapsed ms since last rendering
+            int elapsedMsRender = SDL_GetTicks64() - lastUpdate;
 
-			// see if a request for a level load was made during the last tick
-			if(!req_name[0]) g->update_screen(); // redraw the screen with any changes
-		}
+            // elapsed ms since last physics process
+            int elapsedMsFixed = SDL_GetTicks64() - lastFixedUpdate;
+
+            // ms until next physics update
+            int nextFixedMs = std::max(65 - elapsedMsFixed, 0);
+
+            // make sure physics process gets called every 65 ms
+            if (nextFixedMs < elapsedMsRender)
+            {
+                SDL_Delay(nextFixedMs);
+
+                // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
+                lastFixedUpdate = SDL_GetTicks64();
+
+                // process all the objects in the world
+                g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
+            }
+
+            Uint64 current = SDL_GetTicks64();
+            float delta = (current - lastUpdate) / 1000.0f;
+
+            g->StepRender(delta);
+
+            lastUpdate = current;
+
+            server_check();
+            g->calc_speed();
+
+            // see if a request for a level load was made during the last tick
+            if (!req_name[0])
+                g->update_screen(); // redraw the screen with any changes
+        }
 
         net_uninit();
 
