@@ -44,8 +44,11 @@
 #include "cop.h"
 #include "nfserver.h"
 #include "lisp_gc.h"
+#include "sdlport/setup.h"
 
 level *current_level;
+
+extern Settings settings;
 
 game_object *level::attacker(game_object *who)
 {
@@ -580,32 +583,26 @@ game_object *level::all_boundary_setback(game_object *subject, int32_t x1, int32
   return l;       // return the last person we intersected
 }
 
-
-//bFILE *rcheck=NULL,*rcheck_lp=NULL;
-
-void level::interpolate_draw_objects(view *v)
+void level::interpolate_draw_objects(view *v, uint32_t delta)
 {
-  int32_t old_x,old_y;
   current_view=v;
-
+  float ratio = delta / (float)settings.physics_update;
   game_object *o=first_active;
   for (; o; o=o->next_active)
   {
-    old_x=o->x;
-    old_y=o->y;
-    o->x=(o->last_x+o->x)/2;
-    o->y=(o->last_y+o->y)/2;
-    o->last_x=old_x;
-    o->last_y=old_y;
+    o->last_x = o->x;
+    o->last_y = o->y;
+    o->x = std::round(o->interpolated_x + (o->x - o->interpolated_x) * ratio);
+    o->y = std::round(o->interpolated_y + (o->y - o->interpolated_y) * ratio);
+    o->interpolated_x = o->x;
+    o->interpolated_y = o->y;
+    o->draw();
   }
 
-  for (o=first_active; o; o=o->next_active)
-    o->draw();
-
-  for (o=first_active; o; o=o->next_active)
+  for (o = first_active; o; o = o->next_active)
   {
-    o->x=o->last_x;
-    o->y=o->last_y;
+    o->x = o->last_x;
+    o->y = o->last_y;
   }
 }
 
@@ -653,8 +650,6 @@ int level::tick()
 
   for (o=first_active; o; )
   {
-    o->last_x=o->x;
-    o->last_y=o->y;
     cur=o;
     view *c=o->controller();
     if (!(dev&SUSPEND_MODE) || c)
@@ -754,9 +749,7 @@ int level::tick()
 
       if (cur->hurtable())                    // add to target list if is hurtable
         add_target(cur);
-
     }
-
   }
   tick_panims();
 

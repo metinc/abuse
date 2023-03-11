@@ -46,10 +46,9 @@ extern int get_key_binding( char const *dir, int i );
 //
 
 #define make_above_tile(x) ((x)|0x4000)
-char backw_on=0,forew_on=0,show_menu_on=0,ledit_on=0,pmenu_on=0,omenu_on=0,commandw_on=0,tbw_on=0,
-     searchw_on=0,small_render_on=0,interpolate_draw=0,disable_autolight=0,fps_on=0,profile_on=0,
-     show_names=0,fg_reversed=0,
-     raise_all;
+char backw_on = 0, forew_on = 0, show_menu_on = 0, ledit_on = 0, pmenu_on = 0, omenu_on = 0, commandw_on = 0,
+     tbw_on = 0, searchw_on = 0, small_render_on = 0, disable_autolight = 0, fps_on = 0, profile_on = 0, show_names = 0,
+     fg_reversed = 0, raise_all;
 
 char const *symbol_str(char const *name)
 {
@@ -2350,11 +2349,6 @@ void dev_controll::handle_event(Event &ev)
        do_command("center",ev); break;
     } break;
 
-    case ID_INTERPOLATE_DRAW :
-    {
-      interpolate_draw=!interpolate_draw;
-    } break;
-
     case ID_DISABLE_AUTOLIGHT :
     {
       disable_autolight=!disable_autolight;
@@ -3546,7 +3540,6 @@ static pmi editmenu[]={
   { "menu2_map",      ID_TOGGLE_MAP,NULL,-1},
 //  { "Shrink to 320x200 (F10)",    ID_SMALL_MODE,NULL,-1},
   { "menu2_view",        ID_DISABLE_VIEW_SHIFT,&view_shift_disabled,-1},
-//  { "Ultra Smooth draw (U)",      ID_INTERPOLATE_DRAW,  &interpolate_draw,'U'},
   { "menu2_alight",      ID_DISABLE_AUTOLIGHT, &disable_autolight,'A'},
   { "menu2_fps",         ID_SHOW_FPS,          &fps_on,-1},
 //  { NULL,0,NULL,-1},

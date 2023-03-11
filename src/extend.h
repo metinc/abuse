@@ -56,8 +56,8 @@ public:
 
   // leave these public, so I don't have monster code changes.
   simple_object();
-  int32_t x,y,
-       last_x,last_y;              // used for frame interpolation on fast machines
+  int32_t x, y, last_x, last_y;
+  float interpolated_x, interpolated_y; // used for frame interpolation on fast machines
   int8_t direction,active;
   uint16_t otype;
   character_state state;

@@ -1175,13 +1175,11 @@ long c_caller(long number, void *args)
     case 32 :
     { int32_t v=lnumber_value(CAR(args));
       current_object->x=v;
-//      current_object->last_x=v;
       return 1;
     } break;
     case 33 :
     { int32_t v=lnumber_value(CAR(args));
       current_object->y=v;
-//      current_object->last_y=v;
       return 1;
     } break;
 

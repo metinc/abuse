@@ -696,7 +696,7 @@ static void post_render()
   }
 }
 
-void Game::draw_map(view *v, int interpolate)
+void Game::draw_map(view *v, int interpolate, uint32_t elapsedMsFixed)
 {
   backtile *bt;
   int x1, y1, x2, y2, x, y, xo, yo, nxoff, nyoff;
@@ -952,7 +952,7 @@ void Game::draw_map(view *v, int interpolate)
   if(dev & DRAW_PEOPLE_LAYER)
   {
     if(interpolate)
-      current_level->interpolate_draw_objects(v);
+      current_level->interpolate_draw_objects(v, elapsedMsFixed);
     else
       current_level->draw_objects(v);
   }
@@ -1540,7 +1540,7 @@ void Game::show_time()
     console_font->PutString(main_screen, first_view->m_aa + ivec2(0, 10), str);
 }
 
-void Game::update_screen()
+void Game::update_screen(uint32_t elapsedMsFixed)
 {
   if(state == HELP_STATE)
     draw_help();
@@ -1569,12 +1569,7 @@ void Game::update_screen()
       {
         if(f->drawable())
     {
-      if(interpolate_draw)
-      {
-            draw_map(f, 1);
-        wm->flush_screen();
-      }
-          draw_map(f, 0);
+      draw_map(f, 1, elapsedMsFixed);
     }
       }
       if(current_automap)
@@ -2619,7 +2614,7 @@ int main(int argc, char *argv[])
             int elapsedMsFixed = SDL_GetTicks64() - lastFixedUpdate;
 
             // ms until next physics update
-            int nextFixedMs = std::max(65 - elapsedMsFixed, 0);
+            int nextFixedMs = std::max(settings.physics_update - elapsedMsFixed, 0);
 
             // make sure physics process gets called every 65 ms
             if (nextFixedMs < elapsedMsRender)
@@ -2645,7 +2640,7 @@ int main(int argc, char *argv[])
 
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
-                g->update_screen(); // redraw the screen with any changes
+                g->update_screen((SDL_GetTicks64() - lastFixedUpdate)); // redraw the screen with any changes
         }
 
         net_uninit();

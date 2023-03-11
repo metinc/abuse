@@ -145,20 +145,20 @@ public :
 
     void PutFg(ivec2 pos, int type);
     void PutBg(ivec2 pos, int type);
-  void draw_map(view *v, int interpolate=0);
-  void dev_scroll();
+    void draw_map(view *v, int interpolate = 0, uint32_t elapsedMsFixed = 0);
+    void dev_scroll();
 
-  int in_area(Event &ev, int x1, int y1, int x2, int y2);
-  void load_level(char const *name);
-  void set_level(level *nl);
-  void show_time();
+    int in_area(Event &ev, int x1, int y1, int x2, int y2);
+    void load_level(char const *name);
+    void set_level(level *nl);
+    void show_time();
     tile_type GetMapBg(ivec2 pos) { return current_level->GetBg(pos); }
     tile_type GetMapFg(ivec2 pos) { return current_level->GetFg(pos); }
   void end_session();
   void need_refresh() { refresh=1; }       // for development mode only
   palette *current_palette() { return pal; }
 
-  void update_screen();
+  void update_screen(uint32_t elapsedMsFixed = 0);
   void get_input();
   void joy_calb(Event &ev);
   void menu_select(Event &ev2);

@@ -174,9 +174,15 @@ void simple_object::set_var(int xx, uint32_t v)
 
     case 15 : set_yacel(v); break;
     case 16 : set_fyacel(v); break;
-    case 17 : x=v; break;
+    case 17:
+    x = v;
+    interpolated_x = v;
+    break;
     case 18 : set_fx(v); break;
-    case 19 : y=v; break;
+    case 19:
+    y = v;
+    interpolated_y = v;
+    break;
 
     case 20 : set_fy(v); break;
     case 21 : set_hp(v); break;
@@ -1146,7 +1152,10 @@ void game_object::set_state(character_state s, int frame_direction)
 game_object *create(int type, int32_t x, int32_t y, int skip_constructor, int aitype)
 {
   game_object *g=new game_object(type,skip_constructor);
-  g->x=x; g->y=y; g->last_x=x; g->last_y=y;
+  g->x = x;
+  g->y = y;
+  g->interpolated_x = x;
+  g->interpolated_y = y;
   if (aitype)
     g->set_aitype(aitype);
   if (figures[type]->get_fun(OFUN_CONSTRUCTOR) && !skip_constructor)
