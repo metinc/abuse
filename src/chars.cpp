@@ -156,7 +156,7 @@ void *l_obj_get(long number) // exten lisp function switches on number
     CharacterType *t = figures[current_object->otype];
     if (t->tiv <= number || !t->vars[number])
     {
-        lbreak("access : variable does not exists for this class\n");
+        lbreak("access : variable does not exist for this class\n");
         return 0;
     }
     return LNumber::Create(current_object->lvars[t->var_index[number]]);
@@ -167,7 +167,7 @@ void l_obj_set(long number, void *arg) // exten lisp function switches on number
     CharacterType *t = figures[current_object->otype];
     if (t->tiv <= number || !t->vars[number])
     {
-        lbreak("set : variable does not exists for this class\n");
+        lbreak("set : variable does not exist for this class\n");
         return;
     }
     current_object->lvars[t->var_index[number]] = lnumber_value(arg);
@@ -178,7 +178,7 @@ void l_obj_print(long number) // exten lisp function switches on number
     CharacterType *t = figures[current_object->otype];
     if (t->tiv <= number || !t->vars[number])
     {
-        lbreak("access : variable does not exists for this class\n");
+        lbreak("access : variable does not exist for this class\n");
         return;
     }
     dprintf("%d", current_object->lvars[t->var_index[number]]);

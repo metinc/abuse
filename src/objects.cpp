@@ -87,7 +87,7 @@ int32_t game_object::get_var_by_name(char *name, int &error)
       int number=cobj->number;
       if (t->tiv<=number || !t->vars[number])
       {
-    lbreak("access : variable does not exists for this class\n");
+    lbreak("access : variable does not exist for this class\n");
     return 0;
       }
       return lvars[t->var_index[number]]; */

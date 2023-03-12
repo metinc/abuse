@@ -1828,7 +1828,7 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
             fp->seek(se->offset, 0);
             if (fp->read_uint8() == RC_32)
             {
-                int32_t m = fp->read_uint32(); // read how many weapons existsed when last saved
+                int32_t m = fp->read_uint32(); // read how many weapons existed when last saved
                 int i;
                 for (v = player_list; v; v = v->next)
                 {

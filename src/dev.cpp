@@ -319,7 +319,7 @@ void dev_controll::search_forward()
     if (search_window) // if no window then we can't get the object name
     {
         char *name = search_window->read(ID_SEARCH_TEXT);
-        int type = -1; // see if this type existss
+        int type = -1; // see if this type exists
         int i;
         for (i = 0; i < total_objects; i++)
             if (!strcmp(object_names[i], name))
@@ -327,7 +327,7 @@ void dev_controll::search_forward()
         if (type == -1)
         {
             char msg[60];
-            sprintf(msg, "Object type '%s' does not existss!\n", name);
+            sprintf(msg, "Object type '%s' does not exist!\n", name);
             the_game->show_help(msg);
             the_game->need_refresh();
         }

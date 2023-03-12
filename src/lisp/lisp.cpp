@@ -686,7 +686,7 @@ LSymbol *find_symbol(char const *name)
 }
 
 
-LSymbol *make_find_symbol(char const *name)    // find a symbol, if it doesn't exists it is created
+LSymbol *make_find_symbol(char const *name)    // find a symbol, if it doesn't exist it is created
 {
   LSymbol *s=find_symbol(name);
   if (s) return s;
