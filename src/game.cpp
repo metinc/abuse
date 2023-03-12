@@ -1506,7 +1506,7 @@ Game::Game(int argc, char **argv)
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
-        if (!start_edit && !net_start())
+        if (!start_edit && !net_start() && !settings.skip_intro)
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)

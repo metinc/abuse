@@ -49,6 +49,7 @@ class Settings
 
     std::string quick_load; //quick load
     bool player_touching_console; //only allow quicksave if player is touching the console
+    bool skip_intro;
 
     //cheats
     bool cheat_god, cheat_bullettime;

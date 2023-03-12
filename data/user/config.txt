@@ -53,6 +53,8 @@ bullet_time=120
 
 local_save=1
 
+skip_intro=0
+
 ; PLAYER CONTROLS
 
 ; Key mappings

@@ -130,6 +130,7 @@ Settings::Settings()
     this->player_touching_console = false;
 
     this->cheat_god = cheat_bullettime = false;
+    this->skip_intro = false;
 
     //player controls
     this->up = key_value("w");
@@ -250,6 +251,8 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "bullet_time=" << (int)(this->bullet_time_add * 100) << std::endl;
     out << std::endl;
     out << "local_save=" << this->local_save << std::endl;
+    out << std::endl;
+    out << "skip_intro=" << this->skip_intro << std::endl;
     out << std::endl;
     //
     out << "; PLAYER CONTROLS" << std::endl;
@@ -413,6 +416,8 @@ bool Settings::ReadConfigFile(std::string folder)
             this->big_font = AR_ToBool(value);
         else if (attr == "bullet_time")
             this->bullet_time_add = AR_ToInt(value) / 100.0f;
+        else if (attr == "skip_intro")
+            this->skip_intro = AR_ToBool(value);
 
         //player controls
         else if (attr == "up")
