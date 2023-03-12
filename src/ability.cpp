@@ -43,13 +43,8 @@ char const *ability_names[TOTAL_ABILITIES] =
     "walk_top_speed"
 };
 
-
-long abil_def[TOTAL_ABILITIES]=
-   { 6,   3,     4,    2,    -16,   10,       6,         0,
-/* hp starta stopa jumpxv  jumpyv run_tops jmp_tops blood_type */
-
-/* push_xrange wlk_tops */
-      0,            6 };
+// abilities default values
+long abil_def[TOTAL_ABILITIES] = {6, 3, 4, 2, -16, 10, 6, 0, 0, 6};
 
 long get_ability_default(ability a)
 {
