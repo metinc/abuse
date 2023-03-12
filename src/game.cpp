@@ -566,11 +566,6 @@ void Game::load_level(char const *name)
 
     base->current_tick = (current_level->tick_counter() & 0xff);
 
-    // set camera on player
-    view *v;
-    for (v = first_view; v; v = v->next)
-        v->focus_scroll();
-
     current_level->level_loaded_notify();
     the_game->help_text_frames = 0;
 }

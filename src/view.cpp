@@ -931,7 +931,6 @@ void view::reset_player()
 {
     if (m_focus)
     {
-
         game_object *start = current_level ? current_level->get_random_start(320, m_focus->controller()) : 0;
         m_focus->defaults();
         if (start)
@@ -939,6 +938,11 @@ void view::reset_player()
             m_focus->x = start->x;
             m_focus->y = start->y;
             dprintf("reset player position to %d %d\n", start->x, start->y);
+
+            // set camera on player
+            view *v;
+            for (v = player_list; v; v = v->next)
+                v->focus_scroll();
         }
         m_focus->set_state(stopped);
         m_focus->set_tint(_tint);
