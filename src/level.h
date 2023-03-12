@@ -197,7 +197,7 @@ class level // contain map info and objects
     void draw_objects(view *v);
     void interpolate_draw_objects(view *v, uint32_t elapsedMsFixed);
     void draw_areas(view *v);
-    int tick(); // returns false if character is dead
+    void tick();
     void check_collisions();
     void wall_push();
     void add_object(game_object *new_guy);

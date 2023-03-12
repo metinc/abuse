@@ -624,43 +624,13 @@ bFILE *rcheck = NULL, *rcheck_lp = NULL;
 
 extern int sshot_fcount, screen_shot_on;
 
-int level::tick()
+void level::tick()
 {
     game_object *o, *l = NULL, // l is last, used for delete
         *cur; // cur is current object, NULL if object deletes it's self
-    int ret = 1;
 
     if (profiling())
         profile_reset();
-
-    /*  // test to see if demo is in sync
-  if (current_demo_mode()==DEMO_PLAY)
-  {
-    if (!rcheck) rcheck=open_file("rcheck","rb");
-    int32_t x=rcheck->read_uint32();
-    if (x!=rand_on)
-      dprintf("off!\n");
-  } else if (current_demo_mode()==DEMO_RECORD)
-  {
-    if (!rcheck)
-    {
-      rcheck=open_file("rcheck","wb");
-      rcheck_lp=open_file("rcheck.lp","wb");
-    }
-    rcheck->write_uint32(rand_on);
-  } else
-  {
-    if (rcheck)
-    {
-      delete rcheck;
-      rcheck=NULL;
-    }
-    if (rcheck_lp)
-    {
-      delete rcheck_lp;
-      rcheck_lp=NULL;
-    }
-  }*/
 
     for (o = first_active; o;)
     {
@@ -786,8 +756,6 @@ int level::tick()
             write_PCX(main_screen, pal, name);
         }
     }
-
-    return ret;
 }
 
 void level::set_tick_counter(uint32_t x)
