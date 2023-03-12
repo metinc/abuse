@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <ctype.h>
@@ -20,7 +20,7 @@
 
 void JCFont::PutString(image *screen, ivec2 pos, char const *st, int color)
 {
-    for ( ; *st; st++, pos.x += m_size.x)
+    for (; *st; st++, pos.x += m_size.x)
         PutChar(screen, pos, *st, color);
 }
 
@@ -44,9 +44,7 @@ JCFont::JCFont(image *letters)
     for (int ch = 0; ch < 256; ch++)
     {
         tmp.clear();
-        tmp.PutPart(letters, ivec2(0),
-                    ivec2(ch % 32, ch / 32) * m_size,
-                    ivec2(ch % 32 + 1, ch / 32 + 1) * m_size, 1);
+        tmp.PutPart(letters, ivec2(0), ivec2(ch % 32, ch / 32) * m_size, ivec2(ch % 32 + 1, ch / 32 + 1) * m_size, 1);
         m_data[ch] = new TransImage(&tmp, "JCfont");
     }
 }
@@ -56,4 +54,3 @@ JCFont::~JCFont()
     for (int ch = 0; ch < 256; ch++)
         delete m_data[ch];
 }
-

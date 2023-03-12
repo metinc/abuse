@@ -17,4 +17,3 @@ uint16_t calc_crc(void *buf, size_t len);
 uint32_t crc_file(bFILE *fp);
 
 #endif
-

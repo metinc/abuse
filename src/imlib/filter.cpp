@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -37,17 +37,16 @@ Filter::Filter(palette *from, palette *to)
 
     for (int i = 0; i < m_size; i++)
     {
-       int r = *src++;
-       int g = *src++;
-       int b = *src++;
-       int color = to->find_closest(r, g, b);
+        int r = *src++;
+        int g = *src++;
+        int b = *src++;
+        int color = to->find_closest(r, g, b);
 
-       // Make sure non-blacks don't get remapped to the transparency
-       if ((r || g || b) && to->red(color) == 0
-            && to->green(color) == 0 && to->blue(color) == 0)
-           color = dk;
+        // Make sure non-blacks don't get remapped to the transparency
+        if ((r || g || b) && to->red(color) == 0 && to->green(color) == 0 && to->blue(color) == 0)
+            color = dk;
 
-       *dst++ = color;
+        *dst++ = color;
     }
 }
 
@@ -124,28 +123,26 @@ ColorFilter::ColorFilter(palette *pal, int color_bits)
 
     /* For each colour in the RGB cube, find the nearest palette element. */
     for (int r = 0; r < m_size; r++)
-    for (int g = 0; g < m_size; g++)
-    for (int b = 0; b < m_size; b++)
-    {
-        int best = 256 * 256 * 3;
-        int color = 0;
-        uint8_t *pp = (uint8_t *)pal->addr();
-
-        for (int i = 0; i < max; i++)
-        {
-            int rd = *pp++ - r * mul,
-                gd = *pp++ - g * mul,
-                bd = *pp++ - b * mul;
-
-            int dist = rd * rd + bd * bd + gd * gd;
-            if (dist < best)
+        for (int g = 0; g < m_size; g++)
+            for (int b = 0; b < m_size; b++)
             {
-                best = dist;
-                color = i;
+                int best = 256 * 256 * 3;
+                int color = 0;
+                uint8_t *pp = (uint8_t *)pal->addr();
+
+                for (int i = 0; i < max; i++)
+                {
+                    int rd = *pp++ - r * mul, gd = *pp++ - g * mul, bd = *pp++ - b * mul;
+
+                    int dist = rd * rd + bd * bd + gd * gd;
+                    if (dist < best)
+                    {
+                        best = dist;
+                        color = i;
+                    }
+                }
+                m_table[(r * m_size + g) * m_size + b] = color;
             }
-        }
-        m_table[(r * m_size + g) * m_size + b] = color;
-    }
 }
 
 ColorFilter::ColorFilter(spec_entry *e, bFILE *fp)
@@ -172,4 +169,3 @@ int ColorFilter::Write(bFILE *fp)
     int bytes = m_size * m_size * m_size;
     return fp->write(m_table, bytes) == bytes;
 }
-

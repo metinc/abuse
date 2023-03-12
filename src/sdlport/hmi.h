@@ -11,7 +11,6 @@
 #ifndef __HMI_HPP_
 #define __HMI_HPP_
 
-uint8_t* load_hmi(char const *filename, uint32_t &data_size);
+uint8_t *load_hmi(char const *filename, uint32_t &data_size);
 
 #endif
-

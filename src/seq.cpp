@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -28,38 +28,38 @@ size_t sequence::MemUsage()
 
 int sequence::cache_in()
 {
-  int i;
-  for (i=0; i<total; i++)
-  {
-    cache.note_need(seq[i]);
-  }
-  return 1;
+    int i;
+    for (i = 0; i < total; i++)
+    {
+        cache.note_need(seq[i]);
+    }
+    return 1;
 }
 
 sequence::sequence(char *filename, void *pict_list, void *advance_list)
 {
-  if (item_type(pict_list)==L_STRING)
-    total=1;
-  else
-    total = ((LList *)pict_list)->GetLength();
+    if (item_type(pict_list) == L_STRING)
+        total = 1;
+    else
+        total = ((LList *)pict_list)->GetLength();
 
-  seq=(int *) malloc(sizeof(int)*total);
-  if (item_type(pict_list)==L_STRING)
-    seq[0]=cache.reg_object(filename,(LObject *)pict_list,SPEC_CHARACTER2,1);
-  else
-  {
-    int i;
-    for (i=0; i<total; i++)
+    seq = (int *)malloc(sizeof(int) * total);
+    if (item_type(pict_list) == L_STRING)
+        seq[0] = cache.reg_object(filename, (LObject *)pict_list, SPEC_CHARACTER2, 1);
+    else
     {
-      seq[i]=cache.reg_object(filename,lcar(pict_list),SPEC_CHARACTER2,1);
-      pict_list=lcdr(pict_list);
+        int i;
+        for (i = 0; i < total; i++)
+        {
+            seq[i] = cache.reg_object(filename, lcar(pict_list), SPEC_CHARACTER2, 1);
+            pict_list = lcdr(pict_list);
+        }
     }
-  }
 }
 
 sequence::~sequence()
 {
-  free(seq);
+    free(seq);
 }
 
 /*sequence::sequence(char *filename, char *picts)
@@ -115,8 +115,3 @@ sequence::~sequence()
       seq[i++]=cache.reg(filename,t,SPEC_CHARACTER,1);
   }
 }*/
-
-
-
-
-

@@ -19,7 +19,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdio.h>
@@ -30,25 +30,27 @@
 /* NOTE: No joystick support yet.
  */
 
-int joy_init( int argc, char **argv )
+int joy_init(int argc, char **argv)
 {
     int joysticks = SDL_NumJoysticks();
     printf("%d joysticks on system\n", joysticks);
-    for (int i = 0; i < joysticks; i++) {
+    for (int i = 0; i < joysticks; i++)
+    {
         if (SDL_IsGameController(i))
         {
             if (SDL_GameControllerOpen(i) == NULL)
             {
-                const char* error = SDL_GetError();
+                const char *error = SDL_GetError();
                 printf("Warning : Unable to open game controller %s: %s\n", SDL_JoystickNameForIndex(i), error);
             }
         }
-        printf("  - joystick %d (%s) : %s\n", i, SDL_IsGameController(i) ? "controller" : " joystick ", SDL_JoystickNameForIndex(i));
+        printf("  - joystick %d (%s) : %s\n", i, SDL_IsGameController(i) ? "controller" : " joystick ",
+               SDL_JoystickNameForIndex(i));
     }
     return joysticks > 0;
 }
 
-void joy_status( int &b1, int &b2, int &b3, int &xv, int &yv )
+void joy_status(int &b1, int &b2, int &b3, int &xv, int &yv)
 {
     /* Do Nothing */
 }

@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdio.h>
@@ -18,9 +18,7 @@
 
 #include "linked.h"
 
-linked_list::linked_list()
-  : m_first(NULL),
-    m_count(0)
+linked_list::linked_list() : m_first(NULL), m_count(0)
 {
     ;
 }
@@ -35,7 +33,7 @@ linked_list::~linked_list()
 
     if (m_first)
         m_first->Prev()->SetNext(NULL); // set the prev nodes next to NULL
-                                        // so we can go until we hit NULL
+            // so we can go until we hit NULL
     while (m_first != NULL)
     {
         linked_node *tmp = m_first->Next();
@@ -96,4 +94,3 @@ void linked_list::add_front(class linked_node *p)
     add_end(p);
     m_first = p;
 }
-

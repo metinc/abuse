@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdlib.h>
@@ -18,15 +18,15 @@
 
 #include "common.h"
 
-void  (*dprint_fun)(char *) = NULL;
-void  (*dget_fun)(char *,int) = NULL;
+void (*dprint_fun)(char *) = NULL;
+void (*dget_fun)(char *, int) = NULL;
 
 void set_dprinter(void (*stat_fun)(char *))
 {
     dprint_fun = stat_fun;
 }
 
-void set_dgetter(void (*stat_fun)(char *,int))
+void set_dgetter(void (*stat_fun)(char *, int))
 {
     dget_fun = stat_fun;
 }
@@ -39,21 +39,20 @@ void dprintf(const char *format, ...)
         va_list ap;
 
         va_start(ap, format);
-        vsprintf(st,format,ap);
+        vsprintf(st, format, ap);
         va_end(ap);
         dprint_fun(st);
     }
 }
 
-
 void dgets(char *buf, int size)
 {
     if (dget_fun)
     {
-        dget_fun(buf,size);
+        dget_fun(buf, size);
     }
     else
     {
-        ERROR(0,"dgets called but no handler set up");
+        ERROR(0, "dgets called but no handler set up");
     }
 }

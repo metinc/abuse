@@ -49,14 +49,14 @@ enum
     SPEC_EXTERNAL_LCACHE = 23,
 };
 
-#define SPEC_SIGNATURE    "SPEC1.0"
-#define SPEC_SIG_SIZE     8
+#define SPEC_SIGNATURE "SPEC1.0"
+#define SPEC_SIG_SIZE 8
 
-#define SPEC_FLAG_LINK    1
+#define SPEC_FLAG_LINK 1
 
 #define SPEC_SEARCH_INSIDE_OUTSIDE 1
 #define SPEC_SEARCH_OUTSIDE_INSIDE 2
-#define SPEC_SEARCH_INSIDE_ONLY    3
+#define SPEC_SEARCH_INSIDE_ONLY 3
 
 /*  struct spec_header
  *  {
@@ -82,7 +82,7 @@ enum
  *  }
  */
 
-void set_spec_main_file(char const *filename, int search_order=SPEC_SEARCH_OUTSIDE_INSIDE);
+void set_spec_main_file(char const *filename, int search_order = SPEC_SEARCH_OUTSIDE_INSIDE);
 
 void set_filename_prefix(char const *prefix);
 char *get_filename_prefix();
@@ -90,31 +90,31 @@ void set_save_filename_prefix(char const *prefix);
 char *get_save_filename_prefix();
 #define JFILE_CLONED 1
 
-class bFILE     // base file type which other files should be derived from (jFILE & NFS for now)
+class bFILE // base file type which other files should be derived from (jFILE & NFS for now)
 {
-  protected :
-  unsigned char *rbuf,*wbuf;
-  unsigned long rbuf_start,rbuf_end,rbuf_size,
-                wbuf_end,wbuf_size;                // can't seek while writing!
-  int flush_writes();                             // returns 0 on failure, else # of bytes written
+  protected:
+    unsigned char *rbuf, *wbuf;
+    unsigned long rbuf_start, rbuf_end, rbuf_size, wbuf_end, wbuf_size; // can't seek while writing!
+    int flush_writes(); // returns 0 on failure, else # of bytes written
 
-  virtual int unbuffered_read(void *buf, size_t count)  = 0;
-  virtual int unbuffered_write(void const *buf, size_t count) = 0;
-  virtual int unbuffered_tell()                         = 0;
-  virtual int unbuffered_seek(long offset, int whence)  = 0;   // whence=SEEK_SET, SEEK_CUR,
-                                                               // SEEK_END, ret=0=success
-  virtual int allow_read_buffering();
-  virtual int allow_write_buffering();
-  public :
-  bFILE();
-  virtual int open_failure() = 0;
-  int read(void *buf, size_t count);        // returns number of bytes read, calls unbuffer_read
-  int write(void const *buf, size_t count); // returns number of bytes written
-  int seek(long offset, int whence);        // whence=SEEK_SET, SEEK_CUR, SEEK_END, ret=0=success
-  int tell();
-  virtual int file_size() = 0;
+    virtual int unbuffered_read(void *buf, size_t count) = 0;
+    virtual int unbuffered_write(void const *buf, size_t count) = 0;
+    virtual int unbuffered_tell() = 0;
+    virtual int unbuffered_seek(long offset, int whence) = 0; // whence=SEEK_SET, SEEK_CUR,
+        // SEEK_END, ret=0=success
+    virtual int allow_read_buffering();
+    virtual int allow_write_buffering();
 
-  virtual ~bFILE();
+  public:
+    bFILE();
+    virtual int open_failure() = 0;
+    int read(void *buf, size_t count); // returns number of bytes read, calls unbuffer_read
+    int write(void const *buf, size_t count); // returns number of bytes written
+    int seek(long offset, int whence); // whence=SEEK_SET, SEEK_CUR, SEEK_END, ret=0=success
+    int tell();
+    virtual int file_size() = 0;
+
+    virtual ~bFILE();
 
     // read and write using little-endianness
     uint16_t read_uint16();
@@ -127,40 +127,48 @@ class bFILE     // base file type which other files should be derived from (jFIL
     void write_double(double x);
 };
 
-class jFILE : public bFILE     // this file type will use virtual opens inside of a spe
+class jFILE : public bFILE // this file type will use virtual opens inside of a spe
 {
-  char *fname;
-  char *tmp_write_name;
-  int access;
-  int fd,flags;
-  long start_offset,file_length;    // offset of file from actual file begining
+    char *fname;
+    char *tmp_write_name;
+    int access;
+    int fd, flags;
+    long start_offset, file_length; // offset of file from actual file begining
 
-  long current_offset;  // current offset
+    long current_offset; // current offset
 
-public :
-    int get_fd() const { return fd; }
+  public:
+    int get_fd() const
+    {
+        return fd;
+    }
 
-  void open_internal(char const *filename, char const *mode, int flags);
-  void open_external(char const *filename, char const *mode, int flags);
+    void open_internal(char const *filename, char const *mode, int flags);
+    void open_external(char const *filename, char const *mode, int flags);
 
-  jFILE(char const *filename, char const *access_string);      // same as fopen parameters
-  jFILE(FILE *file_pointer);                      // assumes fp is at begining of file
-  virtual int open_failure() { return fd<0; }
-  virtual int unbuffered_read(void *buf, size_t count);       // returns number of bytes read
-  virtual int unbuffered_write(void const *buf, size_t count);     // returns number of bytes written
-  virtual int unbuffered_seek(long offset, int whence);      // whence=SEEK_SET, SEEK_CUR,
-                                                             // SEEK_END, ret=0=success
-  virtual int unbuffered_tell();
-  virtual int file_size() { return file_length; }
-  virtual ~jFILE();
-} ;
+    jFILE(char const *filename, char const *access_string); // same as fopen parameters
+    jFILE(FILE *file_pointer); // assumes fp is at begining of file
+    virtual int open_failure()
+    {
+        return fd < 0;
+    }
+    virtual int unbuffered_read(void *buf, size_t count); // returns number of bytes read
+    virtual int unbuffered_write(void const *buf, size_t count); // returns number of bytes written
+    virtual int unbuffered_seek(long offset, int whence); // whence=SEEK_SET, SEEK_CUR,
+        // SEEK_END, ret=0=success
+    virtual int unbuffered_tell();
+    virtual int file_size()
+    {
+        return file_length;
+    }
+    virtual ~jFILE();
+};
 
 class spec_entry
 {
-public:
-    spec_entry(uint8_t spec_type, char const *object_name,
-               char const *link_filename,
-               unsigned long data_size, unsigned long data_offset);
+  public:
+    spec_entry(uint8_t spec_type, char const *object_name, char const *link_filename, unsigned long data_size,
+               unsigned long data_offset);
     ~spec_entry();
 
     void Print();
@@ -171,10 +179,9 @@ public:
     uint8_t type;
 };
 
-
 class spec_directory
 {
-public :
+  public:
     spec_directory(FILE *fp);
     spec_directory(bFILE *fp);
     spec_directory();
@@ -183,22 +190,22 @@ public :
     void startup(bFILE *fp);
     void FullyLoad(bFILE *fp);
 
-//  spec_directory(char *filename);  ; ; not allowed anymore, user must construct file first!
-  spec_entry *find(char const *name);
-  spec_entry *find(char const *name, int type);
-  spec_entry *find(int type);
-  long find_number(char const *name);
-  long find_number(int type);
-  void remove(spec_entry *e);
-  void add_by_hand(spec_entry *e);
-  void calc_offsets();
-  long data_start_offset();  // returns the first offset past directory items
-  long data_end_offset();    // this should be the end of the file
-  long type_total(int type);
-  jFILE *write(char const *filename);
-  int    write(bFILE *fp);
-  void print();
-  void delete_entries();   // if the directory was created by hand instead of by file
+    //  spec_directory(char *filename);  ; ; not allowed anymore, user must construct file first!
+    spec_entry *find(char const *name);
+    spec_entry *find(char const *name, int type);
+    spec_entry *find(int type);
+    long find_number(char const *name);
+    long find_number(int type);
+    void remove(spec_entry *e);
+    void add_by_hand(spec_entry *e);
+    void calc_offsets();
+    long data_start_offset(); // returns the first offset past directory items
+    long data_end_offset(); // this should be the end of the file
+    long type_total(int type);
+    jFILE *write(char const *filename);
+    int write(bFILE *fp);
+    void print();
+    void delete_entries(); // if the directory was created by hand instead of by file
 
     int total;
     spec_entry **entries;
@@ -225,4 +232,3 @@ void set_file_opener(bFILE *(*open_fun)(char const *, char const *));
 void set_no_space_handler(void (*handle_fun)());
 bFILE *open_file(char const *filename, char const *mode);
 #endif
-

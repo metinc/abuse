@@ -23,7 +23,7 @@ extern linked_list image_list;
 
 class dirty_rect : public linked_node
 {
-public :
+  public:
     dirty_rect(ivec2 aa, ivec2 bb)
     {
         m_aa = aa;
@@ -41,26 +41,51 @@ public :
 
 class image_descriptor
 {
-public:
+  public:
     uint8_t keep_dirt,
-            static_mem; // if set, don't free memory on exit
+        static_mem; // if set, don't free memory on exit
 
     linked_list dirties;
     void *extended_descriptor;
 
     image_descriptor(ivec2 size, int keep_dirties = 1, int static_memory = 0);
-    int bound_x1(int x1) { return Max(x1, m_aa.x); }
-    int bound_y1(int y1) { return Max(y1, m_aa.y); }
-    int bound_x2(int x2) { return Min(x2, m_bb.x); }
-    int bound_y2(int y2) { return Min(y2, m_bb.y); }
-    inline int x1_clip() { return m_aa.x; }
-    inline int y1_clip() { return m_aa.y; }
-    inline int x2_clip() { return m_bb.x; }
-    inline int y2_clip() { return m_bb.y; }
+    int bound_x1(int x1)
+    {
+        return Max(x1, m_aa.x);
+    }
+    int bound_y1(int y1)
+    {
+        return Max(y1, m_aa.y);
+    }
+    int bound_x2(int x2)
+    {
+        return Min(x2, m_bb.x);
+    }
+    int bound_y2(int y2)
+    {
+        return Min(y2, m_bb.y);
+    }
+    inline int x1_clip()
+    {
+        return m_aa.x;
+    }
+    inline int y1_clip()
+    {
+        return m_aa.y;
+    }
+    inline int x2_clip()
+    {
+        return m_bb.x;
+    }
+    inline int y2_clip()
+    {
+        return m_bb.y;
+    }
     void ClearDirties();
     void GetClip(ivec2 &aa, ivec2 &bb)
     {
-        aa = m_aa; bb = m_bb;
+        aa = m_aa;
+        bb = m_bb;
     }
     void SetClip(ivec2 aa, ivec2 bb)
     {
@@ -69,14 +94,21 @@ public:
     }
     void GetClip(int &x1, int &y1, int &x2, int &y2)
     {
-        x1 = m_aa.x; y1 = m_aa.y; x2 = m_bb.x; y2 = m_bb.y;
+        x1 = m_aa.x;
+        y1 = m_aa.y;
+        x2 = m_bb.x;
+        y2 = m_bb.y;
     }
     void SetClip(int x1, int y1, int x2, int y2)
     {
-        if(x2 < x1 + 1) x2 = x1 + 1;
-        if(y2 < y1 + 1) y2 = y1 + 1;
-        m_aa.x = Max(x1, 0); m_aa.y = Max(y1, 0);
-        m_bb.x = Min(x2, m_size.x); m_bb.y = Min(y2, m_size.y);
+        if (x2 < x1 + 1)
+            x2 = x1 + 1;
+        if (y2 < y1 + 1)
+            y2 = y1 + 1;
+        m_aa.x = Max(x1, 0);
+        m_aa.y = Max(y1, 0);
+        m_bb.x = Min(x2, m_size.x);
+        m_bb.y = Min(y2, m_size.y);
     }
     void ReduceDirties();
     void AddDirty(ivec2 aa, ivec2 bb);
@@ -88,13 +120,13 @@ public:
         m_bb = size;
     }
 
-private:
+  private:
     ivec2 m_size, m_aa, m_bb;
 };
 
 class image : public linked_node
 {
-private:
+  private:
     uint8_t *m_data;
     ivec2 m_size;
     bool m_locked;
@@ -102,8 +134,7 @@ private:
     void MakePage(ivec2 size, uint8_t *page_buffer);
     void DeletePage();
 
-public:
-
+  public:
     image_descriptor *m_special;
 
     image(bFILE *fp, spec_entry *e = NULL);
@@ -123,22 +154,21 @@ public:
     image *copy(); // makes a copy of an image
     void clear(int16_t color = -1); // -1 is background color
 
-    ivec2 Size() const { return m_size; }
+    ivec2 Size() const
+    {
+        return m_size;
+    }
 
-    void scroll(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-                int16_t xd, int16_t yd);
+    void scroll(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t xd, int16_t yd);
     void PutImage(image *screen, ivec2 pos, int transparent = 0);
-    void PutPart(image *screen, ivec2 pos, ivec2 aa, ivec2 bb,
-                 int transparent = 0);
+    void PutPart(image *screen, ivec2 pos, ivec2 aa, ivec2 bb, int transparent = 0);
     image *copy_part_dithered(int16_t x1, int16_t y1, int16_t x2, int16_t y2);
     void Bar(ivec2 p1, ivec2 p2, uint8_t color);
     void xor_bar(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint8_t color);
-    void WidgetBar(ivec2 p1, ivec2 p2,
-                   uint8_t light, uint8_t med, uint8_t dark);
+    void WidgetBar(ivec2 p1, ivec2 p2, uint8_t light, uint8_t med, uint8_t dark);
     void Line(ivec2 p1, ivec2 p2, uint8_t color);
     void Rectangle(ivec2 p1, ivec2 p2, uint8_t color);
-    void burn_led(int16_t x, int16_t y, int32_t num, int16_t color,
-                  int16_t scale = 1);
+    void burn_led(int16_t x, int16_t y, int32_t num, int16_t color, int16_t scale = 1);
     void SetClip(ivec2 aa, ivec2 bb);
     void GetClip(ivec2 &aa, ivec2 &bb);
     void InClip(ivec2 aa, ivec2 bb);
@@ -148,24 +178,29 @@ public:
 
     void dirt_off()
     {
-        if(m_special && m_special->keep_dirt) m_special->keep_dirt = 0;
+        if (m_special && m_special->keep_dirt)
+            m_special->keep_dirt = 0;
     }
     void dirt_on()
     {
-        if(m_special) m_special->keep_dirt = 1;
+        if (m_special)
+            m_special->keep_dirt = 1;
     }
 
     void AddDirty(ivec2 aa, ivec2 bb)
     {
-        if (m_special) m_special->AddDirty(aa, bb);
+        if (m_special)
+            m_special->AddDirty(aa, bb);
     }
     void DeleteDirty(ivec2 aa, ivec2 bb)
     {
-        if(m_special) m_special->DeleteDirty(aa, bb);
+        if (m_special)
+            m_special->DeleteDirty(aa, bb);
     }
     void ClearDirties()
     {
-        if (m_special) m_special->ClearDirties();
+        if (m_special)
+            m_special->ClearDirties();
     }
     void dither(palette *pal); // use a b&w palette!
     void Scale(ivec2 size);
@@ -176,15 +211,18 @@ public:
     void FlipX();
     void FlipY();
 
-	//AR need name and pixel data to save to .png file using OpenCV
-	std::string ar_name, ar_name_o;// removed .pcx, name in SPEC file
-	uint8_t		ar_type;
-	uint8_t*	AR_GetPixels()		{return this->m_data;}
+    //AR need name and pixel data to save to .png file using OpenCV
+    std::string ar_name, ar_name_o; // removed .pcx, name in SPEC file
+    uint8_t ar_type;
+    uint8_t *AR_GetPixels()
+    {
+        return this->m_data;
+    }
 };
 
 class image_controller
 {
-public:
+  public:
     image_controller()
     {
         image_init();
@@ -196,4 +234,3 @@ public:
 };
 
 #endif /* _IMAGE_HPP_ */
-

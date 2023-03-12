@@ -15,9 +15,9 @@
 #include <stdlib.h>
 
 // A fixed-size stack class
-template<class T> class GrowStack
+template <class T> class GrowStack
 {
-public:
+  public:
     GrowStack(int max_size)
     {
         m_max_size = max_size;
@@ -36,8 +36,7 @@ public:
     {
         if (m_size >= m_max_size)
         {
-            lbreak("error: stack overflow (%d >= %d)\n",
-                   (int)m_size, (int)m_max_size);
+            lbreak("error: stack overflow (%d >= %d)\n", (int)m_size, (int)m_max_size);
             exit(1);
         }
         sdata[m_size] = data;
@@ -55,13 +54,12 @@ public:
         return sdata[m_size];
     }
 
-public:
+  public:
     T **sdata;
     size_t m_size;
 
-private:
+  private:
     size_t m_max_size;
 };
 
 #endif
-

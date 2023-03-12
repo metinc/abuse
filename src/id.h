@@ -13,13 +13,13 @@
 
 enum dev_ids
 {
-        ID_NULL,
+    ID_NULL,
 
-     DEV_COMMAND=3050,
+    DEV_COMMAND = 3050,
 
-    ID_LOAD_GAME_NUMBER=3000,
-    ID_LOAD_GAME_PREVIEW=3100,
-    ID_LOAD_PLAYER_GAME=3200,
+    ID_LOAD_GAME_NUMBER = 3000,
+    ID_LOAD_GAME_PREVIEW = 3100,
+    ID_LOAD_PLAYER_GAME = 3200,
 
     DEV_COMMAND_OK,
     DEV_EDIT_FG,
@@ -29,7 +29,7 @@ enum dev_ids
     DEV_SAVE,
     DEV_QUIT,
     DEV_CREATE,
-        DEV_OEDIT_OK,
+    DEV_OEDIT_OK,
     DEV_OEDIT_DELETE,
     DEV_OEDIT_MOVE,
     DEV_OEDIT_FRONT,
@@ -49,7 +49,6 @@ enum dev_ids
     DEV_LEDIT_H,
     DEV_LEDIT_R1,
     DEV_LEDIT_R2,
-
 
     DEV_MUSIC_PICKLIST,
     DEV_PALETTE,
@@ -89,14 +88,13 @@ enum dev_ids
     DEV_AI_STATE,
     DEV_AI_FADE,
 
-
     DO_VOLUME,
     RAISE_SFX,
     LOWER_SFX,
     RAISE_MUSIC,
     LOWER_MUSIC,
     TOP_MENU,
-        CALB_JOY,
+    CALB_JOY,
     ID_KEY_SETUP,
     ID_MOUSE_SETUP,
     JOY_OK,
@@ -164,7 +162,6 @@ enum dev_ids
     ID_LEVEL_RESIZE_OK,
     ID_LEVEL_NEW,
     ID_LEVEL_NEW_OK,
-
 
     ID_CACHE_PROFILE,
     ID_CACHE_PROFILE_END,
@@ -252,23 +249,18 @@ enum dev_ids
     ID_PLAY_DEMO,
     ID_PLAY_DEMO_OK,
     ID_PLAY_DEMO_FILENAME
-
-
 };
 
-
-#define EDIT_MODE               1
-#define DRAW_FG_LAYER           2
-#define DRAW_BG_LAYER           4
-#define DRAW_PEOPLE_LAYER       8
-#define DRAW_HELP_LAYER        16
-#define PERFORMANCE_TEST_MODE  32
-#define DRAW_LIGHTS            64
-#define DRAW_FG_BOUND_LAYER   128
-#define SUSPEND_MODE          256
-#define MAP_MODE              512
-#define DRAW_LINKS           1024
+#define EDIT_MODE 1
+#define DRAW_FG_LAYER 2
+#define DRAW_BG_LAYER 4
+#define DRAW_PEOPLE_LAYER 8
+#define DRAW_HELP_LAYER 16
+#define PERFORMANCE_TEST_MODE 32
+#define DRAW_LIGHTS 64
+#define DRAW_FG_BOUND_LAYER 128
+#define SUSPEND_MODE 256
+#define MAP_MODE 512
+#define DRAW_LINKS 1024
 
 #endif
-
-

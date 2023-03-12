@@ -20,7 +20,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "SDL.h"
@@ -44,7 +44,7 @@ extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
 extern int mouse_xpad, mouse_ypad, mouse_xscale, mouse_yscale;
-short mouse_buttons[5] = { 0, 0, 0, 0, 0 };
+short mouse_buttons[5] = {0, 0, 0, 0, 0};
 // From setup.cpp:
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 void calculate_mouse_scaling(void);
@@ -65,7 +65,7 @@ void EventHandler::SysWarpMouse(ivec2 pos)
     // This should take into account mouse scaling.
     pos.x = ((pos.x * mouse_xscale + 0x8000) >> 16) + mouse_xpad;
     pos.y = ((pos.y * mouse_yscale + 0x8000) >> 16) + mouse_ypad;
-	//AR this repositions the system mouse based on in game values, so I turned it off for controller aiming
+    //AR this repositions the system mouse based on in game values, so I turned it off for controller aiming
     SDL_WarpMouseInWindow(window, pos.x, pos.y);
 }
 
@@ -91,9 +91,9 @@ void EventHandler::SysEvent(Event &ev)
 
     // NOTE : that the mouse status should be known
     // even if another event has occurred.
-	
-	ev.mouse_move.x = m_pos.x;
-	ev.mouse_move.y = m_pos.y;	
+
+    ev.mouse_move.x = m_pos.x;
+    ev.mouse_move.y = m_pos.y;
     ev.mouse_button = m_button;
 
     // Gather next event
@@ -101,40 +101,42 @@ void EventHandler::SysEvent(Event &ev)
     if (!SDL_PollEvent(&sdlev))
         return; // This should not happen
 
-	// Sort the mouse out
-	int x, y;
-	uint8_t buttons = SDL_GetMouseState(&x, &y);
+    // Sort the mouse out
+    int x, y;
+    uint8_t buttons = SDL_GetMouseState(&x, &y);
 
-	// Remove any padding SDL may have added
-	x -= mouse_xpad;
-	if (x < 0) x = 0;
-	y -= mouse_ypad;
-	if (y < 0) y = 0;
+    // Remove any padding SDL may have added
+    x -= mouse_xpad;
+    if (x < 0)
+        x = 0;
+    y -= mouse_ypad;
+    if (y < 0)
+        y = 0;
 
-	x = Min((x << 16) / mouse_xscale, main_screen->Size().x - 1);
-	y = Min((y << 16) / mouse_yscale, main_screen->Size().y - 1);
+    x = Min((x << 16) / mouse_xscale, main_screen->Size().x - 1);
+    y = Min((y << 16) / mouse_yscale, main_screen->Size().y - 1);
 
-	ev.mouse_move.x = x;
-	ev.mouse_move.y = y;
-	ev.type = EV_MOUSE_MOVE;
+    ev.mouse_move.x = x;
+    ev.mouse_move.y = y;
+    ev.type = EV_MOUSE_MOVE;
 
-	//AR God knows where and what player uses as a final value to aim, m_pos or ev.mouse_move !?
-	//this prevents flickering when aiming with a controller
-	//we need to disable this if we are in the save game state in game, so we can use the mouse
-	if(settings.ctr_aim==1 && settings.in_game && the_game->ar_state!=AR_LOADSAVE)
-	{
-		ev.mouse_move.x = m_pos.x;
-		ev.mouse_move.y = m_pos.y;
-	}
-	
-	// Left button
-	if((buttons & SDL_BUTTON(1)) && !mouse_buttons[1])
-	{
-		ev.type = EV_MOUSE_BUTTON;
-		mouse_buttons[1] = !mouse_buttons[1];
+    //AR God knows where and what player uses as a final value to aim, m_pos or ev.mouse_move !?
+    //this prevents flickering when aiming with a controller
+    //we need to disable this if we are in the save game state in game, so we can use the mouse
+    if (settings.ctr_aim == 1 && settings.in_game && the_game->ar_state != AR_LOADSAVE)
+    {
+        ev.mouse_move.x = m_pos.x;
+        ev.mouse_move.y = m_pos.y;
+    }
+
+    // Left button
+    if ((buttons & SDL_BUTTON(1)) && !mouse_buttons[1])
+    {
+        ev.type = EV_MOUSE_BUTTON;
+        mouse_buttons[1] = !mouse_buttons[1];
         ev.mouse_button |= LEFT_BUTTON;
     }
-    else if(!(buttons & SDL_BUTTON(1)) && mouse_buttons[1])
+    else if (!(buttons & SDL_BUTTON(1)) && mouse_buttons[1])
     {
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[1] = !mouse_buttons[1];
@@ -142,14 +144,14 @@ void EventHandler::SysEvent(Event &ev)
     }
 
     // Middle button
-    if((buttons & SDL_BUTTON(2)) && !mouse_buttons[2])
+    if ((buttons & SDL_BUTTON(2)) && !mouse_buttons[2])
     {
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
         ev.mouse_button |= LEFT_BUTTON;
         ev.mouse_button |= RIGHT_BUTTON;
     }
-    else if(!(buttons & SDL_BUTTON(2)) && mouse_buttons[2])
+    else if (!(buttons & SDL_BUTTON(2)) && mouse_buttons[2])
     {
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
@@ -158,13 +160,13 @@ void EventHandler::SysEvent(Event &ev)
     }
 
     // Right button
-    if((buttons & SDL_BUTTON(3)) && !mouse_buttons[3])
+    if ((buttons & SDL_BUTTON(3)) && !mouse_buttons[3])
     {
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[3] = !mouse_buttons[3];
         ev.mouse_button |= RIGHT_BUTTON;
     }
-    else if(!(buttons & SDL_BUTTON(3)) && mouse_buttons[3])
+    else if (!(buttons & SDL_BUTTON(3)) && mouse_buttons[3])
     {
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[3] = !mouse_buttons[3];
@@ -175,7 +177,7 @@ void EventHandler::SysEvent(Event &ev)
     m_button = ev.mouse_button;
 
     // Sort out other kinds of events
-    switch(sdlev.type)
+    switch (sdlev.type)
     {
     case SDL_QUIT:
         exit(0);
@@ -230,26 +232,26 @@ void EventHandler::SysEvent(Event &ev)
     case SDL_MOUSEBUTTONUP:
         // These were the old mouse wheel handlers, but honestly, using
         // B4 and B5 for weapon switching works.
-        switch(sdlev.button.button)
+        switch (sdlev.button.button)
         {
-        case 4:        // Mouse wheel goes up...
+        case 4: // Mouse wheel goes up...
             ev.key = get_key_binding("b4", 0);
             ev.type = EV_KEYRELEASE;
             break;
-        case 5:        // Mouse wheel goes down...
+        case 5: // Mouse wheel goes down...
             ev.key = get_key_binding("b3", 0);
             ev.type = EV_KEYRELEASE;
             break;
         }
         break;
     case SDL_MOUSEBUTTONDOWN:
-        switch(sdlev.button.button)
+        switch (sdlev.button.button)
         {
-        case 4:        // Mouse wheel goes up...
+        case 4: // Mouse wheel goes up...
             ev.key = get_key_binding("b4", 0);
             ev.type = EV_KEY;
             break;
-        case 5:        // Mouse wheel goes down...
+        case 5: // Mouse wheel goes down...
             ev.key = get_key_binding("b3", 0);
             ev.type = EV_KEY;
             break;
@@ -257,125 +259,200 @@ void EventHandler::SysEvent(Event &ev)
         break;
     case SDL_KEYDOWN:
     case SDL_KEYUP:
-		//AR EV_SPURIOUS has the same value as JK_SPACE, so this is probably all wrong
+        //AR EV_SPURIOUS has the same value as JK_SPACE, so this is probably all wrong
 
         // Default to EV_SPURIOUS
         ev.key = EV_SPURIOUS;
 
-        if(sdlev.type == SDL_KEYDOWN) ev.type = EV_KEY;        
-        else ev.type = EV_KEYRELEASE;
+        if (sdlev.type == SDL_KEYDOWN)
+            ev.type = EV_KEY;
+        else
+            ev.type = EV_KEYRELEASE;
 
-        switch(sdlev.key.keysym.sym)
+        switch (sdlev.key.keysym.sym)
         {
-        case SDLK_DOWN:         ev.key = JK_DOWN; break;
-        case SDLK_UP:           ev.key = JK_UP; break;
-        case SDLK_LEFT:         ev.key = JK_LEFT; break;
-        case SDLK_RIGHT:        ev.key = JK_RIGHT; break;
-		case SDLK_LCTRL:        ev.key = JK_CTRL_L; break;
-        case SDLK_RCTRL:        ev.key = JK_CTRL_R; break;
-        case SDLK_LALT:         ev.key = JK_ALT_L; break;
-        case SDLK_RALT:         ev.key = JK_ALT_R; break;
-        case SDLK_LSHIFT:       ev.key = JK_SHIFT_L; break;
-        case SDLK_RSHIFT:       ev.key = JK_SHIFT_R; break;
-        case SDLK_NUMLOCKCLEAR: ev.key = JK_NUM_LOCK; break;
-        case SDLK_HOME:         ev.key = JK_HOME; break;
-        case SDLK_END:          ev.key = JK_END; break;
-        case SDLK_BACKSPACE:    ev.key = JK_BACKSPACE; break;
-        case SDLK_TAB:          ev.key = JK_TAB; break;
-        case SDLK_RETURN:       ev.key = JK_ENTER; break;
-        case SDLK_SPACE:        ev.key = JK_SPACE; break;
-        case SDLK_CAPSLOCK:     ev.key = JK_CAPS; break;
-        case SDLK_ESCAPE:       ev.key = JK_ESC; break;
-        case SDLK_F1:           ev.key = JK_F1; break;
-        case SDLK_F2:           ev.key = JK_F2; break;
-        case SDLK_F3:           ev.key = JK_F3; break;
-        case SDLK_F4:           ev.key = JK_F4; break;        
-        case SDLK_INSERT:       ev.key = JK_INSERT; break;
-        case SDLK_KP_0:         ev.key = JK_INSERT; break;
-        case SDLK_PAGEUP:       ev.key = JK_PAGEUP; break;
-        case SDLK_PAGEDOWN:     ev.key = JK_PAGEDOWN; break;
-        case SDLK_KP_8:         ev.key = JK_UP; break;
+        case SDLK_DOWN:
+            ev.key = JK_DOWN;
+            break;
+        case SDLK_UP:
+            ev.key = JK_UP;
+            break;
+        case SDLK_LEFT:
+            ev.key = JK_LEFT;
+            break;
+        case SDLK_RIGHT:
+            ev.key = JK_RIGHT;
+            break;
+        case SDLK_LCTRL:
+            ev.key = JK_CTRL_L;
+            break;
+        case SDLK_RCTRL:
+            ev.key = JK_CTRL_R;
+            break;
+        case SDLK_LALT:
+            ev.key = JK_ALT_L;
+            break;
+        case SDLK_RALT:
+            ev.key = JK_ALT_R;
+            break;
+        case SDLK_LSHIFT:
+            ev.key = JK_SHIFT_L;
+            break;
+        case SDLK_RSHIFT:
+            ev.key = JK_SHIFT_R;
+            break;
+        case SDLK_NUMLOCKCLEAR:
+            ev.key = JK_NUM_LOCK;
+            break;
+        case SDLK_HOME:
+            ev.key = JK_HOME;
+            break;
+        case SDLK_END:
+            ev.key = JK_END;
+            break;
+        case SDLK_BACKSPACE:
+            ev.key = JK_BACKSPACE;
+            break;
+        case SDLK_TAB:
+            ev.key = JK_TAB;
+            break;
+        case SDLK_RETURN:
+            ev.key = JK_ENTER;
+            break;
+        case SDLK_SPACE:
+            ev.key = JK_SPACE;
+            break;
+        case SDLK_CAPSLOCK:
+            ev.key = JK_CAPS;
+            break;
+        case SDLK_ESCAPE:
+            ev.key = JK_ESC;
+            break;
+        case SDLK_F1:
+            ev.key = JK_F1;
+            break;
+        case SDLK_F2:
+            ev.key = JK_F2;
+            break;
+        case SDLK_F3:
+            ev.key = JK_F3;
+            break;
+        case SDLK_F4:
+            ev.key = JK_F4;
+            break;
+        case SDLK_INSERT:
+            ev.key = JK_INSERT;
+            break;
+        case SDLK_KP_0:
+            ev.key = JK_INSERT;
+            break;
+        case SDLK_PAGEUP:
+            ev.key = JK_PAGEUP;
+            break;
+        case SDLK_PAGEDOWN:
+            ev.key = JK_PAGEDOWN;
+            break;
+        case SDLK_KP_8:
+            ev.key = JK_UP;
+            break;
         case SDLK_KP_2:
-		case SDLK_KP_5:			ev.key = JK_DOWN; break;
-		case SDLK_KP_4:         ev.key = JK_LEFT; break;
-		case SDLK_KP_6:         ev.key = JK_RIGHT; break;
+        case SDLK_KP_5:
+            ev.key = JK_DOWN;
+            break;
+        case SDLK_KP_4:
+            ev.key = JK_LEFT;
+            break;
+        case SDLK_KP_6:
+            ev.key = JK_RIGHT;
+            break;
 
-			//random controls
+            //random controls
 
-		case SDLK_F5://AR quick save in dedicated quick save slot when touching the console
-			if(ev.type==EV_KEYRELEASE && settings.player_touching_console)
-			{				
-				if(current_level->save("save0001.spe",1)==1)
-				{
-					the_game->show_help("Station secured!");
-					cache.sfx(1031)->play(127);//id 1031 should be save05.wav
-					settings.quick_load = get_save_filename_prefix();
-					settings.quick_load += "save0001.spe";
-				}
-			}
-			ev.key = JK_F5;
-			break;
+        case SDLK_F5: //AR quick save in dedicated quick save slot when touching the console
+            if (ev.type == EV_KEYRELEASE && settings.player_touching_console)
+            {
+                if (current_level->save("save0001.spe", 1) == 1)
+                {
+                    the_game->show_help("Station secured!");
+                    cache.sfx(1031)->play(127); //id 1031 should be save05.wav
+                    settings.quick_load = get_save_filename_prefix();
+                    settings.quick_load += "save0001.spe";
+                }
+            }
+            ev.key = JK_F5;
+            break;
 
-		case SDLK_F6://AR toggle window input grab
-			if(ev.type==EV_KEYRELEASE)
-			{
-				if(SDL_GetWindowGrab(window)) SDL_SetWindowGrab(window,SDL_FALSE);
-				else SDL_SetWindowGrab(window,SDL_TRUE);
-			}
-			ev.key = JK_F6;
-			break;
+        case SDLK_F6: //AR toggle window input grab
+            if (ev.type == EV_KEYRELEASE)
+            {
+                if (SDL_GetWindowGrab(window))
+                    SDL_SetWindowGrab(window, SDL_FALSE);
+                else
+                    SDL_SetWindowGrab(window, SDL_TRUE);
+            }
+            ev.key = JK_F6;
+            break;
 
-		case SDLK_F7://AR toggle mouse scale
-			if(ev.type==EV_KEYRELEASE)
-			{
-				if(settings.mouse_scale==0) settings.mouse_scale = 1;
-				else settings.mouse_scale = 0;
-				calculate_mouse_scaling();
-			}
-			ev.key = JK_F7;
-			break;
+        case SDLK_F7: //AR toggle mouse scale
+            if (ev.type == EV_KEYRELEASE)
+            {
+                if (settings.mouse_scale == 0)
+                    settings.mouse_scale = 1;
+                else
+                    settings.mouse_scale = 0;
+                calculate_mouse_scaling();
+            }
+            ev.key = JK_F7;
+            break;
 
-		case SDLK_F8://AR toggle controller aim
-			if(ev.type==EV_KEYRELEASE) settings.ctr_aim = !settings.ctr_aim;
-			ev.key = JK_F8;
-			break;
+        case SDLK_F8: //AR toggle controller aim
+            if (ev.type == EV_KEYRELEASE)
+                settings.ctr_aim = !settings.ctr_aim;
+            ev.key = JK_F8;
+            break;
 
-		case SDLK_F9://AR quick load
-			if(ev.type==EV_KEYRELEASE && !settings.quick_load.empty()) the_game->request_level_load(settings.quick_load);
-			ev.key = JK_F9;		
-			break;
+        case SDLK_F9: //AR quick load
+            if (ev.type == EV_KEYRELEASE && !settings.quick_load.empty())
+                the_game->request_level_load(settings.quick_load);
+            ev.key = JK_F9;
+            break;
 
-		case SDLK_F10://toggle fullscreen, 			
-			if(ev.type==EV_KEYRELEASE) video_change_settings(0,true);
-			ev.key = JK_F10;
-			break;
+        case SDLK_F10: //toggle fullscreen,
+            if (ev.type == EV_KEYRELEASE)
+                video_change_settings(0, true);
+            ev.key = JK_F10;
+            break;
 
-		case SDLK_F11://AR scale window up
-			if(ev.type==EV_KEYRELEASE) video_change_settings(1,false);
-			ev.key = JK_F10;//AR JK_F11 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
-			break;
+        case SDLK_F11: //AR scale window up
+            if (ev.type == EV_KEYRELEASE)
+                video_change_settings(1, false);
+            ev.key = JK_F10; //AR JK_F11 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            break;
 
-		case SDLK_F12://AR scale window down
-			if(ev.type==EV_KEYRELEASE) video_change_settings(-1,false);
-			ev.key = JK_F10;//AR JK_F12 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
-			break;
+        case SDLK_F12: //AR scale window down
+            if (ev.type == EV_KEYRELEASE)
+                video_change_settings(-1, false);
+            ev.key = JK_F10; //AR JK_F12 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            break;
 
-		case SDLK_PRINTSCREEN://grab a screenshot
-			if(ev.type==EV_KEYRELEASE)
-			{
-				SDL_SaveBMP(surface, "screenshot.bmp");
-				the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
-			}
-			ev.key = EV_SPURIOUS;
-			break;
+        case SDLK_PRINTSCREEN: //grab a screenshot
+            if (ev.type == EV_KEYRELEASE)
+            {
+                SDL_SaveBMP(surface, "screenshot.bmp");
+                the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+            }
+            ev.key = EV_SPURIOUS;
+            break;
 
-		default:
-			//AR this will crash in game.cpp calling key_down() which can go up to 64
-			//so I set it to a random key which shouldn't do anything in the game
-			if((int)sdlev.key.keysym.sym>JK_MAX_KEY) ev.key = JK_MAX_KEY;
-			else ev.key = (int)sdlev.key.keysym.sym;
+        default:
+            //AR this will crash in game.cpp calling key_down() which can go up to 64
+            //so I set it to a random key which shouldn't do anything in the game
+            if ((int)sdlev.key.keysym.sym > JK_MAX_KEY)
+                ev.key = JK_MAX_KEY;
+            else
+                ev.key = (int)sdlev.key.keysym.sym;
 
-			//AR this shift stuff messes up WSAD player controls when shift is pressed
+            //AR this shift stuff messes up WSAD player controls when shift is pressed
 
             // Need to handle the case of shift being pressed
             // There has to be a better way
@@ -426,165 +503,208 @@ void EventHandler::SysEvent(Event &ev)
         }
         break;
 
-	case SDL_CONTROLLERBUTTONDOWN:
-	case SDL_CONTROLLERBUTTONUP:
-		if(settings.ctr_f5==sdlev.cbutton.button)//AR quick save
-		{
-			if(sdlev.type==SDL_CONTROLLERBUTTONUP)
-				if(settings.player_touching_console)
-				{				
-					if(current_level->save("save0001.spe",1)==1)
-					{
-						the_game->show_help("Station secured!");
-						cache.sfx(1031)->play(127);//id 1031 should be save05.wav
-						settings.quick_load = get_save_filename_prefix();
-						settings.quick_load += "save0001.spe";
-					}
-				}
-				ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
-				ev.key = EV_SPURIOUS;
-				return;
-		}
-		else if(settings.ctr_f9==sdlev.cbutton.button)//AR quick load
-		{
-			if(sdlev.type==SDL_CONTROLLERBUTTONUP)
-				if(!settings.quick_load.empty()) the_game->request_level_load(settings.quick_load);
-			ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
-			ev.key = EV_SPURIOUS;
-			return;
-		}
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP:
+        if (settings.ctr_f5 == sdlev.cbutton.button) //AR quick save
+        {
+            if (sdlev.type == SDL_CONTROLLERBUTTONUP)
+                if (settings.player_touching_console)
+                {
+                    if (current_level->save("save0001.spe", 1) == 1)
+                    {
+                        the_game->show_help("Station secured!");
+                        cache.sfx(1031)->play(127); //id 1031 should be save05.wav
+                        settings.quick_load = get_save_filename_prefix();
+                        settings.quick_load += "save0001.spe";
+                    }
+                }
+            ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
+            ev.key = EV_SPURIOUS;
+            return;
+        }
+        else if (settings.ctr_f9 == sdlev.cbutton.button) //AR quick load
+        {
+            if (sdlev.type == SDL_CONTROLLERBUTTONUP)
+                if (!settings.quick_load.empty())
+                    the_game->request_level_load(settings.quick_load);
+            ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
+            ev.key = EV_SPURIOUS;
+            return;
+        }
 
-		switch (sdlev.cbutton.button)
-		{
-			//AR convert to key events
-		case SDL_CONTROLLER_BUTTON_START:	ev.key = JK_ENTER;	break;//enter
-		case SDL_CONTROLLER_BUTTON_GUIDE:	ev.key = JK_F1;		break;//help
-		case SDL_CONTROLLER_BUTTON_BACK:	ev.key = JK_ESC;	break;//go back
-			//
-		case SDL_CONTROLLER_BUTTON_A:	ev.key = get_key_binding(get_ctr_binding("ctr_a").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_B:	ev.key = get_key_binding(get_ctr_binding("ctr_b").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_X:	ev.key = get_key_binding(get_ctr_binding("ctr_x").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_Y:	ev.key = get_key_binding(get_ctr_binding("ctr_y").c_str(),0);	break;
-			//
-		case SDL_CONTROLLER_BUTTON_LEFTSTICK:		ev.key = get_key_binding(get_ctr_binding("ctr_lst").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_RIGHTSTICK:		ev.key = get_key_binding(get_ctr_binding("ctr_rst").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:	ev.key = get_key_binding(get_ctr_binding("ctr_lsr").c_str(),0);	break;
-		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:	ev.key = get_key_binding(get_ctr_binding("ctr_rsh").c_str(),0);	break;
-			//
-		case SDL_CONTROLLER_BUTTON_DPAD_UP:		use_left_stick = false;ev.key = get_key_binding("up",0);	break;
-		case SDL_CONTROLLER_BUTTON_DPAD_DOWN:	use_left_stick = false;ev.key = get_key_binding("down",0);	break;
-		case SDL_CONTROLLER_BUTTON_DPAD_LEFT:	use_left_stick = false;ev.key = get_key_binding("left",0);	break;
-		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:	use_left_stick = false;ev.key = get_key_binding("right",0);	break;
-			//
-		default:
-			// Still want to process this as a key press if only to allow the
-			// controller to skip the intro screen.
-			ev.key = -1;
-		}
-		ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
-		break;
+        switch (sdlev.cbutton.button)
+        {
+            //AR convert to key events
+        case SDL_CONTROLLER_BUTTON_START:
+            ev.key = JK_ENTER;
+            break; //enter
+        case SDL_CONTROLLER_BUTTON_GUIDE:
+            ev.key = JK_F1;
+            break; //help
+        case SDL_CONTROLLER_BUTTON_BACK:
+            ev.key = JK_ESC;
+            break; //go back
+            //
+        case SDL_CONTROLLER_BUTTON_A:
+            ev.key = get_key_binding(get_ctr_binding("ctr_a").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_B:
+            ev.key = get_key_binding(get_ctr_binding("ctr_b").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_X:
+            ev.key = get_key_binding(get_ctr_binding("ctr_x").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_Y:
+            ev.key = get_key_binding(get_ctr_binding("ctr_y").c_str(), 0);
+            break;
+            //
+        case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+            ev.key = get_key_binding(get_ctr_binding("ctr_lst").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+            ev.key = get_key_binding(get_ctr_binding("ctr_rst").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            ev.key = get_key_binding(get_ctr_binding("ctr_lsr").c_str(), 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            ev.key = get_key_binding(get_ctr_binding("ctr_rsh").c_str(), 0);
+            break;
+            //
+        case SDL_CONTROLLER_BUTTON_DPAD_UP:
+            use_left_stick = false;
+            ev.key = get_key_binding("up", 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            use_left_stick = false;
+            ev.key = get_key_binding("down", 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+            use_left_stick = false;
+            ev.key = get_key_binding("left", 0);
+            break;
+        case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+            use_left_stick = false;
+            ev.key = get_key_binding("right", 0);
+            break;
+            //
+        default:
+            // Still want to process this as a key press if only to allow the
+            // controller to skip the intro screen.
+            ev.key = -1;
+        }
+        ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;
+        break;
 
-	case SDL_CONTROLLERAXISMOTION:
-		//AR completely ignore if disabled in the settings
-		//buttons don't matter, because those don't have sensitive sensors that accidentally get triggered by heartbeats and stuff...
-		if(!settings.ctr_aim)
-		{
-			ev.type = EV_SPURIOUS;
-			return;
-		}
+    case SDL_CONTROLLERAXISMOTION:
+        //AR completely ignore if disabled in the settings
+        //buttons don't matter, because those don't have sensitive sensors that accidentally get triggered by heartbeats and stuff...
+        if (!settings.ctr_aim)
+        {
+            ev.type = EV_SPURIOUS;
+            return;
+        }
 
-		switch (sdlev.caxis.axis)
-		{
-		case SDL_CONTROLLER_AXIS_LEFTX:
-			if(abs(sdlev.caxis.value) >= settings.ctr_lst_dzx) use_left_stick = true;//enable the left stick			
+        switch (sdlev.caxis.axis)
+        {
+        case SDL_CONTROLLER_AXIS_LEFTX:
+            if (abs(sdlev.caxis.value) >= settings.ctr_lst_dzx)
+                use_left_stick = true; //enable the left stick
 
-			if(use_left_stick)
-			{
-				if (sdlev.caxis.value < 0)
-				{
-					ev.key = get_key_binding("left", 0);
-					//AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-					the_game->set_key_down(get_key_binding("right", 0),0);
-					the_game->set_key_down(get_key_binding("right2", 0),0);
-				}
-				else
-				{
-					ev.key = get_key_binding("right", 0);
-					//AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-					the_game->set_key_down(get_key_binding("left", 0),0);
-					the_game->set_key_down(get_key_binding("left2", 0),0);
-				}
+            if (use_left_stick)
+            {
+                if (sdlev.caxis.value < 0)
+                {
+                    ev.key = get_key_binding("left", 0);
+                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
+                    the_game->set_key_down(get_key_binding("right", 0), 0);
+                    the_game->set_key_down(get_key_binding("right2", 0), 0);
+                }
+                else
+                {
+                    ev.key = get_key_binding("right", 0);
+                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
+                    the_game->set_key_down(get_key_binding("left", 0), 0);
+                    the_game->set_key_down(get_key_binding("left2", 0), 0);
+                }
 
-				if(abs(sdlev.caxis.value) < settings.ctr_lst_dzx)
-				{
-					ev.type = EV_KEYRELEASE;
-					//AR stop everything
-					the_game->set_key_down(get_key_binding("left", 0),0);
-					the_game->set_key_down(get_key_binding("left2", 0),0);
-					the_game->set_key_down(get_key_binding("right", 0),0);
-					the_game->set_key_down(get_key_binding("right2", 0),0);
-				}
-				else ev.type = EV_KEY;
-			}
-			break;
+                if (abs(sdlev.caxis.value) < settings.ctr_lst_dzx)
+                {
+                    ev.type = EV_KEYRELEASE;
+                    //AR stop everything
+                    the_game->set_key_down(get_key_binding("left", 0), 0);
+                    the_game->set_key_down(get_key_binding("left2", 0), 0);
+                    the_game->set_key_down(get_key_binding("right", 0), 0);
+                    the_game->set_key_down(get_key_binding("right2", 0), 0);
+                }
+                else
+                    ev.type = EV_KEY;
+            }
+            break;
 
-		case SDL_CONTROLLER_AXIS_LEFTY:
-			if(abs(sdlev.caxis.value) >= settings.ctr_lst_dzy) use_left_stick = true;//enable the left stick			
+        case SDL_CONTROLLER_AXIS_LEFTY:
+            if (abs(sdlev.caxis.value) >= settings.ctr_lst_dzy)
+                use_left_stick = true; //enable the left stick
 
-			if(use_left_stick)
-			{
-				if(sdlev.caxis.value < 0)
-				{
-					ev.key = get_key_binding("up", 0);
-					//AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-					the_game->set_key_down(get_key_binding("down", 0),0);
-					the_game->set_key_down(get_key_binding("down2", 0),0);
-				}
-				else
-				{
-					ev.key = get_key_binding("down", 0);
-					//AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-					the_game->set_key_down(get_key_binding("up", 0),0);
-					the_game->set_key_down(get_key_binding("up2", 0),0);
-				}
+            if (use_left_stick)
+            {
+                if (sdlev.caxis.value < 0)
+                {
+                    ev.key = get_key_binding("up", 0);
+                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
+                    the_game->set_key_down(get_key_binding("down", 0), 0);
+                    the_game->set_key_down(get_key_binding("down2", 0), 0);
+                }
+                else
+                {
+                    ev.key = get_key_binding("down", 0);
+                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
+                    the_game->set_key_down(get_key_binding("up", 0), 0);
+                    the_game->set_key_down(get_key_binding("up2", 0), 0);
+                }
 
-				if(abs(sdlev.caxis.value) < settings.ctr_lst_dzy)
-				{
-					ev.type = EV_KEYRELEASE;
-					//AR stop everything
-					the_game->set_key_down(get_key_binding("up", 0),0);
-					the_game->set_key_down(get_key_binding("up2", 0),0);
-					the_game->set_key_down(get_key_binding("down", 0),0);
-					the_game->set_key_down(get_key_binding("down2", 0),0);
-				}
-				else ev.type = EV_KEY;
-			}
-			break;
+                if (abs(sdlev.caxis.value) < settings.ctr_lst_dzy)
+                {
+                    ev.type = EV_KEYRELEASE;
+                    //AR stop everything
+                    the_game->set_key_down(get_key_binding("up", 0), 0);
+                    the_game->set_key_down(get_key_binding("up2", 0), 0);
+                    the_game->set_key_down(get_key_binding("down", 0), 0);
+                    the_game->set_key_down(get_key_binding("down2", 0), 0);
+                }
+                else
+                    ev.type = EV_KEY;
+            }
+            break;
 
-			//AR just save the values and update aim inside the game loop
-		case SDL_CONTROLLER_AXIS_RIGHTX:
-			settings.ctr_aim_x = sdlev.caxis.value;
-			ev.type = EV_SPURIOUS;
-			break;
+            //AR just save the values and update aim inside the game loop
+        case SDL_CONTROLLER_AXIS_RIGHTX:
+            settings.ctr_aim_x = sdlev.caxis.value;
+            ev.type = EV_SPURIOUS;
+            break;
 
-		case SDL_CONTROLLER_AXIS_RIGHTY:
-			settings.ctr_aim_y = sdlev.caxis.value;
-			ev.type = EV_SPURIOUS;
-			break;
+        case SDL_CONTROLLER_AXIS_RIGHTY:
+            settings.ctr_aim_y = sdlev.caxis.value;
+            ev.type = EV_SPURIOUS;
+            break;
 
-		case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-			//AR convert to key events
-			ev.key = get_key_binding(get_ctr_binding("ctr_ltg").c_str(),0);
-			if(sdlev.caxis.value > m_dead_zone) ev.type = EV_KEY;
-			else ev.type = EV_KEYRELEASE;
-			break;
+        case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+            //AR convert to key events
+            ev.key = get_key_binding(get_ctr_binding("ctr_ltg").c_str(), 0);
+            if (sdlev.caxis.value > m_dead_zone)
+                ev.type = EV_KEY;
+            else
+                ev.type = EV_KEYRELEASE;
+            break;
 
-		case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-			//AR convert to key events
-			ev.key = get_key_binding(get_ctr_binding("ctr_rtg").c_str(),0);
-			if(sdlev.caxis.value > m_dead_zone) ev.type = EV_KEY;
-			else ev.type = EV_KEYRELEASE;
-			break;
-		}
-	}
+        case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+            //AR convert to key events
+            ev.key = get_key_binding(get_ctr_binding("ctr_rtg").c_str(), 0);
+            if (sdlev.caxis.value > m_dead_zone)
+                ev.type = EV_KEY;
+            else
+                ev.type = EV_KEYRELEASE;
+            break;
+        }
+    }
 }

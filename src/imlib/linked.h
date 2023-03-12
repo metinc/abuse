@@ -22,16 +22,34 @@ class linked_node
 {
     friend class linked_list;
 
-public:
-    linked_node() { m_next = m_prev = NULL; }
-    virtual ~linked_node() { ; }
+  public:
+    linked_node()
+    {
+        m_next = m_prev = NULL;
+    }
+    virtual ~linked_node()
+    {
+        ;
+    }
 
-    inline class linked_node *Next() { return m_next; }
-    inline class linked_node *Prev() { return m_prev; }
-    inline void SetNext(class linked_node *p) { m_next = p; }
-    inline void SetPrev(class linked_node *p) { m_prev = p; }
+    inline class linked_node *Next()
+    {
+        return m_next;
+    }
+    inline class linked_node *Prev()
+    {
+        return m_prev;
+    }
+    inline void SetNext(class linked_node *p)
+    {
+        m_next = p;
+    }
+    inline void SetPrev(class linked_node *p)
+    {
+        m_prev = p;
+    }
 
-private:
+  private:
     class linked_node *m_next, *m_prev;
 };
 
@@ -49,7 +67,7 @@ private:
 
 class linked_list
 {
-public:
+  public:
     linked_list();
     ~linked_list();
 
@@ -57,14 +75,22 @@ public:
     void add_end(class linked_node *p);
     int unlink(linked_node *p);
 
-    inline class linked_node *first() { return m_first; }
-    inline class linked_node *prev() { return m_first->Prev(); }
-    inline size_t Count() { return m_count; }
+    inline class linked_node *first()
+    {
+        return m_first;
+    }
+    inline class linked_node *prev()
+    {
+        return m_first->Prev();
+    }
+    inline size_t Count()
+    {
+        return m_count;
+    }
 
-private:
+  private:
     linked_node *m_first;
     size_t m_count;
 };
 
 #endif
-

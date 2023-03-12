@@ -16,4 +16,3 @@
 void write_include(image *im, palette *pal, char *filename, char *name);
 
 #endif
-

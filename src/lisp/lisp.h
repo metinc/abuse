@@ -21,8 +21,8 @@
 #define Cell void
 #define MAX_LISP_TOKEN_LEN 200
 
-#define NILP(x) ((x)==NULL)
-#define DEFINEDP(x) ((x)!=l_undefined)
+#define NILP(x) ((x) == NULL)
+#define DEFINEDP(x) ((x) != l_undefined)
 class bFILE;
 extern bFILE *current_print_file;
 
@@ -128,7 +128,7 @@ struct LString : LObject
     char *GetString();
 
     /* Members */
-private:
+  private:
     char m_str[1]; /* Can be allocated much larger than 1 */
 };
 
@@ -185,13 +185,16 @@ struct LArray : LObject
     static LArray *Create(size_t len, void *rest);
 
     /* Methods */
-    inline LObject **GetData() { return m_data; }
+    inline LObject **GetData()
+    {
+        return m_data;
+    }
     LObject *Get(int x);
 
     /* Members */
     size_t m_len;
 
-private:
+  private:
     LObject *m_data[1]; /* Can be allocated much larger than 1 */
 };
 
@@ -227,7 +230,7 @@ struct LFixedPoint : LObject
 
 class Lisp
 {
-public:
+  public:
     static void Init();
     static void Uninit();
 
@@ -236,7 +239,7 @@ public:
     // Collect temporary or permanent spaces
     static void CollectSpace(LSpace *which_space, int grow);
 
-private:
+  private:
     static LArray *CollectArray(LArray *x);
     static LList *CollectList(LList *x);
     static LObject *CollectObject(LObject *x);
@@ -244,9 +247,20 @@ private:
     static void CollectStacks();
 };
 
-static inline LObject *&CAR(void *x) { return ((LList *)x)->m_car; }
-static inline LObject *&CDR(void *x) { return ((LList *)x)->m_cdr; }
-static inline ltype item_type(void *x) { if (x) return *(ltype *)x; return L_CONS_CELL; }
+static inline LObject *&CAR(void *x)
+{
+    return ((LList *)x)->m_car;
+}
+static inline LObject *&CDR(void *x)
+{
+    return ((LList *)x)->m_cdr;
+}
+static inline ltype item_type(void *x)
+{
+    if (x)
+        return *(ltype *)x;
+    return L_CONS_CELL;
+}
 
 void perm_space();
 void tmp_space();
@@ -270,7 +284,6 @@ LSymbol *add_lisp_function(char const *name, short min_args, short max_args, sho
 int read_ltoken(char *&s, char *buffer);
 void print_trace_stack(int max_levels);
 
-
 LSysFunction *new_lisp_sys_function(int min_args, int max_args, int fun_number);
 LSysFunction *new_lisp_c_function(int min_args, int max_args, int fun_number);
 LSysFunction *new_lisp_c_bool(int min_args, int max_args, int fun_number);
@@ -286,21 +299,28 @@ int32_t lisp_atan2(int32_t dy, int32_t dx);
 int32_t lisp_sin(int32_t x);
 int32_t lisp_cos(int32_t x);
 
-extern "C" {
-void lbreak(const char *format, ...);
-} ;
+extern "C"
+{
+    void lbreak(const char *format, ...);
+};
 
-extern void clisp_init();                      // external initalizer call by lisp_init()
-extern long c_caller(long number, void *arg);  // exten c function switches on number
-extern void *l_caller(long number, void *arg);  // exten lisp function switches on number
+extern void clisp_init(); // external initalizer call by lisp_init()
+extern long c_caller(long number, void *arg); // exten c function switches on number
+extern void *l_caller(long number, void *arg); // exten lisp function switches on number
 
-extern void *l_obj_get(long number);  // exten lisp function switches on number
-extern void l_obj_set(long number, void *arg);  // exten lisp function switches on number
-extern void l_obj_print(long number);  // exten lisp function switches on number
+extern void *l_obj_get(long number); // exten lisp function switches on number
+extern void l_obj_set(long number, void *arg); // exten lisp function switches on number
+extern void l_obj_print(long number); // exten lisp function switches on number
 
 // FIXME: get rid of this later
-static inline LObject *symbol_value(void *sym) { return ((LSymbol *)sym)->GetValue(); }
-static inline char *lstring_value(void *str) { return ((LString *)str)->GetString(); }
+static inline LObject *symbol_value(void *sym)
+{
+    return ((LSymbol *)sym)->GetValue();
+}
+static inline char *lstring_value(void *str)
+{
+    return ((LString *)str)->GetString();
+}
 
 #include "lisp_opt.h"
 

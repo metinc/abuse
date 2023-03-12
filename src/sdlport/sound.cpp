@@ -20,11 +20,11 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #ifdef WIN32
-# include <Windows.h>
+#include <Windows.h>
 #endif
 #include <cstring>
 
@@ -44,35 +44,35 @@ static SDL_AudioSpec audioObtained;
 // sound_init()
 // Initialise audio
 //
-int sound_init( int argc, char **argv )
+int sound_init(int argc, char **argv)
 {
-	//AR sound and music are always enabled, it just never plays if it is diabled in the config file
-	//or if it failed to load the files (sound_enabled==true)
+    //AR sound and music are always enabled, it just never plays if it is diabled in the config file
+    //or if it failed to load the files (sound_enabled==true)
 
     char *sfxdir, *datadir;
-	
-	// Check for the sfx directory, disable sound if we can't find it.
+
+    // Check for the sfx directory, disable sound if we can't find it.
     datadir = get_filename_prefix();
-    sfxdir = (char *)malloc( strlen( datadir ) + 5 + 1 );
-    sprintf( sfxdir, "%ssfx", datadir );
+    sfxdir = (char *)malloc(strlen(datadir) + 5 + 1);
+    sprintf(sfxdir, "%ssfx", datadir);
 #ifdef WIN32
     // Attempting to fopen a directory under Windows will fail, and
     // opendir does not exist. Use GetFileAttributes instead.
-    if( GetFileAttributes( sfxdir ) == INVALID_FILE_ATTRIBUTES )
+    if (GetFileAttributes(sfxdir) == INVALID_FILE_ATTRIBUTES)
 #else
     FILE *fd = NULL;
-    if( (fd = fopen( sfxdir,"r" )) == NULL )
+    if ((fd = fopen(sfxdir, "r")) == NULL)
 #endif
     {
         // Didn't find the directory, so disable sound.
-        printf( "Sound: Disabled (couldn't find the sfx directory %s)\n", sfxdir );
+        printf("Sound: Disabled (couldn't find the sfx directory %s)\n", sfxdir);
         return 0;
     }
-    free( sfxdir );
+    free(sfxdir);
 
     if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) < 0)
     {
-        printf( "Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError() );
+        printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
         return 0;
     }
 
@@ -83,8 +83,8 @@ int sound_init( int argc, char **argv )
     audioObtained.channels = tempChannels & 0xFF;
 
     sound_enabled = SFX_INITIALIZED | MUSIC_INITIALIZED;
-	
-	// It's all good
+
+    // It's all good
     return sound_enabled;
 }
 
@@ -129,7 +129,7 @@ sound_effect::sound_effect(char const *filename)
 //
 sound_effect::~sound_effect()
 {
-    if(!sound_enabled)
+    if (!sound_enabled)
         return;
 
     // Sound effect deletion only happens on level load, so there
@@ -155,7 +155,8 @@ sound_effect::~sound_effect()
 //
 void sound_effect::play(int volume, int pitch, int panpot)
 {
-	if(!sound_enabled || settings.no_sound) return;
+    if (!sound_enabled || settings.no_sound)
+        return;
 
     int channel = Mix_PlayChannel(-1, m_chunk, 0);
     if (channel > -1)
@@ -165,12 +166,11 @@ void sound_effect::play(int volume, int pitch, int panpot)
     }
 }
 
-
 // Play music using SDL_Mixer
 
-song::song(char const * filename)
+song::song(char const *filename)
 {
-	data = NULL;
+    data = NULL;
     Name = strdup(filename);
     song_id = 0;
 
@@ -195,15 +195,15 @@ song::song(char const * filename)
 
     if (!music)
     {
-        printf("Sound: ERROR - %s while loading %s\n",
-               Mix_GetError(), realname);
+        printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname);
         return;
     }
 }
 
 song::~song()
 {
-    if(playing()) stop();
+    if (playing())
+        stop();
 
     free(data);
     free(Name);
@@ -212,18 +212,19 @@ song::~song()
     SDL_FreeRW(rw);
 }
 
-void song::play( unsigned char volume )
+void song::play(unsigned char volume)
 {
-	if(!sound_enabled || settings.no_music) return;
-	
-	song_id = 1;
+    if (!sound_enabled || settings.no_music)
+        return;
 
-	//AR play music in a loop
+    song_id = 1;
+
+    //AR play music in a loop
     Mix_PlayMusic(this->music, -1);
     Mix_VolumeMusic(volume);
 }
 
-void song::stop( long fadeout_time )
+void song::stop(long fadeout_time)
 {
     song_id = 0;
 
@@ -235,7 +236,7 @@ int song::playing()
     return Mix_PlayingMusic();
 }
 
-void song::set_volume( int volume )
+void song::set_volume(int volume)
 {
     Mix_VolumeMusic(volume);
 }

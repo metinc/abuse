@@ -12,23 +12,23 @@
 #define __EVENT_HPP_
 
 /* Q: Why are these powers of 2? They're never ORed together... */
-#define EV_MOUSE_MOVE     1
-#define EV_MOUSE_BUTTON   2
-#define EV_KEY            4
+#define EV_MOUSE_MOVE 1
+#define EV_MOUSE_BUTTON 2
+#define EV_KEY 4
 /*#define EV_KEY_SPECIAL    8 UNUSED
  #define EV_REDRAW        16 UNUSED */
-#define EV_SPURIOUS      32
+#define EV_SPURIOUS 32
 /* RESIZE is effectively unused (it can never be generated) */
-#define EV_RESIZE        64
-#define EV_KEYRELEASE   128
+#define EV_RESIZE 64
+#define EV_KEYRELEASE 128
 #define EV_CLOSE_WINDOW 256
 /* DRAG_WINDOW is effectively unused (it CAN be generated, but is never processed) */
-#define EV_DRAG_WINDOW  512
-#define EV_MESSAGE     1024
+#define EV_DRAG_WINDOW 512
+#define EV_MESSAGE 1024
 
-#define LEFT_BUTTON    1
-#define RIGHT_BUTTON   2
-#define MIDDLE_BUTTON  4
+#define LEFT_BUTTON 1
+#define RIGHT_BUTTON 2
+#define MIDDLE_BUTTON 4
 
 #include "keys.h"
 #include "sprite.h"
@@ -37,7 +37,7 @@ class Jwindow;
 
 class Event : public linked_node
 {
-public:
+  public:
     Event()
     {
         type = EV_SPURIOUS;
@@ -54,16 +54,23 @@ public:
     ivec2 mouse_move;
     int mouse_button, key;
 
-    struct { char alt, ctrl, shift; } key_special;
+    struct
+    {
+        char alt, ctrl, shift;
+    } key_special;
 
-    Jwindow *window;      // NULL is root
+    Jwindow *window; // NULL is root
     ivec2 window_position;
-    struct { int id; char *data; } message;
+    struct
+    {
+        int id;
+        char *data;
+    } message;
 };
 
 class EventHandler
 {
-public:
+  public:
     EventHandler(image *screen, palette *pal);
     ~EventHandler();
 
@@ -80,7 +87,10 @@ public:
     void Get(Event &ev);
     void flush_screen();
 
-    int has_mouse() { return 1; }
+    int has_mouse()
+    {
+        return 1;
+    }
     void SetMouseShape(image *im, ivec2 center)
     {
         m_sprite->SetVisual(im, 1);
@@ -88,14 +98,13 @@ public:
     }
     void SetMousePos(ivec2 pos)
     {
-        m_pos = ivec2(Min(Max(pos.x, 0), m_screen->Size().x - 1),
-                      Min(Max(pos.y, 0), m_screen->Size().y - 1));
+        m_pos = ivec2(Min(Max(pos.x, 0), m_screen->Size().x - 1), Min(Max(pos.y, 0), m_screen->Size().y - 1));
         SysWarpMouse(m_pos);
     }
-	//AR
-	ivec2 GetMousePos()
+    //AR
+    ivec2 GetMousePos()
     {
-         return this->m_pos;
+        return this->m_pos;
     }
     void SetIgnoreWheelEvents(bool ignore)
     {
@@ -111,26 +120,26 @@ public:
         m_right_stick_x = m_right_stick_y = -1;
     }
 
-private:
+  private:
     linked_list m_events;
     int m_pending, last_key;
     bool m_ignore_wheel_events;
     // "Dead zone" before motion of a stick "counts".
     // Maximum stick values are 0x7FFF, currently I've
     // arbitrarily set this to 1/4th.
-    int m_dead_zone;//AR (int m_dead_zone = 0x2000;)
+    int m_dead_zone; //AR (int m_dead_zone = 0x2000;)
     // Scale amount for the right stick when moving the mouse. The range is
     // -0x7FFF to 0x7FFF, or -32767 to 32767. The default means it will move
     // a maximum of 3 pixels per tick.
-    int m_right_stick_scale;//AR (int m_right_stick_scale = 0x2000;)
+    int m_right_stick_scale; //AR (int m_right_stick_scale = 0x2000;)
     // Scale amount for the right stick when it's player-locked.
     // 0x400 gives a range of -31 to 31.
-    int m_right_stick_player_scale;//AR (int m_right_stick_player_scale = 0x400;)
+    int m_right_stick_player_scale; //AR (int m_right_stick_player_scale = 0x400;)
     int m_right_stick_x, m_right_stick_y;
 
     image *m_screen;
 
-protected:
+  protected:
     /* Mouse information */
     Sprite *m_sprite;
     ivec2 m_pos, m_center;

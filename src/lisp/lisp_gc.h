@@ -20,13 +20,13 @@ extern GrowStack<void> l_user_stack;
 // object allocation triggers a garbage collection.
 class PtrRef
 {
-public:
-    template<typename T> inline PtrRef(T *&ref)
+  public:
+    template <typename T> inline PtrRef(T *&ref)
     {
         stack.push((void **)&ref);
     }
 
-    template<typename T> inline PtrRef(T * const &ref)
+    template <typename T> inline PtrRef(T *const &ref)
     {
         stack.push((void **)&ref);
     }
@@ -41,4 +41,3 @@ public:
 };
 
 #endif
-

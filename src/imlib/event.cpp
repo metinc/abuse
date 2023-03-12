@@ -19,7 +19,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -33,11 +33,11 @@
 //
 EventHandler::EventHandler(image *screen, palette *pal)
 {
-	//AR moved from event.h, increased from 5000 to 10000 because it didn't detect the release of left stick when moving
-	m_dead_zone = 10000;
-	m_right_stick_scale = 0x2000;
+    //AR moved from event.h, increased from 5000 to 10000 because it didn't detect the release of left stick when moving
+    m_dead_zone = 10000;
+    m_right_stick_scale = 0x2000;
     m_right_stick_player_scale = 0x400;
-	//
+    //
 
     CHECK(screen && pal);
     m_pending = 0;
@@ -45,19 +45,9 @@ EventHandler::EventHandler(image *screen, palette *pal)
     m_screen = screen;
 
     // Mouse stuff
-    uint8_t mouse_sprite[]=
-    {
-        0, 2, 0, 0, 0, 0, 0, 0,
-        2, 1, 2, 0, 0, 0, 0, 0,
-        2, 1, 1, 2, 0, 0, 0, 0,
-        2, 1, 1, 1, 2, 0, 0, 0,
-        2, 1, 1, 1, 1, 2, 0, 0,
-        2, 1, 1, 1, 1, 1, 2, 0,
-        0, 2, 1, 1, 2, 2, 0, 0,
-        0, 0, 2, 1, 1, 2, 0, 0,
-        0, 0, 2, 1, 1, 2, 0, 0,
-        0, 0, 0, 2, 2, 0, 0, 0
-    };
+    uint8_t mouse_sprite[] = {0, 2, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1,
+                              1, 2, 0, 0, 0, 2, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2,
+                              0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0};
 
     Filter f;
     f.Set(1, pal->brightest(1));
@@ -85,7 +75,7 @@ EventHandler::~EventHandler()
 void EventHandler::Get(Event &ev)
 {
     // Sleep until there are events available
-    while(!m_pending)
+    while (!m_pending)
     {
         Timer tmp;
         IsPending();
@@ -96,7 +86,7 @@ void EventHandler::Get(Event &ev)
 
     // Return first queued event if applicable
     Event *ep = (Event *)m_events.first();
-    if(ep)
+    if (ep)
     {
         ev = *ep;
         m_events.unlink(ep);

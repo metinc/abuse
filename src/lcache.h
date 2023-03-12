@@ -18,4 +18,3 @@ void write_level(bFILE *fp, LObject *level);
 LObject *load_block(bFILE *fp);
 
 #endif
-

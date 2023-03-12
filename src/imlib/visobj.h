@@ -16,12 +16,13 @@
 
 class visual_object
 {
-public:
+  public:
     virtual void draw(image *screen, int x, int y, Filter *f) = 0;
     virtual int width() = 0;
     virtual int height() = 0;
-    virtual ~visual_object() { }
+    virtual ~visual_object()
+    {
+    }
 };
 
 #endif
-

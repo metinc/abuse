@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -19,8 +19,8 @@
 
 chat_console *chat = NULL;
 
-chat_console::chat_console(JCFont *font, int width, int height) :
-  console(font,width,height<4 ? 4 : height,symbol_str("CHAT"))
+chat_console::chat_console(JCFont *font, int width, int height)
+    : console(font, width, height < 4 ? 4 : height, symbol_str("CHAT"))
 {
     hide();
     clear();
@@ -32,26 +32,24 @@ chat_console::chat_console(JCFont *font, int width, int height) :
 
 void chat_console::clear()
 {
-  memset(screen,' ',w*h);
-  memset(screen+w*(h-2),'-',w);
-  redraw();
+    memset(screen, ' ', w * h);
+    memset(screen + w * (h - 2), '-', w);
+    redraw();
 }
 
 void chat_console::put_all(char *st)
 {
-  memmove(screen,screen+w,w*(h-3));
-  memset(screen+w*(h-3),' ',w);
-  memcpy(screen+w*(h-3),st,strlen(st));
-  redraw();
+    memmove(screen, screen + w, w * (h - 3));
+    memset(screen + w * (h - 3), ' ', w);
+    memcpy(screen + w * (h - 3), st, strlen(st));
+    redraw();
 }
-
 
 void chat_console::draw_user(char *st)
 {
-  memset(screen+w*(h-1),' ',w);
-  memcpy(screen+w*(h-1),st,strlen(st));
-  cx=strlen(st);
-  cy=h-1;
-  redraw();
+    memset(screen + w * (h - 1), ' ', w);
+    memcpy(screen + w * (h - 1), st, strlen(st));
+    cx = strlen(st);
+    cy = h - 1;
+    redraw();
 }
-

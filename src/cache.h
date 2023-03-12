@@ -26,23 +26,23 @@ class CrcedFile
 {
     friend class CrcManager;
 
-protected:
+  protected:
     CrcedFile(char const *name);
     ~CrcedFile();
 
     int crc_calculated;
     uint32_t crc;
     char *filename;
-} ;
+};
 
 // stores crc for each file open to avoid redundant calculations
 class CrcManager
 {
-private:
+  private:
     int total_files;
     CrcedFile **files;
 
-public:
+  public:
     CrcManager();
 
     int get_filenumber(char const *filename);
@@ -50,7 +50,10 @@ public:
     void set_crc(int filenumber, uint32_t crc);
     char *get_filename(int filenumber);
     void clean_up();
-    int total_filenames() { return total_files; }
+    int total_filenames()
+    {
+        return total_files;
+    }
     int write_crc_file(char const *filename);
     int load_crc_file(char const *filename);
 };
@@ -68,7 +71,7 @@ struct CacheItem
 {
     friend class CacheList;
 
-protected:
+  protected:
     void *data;
     int32_t last_access;
     uint8_t type;
@@ -78,7 +81,7 @@ protected:
 
 class CacheList
 {
-private:
+  private:
     CacheItem *list;
     int32_t total, last_registered, last_access, poll_start_access;
     int16_t last_file; // for speed leave the last file accessed open
@@ -86,29 +89,47 @@ private:
     bFILE *fp;
     spec_directory *last_dir;
     int32_t last_offset; // store the last offset so we don't have to seek if
-                         // we don't need to
+        // we don't need to
 
     int AllocId();
     void locate(CacheItem *i, int local_only = 0); // set up file and offset for this item
     void normalize();
     void unmalloc(CacheItem *i);
     int used, // flag set when disk is accessed
-        ful;  // set when stuff has to be thrown out
+        ful; // set when stuff has to be thrown out
     int *prof_data; // holds counts for each id
     void preload_cache_object(int type);
     void preload_cache(level *lev);
 
-public:
+  public:
     CacheList();
     ~CacheList();
 
     void free_oldest();
-    int in_use() { if (used) { used = 0; return 1; } else return 0; }
-    int full() { if (ful) { ful = 0; return 1; } else return 0; }
+    int in_use()
+    {
+        if (used)
+        {
+            used = 0;
+            return 1;
+        }
+        else
+            return 0;
+    }
+    int full()
+    {
+        if (ful)
+        {
+            ful = 0;
+            return 1;
+        }
+        else
+            return 0;
+    }
     int reg_object(char const *filename, LObject *object, int type,
                    int rm_dups); // lisp object
     int reg(char const *filename, char const *name, int type = -1,
-                int rm_dups = 0); // returns id to item
+            int rm_dups = 0); // returns id to item
     int loaded(int id);
     void unreg(int id);
     void note_need(int id);
@@ -125,10 +146,13 @@ public:
     void prof_init();
     void prof_write(bFILE *fp);
     void prof_uninit();
-    int  prof_size(); // sizeof of spec entry that will be saved
+    int prof_size(); // sizeof of spec entry that will be saved
     void prof_poll_start();
     void prof_poll_end();
-    int  prof_is_on() { return prof_data != NULL; }   // so level knows weither to save prof info or not
+    int prof_is_on()
+    {
+        return prof_data != NULL;
+    } // so level knows weither to save prof info or not
     int compare(int a, int b); // compares usage count (used by qsort)
     int offset_compare(int a, int b);
 
@@ -144,4 +168,3 @@ extern CacheList cache;
 extern CrcManager crc_manager;
 
 #endif
-

@@ -19,37 +19,38 @@
 
 class tool_picker : public spicker
 {
-  Filter *map;
-  visual_object **icons;
-  int *ids;
-  int total_icons;
-  int iw,ih;
-  palette *old_pal;
+    Filter *map;
+    visual_object **icons;
+    int *ids;
+    int total_icons;
+    int iw, ih;
+    palette *old_pal;
 
-  public :
+  public:
+    // you are expected keep image and id list in memory, tool_picker does not copy them
+    tool_picker(int X, int Y, int ID, int show_h, visual_object **Icons, int *Ids, int total_ic, palette *icon_palette,
+                palette *pal, ifield *Next);
 
-  // you are expected keep image and id list in memory, tool_picker does not copy them
-  tool_picker(int X, int Y, int ID,
-          int show_h, visual_object **Icons, int *Ids, int total_ic,
-          palette *icon_palette, palette *pal, ifield *Next);
+    virtual void draw_item(image *screen, int x, int y, int num, int active);
+    virtual int total()
+    {
+        return total_icons;
+    }
+    virtual int item_width()
+    {
+        return iw;
+    }
+    virtual int item_height()
+    {
+        return ih;
+    }
+    virtual void note_new_current(image *screen, InputManager *inm, int x)
+    {
+        wm->Push(new Event(ids[x], NULL));
+    }
 
-  virtual void draw_item(image *screen, int x, int y, int num, int active);
-  virtual int total() { return total_icons; }
-  virtual int item_width() { return iw; }
-  virtual int item_height() { return ih; }
-  virtual void note_new_current(image *screen, InputManager *inm, int x)
-  { wm->Push(new Event(ids[x],NULL)); }
-
-  void remap(palette *pal, image *screen);
-  ~tool_picker();
-} ;
-
+    void remap(palette *pal, image *screen);
+    ~tool_picker();
+};
 
 #endif
-
-
-
-
-
-
-

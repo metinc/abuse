@@ -9,7 +9,7 @@
 //
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <cstdlib> /* free() */
@@ -22,29 +22,20 @@ using namespace std;
 namespace lol
 {
 
-static inline float det3(float a, float b, float c,
-                         float d, float e, float f,
-                         float g, float h, float i)
+static inline float det3(float a, float b, float c, float d, float e, float f, float g, float h, float i)
 {
-    return a * (e * i - h * f)
-         + b * (f * g - i * d)
-         + c * (d * h - g * e);
+    return a * (e * i - h * f) + b * (f * g - i * d) + c * (d * h - g * e);
 }
 
 static inline float cofact3(mat4 const &mat, int i, int j)
 {
-    return det3(mat[(i + 1) & 3][(j + 1) & 3],
-                mat[(i + 2) & 3][(j + 1) & 3],
-                mat[(i + 3) & 3][(j + 1) & 3],
-                mat[(i + 1) & 3][(j + 2) & 3],
-                mat[(i + 2) & 3][(j + 2) & 3],
-                mat[(i + 3) & 3][(j + 2) & 3],
-                mat[(i + 1) & 3][(j + 3) & 3],
-                mat[(i + 2) & 3][(j + 3) & 3],
-                mat[(i + 3) & 3][(j + 3) & 3]) * (((i + j) & 1) ? -1.0f : 1.0f);
+    return det3(mat[(i + 1) & 3][(j + 1) & 3], mat[(i + 2) & 3][(j + 1) & 3], mat[(i + 3) & 3][(j + 1) & 3],
+                mat[(i + 1) & 3][(j + 2) & 3], mat[(i + 2) & 3][(j + 2) & 3], mat[(i + 3) & 3][(j + 2) & 3],
+                mat[(i + 1) & 3][(j + 3) & 3], mat[(i + 2) & 3][(j + 3) & 3], mat[(i + 3) & 3][(j + 3) & 3]) *
+           (((i + j) & 1) ? -1.0f : 1.0f);
 }
 
-template<> float mat4::det() const
+template <> float mat4::det() const
 {
     float ret = 0;
     for (int n = 0; n < 4; n++)
@@ -52,7 +43,7 @@ template<> float mat4::det() const
     return ret;
 }
 
-template<> mat4 mat4::invert() const
+template <> mat4 mat4::invert() const
 {
     mat4 ret;
     float d = det();
@@ -66,7 +57,7 @@ template<> mat4 mat4::invert() const
     return ret;
 }
 
-template<> void mat4::printf() const
+template <> void mat4::printf() const
 {
 #if 0
     mat4 const &p = *this;
@@ -84,54 +75,47 @@ template<> void mat4::printf() const
 
 #if !defined __ANDROID__ && !defined WIN32
 // FIXME: How to make this work under Windows?
-template<> std::ostream &operator<<(std::ostream &stream, ivec2 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, ivec2 const &v)
 {
     return stream << "(" << v.x << ", " << v.y << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, ivec3 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, ivec3 const &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, ivec4 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, ivec4 const &v)
 {
-    return stream << "(" << v.x << ", " << v.y << ", "
-                         << v.z << ", " << v.w << ")";
+    return stream << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, vec2 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, vec2 const &v)
 {
     return stream << "(" << v.x << ", " << v.y << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, vec3 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, vec3 const &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, vec4 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, vec4 const &v)
 {
-    return stream << "(" << v.x << ", " << v.y << ", "
-                         << v.z << ", " << v.w << ")";
+    return stream << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")";
 }
 
-template<> std::ostream &operator<<(std::ostream &stream, mat4 const &m)
+template <> std::ostream &operator<<(std::ostream &stream, mat4 const &m)
 {
-    stream << "((" << m[0][0] << ", " << m[1][0]
-            << ", " << m[2][0] << ", " << m[3][0] << "), ";
-    stream << "(" << m[0][1] << ", " << m[1][1]
-           << ", " << m[2][1] << ", " << m[3][1] << "), ";
-    stream << "(" << m[0][2] << ", " << m[1][2]
-           << ", " << m[2][2] << ", " << m[3][2] << "), ";
-    stream << "(" << m[0][3] << ", " << m[1][3]
-           << ", " << m[2][3] << ", " << m[3][3] << "))";
+    stream << "((" << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << ", " << m[3][0] << "), ";
+    stream << "(" << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << ", " << m[3][1] << "), ";
+    stream << "(" << m[0][2] << ", " << m[1][2] << ", " << m[2][2] << ", " << m[3][2] << "), ";
+    stream << "(" << m[0][3] << ", " << m[1][3] << ", " << m[2][3] << ", " << m[3][3] << "))";
     return stream;
 }
 #endif
 
-template<> mat4 mat4::ortho(float left, float right, float bottom,
-                            float top, float near, float far)
+template <> mat4 mat4::ortho(float left, float right, float bottom, float top, float near, float far)
 {
     float invrl = (right != left) ? 1.0f / (right - left) : 0.0f;
     float invtb = (top != bottom) ? 1.0f / (top - bottom) : 0.0f;
@@ -141,15 +125,14 @@ template<> mat4 mat4::ortho(float left, float right, float bottom,
     ret[0][0] = 2.0f * invrl;
     ret[1][1] = 2.0f * invtb;
     ret[2][2] = -2.0f * invfn;
-    ret[3][0] = - (right + left) * invrl;
-    ret[3][1] = - (top + bottom) * invtb;
-    ret[3][2] = - (far + near) * invfn;
+    ret[3][0] = -(right + left) * invrl;
+    ret[3][1] = -(top + bottom) * invtb;
+    ret[3][2] = -(far + near) * invfn;
     ret[3][3] = 1.0f;
     return ret;
 }
 
-template<> mat4 mat4::frustum(float left, float right, float bottom,
-                              float top, float near, float far)
+template <> mat4 mat4::frustum(float left, float right, float bottom, float top, float near, float far)
 {
     float invrl = (right != left) ? 1.0f / (right - left) : 0.0f;
     float invtb = (top != bottom) ? 1.0f / (top - bottom) : 0.0f;
@@ -160,14 +143,13 @@ template<> mat4 mat4::frustum(float left, float right, float bottom,
     ret[1][1] = 2.0f * near * invtb;
     ret[2][0] = (right + left) * invrl;
     ret[2][1] = (top + bottom) * invtb;
-    ret[2][2] = - (far + near) * invfn;
+    ret[2][2] = -(far + near) * invfn;
     ret[2][3] = -1.0f;
     ret[3][2] = -2.0f * far * near * invfn;
     return ret;
 }
 
-template<> mat4 mat4::perspective(float theta, float width,
-                                  float height, float near, float far)
+template <> mat4 mat4::perspective(float theta, float width, float height, float near, float far)
 {
     float t1 = tanf(theta / 2.0f);
     float t2 = t1 * height / width;
@@ -175,7 +157,7 @@ template<> mat4 mat4::perspective(float theta, float width,
     return frustum(-near * t1, near * t1, -near * t2, near * t2, near, far);
 }
 
-template<> mat4 mat4::translate(float x, float y, float z)
+template <> mat4 mat4::translate(float x, float y, float z)
 {
     mat4 ret(1.0f);
     ret[3][0] = x;
@@ -184,7 +166,7 @@ template<> mat4 mat4::translate(float x, float y, float z)
     return ret;
 }
 
-template<> mat4 mat4::rotate(float theta, float x, float y, float z)
+template <> mat4 mat4::rotate(float theta, float x, float y, float z)
 {
     float st = sinf(theta);
     float ct = cosf(theta);
@@ -217,4 +199,3 @@ template<> mat4 mat4::rotate(float theta, float x, float y, float z)
 }
 
 } /* namespace lol */
-

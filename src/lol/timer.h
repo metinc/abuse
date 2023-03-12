@@ -23,7 +23,7 @@ class TimerData;
 
 class Timer
 {
-public:
+  public:
     Timer();
     ~Timer();
 
@@ -31,11 +31,10 @@ public:
     float PollMs();
     void WaitMs(float deltams);
 
-private:
+  private:
     TimerData *data;
 };
 
 } /* namespace lol */
 
 #endif // __LOL_TIMER_H__
-

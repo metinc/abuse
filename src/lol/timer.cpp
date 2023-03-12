@@ -9,23 +9,23 @@
 //
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <cstdlib>
 
 #if defined __linux__ || defined __APPLE__
-#   include <sys/time.h>
-#   include <unistd.h>
+#include <sys/time.h>
+#include <unistd.h>
 #elif defined _WIN32
-#   define WIN32_LEAN_AND_MEAN
-#   include <windows.h>
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #elif defined __CELLOS_LV2__
-#   include <sys/sys_time.h>
-#   include <sys/timer.h>
-#   include <sys/time_util.h>
+#include <sys/sys_time.h>
+#include <sys/timer.h>
+#include <sys/time_util.h>
 #else
-#   include "SDL.h"
+#include "SDL.h"
 #endif
 
 #include "common.h"
@@ -41,7 +41,7 @@ class TimerData
 {
     friend class Timer;
 
-private:
+  private:
     TimerData()
     {
 #if defined __linux__ || defined __APPLE__
@@ -62,8 +62,7 @@ private:
 #if defined __linux__ || defined __APPLE__
         struct timeval tv;
         gettimeofday(&tv, NULL);
-        ret = 1e-3f * (tv.tv_usec - tv0.tv_usec)
-            + 1e3f * (tv.tv_sec - tv0.tv_sec);
+        ret = 1e-3f * (tv.tv_usec - tv0.tv_usec) + 1e3f * (tv.tv_sec - tv0.tv_sec);
         if (update)
             tv0 = tv;
         towait = deltams - ret;
@@ -132,8 +131,7 @@ private:
  * Timer public class
  */
 
-Timer::Timer()
-  : data(new TimerData())
+Timer::Timer() : data(new TimerData())
 {
 }
 
