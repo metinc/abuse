@@ -606,10 +606,10 @@ void level::interpolate_draw_objects(view *v, uint32_t delta)
     {
         o->last_x = o->x;
         o->last_y = o->y;
-        o->x = std::round(o->interpolated_x + (o->x - o->interpolated_x) * ratio);
-        o->y = std::round(o->interpolated_y + (o->y - o->interpolated_y) * ratio);
-        o->interpolated_x = o->x;
-        o->interpolated_y = o->y;
+        o->interpolated_x = o->interpolated_x + (o->x - o->interpolated_x) * ratio;
+        o->interpolated_y = o->interpolated_y + (o->y - o->interpolated_y) * ratio;
+        o->x = std::round(o->interpolated_x);
+        o->y = std::round(o->interpolated_y);
         o->draw();
     }
 
