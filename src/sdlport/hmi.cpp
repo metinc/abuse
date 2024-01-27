@@ -15,6 +15,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
+#include <cstdint>
 
 #include "common.h"
 

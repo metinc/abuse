@@ -15,6 +15,7 @@
 // Globally required headers
 //
 #include <stdio.h>
+#include <cstdint>
 
 #ifdef _MSC_VER
 // For simplicity sake, just make snprintf sprintf_s even though they aren't quite the same
