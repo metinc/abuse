@@ -3,9 +3,9 @@
 ; SCREEN SETTINGS
 
 ;0 - window, 1 - fullscreen window, 2 - fullscreen
-fullscreen=0
+fullscreen=1
 borderless=0
-vsync=0
+vsync=1
 
 ; Game screen size (original 320x200)
 screen_width=320
