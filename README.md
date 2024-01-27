@@ -62,6 +62,7 @@ These are the changes I made compared to Xenoveritas SDL2 version from 2014:
   * Added cheats via chat console: bullettime, god, giveall, flypower, sneakypower, fastpower, healthpower, nopower
   * XBox360 controller support with rebindable buttons
   * Updated abuse-tool so it can extract the images in Abuse SPEC files to modern image formats as individual images, tilemaps or a texture atlas with information about image, tile and animation frame sizes and positions
+  * Interpolation is used to make the game look smoother and overcome the 15 FPS limit
 
 ## 3. CONFIGURATION
 
