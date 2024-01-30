@@ -74,7 +74,7 @@ int CharacterType::add_state(LObject *symbol) // returns index into seq to use
     {
         symbol->Print();
         lbreak("is not a symbol (in def_char)");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     LObject *val = symbol_value((LSymbol *)symbol);
@@ -88,7 +88,7 @@ int CharacterType::add_state(LObject *symbol) // returns index into seq to use
             dprintf("expecting symbol value to be a number, instead got: ");
             val->Print();
             lbreak("");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         num = lnumber_value(val);
     }
@@ -108,7 +108,7 @@ int CharacterType::add_state(LObject *symbol) // returns index into seq to use
                "by state %s\n"
                "use a different symbol for this state\n",
                lnumber_value(seq_syms[num]->GetValue()), lstring_value(seq_syms[num]->GetName()));
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else if (num >= ts)
     {
@@ -193,7 +193,7 @@ void CharacterType::add_var(void *symbol, void *name)
     {
         ((LObject *)symbol)->Print();
         lbreak("symbol already has a value, cannot instantiate an object varible");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else if (DEFINEDP(s->m_value))
     {
@@ -209,7 +209,7 @@ void CharacterType::add_var(void *symbol, void *name)
                        lstring_value(((LSymbol *)name)->GetName()), lstring_value(((LSymbol *)symbol)->GetName()),
                        index, lstring_value(((LSymbol *)name)->GetName()),
                        lstring_value(((LSymbol *)vars[index])->GetName()), lstring_value(((LSymbol *)name)->GetName()));
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else
             {
@@ -397,7 +397,7 @@ CharacterType::CharacterType(LList *args, LSymbol *name)
                 {
                     ((LObject *)field)->Print();
                     lbreak("fields : no such var name \"%s\"\n", name);
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 total_fields++;
 
@@ -426,7 +426,7 @@ CharacterType::CharacterType(LList *args, LSymbol *name)
         {
             lcar(field)->Print();
             lbreak("Unknown field for character definition");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -437,7 +437,7 @@ CharacterType::CharacterType(LList *args, LSymbol *name)
   if (!fn)
   {
     printf("No filename given for def-character (%s)\n",name);
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
   desc=lcdr(desc);  //  skip filename
 
@@ -455,7 +455,7 @@ CharacterType::CharacterType(LList *args, LSymbol *name)
   if (NILP(sa))
   {
     printf("missing state state art in def-character (%s)\n",name);
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
 
   sa=lcdr(sa);   // list of state sequences
@@ -503,7 +503,7 @@ CharacterType::CharacterType(LList *args, LSymbol *name)
     printf("current possiblities are : \n");
     for (int i=0; i<t; i++) printf("\"%s\" ",default_simple.var_name(i));
     printf("\n");
-    exit(0);
+    exit(EXIT_SUCCESS);
       }
       char *new_name=lstring_value(lcar(lcdr(lcar(mf))));
       total_fields++;

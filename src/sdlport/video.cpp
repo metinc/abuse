@@ -112,7 +112,7 @@ void set_mode(int argc, char **argv)
     if (!window)
     {
         show_startup_error("Video : Unable to create window : %s", SDL_GetError());
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     //AR OpenGL
@@ -163,7 +163,7 @@ void set_mode(int argc, char **argv)
     if (screen == NULL)
     {
         show_startup_error("Video : Unable to create 32-bit surface: %s", SDL_GetError());
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     //
 
@@ -173,7 +173,7 @@ void set_mode(int argc, char **argv)
     {
         // Our surface is no good, we have to bail.
         show_startup_error("Video : Unable to create 8-bit surface: %s", SDL_GetError());
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     // Create the screen image
@@ -182,7 +182,7 @@ void set_mode(int argc, char **argv)
     {
         // Our screen image is no good, we have to bail.
         show_startup_error("Video : Unable to create screen image.");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     main_screen->clear();
 

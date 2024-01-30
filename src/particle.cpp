@@ -68,7 +68,7 @@ int defun_pseq(void *args)
     {
         ((LObject *)args)->Print();
         printf("expecting first arg to def-particle to be a symbol!\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     LSpace *sp = LSpace::Current;
     LSpace::Current = &LSpace::Perm;
@@ -97,7 +97,7 @@ part_sequence::part_sequence(void *args)
 
         FILE *fp = fopen(fn, "rb");
         printf("convet = %d\n", fp != NULL);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     // count how many frames are in the file

@@ -120,7 +120,7 @@ void lbreak(char const *format, ...)
         else if (!strcmp(st, "w") || !strcmp(st, "where"))
             where_print();
         else if (!strcmp(st, "q") || !strcmp(st, "quit"))
-            exit(1);
+            exit(EXIT_FAILURE);
         else if (!strcmp(st, "e") || !strcmp(st, "env") || !strcmp(st, "environment"))
         {
             dprintf("Enviorment : \nnot supported right now\n");
@@ -157,7 +157,7 @@ void need_perm_space(char const *why)
     if (LSpace::Current != &LSpace::Perm && LSpace::Current != &LSpace::Gc)
     {
         lbreak("%s : action requires permanant space\n", why);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 }
 
@@ -194,7 +194,7 @@ void *LSpace::Alloc(size_t size)
         if (size > GetFree())
         {
             lbreak("lisp: cannot find %d bytes in %s\n", size, m_name);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -242,7 +242,7 @@ LArray *LArray::Create(size_t len, void *rest)
                 {
                     ((LObject *)rest)->Print();
                     lbreak("(make-array) incorrect list length\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 data[i] = (LObject *)CAR(x);
             }
@@ -250,7 +250,7 @@ LArray *LArray::Create(size_t len, void *rest)
             {
                 ((LObject *)rest)->Print();
                 lbreak("(make-array) incorrect list length\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
         }
         else if (x == colon_initial_element)
@@ -264,7 +264,7 @@ LArray *LArray::Create(size_t len, void *rest)
         {
             ((LObject *)x)->Print();
             lbreak("Bad option argument to make-array\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 
@@ -440,7 +440,7 @@ char *lerror(char const *loc, char const *cause)
     if (cause)
         dprintf("ERROR MESSAGE : %s\n", cause);
     lbreak("");
-    exit(0);
+    exit(EXIT_SUCCESS);
     return NULL;
 }
 
@@ -449,7 +449,7 @@ void *nth(int num, void *list)
     if (num < 0)
     {
         lbreak("NTH: %d is not a nonnegative fixnum and therefore not a valid index\n", num);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     while (list && num)
@@ -472,7 +472,7 @@ void *lpointer_value(void *lpointer)
     {
         ((LObject *)lpointer)->Print();
         lbreak(" is not a pointer\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return ((LPointer *)lpointer)->m_addr;
@@ -493,7 +493,7 @@ int32_t lnumber_value(void *lnumber)
     default:
         ((LObject *)lnumber)->Print();
         lbreak(" is not a number\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     return 0;
 }
@@ -505,7 +505,7 @@ char *LString::GetString()
     {
         Print();
         lbreak(" is not a string\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return m_str;
@@ -546,7 +546,7 @@ uint16_t LChar::GetValue()
     {
         Print();
         lbreak("is not a character\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return m_ch;
@@ -565,7 +565,7 @@ long lfixed_point_value(void *c)
     default: {
         ((LObject *)c)->Print();
         lbreak(" is not a number\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     }
     return 0;
@@ -611,13 +611,13 @@ LObject *LArray::Get(int x)
     {
         Print();
         lbreak("is not an array\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     if (x >= (int)m_len || x < 0)
     {
         lbreak("array reference out of bounds (%d)\n", x);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     return m_data[x];
 }
@@ -790,7 +790,7 @@ size_t LList::GetLength()
     {
         Print();
         lbreak(" is not a sequence\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
 
@@ -813,7 +813,7 @@ void *pairlis(void *list1, void *list2, void *list3)
         ((LObject *)list1)->Print();
         ((LObject *)list2)->Print();
         lbreak("... are not the same length (pairlis)\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     if (l1 != 0)
     {
@@ -859,7 +859,7 @@ LSymbol *add_sys_function(char const *name, short min_args, short max_args, shor
     if (s->m_function != l_undefined)
     {
         lbreak("add_sys_fucntion -> symbol %s already has a function\n", name);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
         s->m_function = new_lisp_sys_function(min_args, max_args, number);
@@ -873,7 +873,7 @@ LSymbol *add_c_object(void *symbol, int index)
     if (s->m_value != l_undefined)
     {
         lbreak("add_c_object -> symbol %s already has a value\n", lstring_value(s->GetName()));
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
         s->m_value = LObjectVar::Create(index);
@@ -888,7 +888,7 @@ LSymbol *add_c_function(char const *name, short min_args, short max_args, short 
     if (s->m_function != l_undefined)
     {
         lbreak("add_sys_fucntion -> symbol %s already has a function\n", name);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
         s->m_function = new_lisp_c_function(min_args, max_args, number);
@@ -903,7 +903,7 @@ LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short 
     if (s->m_function != l_undefined)
     {
         lbreak("add_sys_fucntion -> symbol %s already has a function\n", name);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
         s->m_function = new_lisp_c_bool(min_args, max_args, number);
@@ -918,7 +918,7 @@ LSymbol *add_lisp_function(char const *name, short min_args, short max_args, sho
     if (s->m_function != l_undefined)
     {
         lbreak("add_sys_fucntion -> symbol %s already has a function\n", name);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     else
         s->m_function = new_user_lisp_function(min_args, max_args, number);
@@ -1177,7 +1177,7 @@ LObject *LObject::Compile(char const *&code)
         else
         {
             lbreak("Unknown #\\ notation : %s\n", n);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
     else
@@ -1344,7 +1344,7 @@ LObject *LSymbol::EvalFunction(void *arg_list)
     {
         Print();
         lbreak("EVAL: is not a function name (not symbol either)");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
 
@@ -1370,7 +1370,7 @@ LObject *LSymbol::EvalFunction(void *arg_list)
     default:
         Print();
         lbreak(" is not a function name");
-        exit(0);
+        exit(EXIT_SUCCESS);
         break;
     }
 
@@ -1385,14 +1385,14 @@ LObject *LSymbol::EvalFunction(void *arg_list)
             ((LObject *)arg_list)->Print();
             m_name->Print();
             lbreak("\nToo few parameters to function\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         else if (req_max != -1 && args > req_max)
         {
             ((LObject *)arg_list)->Print();
             m_name->Print();
             lbreak("\nToo many parameters to function\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 #endif
@@ -1486,7 +1486,7 @@ void *mapcar(void *arg_list)
     default: {
         sym->Print();
         lbreak(" is not a function\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     }
     int i, stop = 0, num_args = ((LList *)CDR(arg_list))->GetLength();
@@ -1591,7 +1591,7 @@ void *concatenate(void *prog_list)
                         {
                             ((LObject *)str_eval[i])->Print();
                             lbreak(" is not a character\n");
-                            exit(0);
+                            exit(EXIT_SUCCESS);
                         }
                         char_list = (LList *)CDR(char_list);
                     }
@@ -1603,7 +1603,7 @@ void *concatenate(void *prog_list)
                 default:
                     ((LObject *)prog_list)->Print();
                     lbreak("type not supported\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                     break;
                 }
             }
@@ -1643,7 +1643,7 @@ void *concatenate(void *prog_list)
     {
         ((LObject *)prog_list)->Print();
         lbreak("concat operation not supported, try 'string\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     return ret;
 }
@@ -1825,7 +1825,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
             {
                 i->Print();
                 lbreak("/ only defined for numbers, cannot divide ");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else if (first)
             {
@@ -1899,7 +1899,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
                 {
                     car->Print();
                     lbreak("setq car : evaled object is not a cons cell\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 ((LList *)car)->m_car = set_to;
             }
@@ -1910,14 +1910,14 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
                 {
                     car->Print();
                     lbreak("setq cdr : evaled object is not a cons cell\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 ((LList *)car)->m_cdr = set_to;
             }
             else if (car != aref_symbol)
             {
                 lbreak("expected (aref, car, cdr, or symbol) in setq\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             else
             {
@@ -1929,7 +1929,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
                 {
                     a->Print();
                     lbreak("is not an array (aref)\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
 #endif
                 int num = lnumber_value(CAR(CDR(CDR(i)))->Eval());
@@ -1937,7 +1937,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
                 if (num >= (int)a->m_len || num < 0)
                 {
                     lbreak("aref : value of bounds (%d)\n", num);
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
 #endif
                 a->GetData()[num] = set_to;
@@ -1950,7 +1950,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         default:
             i->Print();
             lbreak("setq/setf only defined for symbols and arrays now..\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
             break;
         }
         break;
@@ -2010,7 +2010,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
             {
                 var_name->Print();
                 lbreak("should be a symbol (let)\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
 #endif
 
@@ -2047,14 +2047,14 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         {
             symbol->Print();
             lbreak(" is not a symbol! (DEFUN)\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         if (item_type(arg_list) != L_CONS_CELL)
         {
             arg_list->Print();
             lbreak("is not a lambda list (DEFUN)\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 #endif
         LObject *block_list = CDR(CDR(arg_list));
@@ -2120,7 +2120,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         default:
             i->Print();
             lbreak(" is not character type\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
             break;
         }
         break;
@@ -2132,7 +2132,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         {
             i->Print();
             lbreak(" is not number type\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         ret = LChar::Create(((LNumber *)i)->m_num);
         break;
@@ -2222,7 +2222,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         {
             symb->Print();
             lbreak(" is not a symbol (symbol-name)\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 #endif
         ret = symb->m_name;
@@ -2298,7 +2298,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
             if (!s)
             {
                 printf("Malloc error in load_script\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
 
             fp->read(s, l);
@@ -2359,7 +2359,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
     case SYS_FUNC_COMMA:
         arg_list->Print();
         lbreak("comma is illegal outside of backquote\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
         break;
     case SYS_FUNC_NTH: {
         int32_t x = lnumber_value(CAR(arg_list)->Eval());
@@ -2407,7 +2407,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
                 {
                     arg_list->Print();
                     lbreak("expecting (symbol value) for enum\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
 #endif
                 x = lnumber_value(CAR(CDR(sym))->Eval());
@@ -2418,7 +2418,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
             default:
                 arg_list->Print();
                 lbreak("expecting symbol or (symbol value) in enum\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             arg_list = (LList *)CDR(arg_list);
             x++;
@@ -2427,7 +2427,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         break;
     }
     case SYS_FUNC_QUIT:
-        exit(0);
+        exit(EXIT_SUCCESS);
         break;
     case SYS_FUNC_EVAL:
         ret = CAR(arg_list)->Eval()->Eval();
@@ -2469,14 +2469,14 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         if (item_type(bind_var) != L_SYMBOL)
         {
             lbreak("expecting for iterator to be a symbol\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         arg_list = (LList *)CDR(arg_list);
 
         if (CAR(arg_list) != in_symbol)
         {
             lbreak("expecting in after 'for iterator'\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         arg_list = (LList *)CDR(arg_list);
 
@@ -2487,7 +2487,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         if (CAR(arg_list) != do_symbol)
         {
             lbreak("expecting do after 'for iterator in list'\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         arg_list = (LList *)CDR(arg_list);
 
@@ -2563,7 +2563,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         if (l >= (2 << 16) || l <= 0)
         {
             lbreak("bad array size %d\n", l);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         ret = LArray::Create(l, CDR(arg_list));
         break;
@@ -2659,7 +2659,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
             if (item_type(sym) != L_SYMBOL)
             {
                 lbreak("expecting symbol name for iteration var\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             l_user_stack.push(sym->GetValue());
         }
@@ -2713,7 +2713,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         if (x < 0 || x >= (int32_t)strlen(s))
         {
             lbreak("SCHAR: index %d out of bounds\n", x);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         ret = LChar::Create(s[x]);
         break;
@@ -2855,7 +2855,7 @@ LObject *LSymbol::EvalUserFunction(LList *arg_list)
     {
         Print();
         lbreak("EVAL : is not a function name (not symbol either)");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
 #ifdef L_PROFILE
@@ -2901,7 +2901,7 @@ LObject *LSymbol::EvalUserFunction(LList *arg_list)
             {
                 Print();
                 lbreak("too few parameter to function\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             l_user_stack.push(CAR(arg_list)->Eval());
             arg_list = (LList *)CDR(arg_list);
@@ -2918,7 +2918,7 @@ LObject *LSymbol::EvalUserFunction(LList *arg_list)
     {
         Print();
         lbreak("too many parameter to function\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     // now evaluate the function block
@@ -2971,7 +2971,7 @@ LObject *LObject::Eval()
         {
         case L_BAD_CELL:
             lbreak("error: eval on a bad cell\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
             break;
         case L_CHARACTER:
         case L_STRING:
@@ -3066,7 +3066,7 @@ LString *LSymbol::GetName()
     {
         Print();
         lbreak("is not a symbol\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return m_name;
@@ -3079,7 +3079,7 @@ void LSymbol::SetNumber(long num)
     {
         Print();
         lbreak("is not a symbol\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     if (m_value != l_undefined && item_type(m_value) == L_NUMBER)
@@ -3095,7 +3095,7 @@ void LSymbol::SetValue(LObject *val)
     {
         Print();
         lbreak("is not a symbol\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     m_value = val;
@@ -3108,7 +3108,7 @@ LObject *LSymbol::GetFunction()
     {
         Print();
         lbreak("is not a symbol\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return m_function;
@@ -3121,7 +3121,7 @@ LObject *LSymbol::GetValue()
     {
         Print();
         lbreak("is not a symbol\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return m_value;

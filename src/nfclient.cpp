@@ -193,7 +193,7 @@ int nfs_file::unbuffered_write(void const *buf, size_t count) // returns number 
     else
     {
         fprintf(stderr, "write to nfs file not allowed for now!\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 #endif
     return 0;

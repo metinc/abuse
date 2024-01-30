@@ -105,7 +105,7 @@ char *men_str(void *arg)
     default: {
         ((LObject *)arg)->Print();
         printf(" is not a valid menu option\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     }
     return NULL;

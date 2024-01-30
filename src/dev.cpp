@@ -69,7 +69,7 @@ char const *symbol_str(char const *name)
     if (!LObject::Compile(cs)->Eval())
     {
         printf("unable to open file '%s'\n", lsf);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     LSpace::Current = sp;
 
@@ -904,7 +904,7 @@ void dev_init(int argc, char **argv)
             if (get_option("-2"))
             {
                 printf("%s\n", symbol_str("no2"));
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
         }
         else if (!strcmp(argv[i], "-fwin"))
@@ -942,7 +942,7 @@ void dev_init(int argc, char **argv)
     if ((get_option("-size") || get_option("-vmode")) && !start_edit)
     {
         printf("%s\n", symbol_str("no_hirez"));
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     fg_reversed = prop->getd("fg_reversed", 0);
@@ -3394,7 +3394,7 @@ pal_win::pal_win(void *args)
         if (i > w * h)
         {
             lbreak("to many parameters to add_palette ");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         pat[i] = lnumber_value(CAR(ao));
         // make sure the tile that they suggested exists

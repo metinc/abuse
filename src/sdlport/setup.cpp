@@ -692,7 +692,7 @@ void parseCommandLine(int argc, char **argv)
         else if (!strcasecmp(argv[i], "-h") || !strcasecmp(argv[i], "--help"))
         {
             showHelp(argv[0]);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 }
@@ -712,7 +712,7 @@ void setup(int argc, char **argv)
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
     {
         show_startup_error("Unable to initialize SDL : %s\n", SDL_GetError());
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     atexit(SDL_Quit);
 
@@ -783,7 +783,7 @@ void setup(int argc, char **argv)
 
     if (!CFURLGetFileSystemRepresentation(url, true, buffer, 255))
     {
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     else
     {

@@ -167,7 +167,7 @@ void property_manager::load(char const *filename)
                 if (*c1 == 0)
                 {
                     fprintf(stderr, "Missing = for property line %s in file %s\n", buf, filename);
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
                 *c2 = ' ';
                 while (*c2 == ' ')
@@ -187,7 +187,7 @@ void property_manager::load(char const *filename)
                     if (*c1 != '"')
                     {
                         fprintf(stderr, "Missing \" for property name %s in file %s\n", name, filename);
-                        exit(1);
+                        exit(EXIT_FAILURE);
                     }
                     set(name, str);
                 }
@@ -199,7 +199,7 @@ void property_manager::load(char const *filename)
                     else
                     {
                         fprintf(stderr, "Bad number/string for property name %s in file %s\n", name, filename);
-                        exit(1);
+                        exit(EXIT_FAILURE);
                     }
                 }
             }

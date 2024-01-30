@@ -158,7 +158,7 @@ int net_init(int argc, char **argv)
         if (!net_server)
         {
             dprintf(symbol_str("unable_locate"));
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         dprintf("Server located!  Please wait while data loads....\n");
     }

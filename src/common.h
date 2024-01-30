@@ -127,7 +127,7 @@ static inline uint32_t lltl(uint32_t x)
         if (!(x))                                                                                                      \
         {                                                                                                              \
             printf("Error on line %d of %s : %s\n", __LINE__, __FILE__, st);                                           \
-            exit(1);                                                                                                   \
+            exit(EXIT_FAILURE);                                                                                        \
         }                                                                                                              \
     }
 

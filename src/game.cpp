@@ -136,7 +136,7 @@ void handle_no_space()
     if (!wm)
     {
         fprintf(stderr, "%s\n", no_space_msg);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     info_field *inf = new info_field(0, wm->font()->Size().y * 2, ID_NULL, no_space_msg, NULL);
@@ -152,7 +152,7 @@ void handle_no_space()
     wm->close_window(no_space);
 
     close_graphics();
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 //AR gave up because of switching palette problems
@@ -1415,7 +1415,7 @@ Game::Game(int argc, char **argv)
     {
         if (!request_server_entry())
         {
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         net_reload();
         //    load_level(NET_STARTFILE);
@@ -1426,7 +1426,7 @@ Game::Game(int argc, char **argv)
     {
         close_graphics();
         fprintf(stderr, "Resolution must be > 640x400 to use -2 option\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     pal->load();
 
@@ -1445,7 +1445,7 @@ Game::Game(int argc, char **argv)
     if (NILP(symbol_value(l_default_font)))
     {
         printf("No font defined, set symbol default-font to an image name\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     int font_pict;
@@ -1491,7 +1491,7 @@ Game::Game(int argc, char **argv)
         close_graphics();
         image_uninit();
         printf("No mouse driver detected, please rectify.\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
@@ -1937,7 +1937,7 @@ void net_send(int force = 0)
             if (!player_list->m_focus)
             {
                 dprintf("Players have not been created\ncall create_players");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
 
             view *p = player_list;
@@ -2380,7 +2380,7 @@ void check_for_lisp(int argc, char **argv)
                 free(l);
             }
             fprintf(stderr, "End of input : bye\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
     }
 }
@@ -2429,7 +2429,7 @@ void game_net_init(int argc, char **argv)
             else
             {
                 dprintf("Unable to attach to server, quitting\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
         }
         else
@@ -2524,7 +2524,7 @@ int main(int argc, char *argv[])
         if (main_net_cfg && !main_net_cfg->notify_reset())
         {
             sound_uninit();
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         game_net_init(argc, argv);
@@ -2551,7 +2551,7 @@ int main(int argc, char *argv[])
                 if (!become_server(argv[i + 1]))
                 {
                     dprintf("unable to become a server\n");
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
                 break;
             }

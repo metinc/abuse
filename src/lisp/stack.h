@@ -37,7 +37,7 @@ template <class T> class GrowStack
         if (m_size >= m_max_size)
         {
             lbreak("error: stack overflow (%d >= %d)\n", (int)m_size, (int)m_max_size);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         sdata[m_size] = data;
         m_size++;
@@ -48,7 +48,7 @@ template <class T> class GrowStack
         if (total > m_size)
         {
             lbreak("error: stack underflow\n");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         m_size -= total;
         return sdata[m_size];

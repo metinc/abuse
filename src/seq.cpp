@@ -98,7 +98,7 @@ sequence::~sequence()
       if (strcmp(t,"seq"))
       {
     printf("Expected seq at %s\n",s);
-    exit(0);
+    exit(EXIT_SUCCESS);
       }
       get_token(s,t);
       int start,end;

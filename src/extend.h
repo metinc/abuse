@@ -219,7 +219,7 @@ class simple_object
         if (x >= tlights)
         {
             lbreak("bad x for light\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return lights[x];
     }
@@ -228,7 +228,7 @@ class simple_object
         if (x >= tobjs)
         {
             lbreak("bad x for object\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return objs[x];
     }

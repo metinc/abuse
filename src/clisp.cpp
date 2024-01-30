@@ -89,7 +89,7 @@ static view *lget_view(void *arg, char const *msg)
     {
         dprintf("%s : object does not have a view\n", msg);
         lbreak("");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     return c;
 }
@@ -570,7 +570,7 @@ void *l_caller(long number, void *args)
         {
             lbreak("hrump... call to go_state, and no ai function defined?\n"
                    "Are you calling from move function (not mover)?\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return ((LSymbol *)ai)->EvalFunction(NULL);
     }
@@ -782,7 +782,7 @@ void *l_caller(long number, void *args)
         if (item_type(sym) != L_SYMBOL)
         {
             lbreak("expecting first arg to def-character to be a symbol!\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         LSpace *sp = LSpace::Current;
         LSpace::Current = &LSpace::Perm;
@@ -1666,7 +1666,7 @@ long c_caller(long number, void *args)
             if (item_type(sym) != L_SYMBOL)
             {
                 lbreak("expecting first arg to def-character to be a symbol!\n");
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             args = CDR(args);
         }
@@ -1702,7 +1702,7 @@ long c_caller(long number, void *args)
                 {
                     ((LObject *)args)->Print();
                     lbreak("expecting y after x in play_sound\n");
-                    exit(1);
+                    exit(EXIT_FAILURE);
                 }
                 int32_t y = lnumber_value(lcar(a));
                 the_game->play_sound(id, vol, x, y);
@@ -1733,7 +1733,7 @@ long c_caller(long number, void *args)
         if (x < 0 || x >= total_weapons)
         {
             lbreak("weapon out of range (%d)\n", x);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return weapon_types[x];
     }
@@ -1767,7 +1767,7 @@ long c_caller(long number, void *args)
             if (x < 0 || x >= total_weapons)
             {
                 lbreak("weapon out of range (%d)\n", x);
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             v->add_ammo(x, y);
         }
@@ -1812,7 +1812,7 @@ long c_caller(long number, void *args)
         if (x < 0 || x >= total_weapons)
         {
             lbreak("weapon out of range (%d)\n", x);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         if (v)
             v->give_weapon(x);
@@ -1824,7 +1824,7 @@ long c_caller(long number, void *args)
         {
             ((LObject *)args)->Print();
             lbreak("bad ability number for get_ability, should be 0..%d, not %d\n", TOTAL_ABILITIES, a);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return get_ability(current_object->otype, (ability)a);
     }
@@ -1944,7 +1944,7 @@ long c_caller(long number, void *args)
         {
             ((LObject *)args)->Print();
             lbreak("color out of range (0..255) in color lookup\n");
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         return color_table->Lookup(r >> 3, g >> 3, b >> 3);
     }
@@ -2130,7 +2130,7 @@ long c_caller(long number, void *args)
         {
             delete fp;
             lbreak("load_palette : could not open file %s for reading", lstring_value(CAR(args)));
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         else
         {
@@ -2154,7 +2154,7 @@ long c_caller(long number, void *args)
         {
             delete fp;
             lbreak("load_color_filter : could not open file %s for reading", lstring_value(CAR(args)));
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         else
         {
@@ -2439,7 +2439,7 @@ long c_caller(long number, void *args)
             if (x < 0 || x >= total_weapons)
             {
                 lbreak("weapon out of range (%d)\n", x);
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
             v->current_weapon = x;
         }

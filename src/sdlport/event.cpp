@@ -180,7 +180,7 @@ void EventHandler::SysEvent(Event &ev)
     switch (sdlev.type)
     {
     case SDL_QUIT:
-        exit(0);
+        exit(EXIT_SUCCESS);
         break;
     case SDL_WINDOWEVENT:
         switch (sdlev.window.event)

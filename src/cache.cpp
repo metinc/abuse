@@ -794,7 +794,7 @@ void CacheList::locate(CacheItem *i, int local_only)
         {
             printf("Ooch. Could not open file %s\n", crc_manager.get_filename(i->file_number));
             delete fp;
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         last_offset = -1;
@@ -886,13 +886,13 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
             if (memcmp(buf, "RIFF", 4))
             {
                 printf("File %s is not a WAV file\n", filename);
-                exit(0);
+                exit(EXIT_SUCCESS);
             }
         }
         else if (sound_avail)
         {
             printf("Unable to open file '%s' for reading\n", filename);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
         delete check;
     }
@@ -904,7 +904,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
         if (!sd)
         {
             printf("Unable to open file %s for item %s\n", filename, name);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         spec_entry *se = NULL;
@@ -915,7 +915,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
         if (!se)
         {
             printf("No such item %s in file %s\n", name, filename);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         if (type >= 0 && type != se->type &&
@@ -923,7 +923,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
              (se->type != SPEC_CHARACTER && se->type != SPEC_CHARACTER2)))
         {
             printf("Item %s of file %s should be type %s\n", name, filename, spec_types[type]);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         type = se->type;
@@ -1116,7 +1116,7 @@ void CacheList::free_oldest()
     {
         close_graphics();
         printf("Out of memory, please remove any TSR's device drivers you can\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 }
 

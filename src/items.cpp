@@ -28,7 +28,7 @@ boundary::boundary(bFILE *fp, char const *er_name) : point_list(fp)
         if (!(data[0] == data[(tot - 1) * 2] && data[1] == data[tot * 2 - 1]))
         {
             printf("%s : Endpoints of foretile do not match start points\n", er_name);
-            exit(0);
+            exit(EXIT_SUCCESS);
         }
 
         inside = (uint8_t *)malloc(tot);
@@ -250,13 +250,13 @@ foretile::foretile(bFILE *fp)
     if (!pal)
     {
         lbreak("Palette has no been defined\nuse load_palette before load_tiles");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     if (!color_table)
     {
         lbreak("color filter has no been defined\nuse load_color_filter before load_tiles");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     for (y = 0; y < h; y++)

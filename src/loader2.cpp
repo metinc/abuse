@@ -100,7 +100,7 @@ void use_file(char *filename, bFILE *&fp, spec_directory *&sd)
         {
             printf("Unable to open file %s\n", filename);
             delete fp;
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }
     sd = new spec_directory(fp);
@@ -327,7 +327,7 @@ void load_data(int argc, char **argv)
     else if (!get_remote_lsf(net_server, lsf))
     {
         dprintf("Unable to get remote lsf from %s\n", net_server);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     char prog[100];
     char const *cs;
@@ -343,7 +343,7 @@ void load_data(int argc, char **argv)
     if (!LObject::Compile(cs)->Eval())
     {
         printf("unable to open file '%s'\n", lsf);
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
     compiled_init();
     LSpace::Tmp.Clear();
@@ -439,7 +439,7 @@ void load_data(int argc, char **argv)
     if (start_position_type == 0xffff)
     {
         printf("No object named START, cannot start game.\n");
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     sbar.load();
