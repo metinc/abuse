@@ -87,10 +87,6 @@ class EventHandler
     void Get(Event &ev);
     void flush_screen();
 
-    int has_mouse()
-    {
-        return 1;
-    }
     void SetMouseShape(image *im, ivec2 center)
     {
         m_sprite->SetVisual(im, 1);

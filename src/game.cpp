@@ -1486,14 +1486,6 @@ Game::Game(int argc, char **argv)
 
     chat = new chat_console(console_font, 50, 6);
 
-    if (!wm->has_mouse())
-    {
-        close_graphics();
-        image_uninit();
-        printf("No mouse driver detected, please rectify.\n");
-        exit(EXIT_SUCCESS);
-    }
-
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
 
     gamma_correct(pal);
