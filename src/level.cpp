@@ -597,40 +597,34 @@ game_object *level::all_boundary_setback(game_object *subject, int32_t x1, int32
     return l; // return the last person we intersected
 }
 
-void level::interpolate_draw_objects(view *v, uint32_t delta)
+void level::interpolate_draw_objects(uint32_t delta)
 {
-    current_view = v;
     float ratio = delta / (float)settings.physics_update;
-    game_object *o = first_active;
-    for (; o; o = o->next_active)
+    for (game_object *o = first_active; o; o = o->next_active)
     {
+        o->x_interpolation_copy = o->x;
+        o->y_interpolation_copy = o->y;
         int32_t distance_x = o->x - o->last_x;
         int32_t distance_y = o->y - o->last_y;
         int32_t distance = sqrt((distance_x * distance_x) + (distance_y * distance_y));
 
-        o->last_x = o->x;
-        o->last_y = o->y;
-
         // Big distances are not interpolated because they most likely are because of spawned or teleported objects.
         if (distance < 100)
         {
-            o->interpolated_x = o->interpolated_x + (o->x - o->interpolated_x) * ratio;
-            o->interpolated_y = o->interpolated_y + (o->y - o->interpolated_y) * ratio;
-            o->x = std::round(o->interpolated_x);
-            o->y = std::round(o->interpolated_y);
-        }
-        else
-        {
-            o->interpolated_x = o->x;
-            o->interpolated_y = o->y;
+            o->x = std::round(o->last_x + (o->x - o->last_x) * ratio);
+            o->y = std::round(o->last_y + (o->y - o->last_y) * ratio);
         }
         o->draw();
     }
+}
 
-    for (o = first_active; o; o = o->next_active)
+// After interpolation the positions should be restored.
+void level::interpolation_restore_positions()
+{
+    for (game_object *o = first_active; o; o = o->next_active)
     {
-        o->x = o->last_x;
-        o->y = o->last_y;
+        o->x = o->x_interpolation_copy;
+        o->y = o->y_interpolation_copy;
     }
 }
 
@@ -649,6 +643,11 @@ void level::tick()
     for (o = first_active; o;)
     {
         cur = o;
+
+        // Remember x and y so the movement of the object can be interpolated.
+        cur->last_x = cur->x;
+        cur->last_y = cur->y;
+
         view *c = o->controller();
         if (!(dev & SUSPEND_MODE) || c)
         {

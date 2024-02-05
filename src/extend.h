@@ -54,8 +54,7 @@ class simple_object
 
     // leave these public, so I don't have monster code changes.
     simple_object();
-    int32_t x, y, last_x, last_y;
-    float interpolated_x, interpolated_y; // used for frame interpolation on fast machines
+    int32_t x, y, last_x, last_y, x_interpolation_copy, y_interpolation_copy;
     int8_t direction, active;
     uint16_t otype;
     character_state state;

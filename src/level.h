@@ -26,8 +26,8 @@
 #define ACTIVE_RIGHT (280 + 500)
 #define ACTIVE_TOP 200
 #define ACTIVE_BOTTOM (180 + 200)
-#define fgvalue(y) ((y)&0x3fff)
-#define above_tile(y) ((y)&0x4000)
+#define fgvalue(y) ((y) & 0x3fff)
+#define above_tile(y) ((y) & 0x4000)
 #define bgvalue(y) (y)
 
 class area_controller
@@ -195,7 +195,8 @@ class level // contain map info and objects
         *(map_bg + pos.x + pos.y * bg_width) = tile;
     }
     void draw_objects(view *v);
-    void interpolate_draw_objects(view *v, uint32_t elapsedMsFixed);
+    void interpolate_draw_objects(uint32_t elapsedMsFixed);
+    void interpolation_restore_positions();
     void draw_areas(view *v);
     void tick();
     void check_collisions();

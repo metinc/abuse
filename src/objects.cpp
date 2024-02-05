@@ -186,14 +186,14 @@ void simple_object::set_var(int xx, uint32_t v)
         break;
     case 17:
         x = v;
-        interpolated_x = v;
+        x_interpolation_copy = v;
         break;
     case 18:
         set_fx(v);
         break;
     case 19:
         y = v;
-        interpolated_y = v;
+        y_interpolation_copy = v;
         break;
 
     case 20:
@@ -1257,8 +1257,10 @@ game_object *create(int type, int32_t x, int32_t y, int skip_constructor, int ai
     game_object *g = new game_object(type, skip_constructor);
     g->x = x;
     g->y = y;
-    g->interpolated_x = x;
-    g->interpolated_y = y;
+    g->last_x = x;
+    g->last_y = y;
+    g->x_interpolation_copy = x;
+    g->y_interpolation_copy = y;
     if (aitype)
         g->set_aitype(aitype);
     if (figures[type]->get_fun(OFUN_CONSTRUCTOR) && !skip_constructor)

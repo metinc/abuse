@@ -954,9 +954,16 @@ void Game::draw_map(view *v, int interpolate, uint32_t elapsedMsFixed)
     if (dev & DRAW_PEOPLE_LAYER)
     {
         if (interpolate)
-            current_level->interpolate_draw_objects(v, elapsedMsFixed);
+        {
+            current_level->interpolate_draw_objects(elapsedMsFixed);
+            the_game->UpdateViews();
+            current_level->interpolation_restore_positions();
+        }
         else
+        {
             current_level->draw_objects(v);
+            the_game->UpdateViews();
+        }
     }
 
     //  if(!(dev & EDIT_MODE))
@@ -1596,62 +1603,6 @@ void Game::update_screen(uint32_t elapsedMsFixed)
     wm->flush_screen();
 }
 
-// FIXME: refactor this to use the Lol Engine main fixed-framerate loop?
-int Game::calc_speed()
-{
-    //AR update entities using SDL_GetTicks64() after custom time
-    return 1;
-
-    /*static Timer frame_timer;
-    static int first = 1;
-
-    if (first)
-    {
-        first = 0;
-        return 0;
-    }
-
-    // Find average fps for last 10 frames
-    float deltams = Max(1.0f, frame_timer.PollMs());
-
-    avg_ms = 0.9f * avg_ms + 0.1f * deltams;
-    possible_ms = 0.9f * possible_ms + 0.1f * deltams;
-
-    if (avg_ms < 1000.0f / 14)
-        massive_frame_panic = Max(0, Min(20, massive_frame_panic - 1));
-
-    int ret = 0;
-
-    if (dev & EDIT_MODE)
-    {
-        // ECS - Added this case and the wait.  It's a cheap hack to ensure
-        // that we don't exceed 30FPS in edit mode and hog the CPU.
-        frame_timer.WaitMs(33);
-    }
-    else if (avg_ms < 1000.0f / 15 && need_delay)
-    {
-        frame_panic = 0;
-        if (!no_delay)
-        {
-            frame_timer.WaitMs(1000.0f / 15);
-            avg_ms -= 0.1f * deltams;
-            avg_ms += 0.1f * 1000.0f / 15;
-        }
-    }
-    else if (avg_ms > 1000.0f / 14)
-    {
-        if(avg_ms > 1000.0f / 10)
-            massive_frame_panic++;
-        frame_panic++;
-        // All is lost, don't sleep during this frame
-        ret = 1;
-    }
-
-    // Ignore our wait time, we're more interested in the frame time
-    frame_timer.GetMs();
-    return ret;*/
-}
-
 extern int start_edit;
 
 void Game::get_input()
@@ -2062,6 +2013,7 @@ void Game::Step()
                 set_key_down(JK_ESC, 0);
             }
             ambient_ramp = 0;
+            // the_game->UpdateViews();
 
             cache.prof_poll_start();
             current_level->tick();
@@ -2085,19 +2037,13 @@ void Game::Step()
         finished = true;
 }
 
-void Game::StepRender(float delta)
+void Game::UpdateViews()
 {
-    if (current_level)
+    if (!(dev & EDIT_MODE))
     {
-        if (state == RUN_STATE)
-        {
-            if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
-            {
-                view *v;
-                for (v = first_view; v; v = v->next)
-                    v->update_scroll(delta);
-            }
-        }
+        view *v;
+        for (v = first_view; v; v = v->next)
+            v->update_scroll();
     }
 }
 
@@ -2556,12 +2502,10 @@ int main(int argc, char *argv[])
         if (net_start())
         {
             g->Step(); // process all the objects in the world
-            g->calc_speed();
             g->update_screen(); // redraw the screen with any changes
         }
 
         Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
-        Uint64 lastUpdate = SDL_GetTicks64(); // last render update
         float ar_bullettime = 0.0f;
         Uint64 ar_bt_timer = 0;
 
@@ -2624,9 +2568,6 @@ int main(int argc, char *argv[])
             }
             //
 
-            // elapsed ms since last rendering
-            int elapsedMsRender = SDL_GetTicks64() - lastUpdate;
-
             // elapsed ms since last physics process
             int elapsedMsFixed = SDL_GetTicks64() - lastFixedUpdate;
 
@@ -2634,26 +2575,17 @@ int main(int argc, char *argv[])
             int nextFixedMs = std::max(settings.physics_update - elapsedMsFixed, 0);
 
             // make sure physics process gets called every 65 ms
-            if (nextFixedMs < elapsedMsRender)
+            if (nextFixedMs == 0)
             {
-                SDL_Delay(nextFixedMs);
-
                 // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
                 lastFixedUpdate = SDL_GetTicks64();
 
                 // process all the objects in the world
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
             }
-
-            Uint64 current = SDL_GetTicks64();
-            float delta = (current - lastUpdate) / 1000.0f;
-
-            g->StepRender(delta);
-
-            lastUpdate = current;
+            SDL_Delay(1);
 
             server_check();
-            g->calc_speed();
 
             // see if a request for a level load was made during the last tick
             if (!req_name[0])

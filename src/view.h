@@ -101,8 +101,7 @@ class view
     void note_upkey();
     void note_downkey();
     int handle_event(Event &ev);
-    void update_scroll(float delta);
-    void focus_scroll();
+    void update_scroll();
     void draw_hp();
     void draw_ammo();
     void draw_logo();

@@ -121,7 +121,7 @@ class Game
     int ar_state, ar_stateold;
 
     void Step();
-    void StepRender(float delta);
+    void UpdateViews();
     void show_help(char const *st);
     void draw_value(image *screen, int x, int y, int w, int h, int val, int max);
     unsigned char get_color(int x)
@@ -159,7 +159,6 @@ class Game
     ivec2 GameToMouse(ivec2 pos, view *v);
     view *GetView(ivec2 pos);
 
-    int calc_speed();
     int ftile_width()
     {
         return f_wid;
