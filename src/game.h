@@ -179,7 +179,7 @@ class Game
 
     void PutFg(ivec2 pos, int type);
     void PutBg(ivec2 pos, int type);
-    void draw_map(view *v, int interpolate = 0, uint32_t elapsedMsFixed = 0);
+    void draw_map(view *v, bool interpolate = false, uint32_t elapsedMsFixed = 0);
     void dev_scroll();
 
     int in_area(Event &ev, int x1, int y1, int x2, int y2);

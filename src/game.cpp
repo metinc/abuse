@@ -685,7 +685,7 @@ static void post_render()
     }
 }
 
-void Game::draw_map(view *v, int interpolate, uint32_t elapsedMsFixed)
+void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 {
     backtile *bt;
     int x1, y1, x2, y2, x, y, xo, yo, nxoff, nyoff;
@@ -1580,7 +1580,7 @@ void Game::update_screen(uint32_t elapsedMsFixed)
             {
                 if (f->drawable())
                 {
-                    draw_map(f, 1, elapsedMsFixed);
+                    draw_map(f, true, elapsedMsFixed);
                 }
             }
             if (current_automap)
@@ -2162,7 +2162,7 @@ void Game::draw(int scene_mode)
     main_screen->line(main_screen->Size().x-1, 0, main_screen->Size().x-1, main_screen->Size().y-1, bc); */
 
     for (view *f = first_view; f; f = f->next)
-        draw_map(f, 0);
+        draw_map(f);
 
     sbar.redraw(main_screen);
 }
