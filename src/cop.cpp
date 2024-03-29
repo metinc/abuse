@@ -498,6 +498,7 @@ static void do_special_power(game_object *o, int xm, int ym, int but, game_objec
     }
 }
 
+// Gets called while leaving a ladder at the top.
 static int climb_off_handler(game_object *o)
 {
     if (o->next_picture())
@@ -505,13 +506,16 @@ static int climb_off_handler(game_object *o)
     else
     {
         o->y -= 28;
+        o->last_y = o->y;
         o->controller()->pan_y += 28;
         o->controller()->m_lastpos.y -= 28;
+        o->controller()->m_lastlastpos.y = o->controller()->m_lastpos.y;
         o->set_state(stopped);
     }
     return 0;
 }
 
+// Gets called while climbing down a ladder from top.
 static int climb_on_handler(game_object *o)
 {
     if (o->next_picture())
@@ -523,7 +527,7 @@ static int climb_on_handler(game_object *o)
 
 static int climb_handler(game_object *o, int xm, int ym, int but)
 {
-    int yd = o->lvars[in_climbing_area]; // see how from the top we are
+    int yd = o->lvars[in_climbing_area]; // see how far from the top we are
     o->lvars[in_climbing_area] = 0; // set 0, ladders will set back to proper if still in area
     if (o->state == S_climb_off)
         climb_off_handler(o);
@@ -585,9 +589,12 @@ static int climb_handler(game_object *o, int xm, int ym, int but)
         }
         else if (ym > 0 && yd < 10)
         {
+            // Start climbing down the ladder.
             o->y += 28;
+            o->last_y = o->y;
             o->controller()->pan_y -= 28;
             o->controller()->m_lastpos.y += 28;
+            o->controller()->m_lastlastpos.y = o->controller()->m_lastpos.y;
             o->set_state((character_state)S_climb_on);
         }
         else if (o->yvel() >= 0 && (ym > 0 || (ym < 0 && yd > 8)))
