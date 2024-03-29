@@ -186,6 +186,7 @@ void simple_object::set_var(int xx, uint32_t v)
         break;
     case 17:
         x = v;
+        last_x = v;
         x_interpolation_copy = v;
         break;
     case 18:
@@ -193,6 +194,7 @@ void simple_object::set_var(int xx, uint32_t v)
         break;
     case 19:
         y = v;
+        last_y = v;
         y_interpolation_copy = v;
         break;
 
