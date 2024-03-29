@@ -35,6 +35,8 @@ Clone this repository.
 git clone https://github.com/metinc/Abuse_1996
 ```
 
+> **Note:** If you are using Visual Studio Code you can use [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) to build and run the project and skip the following steps.
+
 Inside the repository use CMake to build into the subdirectory `build`.
 
 ```sh
