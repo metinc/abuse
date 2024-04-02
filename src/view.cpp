@@ -479,18 +479,6 @@ void view::add_chat_key(int key) // return string if buf is complete
 
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "bullettime")
-        {
-            settings.cheat_bullettime = !settings.cheat_bullettime;
-
-            if (settings.cheat_bullettime)
-                chat_text += " ENABLED";
-            else
-                chat_text += " DISABLED";
-
-            strcpy(m_chat_buf, chat_text.c_str());
-        }
-        //cop.cpp -> special_power=4
         else if (chat_text == "nopower")
         {
             this->m_focus->lvars[4] = 0; //NO_POWER

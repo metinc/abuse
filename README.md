@@ -59,7 +59,7 @@ These are the changes I made compared to Xenoveritas SDL2 version from 2014:
   * Added or re-enabled various settings in the config file (borderless window, grab input, editor mode, high resolution images...)
   * Local save game files and configuration files
   * Quick load using F9, quick save using F5 on save consoles
-  * Added cheats via chat console: bullettime, god, giveall, flypower, sneakypower, fastpower, healthpower, nopower
+  * Added cheats via chat console: god, giveall, flypower, sneakypower, fastpower, healthpower, nopower
   * XBox360 controller support with rebindable buttons
   * Updated abuse-tool so it can extract the images in Abuse SPEC files to modern image formats as individual images, tilemaps or a texture atlas with information about image, tile and animation frame sizes and positions
   * Interpolation is used to make the game look smoother and overcome the 15 FPS limit
@@ -97,7 +97,6 @@ To change the keys used in the game, simply type the key after the option:
 - up - jump, climb ladder
 - down - use lift, press switch, use save console
 - special - use special ability
-- special2 - use bullet time cheat (not in the original version)
 - fire - fire weapon
 - weapon_prev - select previous available weapon
 - weapon_next - select next available weapon

@@ -2506,8 +2506,6 @@ int main(int argc, char *argv[])
         }
 
         Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
-        float ar_bullettime = 0.0f;
-        Uint64 ar_bt_timer = 0;
 
         while (!g->done())
         {
@@ -2544,29 +2542,6 @@ int main(int argc, char *argv[])
                 demo_man.do_inputs();
 
             service_net_request();
-
-            // AR bullet time
-            if (settings.bullet_time)
-            {
-                if (SDL_GetTicks64() - ar_bt_timer > 50)
-                {
-                    ar_bullettime += 0.15;
-                    ar_bt_timer = SDL_GetTicks64();
-                }
-                if (ar_bullettime > settings.bullet_time_add)
-                    ar_bullettime = settings.bullet_time_add;
-            }
-            else
-            {
-                if (SDL_GetTicks64() - ar_bt_timer > 50)
-                {
-                    ar_bullettime -= 0.15;
-                    ar_bt_timer = SDL_GetTicks64();
-                }
-                if (ar_bullettime < 0)
-                    ar_bullettime = 0;
-            }
-            //
 
             // elapsed ms since last physics process
             int elapsedMsFixed = SDL_GetTicks64() - lastFixedUpdate;

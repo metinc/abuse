@@ -124,12 +124,9 @@ Settings::Settings()
     this->mouse_scale = 0; // match desktop
     this->big_font = false;
     //
-    this->bullet_time = false;
-    this->bullet_time_add = 1.2f;
-
     this->player_touching_console = false;
 
-    this->cheat_god = cheat_bullettime = false;
+    this->cheat_god = false;
     this->skip_intro = false;
 
     //player controls
@@ -145,7 +142,6 @@ Settings::Settings()
     this->b2 = key_value("f"); //fire
     this->b3 = key_value("q"); //weapons
     this->b4 = key_value("e");
-    this->bt = key_value("CTRL_L"); //special2, bulettime
 
     //controller settings
     this->ctr_aim = false; // controller overide disabled
@@ -172,7 +168,7 @@ Settings::Settings()
     this->ctr_lsr = "b2";
     this->ctr_rsr = "b3";
     //
-    this->ctr_ltg = "bt";
+    this->ctr_ltg = "b1";
     this->ctr_rtg = "b2";
     //
     this->ctr_f5 = SDL_CONTROLLER_BUTTON_LEFTSTICK;
@@ -247,9 +243,6 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "; Physics update time in ms (65ms/15FPS original)" << std::endl;
     out << "physics_update=" << this->physics_update << std::endl;
     out << std::endl;
-    out << "; Bullet time (%)" << std::endl;
-    out << "bullet_time=" << (int)(this->bullet_time_add * 100) << std::endl;
-    out << std::endl;
     out << "local_save=" << this->local_save << std::endl;
     out << std::endl;
     out << "skip_intro=" << this->skip_intro << std::endl;
@@ -266,7 +259,6 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "fire=f" << std::endl;
     out << "weapon_prev=q" << std::endl;
     out << "weapon_next=e" << std::endl;
-    out << "special2=CTRL_L" << std::endl;
     out << std::endl;
     //
     out << "; Alternative key mappings (only the following controls can have two keyboard bindings)" << std::endl;
@@ -302,8 +294,7 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "up=ctr_a" << std::endl;
     out << "down=ctr_b" << std::endl;
     out << "special=ctr_left_shoulder" << std::endl;
-    out << "special=ctr_left_stick" << std::endl;
-    out << "special2=ctr_left_trigger" << std::endl;
+    out << "special=ctr_left_trigger" << std::endl;
     out << "fire=ctr_right_shoulder" << std::endl;
     out << "fire=ctr_right_trigger" << std::endl;
     out << "fire=ctr_right_stick" << std::endl;
@@ -414,8 +405,6 @@ bool Settings::ReadConfigFile(std::string folder)
             this->mouse_scale = AR_ToInt(value);
         else if (attr == "big_font")
             this->big_font = AR_ToBool(value);
-        else if (attr == "bullet_time")
-            this->bullet_time_add = AR_ToInt(value) / 100.0f;
         else if (attr == "skip_intro")
             this->skip_intro = AR_ToBool(value);
 
@@ -460,11 +449,6 @@ bool Settings::ReadConfigFile(std::string folder)
         {
             if (!ControllerButton(attr, value))
                 this->b4 = key_value(value.c_str());
-        }
-        else if (attr == "special2")
-        {
-            if (!ControllerButton(attr, value))
-                this->bt = key_value(value.c_str());
         }
         //
         else if (attr == "up_2")
@@ -553,8 +537,6 @@ bool Settings::ControllerButton(std::string c, std::string b)
         control = "b3";
     else if (c == "weapon_next")
         control = "b4";
-    else if (c == "special2")
-        control = "bt";
 
     if (b == "ctr_a")
     {
@@ -861,8 +843,6 @@ int get_key_binding(char const *dir, int i)
         return settings.b3;
     else if (strcasecmp(dir, "b4") == 0)
         return settings.b4;
-    else if (strcasecmp(dir, "bt") == 0)
-        return settings.bt;
 
     return 0;
 }

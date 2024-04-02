@@ -48,9 +48,6 @@ mouse_scale=0
 ; Physics update time in ms (65ms/15FPS original)
 physics_update=65
 
-; Bullet time (%)
-bullet_time=120
-
 local_save=1
 
 skip_intro=0
@@ -66,7 +63,6 @@ special=SHIFT_L
 fire=f
 weapon_prev=q
 weapon_next=e
-special2=CTRL_L
 
 ; Alternative key mappings (only the following controls can have two keyboard bindings)
 left_2=LEFT
@@ -100,7 +96,6 @@ up=ctr_a
 down=ctr_b
 special=ctr_left_shoulder
 special=ctr_left_stick
-special2=ctr_left_trigger
 fire=ctr_right_shoulder
 fire=ctr_right_trigger
 fire=ctr_right_stick

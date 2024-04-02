@@ -44,8 +44,6 @@ class Settings
     //
     short overlay; //AR ???
     bool in_game;
-    bool bullet_time; //every game should have it
-    float bullet_time_add; //percentage
 
     std::string quick_load; //quick load
     bool player_touching_console; //only allow quicksave if player is touching the console
@@ -61,7 +59,6 @@ class Settings
     int b2; //fire
     int b3; //weapon prev
     int b4; //weapon next
-    int bt; //bullet time
 
     //controller settings
     bool ctr_aim; //enable

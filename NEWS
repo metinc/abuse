@@ -25,7 +25,7 @@ ABUSE:
 - fixed level music not being played correctly when level was loaded
 - quick load using F9, quick save using F5 on save consoles
 - fixed gamma setting not being saved
-- added cheats via chat console: bullettime, god, giveall, flypower, sneakypower, fastpower, healthpower
+- added cheats via chat console: god, giveall, flypower, sneakypower, fastpower, healthpower
 - enabled some high resolution images from the 1997 Mac OS release
 - toggle window input grab using F6
 - turned off that image that would randomly flicker in the bottom-left corner
