@@ -12,7 +12,7 @@
 #define __LEVEL_HPP_
 
 #include "specs.h"
-#include "objects.h"
+#include "game_object.h"
 #include "view.h"
 #include "id.h"
 

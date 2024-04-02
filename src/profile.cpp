@@ -19,7 +19,7 @@
 #include "profile.h"
 #include "jwindow.h"
 #include "property.h"
-#include "objects.h"
+#include "game_object.h"
 
 Jwindow *prof_win = NULL;
 int prof_height = 10;

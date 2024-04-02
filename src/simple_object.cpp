@@ -14,9 +14,9 @@
 
 #include "common.h"
 
-#include "extend.h"
+#include "simple_object.h"
 #include "view.h"
-#include "objects.h"
+#include "game_object.h"
 #include "lisp.h"
 
 /*

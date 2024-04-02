@@ -17,7 +17,7 @@
 #include "lisp.h"
 #include "lisp_gc.h"
 #include "compiled.h"
-#include "objects.h"
+#include "game_object.h"
 #include "level.h"
 #include "game.h"
 #include "jrand.h"

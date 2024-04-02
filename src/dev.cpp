@@ -20,7 +20,7 @@
 
 #include "dev.h"
 #include "input.h"
-#include "objects.h"
+#include "game_object.h"
 #include "id.h"
 #include "lisp.h"
 #include "light.h"

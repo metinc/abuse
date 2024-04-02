@@ -20,7 +20,7 @@
 #include "cache.h"
 #include "demo.h"
 #include "chars.h"
-#include "objects.h"
+#include "game_object.h"
 #include "game.h"
 #include "clisp.h"
 

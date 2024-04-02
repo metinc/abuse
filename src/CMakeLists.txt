@@ -44,8 +44,8 @@ add_executable(abuse
     property.cpp property.h
     cache.cpp cache.h
     particle.cpp particle.h
-    objects.cpp objects.h
-    extend.cpp extend.h
+    game_object.cpp game_object.h
+    simple_object.cpp simple_object.h
     console.cpp console.h
     ability.cpp ability.h
     items.cpp items.h

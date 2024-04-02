@@ -16,7 +16,7 @@
 #include "morpher.h"
 #include "loader2.h"
 #include "view.h"
-#include "extend.h"
+#include "simple_object.h"
 
 class view;
 

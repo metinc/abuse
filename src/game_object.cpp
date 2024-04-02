@@ -15,7 +15,7 @@
 #include "common.h"
 
 #include "transimage.h"
-#include "objects.h"
+#include "game_object.h"
 #include "chars.h"
 
 #include "game.h"

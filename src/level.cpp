@@ -32,7 +32,7 @@
 #include "lisp.h"
 #include "dprint.h"
 #include "particle.h"
-#include "objects.h"
+#include "game_object.h"
 #include "jrand.h"
 #include "clisp.h"
 #include "status.h"
