@@ -1243,8 +1243,9 @@ long c_caller(long number, void *args)
             return 0;
         else
         {
-            //AR enable quick save if player(56) is touching the save console(61)
-            if (current_level->attacker(current_object)->otype == 56 && current_object->otype == 61)
+            //AR enable quick save if player is touching the save console
+            if (current_level->attacker(current_object)->otype == TYPE_PLAYER &&
+                current_object->otype == TYPE_SAVE_CONSOLE)
                 settings.player_touching_console = true;
             return 1;
         }
