@@ -117,6 +117,9 @@ inline int angle_diff(int a1, int a2)
     return 0;
 }
 
+/**
+ * Updates the player's weapon aiming angle based on the mouse pointer position.
+ */
 void *top_aim()
 {
     game_object *o = current_object;
@@ -171,14 +174,33 @@ void *top_aim()
                 rand_on += o->lvars[point_angle];
                 o->current_frame = best_num;
 
-                if (o->lvars[fire_delay1])
-                    o->lvars[fire_delay1]--;
-
                 o->otype = weapon_types[v->current_weapon]; // switch to correct top part
             }
         }
     }
     return true_symbol;
+}
+
+/**
+ * Should be called every physics tick to decrement the fire delay by 1.
+ */
+void decrement_fire_delay()
+{
+    game_object *o = current_object;
+    if (o->total_objects()) // make sure we are linked to the main character
+    {
+        game_object *q = o->get_object(0);
+
+        view *v = q->controller();
+        if (v)
+        {
+            if (!v->freeze_time)
+            {
+                if (o->lvars[fire_delay1])
+                    o->lvars[fire_delay1]--;
+            }
+        }
+    }
 }
 
 static int player_fire_weapon(game_object *o, int type, game_object *target, int angle, signed char *fire_off)
@@ -761,6 +783,7 @@ void *player_draw(int just_fired_var, int num)
 
 void *top_draw()
 {
+    top_aim();
     game_object *o = current_object;
     if (o->total_objects())
     {

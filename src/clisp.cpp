@@ -847,6 +847,7 @@ void *l_caller(long number, void *args)
             current_object->drawer();
         break;
     case 30:
+        decrement_fire_delay();
         return top_aim();
         break;
     case 31:
