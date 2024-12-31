@@ -611,8 +611,8 @@ void level::interpolate_draw_objects(uint32_t delta)
         // Big distances are not interpolated because they most likely are because of spawned or teleported objects.
         if (distance < 100)
         {
-            o->x = std::round(o->last_x + (o->x - o->last_x) * ratio);
-            o->y = std::round(o->last_y + (o->y - o->last_y) * ratio);
+            o->x = std::round(o->last_x + distance_x * ratio);
+            o->y = std::round(o->last_y + distance_y * ratio);
         }
         o->draw();
     }
@@ -2901,53 +2901,45 @@ int level::crush(game_object *by_who, int xamount, int yamount)
 
 int level::platform_push(game_object *by_who, int xamount, int yamount)
 {
-    int failed = 0;
-    int32_t xv, yv;
-    game_object *o = first_active;
-    for (; o; o = o->next_active)
+    bool failed = false;
+
+    for (game_object *o = first_active; o; o = o->next_active)
     {
-        if (o->is_playable() && o->state != dieing && o->state != dead)
+        // Skip non-playable or dead objects
+        if (!o->is_playable() || o->state == dieing || o->state == dead)
+            continue;
+
+        // If the platform is going UP, check if it collides with us from below
+        if (yamount < 0)
         {
-            // check to see if the platform is going up and will run into us.
-            int32_t tvx, tvy;
-            if (yamount < 0)
+            int32_t tvx = -xamount, tvy = -yamount;
+            if (o->try_move(o->x, o->y, tvx, tvy, 1) == by_who)
             {
-                tvx = -xamount;
-                tvy = -yamount;
-                if (o->try_move(o->x, o->y, tvx, tvy, 1) == by_who)
-                {
-                    o->x += tvx;
-                    o->y += tvy;
-                }
-            }
-
-            /*      xv=xamount;
-      yv=yamount;
-      tvx,tvy;
-      if (xv>0) tvx=xv+1; else if (xv<0) tvx=xv-1; else tvx=0;
-      if (yv>0) tvy=yv+1; else if (yv<0) tvx=yv-1; else tvy=0;
-      if (o->try_move(o->x,o->y,tvx,tvy,1)==by_who)  // we the platform hit us?
-      {
-    o->x+=tvx;
-    o->y+=tvy;
-      }*/
-
-            xv = 0;
-            yv = 2;
-            if (o->try_move(o->x, o->y, xv, yv, 1) == by_who) // are we standing on the platform?
-            {
-                by_who->x = -by_who->x;
-                xv = xamount;
-                yv = yamount;
-                o->try_move(o->x, o->y, xv, yv, 3);
-                if (xv != xamount || yv != yamount)
-                    failed = 1;
-                o->x += xv;
-                o->y += yv;
-                by_who->x = -by_who->x;
+                o->x += tvx;
+                o->y += tvy;
             }
         }
+
+        // Check if the player is standing on the platform
+        int32_t xv = 0, yv = 2;
+        if (o->try_move(o->x, o->y, xv, yv, 1) == by_who)
+        {
+            by_who->x = -by_who->x;
+
+            xv = xamount;
+            yv = yamount;
+            o->try_move(o->x, o->y, xv, yv, 3);
+
+            if (xv != xamount || yv != yamount)
+                failed = true;
+
+            o->x += xv;
+            o->y += yv;
+
+            by_who->x = -by_who->x;
+        }
     }
+
     return !failed;
 }
 
