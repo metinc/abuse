@@ -2,13 +2,19 @@
 
 ## Prerequists
 
-### All Platforms
-
-- SDL 1.1.6 or higher <http://www.libsdl.org> (note that SDL2 will not work)
-- [SDL_mixer 1.2](http://www.libsdl.org/projects/SDL_mixer/release-1.2.html)
+- SDL2
+- SDL2 Mixer
 - [CMake 2.8.9 or later](http://www.cmake.org/)
 - GL libraries and headers are required for OpenGL support.
 - OpenCV library for extracting PCX images in SPEC files using abuse-tool
+
+### Linux
+
+On Arch Linux install these packages:
+
+```sh
+sudo pacman -S sdl2 sdl2_mixer opencv cmake
+```
 
 ### Windows
 
