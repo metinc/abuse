@@ -117,7 +117,7 @@ inline int angle_diff(int a1, int a2)
     return 0;
 }
 
-void *top_ai()
+void *top_aim()
 {
     game_object *o = current_object;
     if (o->total_objects()) // make sure we are linked to the main character

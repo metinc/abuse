@@ -847,7 +847,7 @@ void *l_caller(long number, void *args)
             current_object->drawer();
         break;
     case 30:
-        return top_ai();
+        return top_aim();
         break;
     case 31:
         return laser_ufun(args);

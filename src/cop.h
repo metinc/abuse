@@ -14,7 +14,7 @@
 // functions defined for the main player,  these were translated because they
 // are called every tick and they were getting slow/complicated
 
-void *top_ai();
+void *top_aim();
 void *laser_ufun(void *args);
 void *top_ufun(void *args);
 void *plaser_ufun(void *args);
