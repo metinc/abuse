@@ -119,7 +119,7 @@ class EventHandler
   private:
     linked_list m_events;
     int m_pending, last_key;
-    bool m_ignore_wheel_events;
+    bool m_ignore_wheel_events = false;
     // "Dead zone" before motion of a stick "counts".
     // Maximum stick values are 0x7FFF, currently I've
     // arbitrarily set this to 1/4th.
