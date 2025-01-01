@@ -1245,7 +1245,7 @@ long c_caller(long number, void *args)
         else
         {
             //AR enable quick save if player is touching the save console
-            if (current_level->attacker(current_object)->otype == TYPE_PLAYER &&
+            if (current_level->attacker(current_object)->otype == TYPE_PLAYER_BOTTOM &&
                 current_object->otype == TYPE_SAVE_CONSOLE)
                 settings.player_touching_console = true;
             return 1;

@@ -18,7 +18,7 @@
 #define KNOWN_FLAG 8
 
 // Object types
-#define TYPE_PLAYER 56
+#define TYPE_PLAYER_BOTTOM 56
 #define TYPE_SAVE_CONSOLE 61
 
 #include "lisp/lisp.h"

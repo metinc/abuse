@@ -827,17 +827,14 @@ void game_object::drawer()
     }
     else
     {
-        //view *v=controller();
-
         if (fade_count())
             draw_trans(fade_count(), fade_max());
         else
         {
             TransImage *cpict = picture();
-            cpict->PutImage(
-                main_screen,
-                ivec2((direction < 0 ? x - (cpict->Size().x - x_center() - 1) : x - x_center()) - current_vxadd,
-                      y - cpict->Size().y + 1 - current_vyadd));
+            int image_x = (direction < 0 ? x - (cpict->Size().x - x_center() - 1) : x - x_center()) - current_vxadd;
+            int image_y = y - cpict->Size().y + 1 - current_vyadd;
+            cpict->PutImage(main_screen, ivec2(image_x, image_y));
         }
     }
 }
