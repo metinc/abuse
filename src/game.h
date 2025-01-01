@@ -84,7 +84,17 @@ class Game
 
     int32_t last_time, fps;
     char mapname[100], command[200], help_text[200];
-    int refresh, mousex, mousey, help_text_frames;
+    int refresh, mousex, mousey;
+
+    // Timestamp when show_help() was called.
+    uint64_t help_start_time = 0;
+
+    // Whether or not a help text is currently active
+    bool help_active = false;
+
+    // How long it takes to completely fade out a help text.
+    static const uint16_t HELP_FADE_MS = 1000;
+
     int has_joystick, no_delay;
 
     Jwindow *top_menu, *joy_win, *last_input;

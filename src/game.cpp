@@ -522,11 +522,11 @@ void Game::menu_select(Event &ev)
     }
 }
 
-void Game::show_help(char const *st)
+void Game::show_help(const char *msg)
 {
-    strcpy(help_text, st);
-    help_text_frames = 0;
-    refresh = 1;
+    strcpy(help_text, msg);
+    help_start_time = SDL_GetTicks64();
+    help_active = true;
 }
 
 void Game::draw_value(image *screen, int x, int y, int w, int h, int val, int max)
@@ -567,7 +567,7 @@ void Game::load_level(char const *name)
     base->current_tick = (current_level->tick_counter() & 0xff);
 
     current_level->level_loaded_notify();
-    the_game->help_text_frames = 0;
+    the_game->help_active = false;
 }
 
 int Game::done()
@@ -1049,22 +1049,44 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 
         if (dev & DRAW_HELP_LAYER)
         {
-            if (help_text_frames >= 0)
+            if (help_active)
             {
-                int color = 2 + Max(0, help_text_frames - 10);
+                Uint64 now = SDL_GetTicks64();
+                Uint64 elapsed = now - help_start_time;
 
-                ivec2 aa = v->m_aa;
-                ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
-
-                remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
-                main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
-                main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
-
-                wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
-                if (color > 30)
-                    help_text_frames = -1;
+                if (elapsed > settings.physics_update + HELP_FADE_MS)
+                {
+                    // Done showing. Turn off until next time show_help() is called.
+                    help_active = false;
+                }
                 else
-                    help_text_frames++;
+                {
+                    // Figure out the alpha (or tint color) based on elapsed time.
+                    int color = 2;
+                    if (elapsed > settings.physics_update)
+                    {
+                        // Start fading
+                        Uint64 fade_elapsed = elapsed - settings.physics_update;
+                        float fade_ratio = (float)fade_elapsed / (float)HELP_FADE_MS;
+                        fade_ratio = (fade_ratio > 1.0f) ? 1.0f : fade_ratio;
+
+                        // Darken color by fading from 2 to 31.
+                        color = 2 + (int)(29.0f * (fade_ratio));
+                    }
+
+                    ivec2 aa = v->m_aa;
+                    ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
+
+                    // Draw a darkened area.
+                    remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
+
+                    // Draw one line above and one below the text.
+                    main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
+                    main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
+
+                    // Draw the text.
+                    wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
+                }
             }
         }
 
@@ -1379,7 +1401,7 @@ Game::Game(int argc, char **argv)
     old_view = first_view = NULL;
     nplayers = 1;
 
-    help_text_frames = 0;
+    help_active = false;
     strcpy(help_text, "");
 
     for (i = 1; i < argc; i++)
