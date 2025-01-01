@@ -606,14 +606,8 @@ void level::interpolate_draw_objects(uint32_t delta)
         o->y_interpolation_copy = o->y;
         int32_t distance_x = o->x - o->last_x;
         int32_t distance_y = o->y - o->last_y;
-        int32_t distance = sqrt((distance_x * distance_x) + (distance_y * distance_y));
-
-        // Big distances are not interpolated because they most likely are because of spawned or teleported objects.
-        if (distance < 100)
-        {
-            o->x = std::round(o->last_x + distance_x * ratio);
-            o->y = std::round(o->last_y + distance_y * ratio);
-        }
+        o->x = std::round(o->last_x + distance_x * ratio);
+        o->y = std::round(o->last_y + distance_y * ratio);
         o->draw();
     }
 }
