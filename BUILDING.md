@@ -1,31 +1,26 @@
 # Building Abuse
 
-## Prerequists
+## Prerequisites
 
 - SDL2
-- SDL2 Mixer
-- [CMake 2.8.9 or later](http://www.cmake.org/)
-- GL libraries and headers are required for OpenGL support.
-- OpenCV library for extracting PCX images in SPEC files using abuse-tool
+- SDL2_mixer
+- [CMake 2.8.12 or later](http://www.cmake.org/)
+- GL libraries and headers (e.g., mesa, libgl, or similar) for OpenGL support
+- OpenCV library for extracting PCX images in SPEC files using `abuse-tool`
 
 ### Linux
 
-On Arch Linux install these packages:
+On Arch Linux, install these packages:
 
 ```sh
 sudo pacman -S sdl2 sdl2_mixer opencv cmake
 ```
 
-### Windows
+For other distributions, use the equivalent packages from your package manager.
 
-- [Visual Studio 2013](http://www.visualstudio.com/downloads/download-visual-studio-vs#d-express-windows-desktop)
-  (maybe earlier versions, haven't tried)
-- CMake 2.8.11 or later for the WIX installer (tested with 3.0)
+### macOS
 
-### Mac OS X
-
-Mac OS X should have most of the stuff you need already. The easiest method for
-getting CMake and SDL/SDL_mixer is probably using [Homebrew](http://brew.sh/).
+macOS should have many of the necessary tools already. The easiest method for installing CMake, SDL, and SDL_mixer is using [Homebrew](http://brew.sh/):
 
 ```sh
 brew install cmake
@@ -41,41 +36,39 @@ Clone this repository.
 git clone https://github.com/metinc/Abuse_1996
 ```
 
-> **Note:** If you are using Visual Studio Code you can use [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) to build and run the project and skip the following steps.
-
-Inside the repository use CMake to build into the subdirectory `build`.
+Enter the repository and configure the build:
 
 ```sh
-cmake -DCMAKE_INSTALL_PREFIX:PATH=out -B build
+cmake -B build
 ```
 
-Under Windows, this will probably fail because it can't find the SDL2 or
-SDL2_mixer libraries. Two solutions to this:
+Next, build and install:
 
-1. Run `cmake-gui` and provide the paths that way.
-2. Set `SDL2DIR` and `SDL2MIXERDIR` to point to where you extracted the
-   Windows VC devel binaries for each library.
+```sh
+sudo cmake --build ./build --target install
+```
 
-## Build the files
+(If you prefer a local installation, omit sudo and specify a custom prefix:
+`cmake -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local`)
 
-Under Linux and Mac OS X, this is the familiar `make`.
+Once installed, you can run the game:
 
-Under Windows, you'll want to use `MSBuild abuse.sln`. (Alternatively, open
-the solution in Visual Studio and build it that way.)
+```sh
+abuse
+```
 
-## Install the files
-
-Note that you can skip this step if you're planning on building an installer.
-This is simply `make install` or building `INSTALL.vcxproj` under Windows.
-(Again, either `MSBuild INSTALL.vcxproj` or just build it directly within
-Visual Studio.)
+> **Note:** If you’re using Visual Studio Code, you can use [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) to build and run the project more conveniently.
 
 # Installers (Packages)
 
-The CMake package includes some CPack stuff to enable building installers. Under
-Windows, this will attempt to create a [WIX](http://wixtoolset.org/) installer
-and a ZIP file. Under Mac OS X, it attempts to create a DMG and TGZ.
+The CMake setup includes some CPack configurations to enable building installers.
+Under Windows, it will create a [WIX](http://wixtoolset.org/) installer and a ZIP file.
+Under macOS, it will create a DMG and a TGZ.
 
-To build them under Linux and Mac OS X, it's just `make package`.
+To build them under Linux or macOS, run:
 
-Under Windows, build `PROJECT.vcxproj`.
+```sh
+make package
+```
+
+from inside the `build` folder (or `ninja package` if you’re using the Ninja generator).
