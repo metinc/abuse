@@ -78,6 +78,11 @@ int sound_init(int argc, char **argv)
 
     Mix_AllocateChannels(50);
 
+    char prefix[255];
+    strcpy(prefix, get_filename_prefix());
+    strcat(prefix, "music/soundfont.sf2");
+    Mix_SetSoundFonts(prefix);
+
     int tempChannels = 0;
     Mix_QuerySpec(&audioObtained.freq, &audioObtained.format, &tempChannels);
     audioObtained.channels = tempChannels & 0xFF;

@@ -334,7 +334,7 @@ DESTINATION ${ASSETDIR})
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/music)
     message(WARNING "Non-free music found. Build will include non-free data!")
     INSTALL(FILES
-        music/intro.hmi music/victory.hmi
+        music/soundfont.sf2 music/intro.hmi music/victory.hmi
         music/abuse00.hmi music/abuse01.hmi music/abuse02.hmi music/abuse03.hmi
         music/abuse04.hmi music/abuse06.hmi music/abuse08.hmi music/abuse09.hmi
         music/abuse11.hmi music/abuse13.hmi music/abuse15.hmi music/abuse17.hmi
