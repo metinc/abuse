@@ -187,16 +187,30 @@ song::song(char const *filename)
     if (!data)
     {
         printf("Sound: ERROR - could not load %s\n", realname);
-        return;
     }
 
-    rw = SDL_RWFromMem(data, data_size);
-    music = Mix_LoadMUS_RW(rw, 0);
-
-    if (!music)
+    if (data)
     {
-        printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname);
-        return;
+        rw = SDL_RWFromMem(data, data_size);
+        if (!rw)
+        {
+            printf("Sound: ERROR - SDL_RWFromMem failed on %s\n", realname);
+        }
+    }
+
+    if (rw)
+    {
+        music = Mix_LoadMUS_RW(rw, 0);
+        if (!music)
+        {
+            printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname);
+        }
+    }
+
+    const char *err = Mix_GetError();
+    if (err && *err)
+    {
+        printf("Sound: SDL_mixer warning/error: %s\n", err);
     }
 }
 
