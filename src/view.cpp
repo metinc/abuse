@@ -1504,6 +1504,8 @@ void process_packet_commands(uint8_t *pk, int size)
             }
         }
         break;
+        case SCMD_END_OF_PACKET:
+            break;
         default:
             printf("Unknown net command %d\n", cmd);
         }
