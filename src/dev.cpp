@@ -25,7 +25,6 @@
 #include "lisp.h"
 #include "light.h"
 #include "devsel.h"
-#include "dprint.h"
 #include "property.h"
 #include "pmenu.h"
 #include "filesel.h"
@@ -1086,8 +1085,8 @@ void dev_controll::do_command(char const *command, Event &ev)
             game_object *o = current_level->first_active_object();
             while (o)
             {
-                dprintf("%s %d %d %d %d\n", object_names[o->otype], o->x, o->y, figures[o->otype]->rangex,
-                        figures[o->otype]->rangey);
+                printf("%s %d %d %d %d\n", object_names[o->otype], o->x, o->y, figures[o->otype]->rangex,
+                       figures[o->otype]->rangey);
                 o = o->next_active;
             }
         }
@@ -1143,16 +1142,16 @@ void dev_controll::do_command(char const *command, Event &ev)
         {
             if (sscanf(command, "%s%d%d", fword, &l, &h) == 3)
             {
-                dprintf("unchopped %dx%d to ", l, h);
+                printf("unchopped %dx%d to ", l, h);
                 l = (l + the_game->btile_width() - 1) / the_game->btile_width();
                 h = (h + the_game->btile_height() - 1) / the_game->btile_height();
                 for (y = 0, i = cur_bg; y < h; y++)
                     for (x = 0; x < l; x++)
                         the_game->PutBg(tile + ivec2(x, y), i++);
-                dprintf("%dx%d\n", l, h);
+                printf("%dx%d\n", l, h);
             }
             else
-                dprintf(symbol_str("unchop1"));
+                printf(symbol_str("unchop1"));
         }
     }
     if (!strcmp(fword, "center"))
@@ -1172,10 +1171,10 @@ void dev_controll::do_command(char const *command, Event &ev)
         if (sscanf(command, "%s%d%d", fword, &l, &w) == 3)
         {
             current_level->set_size(l, w);
-            dprintf("level is now %dx%d\n", l, w);
+            printf("level is now %dx%d\n", l, w);
         }
         else
-            dprintf(symbol_str("size1"));
+            printf(symbol_str("size1"));
     }
     if (!strcmp(fword, "name"))
     {
@@ -1183,12 +1182,12 @@ void dev_controll::do_command(char const *command, Event &ev)
             command++;
         if (*command)
             current_level->set_name(command + 1);
-        dprintf(symbol_str("name_now"), current_level->name());
+        printf(symbol_str("name_now"), current_level->name());
     }
     if (!strcmp(fword, "set_first_level"))
     {
         strcpy(level_file, st);
-        dprintf("first level will be '%s'\n", level_file);
+        printf("first level will be '%s'\n", level_file);
     }
 
     if (!strcmp(fword, "load"))
@@ -1196,7 +1195,7 @@ void dev_controll::do_command(char const *command, Event &ev)
         if (!strcmp(st, "STARTING_LEVEL"))
             st = level_file;
 
-        dprintf("loading '%s'\n", st);
+        printf("loading '%s'\n", st);
         the_game->load_level(st);
         current_level->unactivate_all();
 
@@ -1213,7 +1212,7 @@ void dev_controll::do_command(char const *command, Event &ev)
 
     if (!strcmp(fword, "esave"))
     {
-        dprintf(symbol_str("esave"));
+        printf(symbol_str("esave"));
         save();
     }
 
@@ -3784,12 +3783,12 @@ static int get_char_mem(int type, int print)
         {
             int s = figures[type]->get_sequence((character_state)j)->MemUsage();
             if (print)
-                dprintf("(%s=%d)", state_names[j], s);
+                printf("(%s=%d)", state_names[j], s);
             t += s;
         }
     }
     if (print)
-        dprintf("\ntotal=%d\n", t);
+        printf("\ntotal=%d\n", t);
     return t;
 }
 
@@ -3802,7 +3801,7 @@ void dev_controll::show_char_mem(char const *name)
             find = i;
     }
     if (find < 0)
-        dprintf("No character '%s' defined\n", name);
+        printf("No character '%s' defined\n", name);
     else
         get_char_mem(find, 1);
 }
@@ -3822,7 +3821,7 @@ void dev_controll::show_mem()
             }
         }
     }
-    dprintf("%d loaded foretiles=%d bytes\n", t, s);
+    printf("%d loaded foretiles=%d bytes\n", t, s);
 
     t = 0;
     s = 0;
@@ -3837,7 +3836,7 @@ void dev_controll::show_mem()
             }
         }
     }
-    dprintf("%d loaded backtiles=%d bytes\n", t, s);
+    printf("%d loaded backtiles=%d bytes\n", t, s);
 
     t = 0;
     s = 0;
@@ -3846,7 +3845,7 @@ void dev_controll::show_mem()
         t++;
         s += get_char_mem(i, 0);
     }
-    dprintf("%d character=%d bytes\n", t, s);
+    printf("%d character=%d bytes\n", t, s);
 }
 
 void dev_cleanup()

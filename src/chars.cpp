@@ -22,7 +22,6 @@
 #include "input.h"
 #include "id.h"
 #include "clisp.h"
-#include "dprint.h"
 #include "lisp_gc.h"
 
 #define FADING_FRAMES 26
@@ -85,7 +84,7 @@ int CharacterType::add_state(LObject *symbol) // returns index into seq to use
         if (item_type(val) != L_NUMBER)
         {
             symbol->Print();
-            dprintf("expecting symbol value to be a number, instead got: ");
+            printf("expecting symbol value to be a number, instead got: ");
             val->Print();
             lbreak("");
             exit(EXIT_SUCCESS);
@@ -181,7 +180,7 @@ void l_obj_print(long number) // exten lisp function switches on number
         lbreak("access : variable does not exist for this class\n");
         return;
     }
-    dprintf("%d", current_object->lvars[t->var_index[number]]);
+    printf("%d", current_object->lvars[t->var_index[number]]);
 }
 
 void CharacterType::add_var(void *symbol, void *name)

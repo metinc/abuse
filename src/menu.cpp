@@ -32,7 +32,6 @@
 #include "property.h"
 #include "clisp.h"
 #include "gamma.h"
-#include "dprint.h"
 #include "demo.h"
 #include "loadgame.h"
 #include "scroller.h"
@@ -355,7 +354,7 @@ void save_difficulty()
     FILE *fp = open_FILE(path_fin.c_str(), "wb");
 
     if (!fp)
-        dprintf("Unable to write to file hardness.lsp\n");
+        printf("Unable to write to file hardness.lsp\n");
     else
     {
         fprintf(fp, "(setf difficulty '");

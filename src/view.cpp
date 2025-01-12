@@ -33,7 +33,6 @@
 #include "id.h"
 #include "dev.h"
 #include "jrand.h"
-#include "dprint.h"
 #include "transp.h"
 #include "clisp.h"
 #include "demo.h"
@@ -898,7 +897,7 @@ void view::reset_player()
         {
             m_focus->x = start->x;
             m_focus->y = start->y;
-            dprintf("reset player position to %d %d\n", start->x, start->y);
+            printf("reset player position to %d %d\n", start->x, start->y);
         }
         m_focus->set_state(stopped);
         m_focus->set_tint(_tint);
@@ -1442,7 +1441,7 @@ void process_packet_commands(uint8_t *pk, int size)
             }
             else
             {
-                dprintf("Evil error : bad player number in packet\n");
+                printf("Evil error : bad player number in packet\n");
                 return;
             }
         }
@@ -1468,7 +1467,7 @@ void process_packet_commands(uint8_t *pk, int size)
                 sync_uint16 = x;
             else if (x != sync_uint16 && !already_reloaded)
             {
-                dprintf("out of sync %d (packet=%d, calced=%d)\n", current_level->tick_counter(), x, sync_uint16);
+                printf("out of sync %d (packet=%d, calced=%d)\n", current_level->tick_counter(), x, sync_uint16);
                 if (demo_man.current_state() == demo_manager::NORMAL)
                     net_reload();
                 already_reloaded = 1;
@@ -1481,7 +1480,7 @@ void process_packet_commands(uint8_t *pk, int size)
             for (; v && v->player_number != player_num; v = v->next)
                 last = v;
             if (!v)
-                dprintf("evil : delete client %d, but no such client\n");
+                printf("evil : delete client %d, but no such client\n");
             else
             {
 
@@ -1506,7 +1505,7 @@ void process_packet_commands(uint8_t *pk, int size)
         }
         break;
         default:
-            dprintf("Unknown net command %d\n", cmd);
+            printf("Unknown net command %d\n", cmd);
         }
     } while (cmd != SCMD_END_OF_PACKET);
 }

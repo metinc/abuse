@@ -28,7 +28,6 @@
 #include "property.h"
 #include "dev.h"
 #include "clisp.h"
-#include "dprint.h"
 #include "jrand.h"
 #include "director.h"
 #include "lisp_gc.h"

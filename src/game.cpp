@@ -50,7 +50,6 @@
 #include "configuration.h"
 #include "light.h"
 #include "scroller.h"
-#include "dprint.h"
 #include "nfserver.h"
 #include "video.h"
 #include "transp.h"
@@ -1414,7 +1413,7 @@ Game::Game(int argc, char **argv)
         if (!strcmp(argv[i], "-no_delay"))
         {
             no_delay = 1;
-            dprintf("Frame delay off (-nodelay)\n");
+            printf("Frame delay off (-nodelay)\n");
         }
 
     image_init();
@@ -1422,11 +1421,11 @@ Game::Game(int argc, char **argv)
     no_delay = 0;
 
     has_joystick = joy_init(argc, argv);
-    dprintf("Joystick : ");
+    printf("Joystick : ");
     if (has_joystick)
-        dprintf("detected\n");
+        printf("detected\n");
     else
-        dprintf("not detected\n");
+        printf("not detected\n");
 
     // Clean up that old crap
     char *fastpath = (char *)malloc(strlen(get_save_filename_prefix()) + 13);
@@ -1907,7 +1906,7 @@ void net_send(int force = 0)
 
             if (!player_list->m_focus)
             {
-                dprintf("Players have not been created\ncall create_players");
+                printf("Players have not been created\ncall create_players");
                 exit(EXIT_SUCCESS);
             }
 
@@ -2269,7 +2268,7 @@ void game_getter(char *st, int max)
             }
             wm->flush_screen();
         } while (ev.type != EV_KEY || ev.key != JK_ENTER);
-        dprintf("\n");
+        printf("\n");
     }
     else
     {
@@ -2283,7 +2282,7 @@ void game_getter(char *st, int max)
 
 void show_startup()
 {
-    //dprintf("Abuse version %s\n", PACKAGE_VERSION);
+    //printf("Abuse version %s\n", PACKAGE_VERSION);
 
     //AR
     printf("Abuse version %s\n", "0.9a");
@@ -2384,7 +2383,7 @@ void game_net_init(int argc, char **argv)
 {
     int nonet = !net_init(argc, argv);
     if (nonet)
-        dprintf("No network driver, or network driver returned failure\n");
+        printf("No network driver, or network driver returned failure\n");
     else
     {
         set_file_opener(open_nfs_file);
@@ -2394,7 +2393,7 @@ void game_net_init(int argc, char **argv)
                 start_running = 1;
             else
             {
-                dprintf("Unable to attach to server, quitting\n");
+                printf("Unable to attach to server, quitting\n");
                 exit(EXIT_SUCCESS);
             }
         }
@@ -2404,7 +2403,7 @@ void game_net_init(int argc, char **argv)
             for (i = 1; i < argc - 1; i++)
                 if (!strcmp(argv[i], "-fs"))
                     if (!set_file_server(argv[i + 1]))
-                        dprintf("could not set default file server to %s\n", argv[i + 1]);
+                        printf("could not set default file server to %s\n", argv[i + 1]);
         }
     }
 }
@@ -2457,8 +2456,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Using %s\n", tcpip.name());
 #endif
 
-    set_dprinter(game_printer);
-    set_dgetter(game_getter);
     set_no_space_handler(handle_no_space);
 
     setup(argc, argv);
@@ -2516,7 +2513,7 @@ int main(int argc, char *argv[])
             {
                 if (!become_server(argv[i + 1]))
                 {
-                    dprintf("unable to become a server\n");
+                    printf("unable to become a server\n");
                     exit(EXIT_SUCCESS);
                 }
                 break;

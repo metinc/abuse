@@ -22,7 +22,6 @@
 #include "palette.h"
 #include "timing.h"
 #include "specs.h"
-#include "dprint.h"
 #include "filter.h"
 #include "status.h"
 #include "dev.h"
@@ -286,7 +285,7 @@ void calc_light_table(palette *pal)
 
     if (recalc)
     {
-        dprintf("Palette has changed, recalculating light table...\n");
+        printf("Palette has changed, recalculating light table...\n");
         stat_man->push("white light", NULL);
         int color = 0;
         for (; color < 256; color++)
@@ -397,7 +396,7 @@ void calc_light_table(palette *pal)
 
         bFILE *f = open_file(lightpath, "wb");
         if (f->open_failure())
-            dprintf("Unable to open file %s for writing\n", lightpath);
+            printf("Unable to open file %s for writing\n", lightpath);
         else
         {
             f->write_uint16(calc_crc((uint8_t *)pal->addr(), 768));

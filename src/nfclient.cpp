@@ -27,7 +27,6 @@
 
 #include "specs.h"
 #include "nfserver.h"
-#include "dprint.h"
 #include "crc.h"
 #include "cache.h"
 
@@ -281,7 +280,7 @@ int set_file_server(char const *name)
         net_address *addr = prot->get_node_address(name, DEFAULT_COMM_PORT, 0);
         if (!addr)
         {
-            dprintf("\nUnable to locate server\n");
+            printf("\nUnable to locate server\n");
             return 0;
         }
         if (!set_file_server(addr))

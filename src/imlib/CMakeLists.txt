@@ -12,7 +12,6 @@ add_library(imlib
     pcxread.cpp pcxread.h
     jrand.cpp jrand.h
     keys.cpp keys.h
-    dprint.cpp dprint.h
     status.cpp status.h
     pmenu.cpp pmenu.h
     scroller.cpp scroller.h

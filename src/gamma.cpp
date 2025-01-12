@@ -24,7 +24,6 @@
 #include "scroller.h"
 #include "id.h"
 #include "cache.h"
-#include "dprint.h"
 #include "loader2.h"
 
 extern int dev_ok;
@@ -233,7 +232,7 @@ void gamma_correct(palette *&pal, int force_menu)
                 LSpace::Current = sp;
             }
             else
-                dprintf("Unable to write to file gamma.lsp\n");
+                printf("Unable to write to file gamma.lsp\n");
 
             free(gammapath);
         }

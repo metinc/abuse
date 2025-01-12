@@ -17,7 +17,6 @@
 #include "common.h"
 
 #include "status.h"
-#include "dprint.h"
 
 status_manager *stat_man = NULL;
 
@@ -72,7 +71,7 @@ void text_status_manager::update(int percentage)
             s[len + i] = ' ';
         s[len + i++] = ']';
         s[len + i] = 0;
-        dprintf("%s", s);
+        printf("%s", s);
     }
 }
 
@@ -80,7 +79,7 @@ void text_status_manager::pop()
 {
     CONDITION(first, "No status's to pop!");
     if (level == 1)
-        dprintf("\n");
+        printf("\n");
     level--;
     text_status_node *p = first;
     first = first->next;

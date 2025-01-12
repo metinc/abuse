@@ -24,7 +24,6 @@
 #include "cache.h"
 #include "lisp.h"
 #include "video.h"
-#include "dprint.h"
 #include "lcache.h"
 #include "status.h"
 #include "game.h"
@@ -320,7 +319,7 @@ void CacheList::prof_write(bFILE *fp)
         free(ordered_ids);
     }
     else
-        dprintf("Cache profiling was not initialized\n");
+        printf("Cache profiling was not initialized\n");
 }
 
 void CacheList::prof_uninit()
@@ -627,7 +626,7 @@ void CacheList::load_cache_prof_info(char *filename, level *lev)
                 }
                 load_fail = 0;
                 //    if (full())
-                //      dprintf("Cache filled while loading\n");
+                //      printf("Cache filled while loading\n");
 
                 if (tsaved > tmatches)
                     tmatches = tsaved + 1;
@@ -692,7 +691,7 @@ void CacheList::load_cache_prof_info(char *filename, level *lev)
             }
         }
         if (full())
-            dprintf("Cache filled while loading\n");
+            printf("Cache filled while loading\n");
     }
     delete fp;
 }
@@ -778,7 +777,7 @@ void CacheList::empty()
 
 void CacheList::locate(CacheItem *i, int local_only)
 {
-    //  dprintf("cache in %s, type %d, offset %d\n",crc_manager.get_filename(i->file_number),i->type,i->offset);
+    //  printf("cache in %s, type %d, offset %d\n",crc_manager.get_filename(i->file_number),i->type,i->offset);
     if (i->file_number != last_file)
     {
         if (fp)
@@ -1109,7 +1108,7 @@ void CacheList::free_oldest()
     }
     if (oldest)
     {
-        dprintf("mem_maker : freeing %s\n", spec_types[oldest->type]);
+        printf("mem_maker : freeing %s\n", spec_types[oldest->type]);
         unmalloc(oldest);
     }
     else

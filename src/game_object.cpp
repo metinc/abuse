@@ -24,7 +24,6 @@
 #include "lisp.h"
 #include "jrand.h"
 #include "light.h"
-#include "dprint.h"
 #include "clisp.h"
 #include "lisp_gc.h"
 #include "profile.h"

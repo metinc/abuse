@@ -31,7 +31,6 @@
 #include "net/ghandler.h"
 #include "net/gserver.h"
 #include "net/gclient.h"
-#include "dprint.h"
 #include "netcfg.h"
 
 /*
@@ -152,15 +151,15 @@ int net_init(int argc, char **argv)
     comm_sock = game_sock = NULL;
     if (main_net_cfg->state == net_configuration::CLIENT)
     {
-        dprintf("Attempting to locate server %s, please wait\n", main_net_cfg->server_name);
+        printf("Attempting to locate server %s, please wait\n", main_net_cfg->server_name);
         char const *sn = main_net_cfg->server_name;
         net_server = prot->get_node_address(sn, DEFAULT_COMM_PORT, 0);
         if (!net_server)
         {
-            dprintf(symbol_str("unable_locate"));
+            printf(symbol_str("unable_locate"));
             exit(EXIT_SUCCESS);
         }
-        dprintf("Server located!  Please wait while data loads....\n");
+        printf("Server located!  Please wait while data loads....\n");
     }
 
 #if HAVE_NETWORK
@@ -422,7 +421,7 @@ int request_server_entry()
 
         if (game_sock)
             delete game_sock;
-        dprintf("Joining game in progress, hang on....\n");
+        printf("Joining game in progress, hang on....\n");
 
         game_sock = prot->create_listen_socket(
             main_net_cfg->port + 2, net_socket::SOCKET_FAST); // this is used for fast game packet transmission

@@ -30,7 +30,6 @@
 #include "game.h"
 #include "intsect.h"
 #include "lisp.h"
-#include "dprint.h"
 #include "particle.h"
 #include "game_object.h"
 #include "jrand.h"
@@ -962,7 +961,7 @@ void level::old_load_objects(spec_directory *sd, bFILE *fp)
                         fp->seek(se->offset, 0);
                         int t = object_descriptions[j].type;
                         if (fp->read_uint8() != t)
-                            dprintf("Warning : load level -> var '%s' size changed\n");
+                            printf("Warning : load level -> var '%s' size changed\n");
                         else
                         {
                             game_object *f = first;
@@ -993,7 +992,7 @@ void level::old_load_objects(spec_directory *sd, bFILE *fp)
                         }
                     }
                     else
-                        dprintf("Warning : load level -> no previous var %s\n", default_simple.var_name(j));
+                        printf("Warning : load level -> no previous var %s\n", default_simple.var_name(j));
                 }
             }
         }
@@ -1225,7 +1224,7 @@ void level::load_objects(spec_directory *sd, bFILE *fp)
                             fp->seek(se->offset, 0);
                             int t = object_descriptions[j].type;
                             if (fp->read_uint8() != t)
-                                dprintf("Warning : load level -> var '%s' size changed\n");
+                                printf("Warning : load level -> var '%s' size changed\n");
                             else
                             {
                                 game_object *f = first;
@@ -1259,7 +1258,7 @@ void level::load_objects(spec_directory *sd, bFILE *fp)
                             }
                         }
                         else
-                            dprintf("Warning : load level -> no previous var %s\n", default_simple.var_name(j));
+                            printf("Warning : load level -> no previous var %s\n", default_simple.var_name(j));
                     }
                 }
             }
@@ -2085,7 +2084,7 @@ void level::load_links(bFILE *fp, spec_directory *sd, object_node *save_list, ob
                 if (q)
                     q->add_object(p);
                 else
-                    dprintf("bad object link\n");
+                    printf("bad object link\n");
 
                 t--;
             }
@@ -2107,7 +2106,7 @@ void level::load_links(bFILE *fp, spec_directory *sd, object_node *save_list, ob
                 if (p)
                     p->add_light(number_to_light(x2));
                 else
-                    dprintf("bad object/light link\n");
+                    printf("bad object/light link\n");
                 t--;
             }
         }
@@ -2274,7 +2273,7 @@ int level::save(char const *filename, int save_all)
             unlink(bkname);
             bFILE *bk = open_file(bkname, "wb");
             if (bk->open_failure())
-                dprintf("unable to open backup file %s\n", bkname);
+                printf("unable to open backup file %s\n", bkname);
             else
             {
                 uint8_t buf[0x1000];

@@ -19,7 +19,6 @@
 #include "demo.h"
 #include "specs.h"
 #include "jwindow.h"
-#include "dprint.h"
 #include "dev.h"
 #include "jrand.h"
 #include "lisp.h"

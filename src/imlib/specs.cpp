@@ -37,7 +37,6 @@
 #include "image.h"
 #include "palette.h"
 #include "specs.h"
-#include "dprint.h"
 
 char const *spec_types[] = {"Invalid type", // 0
                             "Color table", // 1
@@ -265,7 +264,7 @@ int bFILE::allow_write_buffering()
 
 void set_spec_main_file(char const *filename, int Search_order)
 {
-    dprintf("Specs : main file set to %s\n", filename);
+    printf("Specs : main file set to %s\n", filename);
     strcpy(spec_main_file, filename);
     search_order = Search_order;
 

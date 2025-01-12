@@ -18,7 +18,6 @@
 #include "common.h"
 
 #include "property.h"
-#include "dprint.h"
 #include "game.h"
 
 class property
@@ -137,7 +136,7 @@ void property_manager::save(char const *filename)
 {
     FILE *fp = open_FILE(filename, "wb");
     if (!fp)
-        dprintf("Error opening %s to save properties\n", filename);
+        printf("Error opening %s to save properties\n", filename);
     else
     {
         for (property *i = first; i; i = i->next)

@@ -31,7 +31,6 @@
 #include "dev.h"
 #include "pcxread.h"
 #include "menu.h"
-#include "dprint.h"
 #include "clisp.h"
 #include "chars.h"
 #include "lisp_gc.h"
@@ -87,7 +86,7 @@ static view *lget_view(void *arg, char const *msg)
     view *c = o->controller();
     if (!c)
     {
-        dprintf("%s : object does not have a view\n", msg);
+        printf("%s : object does not have a view\n", msg);
         lbreak("");
         exit(EXIT_SUCCESS);
     }
@@ -1652,7 +1651,7 @@ long c_caller(long number, void *args)
         return current_object->picture()->Size().y;
         break;
     case 127: {
-        dprintf("trap\n");
+        printf("trap\n");
     }
     break; // I use this to set gdb break points
     case 128: {
@@ -1759,7 +1758,7 @@ long c_caller(long number, void *args)
     case 144: {
         view *v = current_object->controller();
         if (!v)
-            dprintf("Can't add weapons for non-players\n");
+            printf("Can't add weapons for non-players\n");
         else
         {
             int32_t x = lnumber_value(CAR(args));
@@ -1834,7 +1833,7 @@ long c_caller(long number, void *args)
     case 152: {
         view *v = current_object->controller();
         if (!v)
-            dprintf("Can't use reset_player on non-players\n");
+            printf("Can't use reset_player on non-players\n");
         else
             v->reset_player();
     }
@@ -1930,7 +1929,7 @@ long c_caller(long number, void *args)
     case 171: {
         view *v = current_object->controller();
         if (!v)
-            dprintf("make_view_solid : object has no view\n");
+            printf("make_view_solid : object has no view\n");
         else
             v->draw_solid = lnumber_value(CAR(args));
     }
@@ -2019,13 +2018,13 @@ long c_caller(long number, void *args)
         {
             bg_xdiv = 1;
             ((LObject *)args)->Print();
-            dprintf("bg_set_scroll : cannot set xdiv to 0\n");
+            printf("bg_set_scroll : cannot set xdiv to 0\n");
         }
         if (bg_ydiv == 0)
         {
             bg_ydiv = 1;
             ((LObject *)args)->Print();
-            dprintf("bg_set_scroll : cannot set ydiv to 0\n");
+            printf("bg_set_scroll : cannot set ydiv to 0\n");
         }
     }
     break;
@@ -2602,7 +2601,7 @@ long c_caller(long number, void *args)
             }
             current_song = new song(fn);
             current_song->play(music_volume);
-            dprintf("Playing %s at volume %d\n", fn, music_volume);
+            printf("Playing %s at volume %d\n", fn, music_volume);
         }
     }
     break;

@@ -28,7 +28,6 @@
 
 #include "status.h"
 #include "specs.h"
-#include "dprint.h"
 #include "cache.h"
 #include "dev.h"
 
@@ -61,26 +60,26 @@ void l1print(void *block)
         return;
     }
 
-    dprintf("(");
+    printf("(");
     for (; block && item_type(block) == L_CONS_CELL; block = CDR(block))
     {
         void *a = CAR(block);
         if (item_type(a) == L_CONS_CELL)
-            dprintf("[...]");
+            printf("[...]");
         else
             ((LObject *)a)->Print();
     }
     if (block)
     {
-        dprintf(" . ");
+        printf(" . ");
         ((LObject *)block)->Print();
     }
-    dprintf(")");
+    printf(")");
 }
 
 void where_print(int max_lev = -1)
 {
-    dprintf("Main program\n");
+    printf("Main program\n");
     if (max_lev == -1)
         max_lev = PtrRef::stack.m_size;
     else if (max_lev >= (int)PtrRef::stack.m_size)
@@ -88,7 +87,7 @@ void where_print(int max_lev = -1)
 
     for (int i = 0; i < max_lev; i++)
     {
-        dprintf("%d> ", i);
+        printf("%d> ", i);
         ((LObject *)*PtrRef::stack.sdata[i])->Print();
     }
 }
@@ -108,13 +107,12 @@ void lbreak(char const *format, ...)
     va_start(ap, format);
     vsprintf(st, format, ap);
     va_end(ap);
-    dprintf("%s\n", st);
+    printf("%s\n", st);
     int cont = 0;
     do
     {
-        dprintf("type q to quit\n");
-        dprintf("%d. Break> ", break_level);
-        dgets(st, 300);
+        printf("type q to quit\n");
+        printf("%d. Break> ", break_level);
         if (!strcmp(st, "c") || !strcmp(st, "cont") || !strcmp(st, "continue"))
             cont = 1;
         else if (!strcmp(st, "w") || !strcmp(st, "where"))
@@ -123,16 +121,16 @@ void lbreak(char const *format, ...)
             exit(EXIT_FAILURE);
         else if (!strcmp(st, "e") || !strcmp(st, "env") || !strcmp(st, "environment"))
         {
-            dprintf("Enviorment : \nnot supported right now\n");
+            printf("Enviorment : \nnot supported right now\n");
         }
         else if (!strcmp(st, "h") || !strcmp(st, "help") || !strcmp(st, "?"))
         {
-            dprintf("CLIVE Debugger\n");
-            dprintf(" w, where : show calling parents\n"
-                    " e, env   : show environment\n"
-                    " c, cont  : continue if possible\n"
-                    " q, quit  : quits the program\n"
-                    " h, help  : this\n");
+            printf("CLIVE Debugger\n");
+            printf(" w, where : show calling parents\n"
+                   " e, env   : show environment\n"
+                   " c, cont  : continue if possible\n"
+                   " q, quit  : quits the program\n"
+                   " h, help  : this\n");
         }
         else
         {
@@ -433,12 +431,12 @@ char *lerror(char const *loc, char const *cause)
         {
             if (*loc == '\n')
                 lines++;
-            dprintf("%c", *loc);
+            printf("%c", *loc);
         }
-        dprintf("\nPROGRAM LOCATION : \n");
+        printf("\nPROGRAM LOCATION : \n");
     }
     if (cause)
-        dprintf("ERROR MESSAGE : %s\n", cause);
+        printf("ERROR MESSAGE : %s\n", cause);
     lbreak("");
     exit(EXIT_SUCCESS);
     return NULL;
@@ -1210,7 +1208,7 @@ static void lprint_string(char const *st)
         }
     }
     else
-        dprintf(st);
+        printf(st);
 }
 
 void LObject::Print()
@@ -1272,7 +1270,7 @@ void LObject::Print()
         if (current_print_file)
             lprint_string(lstring_value(this));
         else
-            dprintf("\"%s\"", lstring_value(this));
+            printf("\"%s\"", lstring_value(this));
         break;
     case L_POINTER:
         sprintf(buf, "%p", lpointer_value(this));
@@ -1291,17 +1289,17 @@ void LObject::Print()
         else
         {
             uint16_t ch = ((LChar *)this)->m_ch;
-            dprintf("#\\");
+            printf("#\\");
             switch (ch)
             {
             case '\n':
-                dprintf("newline");
+                printf("newline");
                 break;
             case ' ':
-                dprintf("space");
+                printf("space");
                 break;
             default:
-                dprintf("%c", ch);
+                printf("%c", ch);
                 break;
             }
         }
@@ -1312,14 +1310,14 @@ void LObject::Print()
     case L_1D_ARRAY: {
         LArray *a = (LArray *)this;
         LObject **data = a->GetData();
-        dprintf("#(");
+        printf("#(");
         for (size_t j = 0; j < a->m_len; j++)
         {
             data[j]->Print();
             if (j != a->m_len - 1)
-                dprintf(" ");
+                printf(" ");
         }
-        dprintf(")");
+        printf(")");
     }
     break;
     case L_COLLECTED_OBJECT:
@@ -1327,12 +1325,12 @@ void LObject::Print()
         ((LRedirect *)this)->m_ref->Print();
         break;
     default:
-        dprintf("Shouldn't happen\n");
+        printf("Shouldn't happen\n");
     }
 
     print_level--;
     if (!print_level && !current_print_file)
-        dprintf("\n");
+        printf("\n");
 }
 
 /* PtrRef check: OK */
@@ -2288,7 +2286,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         {
             delete fp;
             if (DEFINEDP(((LSymbol *)load_warning)->GetValue()) && ((LSymbol *)load_warning)->GetValue())
-                dprintf("Warning : file %s does not exist\n", st);
+                printf("Warning : file %s does not exist\n", st);
             ret = NULL;
         }
         else
@@ -2827,7 +2825,7 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         break;
     }
     default:
-        dprintf("Undefined system function number %d\n", fun_number);
+        printf("Undefined system function number %d\n", fun_number);
         break;
     }
 
@@ -2955,10 +2953,10 @@ LObject *LObject::Eval()
     {
         if (trace_level <= trace_print_level)
         {
-            dprintf("%d (%d, %d, %d) TRACE : ", trace_level, LSpace::Perm.GetFree(), LSpace::Tmp.GetFree(),
-                    PtrRef::stack.m_size);
+            printf("%d (%d, %d, %d) TRACE : ", trace_level, LSpace::Perm.GetFree(), LSpace::Tmp.GetFree(),
+                   PtrRef::stack.m_size);
             Print();
-            dprintf("\n");
+            printf("\n");
         }
         trace_level++;
     }
@@ -3003,10 +3001,10 @@ LObject *LObject::Eval()
     {
         trace_level--;
         if (trace_level <= trace_print_level)
-            dprintf("%d (%d, %d, %d) TRACE ==> ", trace_level, LSpace::Perm.GetFree(), LSpace::Tmp.GetFree(),
-                    PtrRef::stack.m_size);
+            printf("%d (%d, %d, %d) TRACE ==> ", trace_level, LSpace::Perm.GetFree(), LSpace::Tmp.GetFree(),
+                   PtrRef::stack.m_size);
         ret->Print();
-        dprintf("\n");
+        printf("\n");
     }
 
     /*  l_user_stack.push(ret);
@@ -3040,9 +3038,9 @@ void Lisp::Init()
         add_sys_function(sys_funcs[i].name, sys_funcs[i].min_args, sys_funcs[i].max_args, i);
     clisp_init();
     LSpace::Current = &LSpace::Tmp;
-    dprintf("Lisp: %d symbols defined, %d system functions, "
-            "%d pre-compiled functions\n",
-            LSymbol::count, sizeof(sys_funcs) / sizeof(*sys_funcs), total_user_functions);
+    printf("Lisp: %d symbols defined, %d system functions, "
+           "%d pre-compiled functions\n",
+           LSymbol::count, sizeof(sys_funcs) / sizeof(*sys_funcs), total_user_functions);
 }
 
 void Lisp::Uninit()

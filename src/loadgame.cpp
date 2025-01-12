@@ -25,7 +25,6 @@
 #include "input.h"
 #include "fonts.h"
 #include "lisp.h"
-#include "dprint.h"
 #include "cache.h"
 #include "gui.h"
 #include "dev.h"
@@ -159,7 +158,7 @@ void get_savegame_name(char *buf) // buf should be at least 50 bytes
   {
     fprintf(fp,"(setq last_save_game %d)\n",last_save_game_number%MAX_SAVE_GAMES);
     fclose(fp);
-  } else dprintf("Warning unable to open lastsave.lsp for writing\n"); */
+  } else printf("Warning unable to open lastsave.lsp for writing\n"); */
 }
 
 int show_load_icon()

@@ -28,7 +28,6 @@
 
 #include "dev.h"
 #include "light.h"
-#include "dprint.h"
 #include "particle.h"
 #include "clisp.h"
 #include "compiled.h"
@@ -247,7 +246,7 @@ void load_tiles(Cell *file_list)
                     {
                         if (backtiles[num] >= 0)
                         {
-                            dprintf("Warning : background tile %d redefined\n", num);
+                            printf("Warning : background tile %d redefined\n", num);
                             cache.unreg(backtiles[num]);
                         }
                         backtiles[num] = cache.reg(fn, spe->name, SPEC_BACKTILE);
@@ -258,7 +257,7 @@ void load_tiles(Cell *file_list)
                     {
                         if (foretiles[num] >= 0)
                         {
-                            dprintf("Warning : foreground tile %d redefined\n", num);
+                            printf("Warning : foreground tile %d redefined\n", num);
                             cache.unreg(foretiles[num]);
                         }
                         foretiles[num] = cache.reg(fn, spe->name, SPEC_FORETILE);
@@ -326,7 +325,7 @@ void load_data(int argc, char **argv)
     }
     else if (!get_remote_lsf(net_server, lsf))
     {
-        dprintf("Unable to get remote lsf from %s\n", net_server);
+        printf("Unable to get remote lsf from %s\n", net_server);
         exit(EXIT_SUCCESS);
     }
     char prog[100];
@@ -348,7 +347,7 @@ void load_data(int argc, char **argv)
     compiled_init();
     LSpace::Tmp.Clear();
 
-    dprintf("Engine : Registering base graphics\n");
+    printf("Engine : Registering base graphics\n");
     for (int z = 0; z <= 11; z++)
     {
         char nm[10];
@@ -407,7 +406,7 @@ void load_data(int argc, char **argv)
                 help_screens[i] = cache.reg(ff, lstring_value(CAR(v)), SPEC_IMAGE);
         }
         else
-            dprintf("Warning no help images following filename\n");
+            printf("Warning no help images following filename\n");
     }
 
     int i;
