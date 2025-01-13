@@ -2532,8 +2532,13 @@ int main(int argc, char *argv[])
 
         Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
 
+        Uint32 frameStart;
+        constexpr float targetFrameTime = 1000.0f / 144.0f;
+
         while (!g->done())
         {
+            frameStart = SDL_GetTicks();
+
             music_check();
 
             if (req_end)
@@ -2583,13 +2588,18 @@ int main(int argc, char *argv[])
                 // process all the objects in the world
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
             }
-            SDL_Delay(1);
 
             server_check();
 
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
                 g->update_screen((SDL_GetTicks64() - lastFixedUpdate)); // redraw the screen with any changes
+
+            Uint32 frameTime = SDL_GetTicks() - frameStart;
+            if (frameTime < targetFrameTime)
+            {
+                SDL_Delay(static_cast<Uint32>(targetFrameTime - frameTime));
+            }
         }
 
         net_uninit();
