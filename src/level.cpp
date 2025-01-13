@@ -608,12 +608,22 @@ void level::interpolate_draw_objects(uint32_t delta)
         o->x = o->last_x + std::round(distance_x * ratio);
         o->y = o->last_y + std::round(distance_y * ratio);
     }
+
+    // Draw everything except the player.
+    for (game_object *o = first_active; o; o = o->next_active)
+    {
+        if (o->otype != TYPE_PLAYER_BOTTOM && o->otype != weapon_types[current_view->current_weapon])
+            o->draw();
+    }
+
+    // Draw the player.
     the_game->UpdateViews();
     current_vxadd = current_view->xoff() - current_view->m_aa.x;
     current_vyadd = current_view->yoff() - current_view->m_aa.y;
     for (game_object *o = first_active; o; o = o->next_active)
     {
-        o->draw();
+        if (o->otype == TYPE_PLAYER_BOTTOM || o->otype == weapon_types[current_view->current_weapon])
+            o->draw();
     }
 }
 
