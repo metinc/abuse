@@ -2430,22 +2430,10 @@ long c_caller(long number, void *args)
             return v->player_number;
     }
     break;
-    case 230: {
-        view *v = current_object->controller();
-        if (!v)
-            lbreak("object has no view : local_player");
-        else
-        {
-            int32_t x = lnumber_value(CAR(args));
-            if (x < 0 || x >= total_weapons)
-            {
-                lbreak("weapon out of range (%d)\n", x);
-                exit(EXIT_SUCCESS);
-            }
-            v->current_weapon = x;
-        }
-    }
-    break;
+    case 230:
+        // The code removed here automatically switched the weapon when finding
+        // a new weapon. This was annoying.
+        break;
     case 231: {
         view *v = current_object->controller();
         if (!v)
