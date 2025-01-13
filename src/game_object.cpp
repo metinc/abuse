@@ -472,6 +472,14 @@ void game_object::morph_into(int type, void (*stat_fun)(int), int anneal, int fr
     set_state(stopped);
 }
 
+/**
+ * Draws the object above other game elements in the scene.
+ *
+ * This function is specifically used to draw the upper portion of the object
+ * when part of it is behind foreground elements (e.g., for partial occlusion).
+ *
+ * @param v Pointer to the current view in which the object is drawn.
+ */
 void game_object::draw_above(view *v)
 {
     int32_t x1, y1, x2, y2;
@@ -808,6 +816,12 @@ void game_object::draw_double_tint(int tint_id, int tint2)
             cache.ctint(tint_id)->data, cache.ctint(tint2)->data);
 }
 
+/**
+ * Renders the object with a "predator" effect, making it almost invisible.
+ *
+ * This special rendering effect simulates a cloaking field or distortion,
+ * showing only a subtle shimmer where the object is.
+ */
 void game_object::draw_predator()
 {
     TransImage *cpict = picture();
