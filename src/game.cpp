@@ -946,7 +946,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         if (interpolate)
         {
             current_level->interpolate_draw_objects(elapsedMsFixed);
-            the_game->UpdateViews();
             current_level->interpolation_restore_positions();
         }
         else

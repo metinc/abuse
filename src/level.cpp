@@ -607,6 +607,12 @@ void level::interpolate_draw_objects(uint32_t delta)
         int32_t distance_y = o->y - o->last_y;
         o->x = o->last_x + std::round(distance_x * ratio);
         o->y = o->last_y + std::round(distance_y * ratio);
+    }
+    the_game->UpdateViews();
+    current_vxadd = current_view->xoff() - current_view->m_aa.x;
+    current_vyadd = current_view->yoff() - current_view->m_aa.y;
+    for (game_object *o = first_active; o; o = o->next_active)
+    {
         o->draw();
     }
 }
