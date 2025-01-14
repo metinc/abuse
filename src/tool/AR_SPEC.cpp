@@ -88,74 +88,83 @@ int AR_SPEC::AR_ParseConfig(std::string file_path)
             return EXIT_FAILURE;
         }
 
-        if (attr == "image_format")
-            this->image_format = value;
-        else if (attr == "png_compression")
-            this->png_compression = AR_ToInt(value);
-        else if (attr == "jpeg_quality")
-            this->jpeg_quality = AR_ToInt(value);
-        else if (attr == "alpha")
-            this->alpha = AR_ToInt(value);
-        else if (attr == "alpha_r")
-            this->alpha_r = AR_ToInt(value);
-        else if (attr == "alpha_g")
-            this->alpha_g = AR_ToInt(value);
-        else if (attr == "alpha_b")
-            this->alpha_b = AR_ToInt(value);
-        else if (attr == "output_tilemap")
-            this->output_tilemap = AR_ToInt(value);
-        else if (attr == "tilemap_rows")
-            this->tilemap_rows = AR_ToInt(value);
-        else if (attr == "tilemap_columns")
-            this->tilemap_columns = AR_ToInt(value);
-        else if (attr == "tilemap_padding")
-            this->tilemap_padding = AR_ToInt(value);
-        else if (attr == "tilemap_palette")
+        try
         {
-            if (value == "0")
-                this->tilemap_palette = "";
-            else
-                this->tilemap_palette = value;
-        }
-        else if (attr == "tilemap_fill")
-            this->tilemap_fill = value[0];
-        else if (attr == "output_animation")
-            this->output_animation = AR_ToInt(value);
-        else if (attr == "outline_r")
-            this->outline_r = AR_ToInt(value);
-        else if (attr == "outline_g")
-            this->outline_g = AR_ToInt(value);
-        else if (attr == "outline_b")
-            this->outline_b = AR_ToInt(value);
-        else if (attr == "group_max")
-            this->group_max = AR_ToInt(value);
-        else if (attr == "pong_the_bong")
-            this->pong_the_bong = (bool)AR_ToInt(value);
-        else if (attr == "palette_shift")
-            this->pal_shift = AR_ToInt(value);
-        else if (attr == "color_palette")
-        {
-            if (value == "0")
-                color_palette = "";
-            else
-                color_palette = value;
-        }
-        else if (attr == "in")
-        {
-            //convert .pcx files inside .spe to modern image formats
-            if (AR_ConvertSPEC(value))
-                this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... OK");
+            if (attr == "image_format")
+                this->image_format = value;
+            else if (attr == "png_compression")
+                this->png_compression = std::stoi(value);
+            else if (attr == "jpeg_quality")
+                this->jpeg_quality = std::stoi(value);
+            else if (attr == "alpha")
+                this->alpha = std::stoi(value);
+            else if (attr == "alpha_r")
+                this->alpha_r = std::stoi(value);
+            else if (attr == "alpha_g")
+                this->alpha_g = std::stoi(value);
+            else if (attr == "alpha_b")
+                this->alpha_b = std::stoi(value);
+            else if (attr == "output_tilemap")
+                this->output_tilemap = std::stoi(value);
+            else if (attr == "tilemap_rows")
+                this->tilemap_rows = std::stoi(value);
+            else if (attr == "tilemap_columns")
+                this->tilemap_columns = std::stoi(value);
+            else if (attr == "tilemap_padding")
+                this->tilemap_padding = std::stoi(value);
+            else if (attr == "tilemap_palette")
+            {
+                if (value == "0")
+                    this->tilemap_palette = "";
+                else
+                    this->tilemap_palette = value;
+            }
+            else if (attr == "tilemap_fill")
+                this->tilemap_fill = value[0];
+            else if (attr == "output_animation")
+                this->output_animation = std::stoi(value);
+            else if (attr == "outline_r")
+                this->outline_r = std::stoi(value);
+            else if (attr == "outline_g")
+                this->outline_g = std::stoi(value);
+            else if (attr == "outline_b")
+                this->outline_b = std::stoi(value);
+            else if (attr == "group_max")
+                this->group_max = std::stoi(value);
+            else if (attr == "pong_the_bong")
+                this->pong_the_bong = (value == "1");
+            else if (attr == "palette_shift")
+                this->pal_shift = std::stoi(value);
+            else if (attr == "color_palette")
+            {
+                if (value == "0")
+                    color_palette = "";
+                else
+                    color_palette = value;
+            }
+            else if (attr == "in")
+            {
+                //convert .pcx files inside .spe to modern image formats
+                if (AR_ConvertSPEC(value))
+                    this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... OK");
+                else
+                {
+                    filein.close();
+                    this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... FAILED");
+                    return EXIT_FAILURE;
+                }
+            }
             else
             {
                 filein.close();
-                this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... FAILED");
+                this->log->Write("\nERROR - AR_GetAttr() - bad command \"" + line + "\"\n");
                 return EXIT_FAILURE;
             }
         }
-        else
+        catch (const std::exception &e)
         {
+            this->log->Write("\nERROR - Invalid value in \"" + line + "\"\n");
             filein.close();
-            this->log->Write("\nERROR - AR_GetAttr() - bad command \"" + line + "\"\n");
             return EXIT_FAILURE;
         }
     }

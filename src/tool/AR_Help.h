@@ -21,9 +21,6 @@
 
 std::string AR_GetFileName(std::string path);
 
-int AR_ToInt(std::string value);
-bool AR_ToBool(std::string value);
-
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value);
 
 //////////

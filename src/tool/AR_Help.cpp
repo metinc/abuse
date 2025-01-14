@@ -23,26 +23,6 @@ std::string AR_GetFileName(std::string path)
         return "";
 }
 
-int AR_ToInt(std::string value)
-{
-    int n = 1;
-
-    std::stringstream stream(value);
-    stream >> n;
-
-    return n;
-}
-
-bool AR_ToBool(std::string value)
-{
-    bool n = false;
-
-    std::stringstream stream(value);
-    stream >> n;
-
-    return n;
-}
-
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 {
     attr = value = "";
