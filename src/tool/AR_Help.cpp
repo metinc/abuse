@@ -95,7 +95,7 @@ void AR_Log::Write(std::string text, bool save)
         }
         else
         {
-            std::string msg = "ERROR - Failed saving log at \"" + out_path + "\"";
+            std::string msg = "ERROR - Failed saving log at \"" + out_path + "\"\n";
             printf(msg.c_str());
         }
     }

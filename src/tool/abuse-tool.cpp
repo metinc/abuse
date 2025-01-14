@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
         result = ar_spec.AR_ParseConfig("abuse-tool/extract.txt");
 
         if (result == EXIT_SUCCESS)
-            ar_log.Write("\nAR_ParseConfig()..... OK");
+            ar_log.Write("\nAR_ParseConfig() OK");
         else
-            ar_log.Write("\nAR_ParseConfig()..... FAIL");
+            ar_log.Write("\nAR_ParseConfig() FAIL");
 
         ar_spec.tx_info.Write("", true);
     }
