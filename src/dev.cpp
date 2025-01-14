@@ -900,6 +900,7 @@ void dev_init(int argc, char **argv)
             start_edit = 1;
             start_running = 1;
             disable_autolight = 1;
+            settings.editor = true;
             if (get_option("-2"))
             {
                 printf("%s\n", symbol_str("no2"));

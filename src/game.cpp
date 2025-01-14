@@ -1606,7 +1606,7 @@ void Game::update_screen(uint32_t elapsedMsFixed)
             {
                 if (f->drawable())
                 {
-                    draw_map(f, true, elapsedMsFixed);
+                    draw_map(f, settings.editor == false, elapsedMsFixed);
                 }
             }
             if (current_automap)
