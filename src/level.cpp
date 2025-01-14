@@ -656,6 +656,13 @@ void level::tick()
         // Remember x and y so the movement of the object can be interpolated.
         cur->last_x = cur->x;
         cur->last_y = cur->y;
+        o = o->next_active;
+        l = o;
+    }
+
+    for (o = first_active; o;)
+    {
+        cur = o;
 
         view *c = o->controller();
         if (!(dev & SUSPEND_MODE) || c)
