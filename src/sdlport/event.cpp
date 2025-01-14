@@ -75,9 +75,8 @@ void EventHandler::SysWarpMouse(ivec2 pos)
 //
 int EventHandler::IsPending()
 {
-    if (!m_pending && SDL_PollEvent(NULL))
-        m_pending = 1;
-
+    if (!m_pending)
+        m_pending = m_events.first() != NULL || SDL_PollEvent(NULL);
     return m_pending;
 }
 
@@ -132,12 +131,14 @@ void EventHandler::SysEvent(Event &ev)
     // Left button
     if ((buttons & SDL_BUTTON(1)) && !mouse_buttons[1])
     {
+        // pressed
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[1] = !mouse_buttons[1];
         ev.mouse_button |= LEFT_BUTTON;
     }
     else if (!(buttons & SDL_BUTTON(1)) && mouse_buttons[1])
     {
+        // released
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[1] = !mouse_buttons[1];
         ev.mouse_button &= (0xff - LEFT_BUTTON);
@@ -146,6 +147,7 @@ void EventHandler::SysEvent(Event &ev)
     // Middle button
     if ((buttons & SDL_BUTTON(2)) && !mouse_buttons[2])
     {
+        // pressed
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
         ev.mouse_button |= LEFT_BUTTON;
@@ -153,6 +155,7 @@ void EventHandler::SysEvent(Event &ev)
     }
     else if (!(buttons & SDL_BUTTON(2)) && mouse_buttons[2])
     {
+        // released
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
         ev.mouse_button &= (0xff - LEFT_BUTTON);
@@ -162,12 +165,14 @@ void EventHandler::SysEvent(Event &ev)
     // Right button
     if ((buttons & SDL_BUTTON(3)) && !mouse_buttons[3])
     {
+        // pressed
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[3] = !mouse_buttons[3];
         ev.mouse_button |= RIGHT_BUTTON;
     }
     else if (!(buttons & SDL_BUTTON(3)) && mouse_buttons[3])
     {
+        // released
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[3] = !mouse_buttons[3];
         ev.mouse_button &= (0xff - RIGHT_BUTTON);
