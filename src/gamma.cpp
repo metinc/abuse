@@ -141,10 +141,21 @@ void gamma_correct(palette *&pal, int force_menu)
         old_pal = nullptr;
     }
 
-    // If darkest_gray is defined and menu wasn't forced, just use it
-    if (gs && DEFINEDP(gs->GetValue()) && !force_menu)
+    if (!force_menu)
     {
-        darkest_gray = lnumber_value(gs->GetValue());
+        // If darkest_gray is defined and menu wasn't forced, just use it
+        if (gs && DEFINEDP(gs->GetValue()))
+        {
+            darkest_gray = lnumber_value(gs->GetValue());
+        }
+        else
+        {
+            darkest_gray = 16;
+            if (!write_gamma_lsp(darkest_gray))
+            {
+                std::cerr << "Failed to write gamma.lsp\n";
+            }
+        }
     }
     else
     {
