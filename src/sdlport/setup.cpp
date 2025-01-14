@@ -55,27 +55,6 @@ extern int xres, yres; //video.cpp
 extern int sfx_volume, music_volume; //loader.cpp
 unsigned int scale; //AR was static, removed for external
 
-//AR tmp, until I figure out compiling stuff and cmake...
-int AR_ToInt(std::string value)
-{
-    int n = 1;
-
-    std::stringstream stream(value);
-    stream >> n;
-
-    return n;
-}
-
-bool AR_ToBool(std::string value)
-{
-    bool n = false;
-
-    std::stringstream stream(value);
-    stream >> n;
-
-    return n;
-}
-
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 {
     attr = value = "";
@@ -95,7 +74,6 @@ bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 
     return true;
 }
-//
 
 Settings::Settings()
 {
@@ -351,164 +329,164 @@ bool Settings::ReadConfigFile(std::string folder)
 
         std::string attr, value;
 
-        //quit if bad command
+        //skip if invalid command
         if (!AR_GetAttr(line, attr, value))
         {
-            filein.close();
-
-            std::string tmp = "ERROR - ReadConfigFile() - Bad command \"" + line + "\"\n";
-            printf(tmp.c_str());
-
-            return CreateConfigFile(file_path);
+            printf("Ignoring invalid command \"%s\" in %s\n", line.c_str(), file_path.c_str());
+            continue;
         }
 
-        //screen
-        if (attr == "fullscreen")
-            this->fullscreen = AR_ToInt(value);
-        else if (attr == "borderless")
-            this->borderless = AR_ToBool(value);
-        else if (attr == "vsync")
-            this->vsync = AR_ToBool(value);
-        else if (attr == "screen_width")
-            this->xres = AR_ToInt(value);
-        else if (attr == "screen_height")
-            this->yres = AR_ToInt(value);
-        else if (attr == "scale")
-            this->scale = AR_ToInt(value);
-        else if (attr == "linear_filter")
-            this->linear_filter = AR_ToBool(value);
-        else if (attr == "hires")
-            this->hires = AR_ToInt(value);
+        try
+        {
+            //screen
+            if (attr == "fullscreen")
+                this->fullscreen = std::stoi(value);
+            else if (attr == "borderless")
+                this->borderless = (value == "1");
+            else if (attr == "vsync")
+                this->vsync = (value == "1");
+            else if (attr == "screen_width")
+                this->xres = std::stoi(value);
+            else if (attr == "screen_height")
+                this->yres = std::stoi(value);
+            else if (attr == "scale")
+                this->scale = std::stoi(value);
+            else if (attr == "linear_filter")
+                this->linear_filter = (value == "1");
+            else if (attr == "hires")
+                this->hires = std::stoi(value);
 
-        //sound
-        else if (attr == "mono")
-            this->mono = AR_ToBool(value);
-        else if (attr == "no_sound")
-            this->no_sound = AR_ToBool(value);
-        else if (attr == "no_music")
-            this->no_music = AR_ToBool(value);
-        else if (attr == "volume_sound")
-            this->volume_sound = AR_ToInt(value);
-        else if (attr == "volume_music")
-            this->volume_music = AR_ToInt(value);
+            //sound
+            else if (attr == "mono")
+                this->mono = (value == "1");
+            else if (attr == "no_sound")
+                this->no_sound = (value == "1");
+            else if (attr == "no_music")
+                this->no_music = (value == "1");
+            else if (attr == "volume_sound")
+                this->volume_sound = std::stoi(value);
+            else if (attr == "volume_music")
+                this->volume_music = std::stoi(value);
 
-        //random
-        else if (attr == "local_save")
-            this->local_save = AR_ToBool(value);
-        else if (attr == "grab_input")
-            this->grab_input = AR_ToBool(value);
-        else if (attr == "editor")
-            this->editor = AR_ToBool(value);
-        else if (attr == "physics_update")
-            this->physics_update = AR_ToInt(value);
-        else if (attr == "mouse_scale")
-            this->mouse_scale = AR_ToInt(value);
-        else if (attr == "big_font")
-            this->big_font = AR_ToBool(value);
-        else if (attr == "skip_intro")
-            this->skip_intro = AR_ToBool(value);
+            //random
+            else if (attr == "local_save")
+                this->local_save = (value == "1");
+            else if (attr == "grab_input")
+                this->grab_input = (value == "1");
+            else if (attr == "editor")
+                this->editor = (value == "1");
+            else if (attr == "physics_update")
+                this->physics_update = std::stoi(value);
+            else if (attr == "mouse_scale")
+                this->mouse_scale = std::stoi(value);
+            else if (attr == "big_font")
+                this->big_font = (value == "1");
+            else if (attr == "skip_intro")
+                this->skip_intro = (value == "1");
 
-        //player controls
-        else if (attr == "up")
-        {
-            if (!ControllerButton(attr, value))
-                this->up = key_value(value.c_str());
-        }
-        else if (attr == "down")
-        {
-            if (!ControllerButton(attr, value))
-                this->down = key_value(value.c_str());
-        }
-        else if (attr == "left")
-        {
-            if (!ControllerButton(attr, value))
-                this->left = key_value(value.c_str());
-        }
-        else if (attr == "right")
-        {
-            if (!ControllerButton(attr, value))
-                this->right = key_value(value.c_str());
-        }
-        //
-        else if (attr == "special")
-        {
-            if (!ControllerButton(attr, value))
-                this->b1 = key_value(value.c_str());
-        }
-        else if (attr == "fire")
-        {
-            if (!ControllerButton(attr, value))
-                this->b2 = key_value(value.c_str());
-        }
-        else if (attr == "weapon_prev")
-        {
-            if (!ControllerButton(attr, value))
-                this->b3 = key_value(value.c_str());
-        }
-        else if (attr == "weapon_next")
-        {
-            if (!ControllerButton(attr, value))
-                this->b4 = key_value(value.c_str());
-        }
-        //
-        else if (attr == "up_2")
-            this->up_2 = key_value(value.c_str());
-        else if (attr == "down_2")
-            this->down_2 = key_value(value.c_str());
-        else if (attr == "left_2")
-            this->left_2 = key_value(value.c_str());
-        else if (attr == "right_2")
-            this->right_2 = key_value(value.c_str());
+            //player controls
+            else if (attr == "up")
+            {
+                if (!ControllerButton(attr, value))
+                    this->up = key_value(value.c_str());
+            }
+            else if (attr == "down")
+            {
+                if (!ControllerButton(attr, value))
+                    this->down = key_value(value.c_str());
+            }
+            else if (attr == "left")
+            {
+                if (!ControllerButton(attr, value))
+                    this->left = key_value(value.c_str());
+            }
+            else if (attr == "right")
+            {
+                if (!ControllerButton(attr, value))
+                    this->right = key_value(value.c_str());
+            }
+            //
+            else if (attr == "special")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b1 = key_value(value.c_str());
+            }
+            else if (attr == "fire")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b2 = key_value(value.c_str());
+            }
+            else if (attr == "weapon_prev")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b3 = key_value(value.c_str());
+            }
+            else if (attr == "weapon_next")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b4 = key_value(value.c_str());
+            }
+            //
+            else if (attr == "up_2")
+                this->up_2 = key_value(value.c_str());
+            else if (attr == "down_2")
+                this->down_2 = key_value(value.c_str());
+            else if (attr == "left_2")
+                this->left_2 = key_value(value.c_str());
+            else if (attr == "right_2")
+                this->right_2 = key_value(value.c_str());
 
-        //controller settings
-        else if (attr == "ctr_aim")
-            this->ctr_aim = AR_ToBool(value);
-        else if (attr == "ctr_aim_x")
-            this->ctr_aim_correctx = AR_ToInt(value);
-        else if (attr == "ctr_cd")
-            this->ctr_cd = AR_ToInt(value);
-        else if (attr == "ctr_rst_s")
-            this->ctr_rst_s = AR_ToInt(value);
-        else if (attr == "ctr_rst_dz")
-            this->ctr_rst_dz = AR_ToInt(value);
-        else if (attr == "ctr_lst_dzx")
-            this->ctr_lst_dzx = AR_ToInt(value);
-        else if (attr == "ctr_lst_dzy")
-            this->ctr_lst_dzy = AR_ToInt(value);
-        else if (attr == "quick_save" || attr == "quick_load")
-        {
-            int b = 0;
+            //controller settings
+            else if (attr == "ctr_aim")
+                this->ctr_aim = (value == "1");
+            else if (attr == "ctr_aim_x")
+                this->ctr_aim_correctx = std::stoi(value);
+            else if (attr == "ctr_cd")
+                this->ctr_cd = std::stoi(value);
+            else if (attr == "ctr_rst_s")
+                this->ctr_rst_s = std::stoi(value);
+            else if (attr == "ctr_rst_dz")
+                this->ctr_rst_dz = std::stoi(value);
+            else if (attr == "ctr_lst_dzx")
+                this->ctr_lst_dzx = std::stoi(value);
+            else if (attr == "ctr_lst_dzy")
+                this->ctr_lst_dzy = std::stoi(value);
+            else if (attr == "quick_save" || attr == "quick_load")
+            {
+                int b = 0;
 
-            if (value == "ctr_a")
-                b = SDL_CONTROLLER_BUTTON_A;
-            else if (value == "ctr_b")
-                b = SDL_CONTROLLER_BUTTON_B;
-            else if (value == "ctr_x")
-                b = SDL_CONTROLLER_BUTTON_X;
-            else if (value == "ctr_y")
-                b = SDL_CONTROLLER_BUTTON_Y;
-            else if (value == "ctr_left_stick")
-                b = SDL_CONTROLLER_BUTTON_LEFTSTICK;
-            else if (value == "ctr_right_stick")
-                b = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
-            else if (value == "ctr_left_shoulder")
-                b = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
-            else if (value == "ctr_right_shoulder")
-                b = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
+                if (value == "ctr_a")
+                    b = SDL_CONTROLLER_BUTTON_A;
+                else if (value == "ctr_b")
+                    b = SDL_CONTROLLER_BUTTON_B;
+                else if (value == "ctr_x")
+                    b = SDL_CONTROLLER_BUTTON_X;
+                else if (value == "ctr_y")
+                    b = SDL_CONTROLLER_BUTTON_Y;
+                else if (value == "ctr_left_stick")
+                    b = SDL_CONTROLLER_BUTTON_LEFTSTICK;
+                else if (value == "ctr_right_stick")
+                    b = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+                else if (value == "ctr_left_shoulder")
+                    b = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
+                else if (value == "ctr_right_shoulder")
+                    b = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
 
-            if (attr == "quick_save")
-                this->ctr_f5 = b;
+                if (attr == "quick_save")
+                    this->ctr_f5 = b;
+                else
+                    this->ctr_f9 = b;
+            }
             else
-                this->ctr_f9 = b;
+            {
+                printf("Ignoring unknown command \"%s\" in %s\n", line.c_str(), file_path.c_str());
+                continue;
+            }
         }
-        else
+        catch (const std::exception &e)
         {
-            filein.close();
-
-            std::string tmp = "ERROR - ReadConfigFile() - Bad command \"" + line + "\"\n";
-            printf(tmp.c_str());
-
-            return CreateConfigFile(file_path);
+            printf("Ignoring invalid value \"%s\" in %s\n", line.c_str(), file_path.c_str());
+            continue;
         }
     }
 
