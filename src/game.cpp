@@ -745,6 +745,12 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
     else
         main_screen->dirt_off();
 
+    if (dev & DRAW_PEOPLE_LAYER && interpolate)
+    {
+        current_level->interpolate_object_positions(elapsedMsFixed);
+        the_game->UpdateViews();
+    }
+
     int32_t xoff = v->xoff();
     int32_t yoff = v->yoff();
 
@@ -943,15 +949,10 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
     int32_t ro = rand_on;
     if (dev & DRAW_PEOPLE_LAYER)
     {
+        current_level->draw_objects(v);
         if (interpolate)
         {
-            current_level->interpolate_draw_objects(elapsedMsFixed);
-            current_level->interpolation_restore_positions();
-        }
-        else
-        {
-            current_level->draw_objects(v);
-            the_game->UpdateViews();
+            current_level->restore_object_positions();
         }
     }
 
