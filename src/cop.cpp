@@ -1011,8 +1011,11 @@ void *sgun_ai()
                  who->get_object(0)->aistate() == 0))
     {
         o->lvars[sgb_lifetime] = 0;
-        game_object *n = create(S_EXPLODE5, o->x + jrand() % 4, o->y + jrand() % 4);
+        int32_t x = o->x + jrand() % 4;
+        int32_t y = o->y + jrand() % 4;
+        game_object *n = create(S_EXPLODE5, x, y);
         current_level->add_object(n);
+        the_game->play_sound(S_LPING_SND, 50, x, y);
     }
     else if (who && figures[who->otype]->get_cflag(CFLAG_HURTABLE))
     {
