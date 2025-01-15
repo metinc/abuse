@@ -132,6 +132,7 @@ class Game
 
     void Step();
     void UpdateViews();
+    void show_help(const std::string &msg);
     void show_help(char const *st);
     void draw_value(image *screen, int x, int y, int w, int h, int val, int max);
     unsigned char get_color(int x)

@@ -521,6 +521,11 @@ void Game::menu_select(Event &ev)
     }
 }
 
+void Game::show_help(const std::string &msg)
+{
+    show_help(msg.c_str());
+}
+
 void Game::show_help(const char *msg)
 {
     strcpy(help_text, msg);

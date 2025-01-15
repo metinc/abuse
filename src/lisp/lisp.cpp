@@ -2992,7 +2992,7 @@ LObject *LObject::Eval()
             ret = ((LSymbol *)CAR(this))->EvalFunction(CDR(this));
             break;
         default:
-            fprintf(stderr, "shouldn't happen\n");
+            fprintf(stderr, "Unexpected LObject type %d\n", this->m_type);
             break;
         }
     }

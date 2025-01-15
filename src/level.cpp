@@ -19,6 +19,7 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
+#include <errno.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -2268,10 +2269,11 @@ int level::save(char const *filename, int save_all)
     //AR clisp.case 223 saves the game in game
 
     char name[255], bkname[255];
-
     sprintf(name, "%s%s", get_save_filename_prefix(), filename);
     sprintf(bkname, "%slevsave.bak", get_save_filename_prefix());
-    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup)) // make a backup
+
+    // If keep_backup is defined, create a backup
+    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup))
     {
         bFILE *fp = open_file(name, "rb"); // does file already exist?
         if (!fp->open_failure())
@@ -2279,17 +2281,23 @@ int level::save(char const *filename, int save_all)
             unlink(bkname);
             bFILE *bk = open_file(bkname, "wb");
             if (bk->open_failure())
-                printf("unable to open backup file %s\n", bkname);
+            {
+                int savedErr = errno;
+                const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
+                printf("Unable to open backup file '%s': %s\n", bkname, reason);
+            }
             else
             {
                 uint8_t buf[0x1000];
                 int32_t size = fp->file_size();
-                int tr = 1;
-                while (size && tr)
+                while (size > 0)
                 {
                     int tr = fp->read(buf, 0x1000);
-                    if (tr)
-                        tr = bk->write(buf, tr);
+                    if (tr <= 0)
+                        break; // some read error or end of file
+                    int wr = bk->write(buf, tr);
+                    if (wr <= 0)
+                        break; // write error
                     size -= tr;
                 }
             }
@@ -2301,7 +2309,7 @@ int level::save(char const *filename, int save_all)
         delete fp;
     }
 
-    // if we are not doing a savegame then change the first_name to this name
+    // If we are not doing a savegame, set first_name
     if (!save_all)
     {
         if (first_name)
@@ -2314,14 +2322,14 @@ int level::save(char const *filename, int save_all)
         players = NULL;
     else
         players = make_player_onodes();
-
-    objs = make_not_list(players); // negate the above list
+    objs = make_not_list(players); // the complement list
 
     bFILE *fp = create_dir(name, save_all, objs, players);
-    if (fp != NULL)
+    if (fp)
     {
         if (!fp->open_failure())
         {
+            // Proceed with normal saving
             if (first_name)
             {
                 fp->write_uint8(strlen(first_name) + 1);
@@ -2338,43 +2346,45 @@ int level::save(char const *filename, int save_all)
 
             int t = fg_width * fg_height;
             uint16_t *rm = map_fg;
+            // Convert to Intel endianness
             for (; t; t--, rm++)
             {
                 uint16_t x = *rm;
-                x = lstl(x); // convert to intel endianess
+                x = lstl(x);
                 *rm = x;
             }
-
             fp->write((char *)map_fg, 2 * fg_width * fg_height);
+
+            // Convert back
             t = fg_width * fg_height;
             rm = map_fg;
             for (; t; t--, rm++)
             {
                 uint16_t x = *rm;
-                x = lstl(x); // convert to intel endianess
+                x = lstl(x);
                 *rm = x;
             }
 
             fp->write_uint32(bg_width);
             fp->write_uint32(bg_height);
+
             t = bg_width * bg_height;
             rm = map_bg;
-
             for (; t; t--, rm++)
             {
                 uint16_t x = *rm;
-                x = lstl(x); // convert to intel endianess
+                x = lstl(x);
                 *rm = x;
             }
-
             fp->write((char *)map_bg, 2 * bg_width * bg_height);
-            rm = map_bg;
-            t = bg_width * bg_height;
 
+            // Convert back
+            t = bg_width * bg_height;
+            rm = map_bg;
             for (; t; t--, rm++)
             {
                 uint16_t x = *rm;
-                x = lstl(x); // convert to intel endianess
+                x = lstl(x);
                 *rm = x;
             }
 
@@ -2382,6 +2392,7 @@ int level::save(char const *filename, int save_all)
             write_objects(fp, objs);
             write_lights(fp);
             write_links(fp, objs, players);
+
             if (save_all)
             {
                 write_player_info(fp, objs);
@@ -2396,17 +2407,23 @@ int level::save(char const *filename, int save_all)
         }
         else
         {
-            the_game->show_help("Unable to open file for saving\n");
+            // We got an fp, but open_failure() is true => cannot write
+            int savedErr = errno;
+            const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
+            the_game->show_help(std::string("Error: ") + reason);
+            printf("Unable to open '%s' for saving: %s\n", name, reason);
             delete fp;
             return 0;
         }
     }
     else
     {
-        the_game->show_help("Unable to open file for saving.\n");
-        printf("\nFailed to save game.\n");
-        printf("I was trying to save to: '%s'\n\tPath: '%s'\n\tFile: '%s'\n", name, get_save_filename_prefix(),
-               filename);
+        // create_dir() returned NULL
+        // Possibly the directory doesn't exist or we can't create it
+        int savedErr = errno;
+        const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
+        the_game->show_help(std::string("Error: ") + reason);
+        printf("Unable to open '%s' for saving: %s\n", name, reason);
         return 0;
     }
 
