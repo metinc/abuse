@@ -1368,7 +1368,7 @@ LObject *LSymbol::EvalFunction(void *arg_list)
     default:
         Print();
         lbreak(" is not a function name");
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
         break;
     }
 
@@ -1381,16 +1381,16 @@ LObject *LSymbol::EvalFunction(void *arg_list)
         if (args < req_min)
         {
             ((LObject *)arg_list)->Print();
-            m_name->Print();
-            lbreak("\nToo few parameters to function\n");
-            exit(EXIT_SUCCESS);
+            printf("Function %s expected a minimum of %d parameter(s) but received %d.\n", m_name->GetString(), req_min,
+                   args);
+            exit(EXIT_FAILURE);
         }
         else if (req_max != -1 && args > req_max)
         {
             ((LObject *)arg_list)->Print();
-            m_name->Print();
-            lbreak("\nToo many parameters to function\n");
-            exit(EXIT_SUCCESS);
+            printf("Function %s expected a maximum of %d parameter(s) but received %d.\n", m_name->GetString(), req_max,
+                   args);
+            exit(EXIT_FAILURE);
         }
     }
 #endif
