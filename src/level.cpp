@@ -2407,7 +2407,6 @@ int level::save(char const *filename, int save_all)
         printf("\nFailed to save game.\n");
         printf("I was trying to save to: '%s'\n\tPath: '%s'\n\tFile: '%s'\n", name, get_save_filename_prefix(),
                filename);
-        printf("\nPlease send an email to:\n\ttrandor@labyrinth.net.au\nwith these details.\nThanks.\n");
         return 0;
     }
 
