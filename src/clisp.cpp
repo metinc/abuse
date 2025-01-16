@@ -288,6 +288,7 @@ void clisp_init() // call by lisp_init, defines symbols and functions
     add_c_bool_fun("link_object", 1, 1, 91);
 
     add_c_bool_fun("draw_line", 5, 5, 92);
+    add_c_bool_fun("draw_laser", 6, 6, 302);
     add_c_function("dark_color", 0, 0, 93);
     add_c_function("medium_color", 0, 0, 94);
     add_c_function("bright_color", 0, 0, 95);
@@ -1538,6 +1539,40 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
+    case 302: {
+        int32_t x1 = lnumber_value(CAR(args));
+        args = lcdr(args);
+        int32_t y1 = lnumber_value(CAR(args));
+        args = lcdr(args);
+        int32_t x2 = lnumber_value(CAR(args));
+        args = lcdr(args);
+        int32_t y2 = lnumber_value(CAR(args));
+        args = lcdr(args);
+        int32_t medium_color = lnumber_value(CAR(args));
+        args = lcdr(args);
+        int32_t bright_color = lnumber_value(CAR(args));
+
+        ivec2 pos1 = the_game->GameToMouse(ivec2(x1, y1 - 1), current_view);
+        ivec2 pos2 = the_game->GameToMouse(ivec2(x2, y2 - 1), current_view);
+        main_screen->Line(pos1, pos2, medium_color);
+
+        pos1 = the_game->GameToMouse(ivec2(x1, y1 + 1), current_view);
+        pos2 = the_game->GameToMouse(ivec2(x2, y2 + 1), current_view);
+        main_screen->Line(pos1, pos2, medium_color);
+
+        pos1 = the_game->GameToMouse(ivec2(x1 - 1, y1), current_view);
+        pos2 = the_game->GameToMouse(ivec2(x2 - 1, y2), current_view);
+        main_screen->Line(pos1, pos2, medium_color);
+
+        pos1 = the_game->GameToMouse(ivec2(x1 + 1, y1), current_view);
+        pos2 = the_game->GameToMouse(ivec2(x2 + 1, y2), current_view);
+        main_screen->Line(pos1, pos2, medium_color);
+
+        pos1 = the_game->GameToMouse(ivec2(x1, y1), current_view);
+        pos2 = the_game->GameToMouse(ivec2(x2, y2), current_view);
+        main_screen->Line(pos1, pos2, bright_color);
+        return 1;
+    }
     case 93:
         return wm->dark_color();
         break;
