@@ -1531,10 +1531,10 @@ long c_caller(long number, void *args)
         args = lcdr(args);
         int32_t y2 = lnumber_value(CAR(args));
         args = lcdr(args);
-        int32_t c = lnumber_value(CAR(args));
+        int32_t color = lnumber_value(CAR(args));
         ivec2 pos1 = the_game->GameToMouse(ivec2(x1, y1), current_view);
         ivec2 pos2 = the_game->GameToMouse(ivec2(x2, y2), current_view);
-        main_screen->Line(pos1, pos2, c);
+        main_screen->Line(pos1, pos2, color);
         return 1;
     }
     break;

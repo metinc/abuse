@@ -982,6 +982,7 @@ void *bottom_draw()
     return NULL;
 }
 
+// Updates the laser projectile
 void *sgun_ai()
 {
     game_object *o = current_object;
@@ -1004,11 +1005,11 @@ void *sgun_ai()
     current_object->set_yvel(yvel >> 16);
     current_object->set_fyvel((yvel & 0xffff) >> 8);
 
-    int whit = 0;
-    game_object *who = o->bmove(whit, o->total_objects() ? o->get_object(0) : 0);
+    int collision = 0;
+    game_object *who = o->bmove(collision, o->total_objects() ? o->get_object(0) : 0);
 
-    if (whit || (who && figures[who->otype]->get_cflag(CFLAG_UNACTIVE_SHIELD) && who->total_objects() &&
-                 who->get_object(0)->aistate() == 0))
+    if (collision || (who && figures[who->otype]->get_cflag(CFLAG_UNACTIVE_SHIELD) && who->total_objects() &&
+                      who->get_object(0)->aistate() == 0))
     {
         o->lvars[sgb_lifetime] = 0;
         int32_t x = o->x + jrand() % 4;

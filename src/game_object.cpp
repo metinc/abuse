@@ -1568,7 +1568,7 @@ int game_object::mover(int cx, int cy, int button) // return false if the route 
     return tick_stat;
 }
 
-game_object *game_object::bmove(int &whit, game_object *exclude)
+game_object *game_object::bmove(int &collision, game_object *exclude)
 {
 
     // first let's move the guy acording to his physics
@@ -1605,7 +1605,7 @@ game_object *game_object::bmove(int &whit, game_object *exclude)
     {
         if (!ret->hurtable()) // object is not hurtable, return as if hit wall.
         {
-            whit = 1;
+            collision = 1;
             return NULL;
         }
         else
@@ -1613,7 +1613,7 @@ game_object *game_object::bmove(int &whit, game_object *exclude)
     }
     else
     {
-        whit = (nx != ox2 || ny != oy2);
+        collision = (nx != ox2 || ny != oy2);
         return NULL;
     }
 }
