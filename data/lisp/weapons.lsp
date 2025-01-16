@@ -426,7 +426,7 @@
 
 ; Draws a laser projectile
 (defun sgun_draw ()
-  (draw_laser sgb_lastx sgb_lasty (x) (y) sgb_medium_color sgb_bright_color)
+  (draw_laser sgb_lastx sgb_lasty sgb_angle sgb_medium_color sgb_bright_color)
 )
 
 

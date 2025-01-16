@@ -288,7 +288,7 @@ void clisp_init() // call by lisp_init, defines symbols and functions
     add_c_bool_fun("link_object", 1, 1, 91);
 
     add_c_bool_fun("draw_line", 5, 5, 92);
-    add_c_bool_fun("draw_laser", 6, 6, 302);
+    add_c_bool_fun("draw_laser", 5, 5, 302);
     add_c_function("dark_color", 0, 0, 93);
     add_c_function("medium_color", 0, 0, 94);
     add_c_function("bright_color", 0, 0, 95);
@@ -1540,17 +1540,32 @@ long c_caller(long number, void *args)
     }
     break;
     case 302: {
-        int32_t x1 = lnumber_value(CAR(args));
+        int32_t origin_x = lnumber_value(CAR(args));
         args = lcdr(args);
-        int32_t y1 = lnumber_value(CAR(args));
+        int32_t origin_y = lnumber_value(CAR(args));
         args = lcdr(args);
-        int32_t x2 = lnumber_value(CAR(args));
-        args = lcdr(args);
-        int32_t y2 = lnumber_value(CAR(args));
+        int32_t angle_deg = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t medium_color = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t bright_color = lnumber_value(CAR(args));
+
+        int32_t x1 = current_object->x;
+        int32_t y1 = current_object->y;
+
+        double angle_rad = angle_deg * (M_PI / 180.0);
+
+        int32_t dx = x1 - origin_x;
+        int32_t dy = y1 - origin_y;
+        double dist = sqrt(dx * dx + dy * dy);
+
+        if (dist > 20.0)
+        {
+            dist = 20.0;
+        }
+
+        int32_t x2 = x1 - std::lround(dist * cos(angle_rad));
+        int32_t y2 = y1 + std::lround(dist * sin(angle_rad));
 
         ivec2 pos1 = the_game->GameToMouse(ivec2(x1, y1 - 1), current_view);
         ivec2 pos2 = the_game->GameToMouse(ivec2(x2, y2 - 1), current_view);

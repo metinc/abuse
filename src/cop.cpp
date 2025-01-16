@@ -991,8 +991,6 @@ void *sgun_ai()
         return NULL;
     o->lvars[sgb_lifetime]--;
 
-    o->lvars[sgb_lastx] = o->x;
-    o->lvars[sgb_lasty] = o->y;
     o->lvars[sgb_speed] = o->lvars[sgb_speed] * 6 / 5;
 
     int32_t ang = o->lvars[sgb_angle];
