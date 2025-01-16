@@ -897,7 +897,6 @@ void view::reset_player()
         {
             m_focus->x = start->x;
             m_focus->y = start->y;
-            printf("reset player position to %d %d\n", start->x, start->y);
         }
         m_focus->set_state(stopped);
         m_focus->set_tint(_tint);
