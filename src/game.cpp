@@ -1042,6 +1042,9 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         //    if(!(dev & EDIT_MODE))
         //      server_check();
 
+        if (dev_cont)
+            dev_cont->dev_draw(v);
+
         if (dev & DRAW_HELP_LAYER)
         {
             if (help_active)
@@ -1084,9 +1087,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
                 }
             }
         }
-
-        if (dev_cont)
-            dev_cont->dev_draw(v);
 
         //AR this is showing that annoying flashing icon in bottom-left corner, so I disabled it
         //if(cache.in_use()) main_screen->PutImage(cache.img(vmm_image), ivec2(v->m_aa.x, v->m_bb.y - cache.img(vmm_image)->Size().y+1));
