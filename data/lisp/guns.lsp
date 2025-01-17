@@ -203,41 +203,58 @@
 
 (defun spray_gun_ai ()
   (if (<= (hp) 0)
+      ;; If dead, do nothing
       nil
+    ;; If within sensor range:
     (if (and (< (distx) 450) (< (disty) 400))
 	(progn
 	  (select (aistate)
-		  (0;; look at sensor
+            ;;--------------------------------------------------------
+            (0 ;; LOOK AT SENSOR
 		   (if (activated)
+                   ;; Sensor ON
 		       (if (eq (state) stopped)
 			   (progn
 			     (set_targetable T)
+                         ;; Go from stopped (closed) to opening:
 			     (set_state spray.appear)
 			     (go_state 1))
 			 (go_state 3))
+                 ;; Sensor OFF
 		     (progn
 		       (set_targetable nil)
-		       (set_state stopped))))
+                   ;; Only fold up if it's not already closed:
+                   (if (not (eq (state) stopped))
+                       (progn
+                         (set_state spray.disappear)
+                         (go_state 2))
+                     (set_state stopped)))))
 
-
-		  (1;; unfold
-		   (if (next_picture) T
-		     (progn (set_aistate 3)
+            ;;--------------------------------------------------------
+            (1 ;; UNFOLD (spray.appear)
+               (if (next_picture)
+                   T
+                 ;; Once animation ends, go to aim state:
+                 (progn
+                   (set_aistate 3)
 			    (set_state spray.aim)
 			    (setq spray.angle spray.start_angle)
-			    (set_frame_angle 0 359 spray.angle)
-			    )))
+                   (set_frame_angle 0 359 spray.angle))))
 
-		  (2;; fold up
-		   (if (next_picture) T
-		     (progn (set_state stopped)
+            ;;--------------------------------------------------------
+            (2 ;; FOLD UP (spray.disappear)
+               (if (next_picture)
+                   T
+                 ;; Once the closing animation ends, set to closed/stopped
+                 (progn
+                   (set_state stopped)
 			    (set_aistate 0))))
 
-
-		  (3;; swivel down
+            ;;--------------------------------------------------------
+            (3 ;; SWIVEL DOWN / FIRE
 		   (if (> (state_time) spray.fire_delay)
 		       (progn
-			 (set_aistate 3);; reset state time
+                     (set_aistate 3) ;; reset state time
 			 (setq spray.angle (- spray.angle spray.angle_speed))
 			 (if (<= spray.angle spray.start_angle)
 			     (progn
@@ -246,19 +263,20 @@
 			 (set_frame_angle 0 359 spray.angle)
 			 (spray_fire))))
 
-		  (4;; swivel up
+            (4 ;; SWIVEL UP / FIRE
 		   (if (> (state_time) spray.fire_delay)
 		       (progn
-			 (set_aistate 4);; reset state time
+                     (set_aistate 4) ;; reset state time
 			 (setq spray.angle (+ spray.angle spray.angle_speed))
 			 (if (>= spray.angle spray.end_angle)
 			     (progn
 			       (setq spray.angle spray.end_angle)
 			       (set_aistate 0)))
 			 (set_frame_angle 0 359 spray.angle)
-
 			 (spray_fire)))))
+
 	  T)
+      ;; Outside sensor range: do nothing but stop
       (progn
 	(set_state stopped)
 	T))))
