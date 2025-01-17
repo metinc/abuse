@@ -115,7 +115,9 @@ void set_mode(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    //AR OpenGL
+    // OpenGL
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
     glcontext = SDL_GL_CreateContext(window);
 
     if (settings.vsync)
@@ -128,7 +130,6 @@ void set_mode(int argc, char **argv)
     else
         SDL_GL_SetSwapInterval(0);
 
-    glPushAttrib(GL_ENABLE_BIT);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
 
@@ -495,32 +496,59 @@ void update_window_done()
     //map the surface to the texture in video memory
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen->w, screen->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, screen->pixels);
 
-    glBegin(GL_POLYGON);
+    static GLfloat quadVertices[8];
+    static GLfloat quadTexCoords[8];
+
     if (ar_fullscreen)
     {
         //expand from center so we can scale
-        glTexCoord2f(0, 0);
-        glVertex2i(desktop.w / 2 - ogl_w / 2, desktop.h / 2 - ogl_h / 2);
-        glTexCoord2f(1, 0);
-        glVertex2i(desktop.w / 2 + ogl_w / 2, desktop.h / 2 - ogl_h / 2);
-        glTexCoord2f(1, 1);
-        glVertex2i(desktop.w / 2 + ogl_w / 2, desktop.h / 2 + ogl_h / 2);
-        glTexCoord2f(0, 1);
-        glVertex2i(desktop.w / 2 - ogl_w / 2, desktop.h / 2 + ogl_h / 2);
+        quadVertices[0] = desktop.w / 2 - ogl_w / 2;
+        quadVertices[1] = desktop.h / 2 - ogl_h / 2;
+        quadVertices[2] = desktop.w / 2 + ogl_w / 2;
+        quadVertices[3] = desktop.h / 2 - ogl_h / 2;
+        quadVertices[4] = desktop.w / 2 - ogl_w / 2;
+        quadVertices[5] = desktop.h / 2 + ogl_h / 2;
+        quadVertices[6] = desktop.w / 2 + ogl_w / 2;
+        quadVertices[7] = desktop.h / 2 + ogl_h / 2;
+
+        quadTexCoords[0] = 0.0f;
+        quadTexCoords[1] = 0.0f;
+        quadTexCoords[2] = 1.0f;
+        quadTexCoords[3] = 0.0f;
+        quadTexCoords[4] = 0.0f;
+        quadTexCoords[5] = 1.0f;
+        quadTexCoords[6] = 1.0f;
+        quadTexCoords[7] = 1.0f;
     }
     else
     {
         //match window size
-        glTexCoord2f(0, 0);
-        glVertex2i(0, 0);
-        glTexCoord2f(1, 0);
-        glVertex2i(window_w, 0);
-        glTexCoord2f(1, 1);
-        glVertex2i(window_w, window_h);
-        glTexCoord2f(0, 1);
-        glVertex2i(0, window_h);
+        quadVertices[0] = 0;
+        quadVertices[1] = 0;
+        quadVertices[2] = window_w;
+        quadVertices[3] = 0;
+        quadVertices[4] = 0;
+        quadVertices[5] = window_h;
+        quadVertices[6] = window_w;
+        quadVertices[7] = window_h;
+
+        quadTexCoords[0] = 0.0f;
+        quadTexCoords[1] = 0.0f;
+        quadTexCoords[2] = 1.0f;
+        quadTexCoords[3] = 0.0f;
+        quadTexCoords[4] = 0.0f;
+        quadTexCoords[5] = 1.0f;
+        quadTexCoords[6] = 1.0f;
+        quadTexCoords[7] = 1.0f;
     }
-    glEnd();
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, quadVertices);
+    glTexCoordPointer(2, GL_FLOAT, 0, quadTexCoords);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
 
     SDL_GL_SwapWindow(window);
     //
