@@ -47,13 +47,6 @@
 
 CrcManager crc_manager;
 
-int past_startup = 0;
-
-int crc_man_write_crc_file(char const *filename)
-{
-    return crc_manager.write_crc_file(filename);
-}
-
 int CrcManager::write_crc_file(char const *filename) // return 0 on failure
 {
     char msg[100];
@@ -1091,61 +1084,6 @@ LObject *CacheList::lblock(int id)
 }
 
 CacheList cache;
-
-void CacheList::free_oldest()
-{
-    int32_t old_time = last_access;
-    CacheItem *ci = list, *oldest = NULL;
-    ful = 1;
-
-    for (int i = 0; i < total; i++, ci++)
-    {
-        if (ci->data && ci->last_access < old_time)
-        {
-            oldest = ci;
-            old_time = ci->last_access;
-        }
-    }
-    if (oldest)
-    {
-        printf("mem_maker : freeing %s\n", spec_types[oldest->type]);
-        unmalloc(oldest);
-    }
-    else
-    {
-        close_graphics();
-        printf("Out of memory, please remove any TSR's device drivers you can\n");
-        exit(EXIT_FAILURE);
-    }
-}
-
-void CacheList::show_accessed()
-{
-    int old = last_access, new_old_accessed;
-    CacheItem *ci, *new_old;
-
-    do
-    {
-        new_old_accessed = -1;
-        new_old = NULL;
-        ci = list;
-        for (int i = 0; i < total; i++, ci++)
-        {
-            if (ci->last_access < old && ci->last_access > 0 && ci->last_access > new_old_accessed)
-            {
-                new_old_accessed = ci->last_access;
-                new_old = ci;
-            }
-        }
-        if (new_old)
-        {
-            ci = new_old;
-            old = ci->last_access;
-            printf("type=(%20s) file=(%20s) access=(%6ld)\n", spec_types[ci->type],
-                   crc_manager.get_filename(ci->file_number), (long int)ci->last_access);
-        }
-    } while (new_old);
-}
 
 int CacheList::loaded(int id)
 {

@@ -105,7 +105,6 @@ class CacheList
     CacheList();
     ~CacheList();
 
-    void free_oldest();
     int in_use()
     {
         if (used)
@@ -160,7 +159,6 @@ class CacheList
     // sarray is a index table sorted by offset/filenum
     int search(int *sarray, uint16_t filenum, int32_t offset);
 
-    void show_accessed();
     void empty();
 };
 

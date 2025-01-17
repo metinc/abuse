@@ -37,8 +37,6 @@
 #include "nfserver.h"
 #include "specache.h"
 
-extern int past_startup;
-
 property_manager *prop;
 int *backtiles;
 int *foretiles;
@@ -468,7 +466,6 @@ void load_data(int argc, char **argv)
 #endif
 
     sd_cache.clear();
-    past_startup = 1;
 #if 0
     free( cachepath );
 #endif
