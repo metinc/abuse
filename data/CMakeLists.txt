@@ -2,6 +2,7 @@ INSTALL(FILES
     abuse.lsp
     edit.lsp
     user/hardness.lsp
+    icon.bmp
 DESTINATION ${ASSETDIR})
 
 # No idea what this was for

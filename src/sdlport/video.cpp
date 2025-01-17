@@ -103,9 +103,6 @@ void set_mode(int argc, char **argv)
     if (settings.borderless)
         window_type |= SDL_WINDOW_BORDERLESS;
 
-    // FIXME: Set the icon for this window.  Looks nice on taskbars etc.
-    //SDL_WM_SetIcon(SDL_LoadBMP("abuse.bmp"), NULL);
-
     window = SDL_CreateWindow("Abuse", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h,
                               window_type | SDL_WINDOW_OPENGL);
 
@@ -113,6 +110,15 @@ void set_mode(int argc, char **argv)
     {
         show_startup_error("Video : Unable to create window : %s", SDL_GetError());
         exit(EXIT_FAILURE);
+    }
+
+    // Load the window icon
+    std::string tmp_name = std::string(get_filename_prefix()) + "icon.bmp";
+
+    if (SDL_Surface *icon = SDL_LoadBMP(tmp_name.c_str()); icon != nullptr)
+    {
+        SDL_SetWindowIcon(window, icon);
+        SDL_FreeSurface(icon);
     }
 
     // OpenGL
