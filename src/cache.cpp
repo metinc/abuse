@@ -791,9 +791,9 @@ void CacheList::locate(CacheItem *i, int local_only)
 
         if (fp->open_failure())
         {
-            printf("Ooch. Could not open file %s\n", crc_manager.get_filename(i->file_number));
+            printf("Unable to open file %s\n", crc_manager.get_filename(i->file_number));
             delete fp;
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
 
         last_offset = -1;
@@ -885,13 +885,13 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
             if (memcmp(buf, "RIFF", 4))
             {
                 printf("File %s is not a WAV file\n", filename);
-                exit(EXIT_SUCCESS);
+                exit(EXIT_FAILURE);
             }
         }
         else if (sound_avail)
         {
             printf("Unable to open file '%s' for reading\n", filename);
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
         delete check;
     }
@@ -903,7 +903,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
         if (!sd)
         {
             printf("Unable to open file %s for item %s\n", filename, name);
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
 
         spec_entry *se = NULL;
@@ -914,7 +914,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
         if (!se)
         {
             printf("No such item %s in file %s\n", name, filename);
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
 
         if (type >= 0 && type != se->type &&
@@ -922,7 +922,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
              (se->type != SPEC_CHARACTER && se->type != SPEC_CHARACTER2)))
         {
             printf("Item %s of file %s should be type %s\n", name, filename, spec_types[type]);
-            exit(EXIT_SUCCESS);
+            exit(EXIT_FAILURE);
         }
 
         type = se->type;
@@ -1115,7 +1115,7 @@ void CacheList::free_oldest()
     {
         close_graphics();
         printf("Out of memory, please remove any TSR's device drivers you can\n");
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
 }
 

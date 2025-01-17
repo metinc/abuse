@@ -341,7 +341,7 @@ void load_data(int argc, char **argv)
     cs = prog;
     if (!LObject::Compile(cs)->Eval())
     {
-        printf("unable to open file '%s'\n", lsf);
+        printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);
     }
     compiled_init();

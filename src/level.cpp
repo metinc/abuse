@@ -2282,9 +2282,7 @@ int level::save(char const *filename, int save_all)
             bFILE *bk = open_file(bkname, "wb");
             if (bk->open_failure())
             {
-                int savedErr = errno;
-                const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
-                printf("Unable to open backup file '%s': %s\n", bkname, reason);
+                printf("Unable to open backup file '%s': %s\n", bkname, strerror(errno));
             }
             else
             {
@@ -2409,7 +2407,7 @@ int level::save(char const *filename, int save_all)
         {
             // We got an fp, but open_failure() is true => cannot write
             int savedErr = errno;
-            const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
+            const char *reason = strerror(savedErr);
             the_game->show_help(std::string("Error: ") + reason);
             printf("Unable to open '%s' for saving: %s\n", name, reason);
             delete fp;
@@ -2421,7 +2419,7 @@ int level::save(char const *filename, int save_all)
         // create_dir() returned NULL
         // Possibly the directory doesn't exist or we can't create it
         int savedErr = errno;
-        const char *reason = (savedErr != 0) ? strerror(savedErr) : "Unknown error";
+        const char *reason = strerror(savedErr);
         the_game->show_help(std::string("Error: ") + reason);
         printf("Unable to open '%s' for saving: %s\n", name, reason);
         return 0;

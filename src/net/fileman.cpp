@@ -582,6 +582,8 @@ int file_manager::rf_open_file(char const *&filename, char const *mode)
         return -2;
     }
 
+    fprintf(stderr, "Unable to open file '%s': %s\n", tmp_name, strerror(errno));
+
     return -1;
 }
 

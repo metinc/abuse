@@ -68,7 +68,7 @@ char const *symbol_str(char const *name)
     cs = prog;
     if (!LObject::Compile(cs)->Eval())
     {
-        printf("unable to open file '%s'\n", lsf);
+        printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);
     }
     LSpace::Current = sp;
