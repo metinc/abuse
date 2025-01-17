@@ -17,6 +17,8 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <math.h>
+#include <sstream>
+#include <iomanip>
 #if defined HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -115,6 +117,14 @@ void set_save_filename_prefix(char const *save_prefix)
 char *get_save_filename_prefix()
 {
     return save_spec_prefix;
+}
+
+std::string get_save_path(int slot)
+{
+    std::ostringstream oss;
+    oss << std::setw(4) << std::setfill('0') << (slot + 1);
+    std::string number_string = oss.str();
+    return std::string(get_save_filename_prefix()) + "save" + number_string + ".spe";
 }
 
 int search_order = SPEC_SEARCH_OUTSIDE_INSIDE;

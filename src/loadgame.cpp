@@ -60,7 +60,6 @@ void load_number_icons()
 
 void last_savegame_name(char *buf)
 {
-    printf("last_savegame_name()\n");
     sprintf(buf, "%ssave%04d.spe", get_save_filename_prefix(),
             (last_save_game_number + MAX_SAVE_GAMES - 1) % MAX_SAVE_GAMES + 1);
 }
@@ -104,12 +103,11 @@ Jwindow *create_num_window(int mx, int total_saved, int lines, image **thumbnail
 
 int get_save_spot()
 {
-    int i = MAX_SAVE_GAMES, last_free = 0;
-    for (; i > 0;)
+    int last_free = 0;
+    for (int i = MAX_SAVE_GAMES; i > 0;)
     {
-        char name[20];
-        sprintf(name, "%ssave%04d.spe", get_save_filename_prefix(), i);
-        FILE *fp = open_FILE(name, "rb");
+        std::string path = get_save_path(i);
+        FILE *fp = open_FILE(path.c_str(), "rb");
         if (fp)
             i = 0;
         else
@@ -163,12 +161,10 @@ void get_savegame_name(char *buf) // buf should be at least 50 bytes
 
 int show_load_icon()
 {
-    int i;
-    for (i = 0; i < MAX_SAVE_GAMES; i++)
+    for (int slot = 0; slot < MAX_SAVE_GAMES; slot++)
     {
-        char nm[255];
-        sprintf(nm, "%ssave%04d.spe", get_save_filename_prefix(), i + 1);
-        bFILE *fp = open_file(nm, "rb");
+        std::string path = get_save_path(slot + 1);
+        bFILE *fp = open_file(path.c_str(), "rb");
         if (fp->open_failure())
         {
             delete fp;
@@ -191,19 +187,17 @@ int load_game(int show_all,
 
     int total_saved = 0;
     image *thumbnails[MAX_SAVE_GAMES];
-    int start_num = 0;
     int max_w = 160, max_h = 100;
     memset(thumbnails, 0, sizeof(thumbnails));
 
     image *first = NULL;
 
-    for (start_num = 0; start_num < MAX_SAVE_GAMES; start_num++)
+    for (int slot = 0; slot < MAX_SAVE_GAMES; slot++)
     {
-        char name[255];
         int fail = 0;
 
-        sprintf(name, "%ssave%04d.spe", get_save_filename_prefix(), start_num + 1);
-        bFILE *fp = open_file(name, "rb");
+        std::string path = get_save_path(slot);
+        bFILE *fp = open_file(path.c_str(), "rb");
         if (fp->open_failure())
         {
             fail = 1;
@@ -214,13 +208,13 @@ int load_game(int show_all,
             spec_entry *se = sd.find("thumb nail");
             if (se && se->type == SPEC_IMAGE)
             {
-                thumbnails[start_num] = new image(fp, se);
-                if (thumbnails[start_num]->Size().x > max_w)
-                    max_w = thumbnails[start_num]->Size().x;
-                if (thumbnails[start_num]->Size().y > max_h)
-                    max_h = thumbnails[start_num]->Size().y;
+                thumbnails[slot] = new image(fp, se);
+                if (thumbnails[slot]->Size().x > max_w)
+                    max_w = thumbnails[slot]->Size().x;
+                if (thumbnails[slot]->Size().y > max_h)
+                    max_h = thumbnails[slot]->Size().y;
                 if (!first)
-                    first = thumbnails[start_num];
+                    first = thumbnails[slot];
                 total_saved++;
             }
             else
@@ -228,12 +222,12 @@ int load_game(int show_all,
         }
         if (fail && show_all)
         {
-            thumbnails[start_num] = new image(ivec2(160, 100));
-            thumbnails[start_num]->clear();
-            console_font->PutString(thumbnails[start_num], ivec2(0), symbol_str("no_saved"));
+            thumbnails[slot] = new image(ivec2(160, 100));
+            thumbnails[slot]->clear();
+            console_font->PutString(thumbnails[slot], ivec2(0), symbol_str("no_saved"));
             total_saved++;
             if (!first)
-                first = thumbnails[start_num];
+                first = thumbnails[slot];
         }
         delete fp;
     }

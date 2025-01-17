@@ -380,8 +380,7 @@ void EventHandler::SysEvent(Event &ev)
                 {
                     the_game->show_help("Station secured!");
                     cache.sfx(1031)->play(127); //id 1031 should be save05.wav
-                    settings.quick_load = get_save_filename_prefix();
-                    settings.quick_load += "save0001.spe";
+                    settings.quick_load = get_save_path(1);
                 }
             }
             ev.key = JK_F5;
@@ -519,8 +518,7 @@ void EventHandler::SysEvent(Event &ev)
                     {
                         the_game->show_help("Station secured!");
                         cache.sfx(1031)->play(127); //id 1031 should be save05.wav
-                        settings.quick_load = get_save_filename_prefix();
-                        settings.quick_load += "save0001.spe";
+                        settings.quick_load = get_save_path(1);
                     }
                 }
             ev.type = sdlev.type == SDL_CONTROLLERBUTTONDOWN ? EV_KEY : EV_KEYRELEASE;

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <cstdint>
 #include <string.h>
+#include <string>
 
 #include "linked.h"
 
@@ -88,6 +89,7 @@ void set_filename_prefix(char const *prefix);
 char *get_filename_prefix();
 void set_save_filename_prefix(char const *prefix);
 char *get_save_filename_prefix();
+std::string get_save_path(int slot);
 #define JFILE_CLONED 1
 
 class bFILE // base file type which other files should be derived from (jFILE & NFS for now)
