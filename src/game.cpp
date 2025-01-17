@@ -2073,8 +2073,7 @@ void Game::UpdateViews()
 {
     if (!(dev & EDIT_MODE))
     {
-        view *v;
-        for (v = first_view; v; v = v->next)
+        for (view *v = first_view; v; v = v->next)
             v->update_scroll();
     }
 }
