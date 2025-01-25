@@ -41,6 +41,7 @@
 #include "chat.h"
 #include "jdir.h"
 #include "netcfg.h"
+#include "funcs.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -490,81 +491,16 @@ void clisp_init() // call by lisp_init, defines symbols and functions
     add_c_bool_fun("set_object_team", 1, 1, 1003); // set_object_team
     add_c_function("get_object_team", 0, 0, 1004); // get_object_tint
 
-    add_lisp_function("go_state", 1, 1, 0);
-    add_lisp_function("with_object", 2, -1, 1);
-    add_lisp_function("bmove", 0, 1, 2); // returns true=unblocked, nil=block, or object
-    add_lisp_function("me", 0, 0, 3);
-    add_lisp_function("bg", 0, 0, 4);
-    add_lisp_function("find_closest", 1, 1, 5);
-    add_lisp_function("find_xclosest", 1, 1, 6);
-    add_lisp_function("find_xrange", 2, 2, 7);
-    add_lisp_function("add_object", 3, 4, 8); // type, x,y (type)
-    add_lisp_function("first_focus", 0, 0, 9);
-    add_lisp_function("next_focus", 1, 1, 10);
-    add_lisp_function("get_object", 1, 1, 11);
-    add_lisp_function("get_light", 1, 1, 12);
-    add_lisp_function("with_objects", 1, 1, 13);
-    add_lisp_function("add_light", 7, 7, 14); // type, x, y, r1, r2, xshift, yshift
-    add_lisp_function("find_enemy", 1, 1, 15); // exclude
-    add_lisp_function("user_fun", 0, -1, 16); // calls anobject's user function
-    add_lisp_function("time", 2, 2, 17); // returns a fixed point (times and operation)
-    add_lisp_function("name", 0, 0, 18); // returns current object's name (for debugin)
-    add_lisp_function("float_tick", 0, 0, 19);
-    add_lisp_function("find_object_in_area", 5, 5, 20); // x1, y1, x2, y2  type_list
-    add_lisp_function("find_object_in_angle", 3, 3, 21); // start_angle end_angle type_list
-    add_lisp_function("add_object_after", 3, 4, 22); // type, x,y (type)
-    add_lisp_function("def_char", 2, -1, 23); // needs at least 2 parms
-    add_lisp_function("see_dist", 4, 4, 24); // returns longest unblocked path from x1,y1,x2,y2
-    add_lisp_function("platform", 0, 0, 25);
-    add_lisp_function("level_name", 0, 0, 26);
-    add_lisp_function("ant_ai", 0, 0, 27);
-    add_lisp_function("sensor_ai", 0, 0, 28);
-    add_lisp_function("dev_draw", 0, 0, 29);
-    add_lisp_function("top_ai", 0, 0, 30);
-    add_lisp_function("laser_ufun", 2, 2, 31);
-    add_lisp_function("top_ufun", 2, 2, 32);
-
-    add_lisp_function("player_rocket_ufun", 2, 2, 34);
-
-    add_lisp_function("plaser_ufun", 2, 2, 33);
-    add_lisp_function("lsaber_ufun", 2, 2, 35);
-
-    add_lisp_function("cop_mover", 3, 3, 36);
-    add_lisp_function("latter_ai", 0, 0, 37);
-    add_lisp_function("with_obj0", -1, -1, 38);
-    add_lisp_function("activated", 0, 0, 39);
-    add_lisp_function("top_draw", 0, 0, 40);
-    add_lisp_function("bottom_draw", 0, 0, 41);
-    add_lisp_function("mover_ai", 0, 0, 42);
-    add_lisp_function("sgun_ai", 0, 0, 43);
-    add_lisp_function("last_savegame_name", 0, 0, 44);
-    add_lisp_function("next_savegame_name", 0, 0, 45);
-    add_lisp_function("argv", 1, 1, 46);
-    add_lisp_function("joy_stat", 0, 0, 47); // xm ym b1 b2 b3
-    add_lisp_function("mouse_stat", 0, 0, 48); // mx my b1 b2 b3
-    add_lisp_function("mouse_to_game", 2, 2, 49); // pass in x,y -> x,y
-    add_lisp_function("game_to_mouse", 2, 2, 50); // pass in x,y -> x,y
-    add_lisp_function("get_main_font", 0, 0, 51);
-    add_lisp_function("player_name", 0, 0, 52);
-    add_lisp_function("get_cwd", 0, 0, 54);
-    add_lisp_function("system", 1, 1, 55);
-    add_lisp_function("convert_slashes", 2, 2, 56);
-    add_lisp_function("get_directory", 1, 1, 58); // path
-    add_lisp_function("respawn_ai", 0, 0, 60);
-
-    add_lisp_function("score_draw", 0, 0, 61);
-    add_lisp_function("show_kills", 0, 0, 62);
-    add_lisp_function("mkptr", 1, 1, 63);
-    add_lisp_function("seq", 3, 3, 64);
+    initLispFuncs();
 }
 
 // Note : args for l_caller have not been evaluated yet!
-void *l_caller(long number, void *args)
+void *l_caller(LispFunc number, void *args)
 {
     PtrRef r1(args);
     switch (number)
     {
-    case 0: {
+    case LispFunc::GoState: {
         current_object->set_aistate(lnumber_value(CAR(args)->Eval()));
         current_object->set_aistate_time(0);
         void *ai = figures[current_object->otype]->get_fun(OFUN_AI);
@@ -577,7 +513,7 @@ void *l_caller(long number, void *args)
         return ((LSymbol *)ai)->EvalFunction(NULL);
     }
     break;
-    case 1: {
+    case LispFunc::WithObject: {
         game_object *old_cur = current_object;
         current_object = (game_object *)lpointer_value(CAR(args)->Eval());
         void *ret = eval_block(CDR(args));
@@ -586,7 +522,7 @@ void *l_caller(long number, void *args)
     }
     break;
 
-    case 2: {
+    case LispFunc::BMove: {
         int whit;
         game_object *o;
         if (args)
@@ -603,31 +539,31 @@ void *l_caller(long number, void *args)
     }
     break;
 
-    case 3:
+    case LispFunc::Me:
         return LPointer::Create(current_object);
         break;
-    case 4: {
+    case LispFunc::Bg: {
         if (player_list->next)
             return LPointer::Create(current_level->attacker(current_object));
         else
             return LPointer::Create(player_list->m_focus);
     }
     break;
-    case 5:
+    case LispFunc::FindClosest:
         return LPointer::Create(current_level->find_closest(current_object->x, current_object->y,
                                                             lnumber_value(CAR(args)->Eval()), current_object));
         break;
-    case 6:
+    case LispFunc::FindXClosest:
         return LPointer::Create(current_level->find_xclosest(current_object->x, current_object->y,
                                                              lnumber_value(CAR(args)->Eval()), current_object));
         break;
-    case 7: {
+    case LispFunc::FindXRange: {
         long n1 = lnumber_value(CAR(args)->Eval());
         long n2 = lnumber_value(CAR(CDR(args))->Eval());
         return LPointer::Create(current_level->find_xrange(current_object->x, current_object->y, n1, n2));
     }
     break;
-    case 8: {
+    case LispFunc::AddObject: {
         int type = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         long x = lnumber_value(CAR(args)->Eval());
@@ -644,7 +580,7 @@ void *l_caller(long number, void *args)
         return LPointer::Create(o);
     }
     break;
-    case 22: {
+    case LispFunc::AddObjectAfter: {
         int type = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         long x = lnumber_value(CAR(args)->Eval());
@@ -662,10 +598,10 @@ void *l_caller(long number, void *args)
     }
     break;
 
-    case 9:
+    case LispFunc::FirstFocus:
         return LPointer::Create(the_game->first_view->m_focus);
         break;
-    case 10: {
+    case LispFunc::NextFocus: {
         view *v = ((game_object *)lpointer_value(CAR(args)->Eval()))->controller()->next;
         if (v)
             return LPointer::Create(v->m_focus);
@@ -673,15 +609,15 @@ void *l_caller(long number, void *args)
             return NULL;
     }
     break;
-    case 11: {
+    case LispFunc::GetObject: {
         return LPointer::Create((void *)current_object->get_object(lnumber_value(CAR(args)->Eval())));
     }
     break;
-    case 12: {
+    case LispFunc::GetLight: {
         return LPointer::Create((void *)current_object->get_light(lnumber_value(CAR(args)->Eval())));
     }
     break;
-    case 13: {
+    case LispFunc::WithObjects: {
         game_object *old_cur = current_object;
         void *ret = NULL;
         for (int i = 0; i < old_cur->total_objects(); i++)
@@ -693,7 +629,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 14: {
+    case LispFunc::AddLight: {
         int t = lnumber_value(CAR(args)->Eval());
         args = lcdr(args);
         int x = lnumber_value(CAR(args)->Eval());
@@ -710,18 +646,18 @@ void *l_caller(long number, void *args)
         return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys));
     }
     break;
-    case 15: {
+    case LispFunc::FindEnemy: {
         //      return current_lev shit
     }
     break;
-    case 16: {
+    case LispFunc::UserFun: {
         void *f = figures[current_object->otype]->get_fun(OFUN_USER_FUN);
         if (!f)
             return NULL;
         return ((LSymbol *)f)->EvalFunction(args);
     }
     break;
-    case 17: {
+    case LispFunc::Time: {
         long trials = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         time_marker start;
@@ -734,15 +670,15 @@ void *l_caller(long number, void *args)
         return LFixedPoint::Create((long)(end.diff_time(&start) * (1 << 16)));
     }
     break;
-    case 18: {
+    case LispFunc::Name: {
         return LString::Create(object_names[current_object->otype]);
     }
     break;
-    case 19: {
+    case LispFunc::FloatTick: {
         return current_object->float_tick();
     }
     break;
-    case 20: {
+    case LispFunc::FindObjectInArea: {
         long x1 = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         long y1 = lnumber_value(CAR(args)->Eval());
@@ -762,7 +698,7 @@ void *l_caller(long number, void *args)
     }
     break;
 
-    case 21: {
+    case LispFunc::FindObjectInAngle: {
         long a1 = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         long a2 = lnumber_value(CAR(args)->Eval());
@@ -778,7 +714,7 @@ void *l_caller(long number, void *args)
             return NULL;
     }
     break;
-    case 23: // def_character
+    case LispFunc::DefChar: // def_character
     {
         LSymbol *sym = (LSymbol *)lcar(args);
         if (item_type(sym) != L_SYMBOL)
@@ -807,7 +743,7 @@ void *l_caller(long number, void *args)
         return LNumber::Create(total_objects - 1);
     }
     break;
-    case 24: {
+    case LispFunc::SeeDist: {
         int32_t x1 = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         int32_t y1 = lnumber_value(CAR(args)->Eval());
@@ -822,7 +758,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 25: {
+    case LispFunc::Platform: {
 #ifdef __linux__
         return LSymbol::FindOrCreate("LINUX");
 #endif
@@ -834,40 +770,40 @@ void *l_caller(long number, void *args)
 #endif
     }
     break;
-    case 26: {
+    case LispFunc::LevelName: {
         return LString::Create(current_level->name());
     }
     break;
-    case 27:
+    case LispFunc::AntAi:
         return ant_ai();
         break;
-    case 28:
+    case LispFunc::SensorAi:
         return sensor_ai();
         break;
-    case 29:
+    case LispFunc::DevDraw:
         if (dev & EDIT_MODE)
             current_object->drawer();
         break;
-    case 30:
+    case LispFunc::TopAi:
         decrement_fire_delay();
         return top_aim();
         break;
-    case 31:
+    case LispFunc::LaserUFun:
         return laser_ufun(args);
         break;
-    case 32:
+    case LispFunc::TopUFun:
         return top_ufun(args);
         break;
-    case 33:
+    case LispFunc::PLaserUFun:
         return plaser_ufun(args);
         break;
-    case 34:
+    case LispFunc::PlayerRocketUFun:
         return player_rocket_ufun(args);
         break;
-    case 35:
+    case LispFunc::LSaberUFun:
         return lsaber_ufun(args);
         break;
-    case 36: {
+    case LispFunc::CopMover: {
 
         int32_t xm, ym, but;
         xm = lnumber_value(CAR(args));
@@ -878,10 +814,10 @@ void *l_caller(long number, void *args)
         return cop_mover(xm, ym, but);
     }
     break;
-    case 37:
+    case LispFunc::LatterAi:
         return ladder_ai();
         break;
-    case 38: {
+    case LispFunc::WithObj0: {
         game_object *old_cur = current_object;
         current_object = current_object->get_object(0);
         void *ret = eval_block(args);
@@ -889,7 +825,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 39: {
+    case LispFunc::Activated: {
         if (current_object->total_objects() == 0)
             return true_symbol;
         else if (current_object->get_object(0)->aistate())
@@ -898,24 +834,24 @@ void *l_caller(long number, void *args)
             return NULL;
     }
     break;
-    case 40:
+    case LispFunc::TopDraw:
         top_draw();
         break;
-    case 41:
+    case LispFunc::BottomDraw:
         bottom_draw();
         break;
-    case 42:
+    case LispFunc::MoverAi:
         return mover_ai();
         break;
-    case 43:
+    case LispFunc::SGunAi:
         return sgun_ai();
-    case 44: {
+    case LispFunc::LastSavegameName: {
         char nm[50];
         last_savegame_name(nm);
         return LString::Create(nm);
     }
     break;
-    case 45: {
+    case LispFunc::NextSavegameName: {
         char nm[50];
         sprintf(nm, "save%04d.pcx", load_game(1, symbol_str("LOAD")));
         //      get_savegame_name(nm);
@@ -923,11 +859,11 @@ void *l_caller(long number, void *args)
         return LString::Create(nm);
     }
     break;
-    case 46: {
+    case LispFunc::Argv: {
         return LString::Create(start_argv[lnumber_value(CAR(args)->Eval())]);
     }
     break;
-    case 47: {
+    case LispFunc::JoyStat: {
         int xv, yv, b1, b2, b3;
         if (has_joystick)
             joy_status(b1, b2, b3, xv, yv);
@@ -944,7 +880,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 48: {
+    case LispFunc::MouseStat: {
         void *ret = NULL;
         {
             PtrRef r1(ret);
@@ -957,7 +893,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 49: {
+    case LispFunc::MouseToGame: {
         int x = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         int y = lnumber_value(CAR(args)->Eval());
@@ -973,7 +909,7 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 50: {
+    case LispFunc::GameToMouse: {
         int x = lnumber_value(CAR(args)->Eval());
         args = CDR(args);
         int y = lnumber_value(CAR(args)->Eval());
@@ -989,10 +925,10 @@ void *l_caller(long number, void *args)
         return ret;
     }
     break;
-    case 51:
+    case LispFunc::GetMainFont:
         return LPointer::Create(wm->font());
         break;
-    case 52: {
+    case LispFunc::PlayerName: {
         view *c = current_object->controller();
         if (!c)
             lbreak("object is not a player, cannot return name");
@@ -1000,7 +936,7 @@ void *l_caller(long number, void *args)
             return LString::Create(c->name);
     }
     break;
-    case 54: {
+    case LispFunc::GetCwd: {
 #if defined __CELLOS_LV2__
         /* FIXME: retrieve the PS3 account name */
         char const *cd = "Player";
@@ -1011,13 +947,13 @@ void *l_caller(long number, void *args)
         return LString::Create(cd);
     }
     break;
-    case 55:
+    case LispFunc::System:
 #if !defined __CELLOS_LV2__
         /* FIXME: this looks rather dangerous */
         system(lstring_value(CAR(args)->Eval()));
 #endif
         break;
-    case 56: {
+    case LispFunc::ConvertSlashes: {
         void *fn = CAR(args)->Eval();
         args = CDR(args);
         char tmp[200];
@@ -1040,7 +976,7 @@ void *l_caller(long number, void *args)
         return LString::Create(tmp);
     }
     break;
-    case 58: {
+    case LispFunc::GetDirectory: {
         char **files, **dirs;
         int tfiles, tdirs, i;
 
@@ -1070,22 +1006,22 @@ void *l_caller(long number, void *args)
         return rl;
     }
     break;
-    case 60:
+    case LispFunc::RespawnAi:
         return respawn_ai();
         break;
-    case 61:
+    case LispFunc::ScoreDraw:
         return score_draw();
         break;
-    case 62:
+    case LispFunc::ShowKills:
         return show_kills();
         break;
-    case 63: {
+    case LispFunc::MkPtr: {
         long x;
         sscanf(lstring_value(CAR(args)->Eval()), "%lx", &x);
         return LPointer::Create((void *)(intptr_t)x);
     }
     break;
-    case 64: {
+    case LispFunc::Seq: {
         char name[256], name2[256];
         strcpy(name, lstring_value(CAR(args)->Eval()));
         args = CDR(args);

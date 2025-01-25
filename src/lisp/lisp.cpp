@@ -24,13 +24,12 @@
 
 #include "lisp.h"
 #include "lisp_gc.h"
-#include "symbols.h"
+#include "funcs.h"
 
 #include "status.h"
 #include "specs.h"
 #include "cache.h"
 #include "dev.h"
-#include "symbols.h"
 
 /* To bypass the whole garbage collection issue of lisp I am going to have
  * separate spaces where lisp objects can reside.  Compiled code and gloabal
@@ -851,7 +850,7 @@ void LSymbol::SetFunction(LObject *function)
     m_function = function;
 }
 
-LSymbol *add_sys_function(char const *name, short min_args, short max_args, short number)
+LSymbol *add_sys_function(char const *name, short min_args, short max_args, SysFunc number)
 {
     need_perm_space("add_sys_function");
     LSymbol *s = LSymbol::FindOrCreate(name);
@@ -861,7 +860,7 @@ LSymbol *add_sys_function(char const *name, short min_args, short max_args, shor
         exit(EXIT_SUCCESS);
     }
     else
-        s->m_function = new_lisp_sys_function(min_args, max_args, number);
+        s->m_function = new_lisp_sys_function(min_args, max_args, static_cast<int>(number));
     return s;
 }
 
@@ -909,7 +908,7 @@ LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short 
     return s;
 }
 
-LSymbol *add_lisp_function(char const *name, short min_args, short max_args, short number)
+LSymbol *add_lisp_function(char const *name, short min_args, short max_args, LispFunc number)
 {
     total_user_functions++;
     need_perm_space("add_c_bool_fun");
@@ -920,7 +919,7 @@ LSymbol *add_lisp_function(char const *name, short min_args, short max_args, sho
         exit(EXIT_SUCCESS);
     }
     else
-        s->m_function = new_user_lisp_function(min_args, max_args, number);
+        s->m_function = new_user_lisp_function(min_args, max_args, static_cast<int>(number));
     return s;
 }
 
@@ -1408,7 +1407,7 @@ LObject *LSymbol::EvalFunction(void *arg_list)
         ret = ((LSysFunction *)fun)->EvalFunction((LList *)arg_list);
         break;
     case L_L_FUNCTION:
-        ret = (LObject *)l_caller(((LSysFunction *)fun)->fun_number, arg_list);
+        ret = (LObject *)l_caller(static_cast<LispFunc>(((LSysFunction *)fun)->fun_number), arg_list);
         break;
     case L_USER_FUNCTION:
         return EvalUserFunction((LList *)arg_list);
@@ -3021,13 +3020,9 @@ void Lisp::Init()
     InitConstants();
     initSysFuncs();
 
-    for (size_t i = 0; i < std::size(sys_funcs); i++)
-        add_sys_function(sys_funcs[i].name, sys_funcs[i].min_args, sys_funcs[i].max_args, i);
     clisp_init();
     LSpace::Current = &LSpace::Tmp;
-    printf("Lisp: %zu symbols defined, %zu system functions, "
-           "%d pre-compiled functions\n",
-           LSymbol::count, std::size(sys_funcs), total_user_functions);
+    printf("Lisp: defined %zu symbols, %d functions\n", LSymbol::count, total_user_functions);
 }
 
 void Lisp::Uninit()

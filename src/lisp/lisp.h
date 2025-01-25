@@ -14,6 +14,8 @@
 #include <cstdlib>
 #include <cstdint>
 
+#include "funcs.h"
+
 #ifdef L_PROFILE
 #include "timing.h"
 #endif
@@ -277,10 +279,11 @@ void resize_tmp(size_t new_size);
 void resize_perm(size_t new_size);
 
 void push_onto_list(void *object, void *&list);
+extern LSymbol *add_sys_function(char const *name, short min_args, short max_args, SysFunc number);
 LSymbol *add_c_object(void *symbol, int index);
-LSymbol *add_c_function(char const *name, short min_args, short max_args, short number);
-LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short number);
-LSymbol *add_lisp_function(char const *name, short min_args, short max_args, short number);
+extern LSymbol *add_c_function(char const *name, short min_args, short max_args, short number);
+extern LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short number);
+extern LSymbol *add_lisp_function(char const *name, short min_args, short max_args, LispFunc number);
 int read_ltoken(char *&s, char *buffer);
 void print_trace_stack(int max_levels);
 
@@ -306,7 +309,7 @@ extern "C"
 
 extern void clisp_init(); // external initalizer call by lisp_init()
 extern long c_caller(long number, void *arg); // exten c function switches on number
-extern void *l_caller(long number, void *arg); // exten lisp function switches on number
+extern void *l_caller(LispFunc number, void *arg); // exten lisp function switches on number
 
 extern void *l_obj_get(long number); // exten lisp function switches on number
 extern void l_obj_set(long number, void *arg); // exten lisp function switches on number
