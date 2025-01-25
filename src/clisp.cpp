@@ -97,8 +97,8 @@ static view *lget_view(void *arg, char const *msg)
 extern int get_option(char const *name);
 extern void set_login(char const *name);
 
-void clisp_init() // call by lisp_init, defines symbols and functions
-    // to irnterface with c
+// called by lisp_init, defines symbols and functions to interface with c
+void clisp_init()
 {
     l_easy = LSymbol::FindOrCreate("easy");
     l_medium = LSymbol::FindOrCreate("medium");
@@ -194,303 +194,7 @@ void clisp_init() // call by lisp_init, defines symbols and functions
     l_song_list = LSymbol::FindOrCreate("song_list");
     l_post_render = LSymbol::FindOrCreate("post_render");
 
-    add_c_function("distx", 0, 0, 1);
-    add_c_function("disty", 0, 0, 2);
-    add_c_bool_fun("key_pressed", 1, 1, 3);
-    add_c_bool_fun("local_key_pressed", 1, 1, 4);
-
-    add_c_function("bg_state", 0, 0, 5);
-    add_c_function("aitype", 0, 0, 6);
-    add_c_function("aistate", 0, 0, 7);
-    add_c_function("set_aistate", 1, 1, 8);
-    add_c_function("random", 1, 1, 9);
-    add_c_function("state_time", 0, 0, 10);
-    add_c_function("state", 0, 0, 11);
-    add_c_function("toward", 0, 0, 12);
-    add_c_function("move", 3, 3, 13);
-    add_c_function("facing", 0, 0, 14);
-    add_c_function("otype", 0, 0, 15);
-    add_c_bool_fun("next_picture", 0, 0, 16);
-    add_c_bool_fun("set_fade_dir", 1, 1, 17);
-    add_c_function("mover", 3, 3, 18);
-    add_c_bool_fun("set_fade_count", 1, 1, 19);
-    add_c_function("fade_count", 0, 0, 20);
-    add_c_function("fade_dir", 0, 0, 21);
-    add_c_bool_fun("touching_bg", 0, 0, 22);
-    add_c_function("add_power", 1, 1, 23);
-    add_c_function("add_hp", 1, 1, 24);
-
-    add_c_bool_fun("draw", 0, 0, 27);
-    add_c_bool_fun("edit_mode", 0, 0, 28);
-    add_c_bool_fun("draw_above", 0, 0, 29);
-    add_c_function("x", 0, 0, 30);
-    add_c_function("y", 0, 0, 31);
-    add_c_bool_fun("set_x", 1, 1, 32);
-    add_c_bool_fun("set_y", 1, 1, 33);
-    add_c_bool_fun("set_last_x", 1, 1, 300);
-    add_c_bool_fun("set_last_y", 1, 1, 301);
-    add_c_bool_fun("push_characters", 2, 2, 34);
-
-    add_c_bool_fun("set_state", 1, 1, 37);
-    add_c_function("bg_x", 0, 0, 38);
-    add_c_function("bg_y", 0, 0, 39);
-    add_c_bool_fun("set_aitype", 1, 1, 40);
-
-    add_c_function("xvel", 0, 0, 42);
-    add_c_function("yvel", 0, 0, 43);
-    add_c_bool_fun("set_xvel", 1, 1, 44);
-    add_c_bool_fun("set_yvel", 1, 1, 45);
-    add_c_function("away", 0, 0, 46);
-    add_c_bool_fun("blocked_left", 1, 1, 47);
-    add_c_bool_fun("blocked_right", 1, 1, 48);
-
-    add_c_function("add_palette", 1, -1, 50); // name, w,h,x,y,scale, tiles
-    add_c_bool_fun("screen_shot", 1, 1, 51); // filename
-
-    add_c_bool_fun("set_zoom", 1, 1, 52);
-    add_c_function("show_help", 1, 1, 55); // type, x,y
-    add_c_function("direction", 0, 0, 56);
-    add_c_function("set_direction", 1, 1, 57);
-
-    add_c_bool_fun("freeze_player", 1, 1, 58); // freeze time
-
-    add_c_function("menu", 1, -1, 59);
-    add_c_bool_fun("do_command", 1, 1, 60); // command string
-    add_c_bool_fun("set_game_state", 1, 1, 61);
-
-    // scene control functions, game must first be set to scene mode.
-    add_c_bool_fun("scene:set_text_region", 4, 4, 62);
-    add_c_bool_fun("scene:set_frame_speed", 1, 1, 63);
-    add_c_bool_fun("scene:set_scroll_speed", 1, 1, 64);
-    add_c_bool_fun("scene:set_pan_speed", 1, 1, 65);
-    add_c_bool_fun("scene:scroll_text", 1, 1, 66);
-    add_c_bool_fun("scene:pan", 3, 3, 67);
-    add_c_bool_fun("scene:wait", 1, 1, 68);
-
-    add_c_bool_fun("level:new", 3, 3, 74); // width, height, name
-
-    add_c_bool_fun("do_damage", 2, 4, 75); // amount, to_object, [pushx pushy]
-    add_c_function("hp", 0, 0, 76);
-    add_c_bool_fun("set_shift_down", 2, 2, 77);
-    add_c_bool_fun("set_shift_right", 2, 2, 78);
-    add_c_bool_fun("set_gravity", 1, 1, 79);
-    add_c_function("tick", 0, 0, 80);
-
-    add_c_bool_fun("set_xacel", 1, 1, 81);
-    add_c_bool_fun("set_yacel", 1, 1, 82);
-    add_c_bool_fun("set_local_players", 1, 1, 84); // set # of players on this machine, unsupported?
-    add_c_function("local_players", 0, 0, 85);
-
-    add_c_bool_fun("set_light_detail", 1, 1, 86);
-    add_c_function("light_detail", 0, 0, 87);
-    add_c_bool_fun("set_morph_detail", 1, 1, 88);
-    add_c_function("morph_detail", 0, 0, 89);
-    add_c_bool_fun("morph_into", 3, 3, 90); // type aneal frames
-    add_c_bool_fun("link_object", 1, 1, 91);
-
-    add_c_bool_fun("draw_line", 5, 5, 92);
-    add_c_bool_fun("draw_laser", 5, 5, 302);
-    add_c_function("dark_color", 0, 0, 93);
-    add_c_function("medium_color", 0, 0, 94);
-    add_c_function("bright_color", 0, 0, 95);
-
-    add_c_bool_fun("remove_object", 1, 1, 99);
-    add_c_bool_fun("link_light", 1, 1, 100);
-    add_c_bool_fun("remove_light", 1, 1, 101);
-    add_c_function("total_objects", 0, 0, 102);
-    add_c_function("total_lights", 0, 0, 103);
-
-    add_c_bool_fun("set_light_r1", 2, 2, 104);
-    add_c_bool_fun("set_light_r2", 2, 2, 105);
-    add_c_bool_fun("set_light_x", 2, 2, 106);
-    add_c_bool_fun("set_light_y", 2, 2, 107);
-    add_c_bool_fun("set_light_xshift", 2, 2, 108);
-    add_c_bool_fun("set_light_yshift", 2, 2, 109);
-
-    add_c_function("light_r1", 1, 1, 110);
-    add_c_function("light_r2", 1, 1, 111);
-    add_c_function("light_x", 1, 1, 112);
-    add_c_function("light_y", 1, 1, 113);
-    add_c_function("light_xshift", 1, 1, 114);
-    add_c_function("light_yshift", 1, 1, 115);
-
-    add_c_function("xacel", 0, 0, 116);
-    add_c_function("yacel", 0, 0, 117);
-    add_c_bool_fun("delete_light", 1, 1, 118);
-
-    add_c_bool_fun("set_fx", 1, 1, 119);
-    add_c_bool_fun("set_fy", 1, 1, 120);
-    add_c_bool_fun("set_fxvel", 1, 1, 121);
-    add_c_bool_fun("set_fyvel", 1, 1, 122);
-    add_c_bool_fun("set_fxacel", 1, 1, 123);
-    add_c_bool_fun("set_fyacel", 1, 1, 124);
-    add_c_function("picture_width", 0, 0, 125);
-    add_c_function("picture_height", 0, 0, 126);
-    add_c_bool_fun("trap", 0, 0, 127);
-    add_c_bool_fun("platform_push", 2, 2, 128);
-
-    add_c_function("def_sound", 1, 2, 133); // symbol, filename [ or just filenmae]
-    add_c_bool_fun("play_sound", 1, 4, 134);
-
-    add_c_function("def_particle", 2, 2, 137); // symbol, filename
-    add_c_function("add_panim", 4, 4, 138); // id, x, y, dir
-
-    add_c_function("weapon_to_type", 1, 1, 142); // returns total for type weapon
-    add_c_bool_fun("hurt_radius", 6, 6, 143); // x y radius max_damage exclude_object max_push
-
-    add_c_bool_fun("add_ammo", 2, 2, 144); // weapon_type, amount
-    add_c_function("ammo_total", 1, 1, 145); // returns total for type weapon
-    add_c_function("current_weapon", 0, 0, 146); // weapon_type, amount
-    add_c_function("current_weapon_type", 0, 0, 147); // returns total for type weapon
-
-    add_c_bool_fun("blocked_up", 1, 1, 148);
-    add_c_bool_fun("blocked_down", 1, 1, 149);
-    add_c_bool_fun("give_weapon", 1, 1, 150); // type
-    add_c_function("get_ability", 1, 1, 151);
-    add_c_bool_fun("reset_player", 0, 0, 152);
-    add_c_function("site_angle", 1, 1, 153);
-    add_c_bool_fun("set_course", 2, 2, 154); // angle, magnitude
-    add_c_bool_fun("set_frame_angle", 3, 3, 155); // ang1,ang2, ang
-    add_c_bool_fun("jump_state", 1, 1, 156); // don't reset current_frame
-
-    add_c_bool_fun("morphing", 0, 0, 168);
-    add_c_bool_fun("damage_fun", 6, 6, 169);
-    add_c_bool_fun("gravity", 0, 0, 170);
-    add_c_bool_fun("make_view_solid", 1, 1, 171);
-    add_c_function("find_rgb", 3, 3, 172);
-
-    add_c_function("player_x_suggest", 0, 0, 173); // return player "joystick" x
-    add_c_function("player_y_suggest", 0, 0, 174);
-    add_c_function("player_b1_suggest", 0, 0, 175);
-    add_c_function("player_b2_suggest", 0, 0, 176);
-    add_c_function("player_b3_suggest", 0, 0, 177);
-
-    add_c_bool_fun("set_bg_scroll", 4, 4, 178); // xmul xdiv ymul ydiv
-    add_c_bool_fun("set_ambient_light", 2, 2, 179); // player, 0..63 (out of bounds ignored)
-    add_c_function("ambient_light", 1, 1, 180); // player
-    add_c_bool_fun("has_object", 1, 1, 181); // true if linked with object x
-    add_c_bool_fun("set_otype", 1, 1, 182); // otype
-
-    add_c_function("current_frame", 0, 0, 184);
-    add_c_function("fx", 0, 0, 185);
-    add_c_function("fy", 0, 0, 186);
-    add_c_function("fxvel", 0, 0, 187);
-    add_c_function("fyvel", 0, 0, 188);
-    add_c_function("fxacel", 0, 0, 189);
-    add_c_function("fyacel", 0, 0, 190);
-    add_c_bool_fun("set_stat_bar", 2, 2, 191); // filename, object
-    add_c_bool_fun("set_fg_tile", 3, 3, 192); // x,y, tile #
-    add_c_function("fg_tile", 2, 2, 193); // x,y
-    add_c_bool_fun("set_bg_tile", 3, 3, 194); // x,y, tile #
-    add_c_function("bg_tile", 2, 2, 195); // x,y
-    add_c_bool_fun("load_tiles", 1, -1, 196); // filename1, filename2...
-    add_c_bool_fun("load_palette", 1, 1, 197); // filename
-    add_c_bool_fun("load_color_filter", 1, 1, 198); // filename
-    add_c_bool_fun("create_players", 1, 1, 199); // player type, returns true if game is networked
-    add_c_bool_fun("try_move", 2, 3, 200); // xv yv (check_top=t) -> returns T if not blocked
-    add_c_function("sequence_length", 1, 1, 201); // sequence number
-    add_c_bool_fun("can_see", 5, 5, 202); // x1,y1, x2,y2, chars_block
-    add_c_function("load_big_font", 2, 2, 203); // filename, name
-    add_c_function("load_small_font", 2, 2, 204); // filename, name
-    add_c_function("load_console_font", 2, 2, 205); // filename, name
-    add_c_function("set_current_frame", 1, 1, 206);
-
-    add_c_bool_fun("draw_transparent", 2, 2, 208); // count, max
-    add_c_bool_fun("draw_tint", 1, 1, 209); // tint id number
-    add_c_bool_fun("draw_predator", 0, 0, 210); // tint_number
-
-    add_c_function("shift_down", 1, 1, 211); // player
-    add_c_function("shift_right", 1, 1, 212); // player
-    add_c_bool_fun("set_no_scroll_range", 5, 5, 213); // player, x1,y1,x2,y2
-
-    add_c_function("def_image", 2, 2, 215); // filename,name
-    add_c_bool_fun("put_image", 3, 3, 216); // x,y,id
-    add_c_function("view_x1", 0, 0, 217);
-    add_c_function("view_y1", 0, 0, 218);
-    add_c_function("view_x2", 0, 0, 219);
-    add_c_function("view_y2", 0, 0, 220);
-    add_c_function("view_push_down", 1, 1, 221);
-    add_c_bool_fun("local_player", 0, 0, 222);
-    add_c_bool_fun("save_game", 1, 1, 223); // filename
-    add_c_bool_fun("set_hp", 1, 1, 224);
-    add_c_bool_fun("request_level_load", 1, 1, 225); // filename
-    add_c_bool_fun("set_first_level", 1, 1, 226); // filename
-    add_c_function("def_tint", 1, 1, 227); // filename
-    add_c_function("tint_palette", 3, 3, 228); // radd,gadd,badd
-    add_c_function("player_number", 0, 0, 229);
-    add_c_bool_fun("set_current_weapon", 1, 1, 230); // type
-    add_c_bool_fun("has_weapon", 1, 1, 231); // type
-    add_c_bool_fun("ambient_ramp", 1, 1, 232);
-    add_c_function("total_players", 0, 0, 233);
-    add_c_bool_fun("scatter_line", 6, 6, 234); // x1,y1,x2,y2, color, scatter value
-    add_c_function("game_tick", 0, 0, 235);
-    add_c_bool_fun("isa_player", 0, 0, 236);
-    add_c_bool_fun("shift_rand_table", 1, 1, 237); // amount
-    add_c_function("total_frames", 0, 0, 238);
-    add_c_function("raise", 0, 0, 239); // call only from reload constructor!
-    add_c_function("lower", 0, 0, 240); // call only from reload constructor!
-
-    add_c_function("player_pointer_x", 0, 0, 241);
-    add_c_function("player_pointer_y", 0, 0, 242);
-    add_c_bool_fun("frame_panic", 0, 0, 243);
-    add_c_bool_fun("ascatter_line", 7, 7, 244); // x1,y1,x2,y2, color1, color2, scatter value
-    add_c_function("rand_on", 0, 0, 245);
-    add_c_function("set_rand_on", 1, 1, 246);
-    add_c_function("bar", 5, 5, 247);
-    add_c_function("argc", 0, 0, 248);
-    add_c_bool_fun("play_song", 1, 1, 249); // filename
-    add_c_bool_fun("stop_song", 0, 0, 250);
-    add_c_bool_fun("targetable", 0, 0, 251);
-    add_c_bool_fun("set_targetable", 1, 1, 252); // T or nil
-    add_c_bool_fun("show_stats", 0, 0, 253);
-
-    add_c_function("kills", 0, 0, 254);
-    add_c_function("tkills", 0, 0, 255);
-    add_c_function("secrets", 0, 0, 256);
-    add_c_function("tsecrets", 0, 0, 257);
-
-    add_c_bool_fun("set_kills", 1, 1, 258);
-    add_c_bool_fun("set_tkills", 1, 1, 259);
-    add_c_bool_fun("set_secrets", 1, 1, 260);
-    add_c_bool_fun("set_tsecrets", 1, 1, 261);
-    add_c_bool_fun("request_end_game", 0, 0, 262);
-    add_c_function("get_save_slot", 0, 0, 263);
-    add_c_bool_fun("mem_report", 0, 0, 264);
-    add_c_function("major_version", 0, 0, 265);
-    add_c_function("minor_version", 0, 0, 266);
-    add_c_bool_fun("draw_double_tint", 2, 2, 267); // tint1 id number, tint 2 id number
-    add_c_function("image_width", 1, 1, 268); // image number
-    add_c_function("image_height", 1, 1, 269); // image number
-    add_c_function("foreground_width", 0, 0, 270);
-    add_c_function("foreground_height", 0, 0, 271);
-    add_c_function("background_width", 0, 0, 272);
-    add_c_function("background_height", 0, 0, 273);
-    add_c_function("get_key_code", 1, 1, 274); // name of key, returns code that can be used with keypressed
-    add_c_bool_fun("set_cursor_shape", 3, 3, 275); // image id, x hot, y hot
-    add_c_bool_fun("start_server", 0, 0, 276);
-    add_c_bool_fun("put_string", 4, 5, 277); // font,x,y,string, [color]
-    add_c_function("font_width", 1, 1, 278); // font
-    add_c_function("font_height", 1, 1, 279); // font
-    add_c_bool_fun("chat_print", 1, 1, 280); // chat string
-    add_c_bool_fun("set_player_name", 1, 1, 281); // name
-    add_c_bool_fun("draw_bar", 5, 5, 282); // x1,y1,x2,y2,color
-    add_c_bool_fun("draw_rect", 5, 5, 283); // x1,y1,x2,y2,color
-    add_c_bool_fun("get_option", 1, 1, 284);
-    add_c_bool_fun("set_delay_on", 1, 1, 288); // T or nil
-    add_c_bool_fun("set_login", 1, 1, 289); // name
-    add_c_bool_fun("enable_chatting", 0, 0, 290);
-    add_c_bool_fun("demo_break_enable", 0, 0, 291);
-    add_c_bool_fun("am_a_client", 0, 0, 292);
-    add_c_bool_fun("time_for_next_level", 0, 0, 293);
-    add_c_bool_fun("reset_kills", 0, 0, 294);
-    add_c_bool_fun("set_game_name", 1, 1, 295); // server game name
-    add_c_bool_fun("set_net_min_players", 1, 1, 296);
-
-    add_c_bool_fun("set_object_tint", 1, 1, 1001); // set_object_tint
-    add_c_function("get_object_tint", 0, 0, 1002); // get_object_tint
-    add_c_bool_fun("set_object_team", 1, 1, 1003); // set_object_team
-    add_c_function("get_object_team", 0, 0, 1004); // get_object_tint
-
+    initCFuncs();
     initLispFuncs();
 }
 
@@ -1057,20 +761,20 @@ void *l_caller(LispFunc number, void *args)
 //extern bFILE *rcheck,*rcheck_lp;
 
 // arguments have already been evaled..
-long c_caller(long number, void *args)
+long c_caller(CFunc number, void *args)
 {
     PtrRef r1(args);
     switch (number)
     {
-    case 1: {
+    case CFunc::DistX: {
         return abs(current_object->x - current_level->attacker(current_object)->x);
     }
     break;
-    case 2: {
+    case CFunc::DistY: {
         return abs(current_object->y - current_level->attacker(current_object)->y);
     }
     break;
-    case 3: {
+    case CFunc::KeyPressed: {
         if (!current_object->controller())
         {
             lbreak("object is not a player, cannot determine keypresses");
@@ -1081,32 +785,32 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 4: {
+    case CFunc::LocalKeyPressed: {
         return the_game->key_down(lnumber_value(CAR(args)));
     }
     break;
-    case 5: {
+    case CFunc::BgState: {
         return current_level->attacker(current_object)->state;
     }
     break;
-    case 6: {
+    case CFunc::AiType: {
         return current_object->aitype();
     }
     break;
-    case 7: {
+    case CFunc::AiState: {
         if (!current_object->keep_ai_info())
             current_object->set_aistate(0);
         return current_object->aistate();
     }
     break;
-    case 8: {
+    case CFunc::SetAiState: {
         int ns = lnumber_value(CAR(args));
         current_object->set_aistate_time(0);
         current_object->set_aistate(ns);
         return 1;
     }
     break;
-    case 9: {
+    case CFunc::Random: {
         /*      if (rcheck_lp)
       {
     char str[100];
@@ -1120,42 +824,42 @@ long c_caller(long number, void *args)
         return jrandom(lnumber_value(CAR(args)));
     }
     break;
-    case 10:
+    case CFunc::StateTime:
         return current_object->aistate_time();
         break;
-    case 11:
+    case CFunc::State:
         return current_object->state;
         break;
-    case 12: {
+    case CFunc::Toward: {
         if (current_level->attacker(current_object)->x > current_object->x)
             return 1;
         else
             return -1;
     }
     break;
-    case 13: {
+    case CFunc::Move: {
         return current_object->move(lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))),
                                     lnumber_value(CAR(CDR(CDR(args)))));
     }
     break;
-    case 14: {
+    case CFunc::Facing: {
         if (current_object->direction > 0)
             return 1;
         else
             return -1;
     }
     break;
-    case 15:
+    case CFunc::OType:
         return current_object->otype;
         break;
-    case 16:
+    case CFunc::NextPicture:
         return current_object->next_picture();
         break;
-    case 17:
+    case CFunc::SetFadeDir:
         current_object->set_fade_dir(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 18: {
+    case CFunc::Mover: {
         int cx = lnumber_value(CAR(args));
         args = CDR(args);
         int cy = lnumber_value(CAR(args));
@@ -1164,17 +868,17 @@ long c_caller(long number, void *args)
         return current_object->mover(cx, cy, but);
     }
     break;
-    case 19:
+    case CFunc::SetFadeCount:
         current_object->set_fade_count(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 20:
+    case CFunc::FadeCount:
         return current_object->fade_count();
         break;
-    case 21:
+    case CFunc::FadeDir:
         return current_object->fade_dir();
         break;
-    case 22: {
+    case CFunc::TouchingBg: {
         int32_t x1, y1, x2, y2, xp1, yp1, xp2, yp2;
         current_level->attacker(current_object)->picture_space(x1, y1, x2, y2);
         current_object->picture_space(xp1, yp1, xp2, yp2);
@@ -1190,130 +894,131 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 23:
+    case CFunc::AddPower:
         current_object->add_power(lnumber_value(CAR(args)));
         break;
-    case 24:
+    case CFunc::AddHp:
         current_object->add_hp(lnumber_value(CAR(args)));
         break;
 
-    case 27: {
+    case CFunc::Draw: {
         current_object->drawer();
         return 1;
     }
     break;
-    case 28: {
+    case CFunc::EditMode: {
         return (dev & EDIT_MODE);
     }
     break;
-    case 29: {
+    case CFunc::DrawAbove: {
         current_object->draw_above(current_view);
         return 1;
     }
     break;
-    case 30:
+    case CFunc::X:
         return current_object->x;
         break;
-    case 31:
+    case CFunc::Y:
         return current_object->y;
         break;
-    case 32: {
+    case CFunc::SetX: {
         int32_t v = lnumber_value(CAR(args));
         current_object->x = v;
         return 1;
     }
     break;
-    case 33: {
+    case CFunc::SetY: {
         int32_t v = lnumber_value(CAR(args));
         current_object->y = v;
         return 1;
     }
     break;
-    case 300: {
+    case CFunc::SetLastX: {
         int32_t v = lnumber_value(CAR(args));
         current_object->last_x = v;
         return 1;
     }
     break;
-    case 301: {
+    case CFunc::SetLastY: {
         int32_t v = lnumber_value(CAR(args));
         current_object->last_y = v;
         return 1;
     }
     break;
 
-    case 34: {
+    case CFunc::PushCharacters: {
         return current_level->push_characters(current_object, lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))));
     }
     break;
 
-    case 37: {
+    case CFunc::SetState: {
         int32_t s = lnumber_value(CAR(args));
         current_object->set_state((character_state)s);
         return (s == current_object->state);
     }
     break;
 
-    case 38:
+    case CFunc::BgX:
         return current_level->attacker(current_object)->x;
         break;
-    case 39:
+    case CFunc::BgY:
         return current_level->attacker(current_object)->y;
         break;
-    case 40:
+    case CFunc::SetAiType:
         current_object->change_aitype(lnumber_value(CAR(args)));
         return 1;
         break;
 
-    case 42:
+    case CFunc::XVel:
         return current_object->xvel();
         break;
-    case 43:
+    case CFunc::YVel:
         return current_object->yvel();
         break;
-    case 44:
+    case CFunc::SetXVel:
         current_object->set_xvel(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 45:
+    case CFunc::SetYVel:
         current_object->set_yvel(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 46:
+    case CFunc::Away: {
         if (current_level->attacker(current_object)->x > current_object->x)
             return -1;
         else
             return 1;
         break;
-    case 47:
+    }
+    case CFunc::BlockedLeft:
         return lnumber_value(CAR(args)) & BLOCKED_LEFT;
         break;
-    case 48:
+    case CFunc::BlockedRight:
         return lnumber_value(CAR(args)) & BLOCKED_RIGHT;
         break;
 
-    case 50:
+    case CFunc::AddPalette:
         dev_cont->add_palette(args);
         break;
-    case 51:
+    case CFunc::ScreenShot:
         write_PCX(main_screen, pal, lstring_value(CAR(args)));
         break;
 
-    case 52:
+    case CFunc::SetZoom:
         the_game->zoom = lnumber_value(CAR(args));
         the_game->draw();
         break;
-    case 55:
+    case CFunc::ShowHelp:
         the_game->show_help(lstring_value(CAR(args)));
         break;
 
-    case 56:
+    case CFunc::Direction:
         return current_object->direction;
         break;
-    case 57:
+    case CFunc::SetDirection:
         current_object->direction = lnumber_value(CAR(args));
         break;
-    case 58: {
+    case CFunc::FreezePlayer: {
         int x1 = lnumber_value(CAR(args));
         if (!current_object->controller())
         {
@@ -1324,20 +1029,20 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 59:
+    case CFunc::Menu:
         return menu(args, big_font);
         break;
-    case 60: {
+    case CFunc::DoCommand: {
         Event ev;
         dev_cont->do_command(lstring_value(CAR(args)), ev);
         return 1;
     }
     break;
-    case 61:
+    case CFunc::SetGameState:
         the_game->set_state(lnumber_value(CAR(args)));
         break;
 
-    case 62: {
+    case CFunc::SceneSetTextRegion: {
         int x1 = lnumber_value(CAR(args));
         args = CDR(args);
         int y1 = lnumber_value(CAR(args));
@@ -1348,37 +1053,31 @@ long c_caller(long number, void *args)
         scene_director.set_text_region(x1, y1, x2, y2);
     }
     break;
-    case 63:
+    case CFunc::SceneSetFrameSpeed:
         scene_director.set_frame_speed(lnumber_value(CAR(args)));
         break;
-    case 64:
+    case CFunc::SceneSetScrollSpeed:
         scene_director.set_scroll_speed(lnumber_value(CAR(args)));
         break;
-    case 65:
+    case CFunc::SceneSetPanSpeed:
         scene_director.set_pan_speed(lnumber_value(CAR(args)));
         break;
-    case 66:
+    case CFunc::SceneScrollText:
         scene_director.scroll_text(lstring_value(CAR(args)));
         break;
-    case 67:
+    case CFunc::ScenePan:
         scene_director.set_pan(lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))),
                                lnumber_value(CAR(CDR(CDR(args)))));
         break;
-    case 68:
+    case CFunc::SceneWait:
         scene_director.wait(CAR(args));
         break;
 
-    case 73:
+    case CFunc::LevelNew:
         the_game->set_level(
             new level(lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))), lstring_value(CAR(CDR(CDR(args))))));
         break;
-    case 74: {
-        if (current_level)
-            delete current_level;
-        current_level = new level(100, 100, "new_level");
-    }
-    break;
-    case 75: {
+    case CFunc::DoDamage: {
         int amount = lnumber_value(CAR(args));
         args = CDR(args);
         game_object *o = ((game_object *)lpointer_value(CAR(args)));
@@ -1393,10 +1092,10 @@ long c_caller(long number, void *args)
         o->do_damage(amount, current_object, current_object->x, current_object->y, xv, yv);
     }
     break;
-    case 76:
+    case CFunc::Hp:
         return current_object->hp();
         break;
-    case 77: {
+    case CFunc::SetShiftDown: {
         game_object *o = (game_object *)lpointer_value(CAR(args));
         if (!o->controller())
             printf("set shift: object is not a focus\n");
@@ -1405,7 +1104,7 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 78: {
+    case CFunc::SetShiftRight: {
         game_object *o = (game_object *)lpointer_value(CAR(args));
         if (!o->controller())
             printf("set shift: object is not a focus\n");
@@ -1414,52 +1113,52 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 79:
+    case CFunc::SetGravity:
         current_object->set_gravity(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 80:
+    case CFunc::Tick:
         return current_object->tick();
         break;
-    case 81:
+    case CFunc::SetXacel:
         current_object->set_xacel((lnumber_value(CAR(args))));
         return 1;
         break;
-    case 82:
+    case CFunc::SetYacel:
         current_object->set_yacel((lnumber_value(CAR(args))));
         return 1;
         break;
-    case 84:
+    case CFunc::SetLocalPlayers:
         set_local_players(lnumber_value(CAR(args)));
         return 1;
         break;
-    case 85:
+    case CFunc::LocalPlayers:
         return total_local_players();
         break;
-    case 86:
+    case CFunc::SetLightDetail:
         light_detail = lnumber_value(CAR(args));
         return 1;
         break;
-    case 87:
+    case CFunc::LightDetail:
         return light_detail;
         break;
-    case 88:
+    case CFunc::SetMorphDetail:
         morph_detail = lnumber_value(CAR(args));
         return 1;
         break;
-    case 89:
+    case CFunc::MorphDetail:
         return morph_detail;
         break;
-    case 90:
+    case CFunc::MorphInto:
         current_object->morph_into(lnumber_value(CAR(args)), NULL, lnumber_value(CAR(CDR(args))),
                                    lnumber_value(CAR(CDR(CDR(args)))));
         return 1;
         break;
-    case 91:
+    case CFunc::LinkObject:
         current_object->add_object((game_object *)lpointer_value(CAR(args)));
         return 1;
         break;
-    case 92: {
+    case CFunc::DrawLine: {
         int32_t x1 = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -1475,7 +1174,7 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 302: {
+    case CFunc::DrawLaser: {
         int32_t origin_x = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t origin_y = lnumber_value(CAR(args));
@@ -1524,36 +1223,36 @@ long c_caller(long number, void *args)
         main_screen->Line(pos1, pos2, bright_color);
         return 1;
     }
-    case 93:
+    case CFunc::DarkColor:
         return wm->dark_color();
         break;
-    case 94:
+    case CFunc::MediumColor:
         return wm->medium_color();
         break;
-    case 95:
+    case CFunc::BrightColor:
         return wm->bright_color();
         break;
 
-    case 99:
+    case CFunc::RemoveObject:
         current_object->remove_object((game_object *)lpointer_value(CAR(args)));
         return 1;
         break;
-    case 100:
+    case CFunc::LinkLight:
         current_object->add_light((light_source *)lpointer_value(CAR(args)));
         return 1;
         break;
-    case 101:
+    case CFunc::RemoveLight:
         current_object->remove_light((light_source *)lpointer_value(CAR(args)));
         return 1;
         break;
-    case 102:
+    case CFunc::TotalObjects:
         return current_object->total_objects();
         break;
-    case 103:
+    case CFunc::TotalLights:
         return current_object->total_lights();
         break;
 
-    case 104: {
+    case CFunc::SetLightR1: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         int32_t x = lnumber_value(CAR(CDR(args)));
         if (x >= 1)
@@ -1562,7 +1261,7 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 105: {
+    case CFunc::SetLightR2: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         int32_t x = lnumber_value(CAR(CDR(args)));
         if (x > l->inner_radius)
@@ -1571,95 +1270,94 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 106: {
+    case CFunc::SetLightX: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->x = lnumber_value(CAR(CDR(args)));
         l->calc_range();
         return 1;
     }
     break;
-    case 107: {
+    case CFunc::SetLightY: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->y = lnumber_value(CAR(CDR(args)));
         l->calc_range();
         return 1;
     }
     break;
-    case 108: {
+    case CFunc::SetLightXShift: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->xshift = lnumber_value(CAR(CDR(args)));
         l->calc_range();
         return 1;
     }
     break;
-    case 109: {
+    case CFunc::SetLightYShift: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->yshift = lnumber_value(CAR(CDR(args)));
         l->calc_range();
         return 1;
     }
     break;
-    case 110:
+    case CFunc::LightR1:
         return ((light_source *)lpointer_value(CAR(args)))->inner_radius;
         break;
-    case 111:
+    case CFunc::LightR2:
         return ((light_source *)lpointer_value(CAR(args)))->outer_radius;
         break;
-    case 112:
+    case CFunc::LightX:
         return ((light_source *)lpointer_value(CAR(args)))->x;
         break;
-    case 113:
+    case CFunc::LightY:
         return ((light_source *)lpointer_value(CAR(args)))->y;
         break;
-    case 114:
+    case CFunc::LightXShift:
         return ((light_source *)lpointer_value(CAR(args)))->xshift;
         break;
-    case 115:
+    case CFunc::LightYShift:
         return ((light_source *)lpointer_value(CAR(args)))->yshift;
         break;
-    case 116:
+    case CFunc::Xacel:
         return current_object->xacel();
         break;
-    case 117:
+    case CFunc::Yacel:
         return current_object->yacel();
         break;
-    case 118:
+    case CFunc::DeleteLight:
         current_level->remove_light((light_source *)lpointer_value(CAR(args)));
         break;
-    case 119:
+    case CFunc::SetFx:
         current_object->set_fx(lnumber_value(CAR(args)));
         break;
-    case 120:
+    case CFunc::SetFy:
         current_object->set_fy(lnumber_value(CAR(args)));
         break;
-    case 121:
+    case CFunc::SetFxvel:
         current_object->set_fxvel(lnumber_value(CAR(args)));
         break;
-    case 122:
+    case CFunc::SetFyvel:
         current_object->set_fyvel(lnumber_value(CAR(args)));
         break;
-    case 123:
+    case CFunc::SetFxacel:
         current_object->set_fxacel(lnumber_value(CAR(args)));
         break;
-    case 124:
+    case CFunc::SetFyacel:
         current_object->set_fyacel(lnumber_value(CAR(args)));
         break;
-    case 125:
+    case CFunc::PictureWidth:
         return current_object->picture()->Size().x;
         break;
-    case 126:
+    case CFunc::PictureHeight:
         return current_object->picture()->Size().y;
         break;
-    case 127: {
+    case CFunc::Trap: {
         printf("trap\n");
     }
     break; // I use this to set gdb break points
-    case 128: {
+    case CFunc::PlatformPush: {
         return current_level->platform_push(current_object, lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))));
     }
     break;
-    case 133: // def_sound
-    {
+    case CFunc::DefSound: {
         LSymbol *sym = NULL;
         if (CDR(args))
         {
@@ -1681,8 +1379,7 @@ long c_caller(long number, void *args)
         return id;
     }
     break;
-    case 134: // play_sound
-    {
+    case CFunc::PlaySound: {
         void *a = args;
         PtrRef r1(a);
         int id = lnumber_value(lcar(a));
@@ -1714,10 +1411,10 @@ long c_caller(long number, void *args)
     }
     break;
 
-    case 137:
+    case CFunc::DefParticle:
         return defun_pseq(args);
         break;
-    case 138: {
+    case CFunc::AddPanim: {
         int id = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t x = lnumber_value(CAR(args));
@@ -1728,7 +1425,7 @@ long c_caller(long number, void *args)
         add_panim(id, x, y, dir);
     }
     break;
-    case 142: {
+    case CFunc::WeaponToType: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         if (x < 0 || x >= total_weapons)
@@ -1739,7 +1436,7 @@ long c_caller(long number, void *args)
         return weapon_types[x];
     }
     break;
-    case 143: {
+    case CFunc::HurtRadius: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y = lnumber_value(CAR(args));
@@ -1755,7 +1452,7 @@ long c_caller(long number, void *args)
     }
     break;
 
-    case 144: {
+    case CFunc::AddAmmo: {
         view *v = current_object->controller();
         if (!v)
             printf("Can't add weapons for non-players\n");
@@ -1774,7 +1471,7 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 145: {
+    case CFunc::AmmoTotal: {
         view *v = current_object->controller();
         if (!v)
             return 0;
@@ -1782,7 +1479,7 @@ long c_caller(long number, void *args)
             return v->weapon_total(lnumber_value(CAR(args)));
     }
     break;
-    case 146: {
+    case CFunc::CurrentWeapon: {
         view *v = current_object->controller();
         if (!v)
             return 0;
@@ -1790,7 +1487,7 @@ long c_caller(long number, void *args)
             return v->current_weapon;
     }
     break;
-    case 147: {
+    case CFunc::CurrentWeaponType: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -1801,13 +1498,13 @@ long c_caller(long number, void *args)
             return v->current_weapon;
     }
     break;
-    case 148:
+    case CFunc::BlockedUp:
         return lnumber_value(CAR(args)) & BLOCKED_UP;
         break;
-    case 149:
+    case CFunc::BlockedDown:
         return lnumber_value(CAR(args)) & BLOCKED_DOWN;
         break;
-    case 150: {
+    case CFunc::GiveWeapon: {
         view *v = current_object->controller();
         int x = lnumber_value(CAR(args));
         if (x < 0 || x >= total_weapons)
@@ -1819,7 +1516,7 @@ long c_caller(long number, void *args)
             v->give_weapon(x);
     }
     break;
-    case 151: {
+    case CFunc::GetAbility: {
         int a = lnumber_value(CAR(args));
         if (a < 0 || a >= TOTAL_ABILITIES)
         {
@@ -1830,7 +1527,7 @@ long c_caller(long number, void *args)
         return get_ability(current_object->otype, (ability)a);
     }
     break;
-    case 152: {
+    case CFunc::ResetPlayer: {
         view *v = current_object->controller();
         if (!v)
             printf("Can't use reset_player on non-players\n");
@@ -1838,14 +1535,14 @@ long c_caller(long number, void *args)
             v->reset_player();
     }
     break;
-    case 153: {
+    case CFunc::SiteAngle: {
         game_object *o = (game_object *)lpointer_value(CAR(args));
         int32_t x = o->x - current_object->x, y = -(o->y - o->picture()->Size().y / 2 -
                                                     (current_object->y - (current_object->picture()->Size().y / 2)));
         return lisp_atan2(y, x);
     }
     break;
-    case 154: {
+    case CFunc::SetCourse: {
         int32_t ang = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t mag = lfixed_point_value(CAR(args));
@@ -1857,7 +1554,7 @@ long c_caller(long number, void *args)
         current_object->set_fyvel((yvel & 0xffff) >> 8);
     }
     break;
-    case 155: {
+    case CFunc::SetFrameAngle: {
         int tframes = current_object->total_frames(), f;
 
         int32_t ang1 = lnumber_value(CAR(args));
@@ -1894,20 +1591,20 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 156: {
+    case CFunc::JumpState: {
         int x = current_object->current_frame;
         current_object->set_state((character_state)lnumber_value(CAR(args)));
         current_object->current_frame = x;
     }
     break;
 
-    case 168:
+    case CFunc::Morphing:
         if (current_object->morph_status())
             return 1;
         else
             return 0;
         break;
-    case 169: {
+    case CFunc::DamageFun: {
         int32_t am = lnumber_value(CAR(args));
         args = CDR(args);
         game_object *from = (game_object *)lpointer_value(CAR(args));
@@ -1923,10 +1620,10 @@ long c_caller(long number, void *args)
         current_object->damage_fun(am, from, hitx, hity, px, py);
     }
     break;
-    case 170:
+    case CFunc::Gravity:
         return current_object->gravity();
         break;
-    case 171: {
+    case CFunc::MakeViewSolid: {
         view *v = current_object->controller();
         if (!v)
             printf("make_view_solid : object has no view\n");
@@ -1934,7 +1631,7 @@ long c_caller(long number, void *args)
             v->draw_solid = lnumber_value(CAR(args));
     }
     break;
-    case 172: {
+    case CFunc::FindRgb: {
         void *a = args;
         int r = lnumber_value(CAR(a));
         a = CDR(a);
@@ -1950,7 +1647,7 @@ long c_caller(long number, void *args)
         return color_table->Lookup(r >> 3, g >> 3, b >> 3);
     }
     break;
-    case 173: {
+    case CFunc::PlayerXSuggest: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -1961,7 +1658,7 @@ long c_caller(long number, void *args)
             return v->x_suggestion;
     }
     break;
-    case 174: {
+    case CFunc::PlayerYSuggest: {
         //AR get use/down key state
         view *v = current_object->controller();
         if (!v)
@@ -1973,7 +1670,7 @@ long c_caller(long number, void *args)
             return v->y_suggestion;
     }
     break;
-    case 175: {
+    case CFunc::PlayerB1Suggest: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -1984,7 +1681,7 @@ long c_caller(long number, void *args)
             return v->b1_suggestion;
     }
     break;
-    case 176: {
+    case CFunc::PlayerB2Suggest: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -1995,7 +1692,7 @@ long c_caller(long number, void *args)
             return v->b2_suggestion;
     }
     break;
-    case 177: {
+    case CFunc::PlayerB3Suggest: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2006,7 +1703,7 @@ long c_caller(long number, void *args)
             return v->b3_suggestion;
     }
     break;
-    case 178: {
+    case CFunc::SetBgScroll: {
         bg_xmul = lnumber_value(CAR(args));
         args = CDR(args);
         bg_xdiv = lnumber_value(CAR(args));
@@ -2028,7 +1725,7 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 179: {
+    case CFunc::SetAmbientLight: {
         view *v = lget_view(CAR(args), "set_ambient_light");
         args = CDR(args);
         int32_t x = lnumber_value(CAR(args));
@@ -2036,10 +1733,10 @@ long c_caller(long number, void *args)
             v->ambient = x;
     }
     break;
-    case 180:
+    case CFunc::AmbientLight:
         return lget_view(CAR(args), "ambient_light")->ambient;
         break;
-    case 181: {
+    case CFunc::HasObject: {
         int x = current_object->total_objects();
         game_object *who = (game_object *)lpointer_value(CAR(args));
         for (int i = 0; i < x; i++)
@@ -2048,37 +1745,37 @@ long c_caller(long number, void *args)
         return 0;
     }
     break;
-    case 182:
+    case CFunc::SetOtype:
         current_object->change_type(lnumber_value(CAR(args)));
         break;
-    case 184:
+    case CFunc::CurrentFrame:
         return current_object->current_frame;
         break;
 
-    case 185:
+    case CFunc::Fx:
         return current_object->fx();
         break;
-    case 186:
+    case CFunc::Fy:
         return current_object->fy();
         break;
-    case 187:
+    case CFunc::Fxvel:
         return current_object->fxvel();
         break;
-    case 188:
+    case CFunc::Fyvel:
         return current_object->fyvel();
         break;
-    case 189:
+    case CFunc::Fxacel:
         return current_object->fxacel();
         break;
-    case 190:
+    case CFunc::Fyacel:
         return current_object->fyacel();
         break;
-    case 191: {
+    case CFunc::SetStatBar: {
         //      char *fn=lstring_value(CAR(args)); args=CDR(args);
         //      stat_bar=cache.reg_object(fn,CAR(args),SPEC_IMAGE,1);
     }
     break;
-    case 192: {
+    case CFunc::SetFgTile: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y = lnumber_value(CAR(args));
@@ -2090,7 +1787,7 @@ long c_caller(long number, void *args)
             current_level->PutFg(ivec2(x, y), type);
     }
     break;
-    case 193: {
+    case CFunc::FgTile: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y = lnumber_value(CAR(args));
@@ -2100,7 +1797,7 @@ long c_caller(long number, void *args)
             return current_level->GetFg(ivec2(x, y));
     }
     break;
-    case 194: {
+    case CFunc::SetBgTile: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y = lnumber_value(CAR(args));
@@ -2112,7 +1809,7 @@ long c_caller(long number, void *args)
             current_level->PutBg(ivec2(x, y), type);
     }
     break;
-    case 195: {
+    case CFunc::BgTile: {
         int32_t x = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y = lnumber_value(CAR(args));
@@ -2122,10 +1819,10 @@ long c_caller(long number, void *args)
             return current_level->GetBg(ivec2(x, y));
     }
     break;
-    case 196:
+    case CFunc::LoadTiles:
         load_tiles(args);
         break;
-    case 197: {
+    case CFunc::LoadPalette: {
         bFILE *fp = open_file(lstring_value(CAR(args)), "rb");
         if (fp->open_failure())
         {
@@ -2149,7 +1846,7 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 198: {
+    case CFunc::LoadColorFilter: {
         bFILE *fp = open_file(lstring_value(CAR(args)), "rb");
         if (fp->open_failure())
         {
@@ -2172,12 +1869,12 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 199: {
+    case CFunc::CreatePlayers: {
         current_start_type = lnumber_value(CAR(args));
         set_local_players(1);
     }
     break;
-    case 200: {
+    case CFunc::TryMove: {
         int32_t xv = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t yv = lnumber_value(CAR(args));
@@ -2194,12 +1891,12 @@ long c_caller(long number, void *args)
         return (oxv == xv && oyv == yv);
     }
     break;
-    case 201: {
+    case CFunc::SequenceLength: {
         int32_t x = lnumber_value(CAR(args));
         return figures[current_object->otype]->get_sequence((character_state)x)->length();
     }
     break;
-    case 202: {
+    case CFunc::CanSee: {
         int32_t x1 = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2221,28 +1918,28 @@ long c_caller(long number, void *args)
         return (x2 == nx2 && y2 == ny2);
     }
     break;
-    case 203: {
+    case CFunc::LoadBigFont: {
         char *fn = lstring_value(CAR(args));
         args = CDR(args);
         char *name = lstring_value(CAR(args));
         big_font_pict = cache.reg(fn, name, SPEC_IMAGE, 1);
     }
     break;
-    case 204: {
+    case CFunc::LoadSmallFont: {
         char *fn = lstring_value(CAR(args));
         args = CDR(args);
         char *name = lstring_value(CAR(args));
         small_font_pict = cache.reg(fn, name, SPEC_IMAGE, 1);
     }
     break;
-    case 205: {
+    case CFunc::LoadConsoleFont: {
         char *fn = lstring_value(CAR(args));
         args = CDR(args);
         char *name = lstring_value(CAR(args));
         console_font_pict = cache.reg(fn, name, SPEC_IMAGE, 1);
     }
     break;
-    case 206: {
+    case CFunc::SetCurrentFrame: {
         int32_t x = lnumber_value(CAR(args));
         if (x < current_object->total_frames())
             current_object->current_frame = x;
@@ -2251,27 +1948,27 @@ long c_caller(long number, void *args)
     }
     break;
 
-    case 208: {
+    case CFunc::DrawTransparent: {
         current_object->draw_trans(lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))));
     }
     break;
-    case 209: {
+    case CFunc::DrawTint: {
         current_object->draw_tint(lnumber_value(CAR(args)));
     }
     break;
-    case 210: {
+    case CFunc::DrawPredator: {
         current_object->draw_predator();
     }
     break;
-    case 211: {
+    case CFunc::ShiftDown: {
         return lget_view(CAR(args), "shift_down")->m_shift.y;
     }
     break;
-    case 212: {
+    case CFunc::ShiftRight: {
         return lget_view(CAR(args), "shift_right")->m_shift.x;
     }
     break;
-    case 213: {
+    case CFunc::SetNoScrollRange: {
         view *v = lget_view(CAR(args), "set_no_scroll_range");
         args = CDR(args);
         v->no_xleft = lnumber_value(CAR(args));
@@ -2283,7 +1980,7 @@ long c_caller(long number, void *args)
         v->no_ybottom = lnumber_value(CAR(args));
     }
     break;
-    case 215: {
+    case CFunc::DefImage: {
         char *fn = lstring_value(CAR(args));
         args = CDR(args);
         char *name = lstring_value(CAR(args));
@@ -2291,7 +1988,7 @@ long c_caller(long number, void *args)
         return cache.reg(fn, name, SPEC_IMAGE, 1);
     }
     break;
-    case 216: {
+    case CFunc::PutImage: {
         int32_t x1 = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2300,7 +1997,7 @@ long c_caller(long number, void *args)
         main_screen->PutImage(cache.img(id), ivec2(x1, y1), 1);
     }
     break;
-    case 217: {
+    case CFunc::ViewX1: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : view_x1");
@@ -2308,7 +2005,7 @@ long c_caller(long number, void *args)
             return v->m_aa.x;
     }
     break;
-    case 218: {
+    case CFunc::ViewY1: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : view_x1");
@@ -2316,7 +2013,7 @@ long c_caller(long number, void *args)
             return v->m_aa.y;
     }
     break;
-    case 219: {
+    case CFunc::ViewX2: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : view_x1");
@@ -2324,7 +2021,7 @@ long c_caller(long number, void *args)
             return v->m_bb.x;
     }
     break;
-    case 220: {
+    case CFunc::ViewY2: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : view_x1");
@@ -2332,7 +2029,7 @@ long c_caller(long number, void *args)
             return v->m_bb.y;
     }
     break;
-    case 221: {
+    case CFunc::ViewPushDown: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : view_push_down");
@@ -2340,7 +2037,7 @@ long c_caller(long number, void *args)
             v->m_lastpos.y -= lnumber_value(CAR(args));
     }
     break;
-    case 222: {
+    case CFunc::LocalPlayer: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : local_player");
@@ -2348,7 +2045,7 @@ long c_caller(long number, void *args)
             return v->local_player();
     }
     break;
-    case 223: {
+    case CFunc::SaveGame: {
         char *fn = lstring_value(CAR(args));
         current_level->save(fn, 1);
 
@@ -2357,11 +2054,11 @@ long c_caller(long number, void *args)
         settings.quick_load += fn;
     }
     break;
-    case 224: {
+    case CFunc::SetHp: {
         current_object->set_hp(lnumber_value(CAR(args)));
     }
     break;
-    case 225: {
+    case CFunc::RequestLevelLoad: {
         char fn[255];
         // If a save filename is requested, prepend the savegame directory.
         if (strncmp(lstring_value(CAR(args)), "save", 4) == 0)
@@ -2377,15 +2074,15 @@ long c_caller(long number, void *args)
         settings.quick_load = fn; //AR
     }
     break;
-    case 226: {
+    case CFunc::SetFirstLevel: {
         strcpy(level_file, lstring_value(CAR(args)));
     }
     break;
-    case 227: {
+    case CFunc::DefTint: {
         return cache.reg(lstring_value(CAR(args)), "palette", SPEC_PALETTE, 1);
     }
     break;
-    case 228: {
+    case CFunc::TintPalette: {
         palette *p = pal->copy();
         uint8_t *addr = (uint8_t *)p->addr();
         int r, g, b;
@@ -2422,7 +2119,7 @@ long c_caller(long number, void *args)
         delete p;
     }
     break;
-    case 229: {
+    case CFunc::PlayerNumber: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : local_player");
@@ -2430,11 +2127,11 @@ long c_caller(long number, void *args)
             return v->player_number;
     }
     break;
-    case 230:
+    case CFunc::SetCurrentWeapon:
         // The code removed here automatically switched the weapon when finding
         // a new weapon. This was annoying.
         break;
-    case 231: {
+    case CFunc::HasWeapon: {
         view *v = current_object->controller();
         if (!v)
             lbreak("object has no view : local_player");
@@ -2442,12 +2139,12 @@ long c_caller(long number, void *args)
             return v->has_weapon(lnumber_value(CAR(args)));
     }
     break;
-    case 232: {
+    case CFunc::AmbientRamp: {
         ambient_ramp += lnumber_value(CAR(args));
     }
     break;
 
-    case 233: {
+    case CFunc::TotalPlayers: {
         int x = 0;
         view *v = player_list;
         for (; v; v = v->next, x++)
@@ -2456,7 +2153,7 @@ long c_caller(long number, void *args)
     }
     break;
 
-    case 234: {
+    case CFunc::ScatterLine: {
         int32_t x1 = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2474,35 +2171,35 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 235: {
+    case CFunc::GameTick: {
         if (current_level)
             return current_level->tick_counter();
         else
             return 0;
     }
     break;
-    case 236: {
+    case CFunc::IsaPlayer: {
         return current_object->controller() != NULL;
     }
     break;
-    case 237: {
+    case CFunc::ShiftRandTable: {
         rand_on += lnumber_value(CAR(args));
         return 1;
     }
     break;
-    case 238: {
+    case CFunc::TotalFrames: {
         return current_object->total_frames();
     }
     break;
-    case 239: {
+    case CFunc::Raise: {
         current_level->to_front(current_object);
     }
     break;
-    case 240: {
+    case CFunc::Lower: {
         current_level->to_back(current_object);
     }
     break;
-    case 241: {
+    case CFunc::PlayerPointerX: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2513,7 +2210,7 @@ long c_caller(long number, void *args)
             return v->pointer_x;
     }
     break;
-    case 242: {
+    case CFunc::PlayerPointerY: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2524,14 +2221,14 @@ long c_caller(long number, void *args)
             return v->pointer_y;
     }
     break;
-    case 243: {
+    case CFunc::FramePanic: {
         if (player_list->next || demo_man.current_state() != demo_manager::NORMAL)
             return 0;
         else
             return (frame_panic > 10);
     }
     break;
-    case 244: {
+    case CFunc::AscatterLine: {
         int32_t x1 = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2551,15 +2248,15 @@ long c_caller(long number, void *args)
         return 1;
     }
     break;
-    case 245: {
+    case CFunc::RandOn: {
         return rand_on;
     }
     break;
-    case 246: {
+    case CFunc::SetRandOn: {
         rand_on = lnumber_value(CAR(args));
     }
     break;
-    case 247: {
+    case CFunc::Bar: {
         int32_t cx1 = lnumber_value(CAR(args));
         args = lcdr(args);
         int32_t cy1 = lnumber_value(CAR(args));
@@ -2573,11 +2270,11 @@ long c_caller(long number, void *args)
         main_screen->Bar(ivec2(cx1, cy1), ivec2(cx2, cy2), c1);
     }
     break;
-    case 248: {
+    case CFunc::Argc: {
         return start_argc;
     }
     break;
-    case 249: {
+    case CFunc::PlaySong: {
         if ((sound_avail & MUSIC_INITIALIZED))
         {
             char *fn = lstring_value(CAR(args));
@@ -2593,23 +2290,23 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 250: {
+    case CFunc::StopSong: {
         if (current_song && current_song->playing())
             current_song->stop();
         delete current_song;
         current_song = NULL;
     }
     break;
-    case 251:
+    case CFunc::Targetable:
         return current_object->targetable();
         break;
-    case 252:
+    case CFunc::SetTargetable:
         current_object->set_targetable(CAR(args) == NULL ? 0 : 1);
         break;
-    case 253:
+    case CFunc::ShowStats:
         show_stats();
         break;
-    case 254: {
+    case CFunc::Kills: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2620,7 +2317,7 @@ long c_caller(long number, void *args)
             return v->kills;
     }
     break;
-    case 255: {
+    case CFunc::TKills: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2631,7 +2328,7 @@ long c_caller(long number, void *args)
             return v->tkills;
     }
     break;
-    case 256: {
+    case CFunc::Secrets: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2642,7 +2339,7 @@ long c_caller(long number, void *args)
             return v->secrets;
     }
     break;
-    case 257: {
+    case CFunc::TSecrets: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2653,7 +2350,7 @@ long c_caller(long number, void *args)
             return v->tsecrets;
     }
     break;
-    case 258: {
+    case CFunc::SetKills: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2664,7 +2361,7 @@ long c_caller(long number, void *args)
             v->kills = lnumber_value(CAR(args));
     }
     break;
-    case 259: {
+    case CFunc::SetTKills: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2675,7 +2372,7 @@ long c_caller(long number, void *args)
             v->tkills = lnumber_value(CAR(args));
     }
     break;
-    case 260: {
+    case CFunc::SetSecrets: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2686,7 +2383,7 @@ long c_caller(long number, void *args)
             v->secrets = lnumber_value(CAR(args));
     }
     break;
-    case 261: {
+    case CFunc::SetTSecrets: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2697,59 +2394,59 @@ long c_caller(long number, void *args)
             v->tsecrets = lnumber_value(CAR(args));
     }
     break;
-    case 262: {
+    case CFunc::RequestEndGame: {
         the_game->request_end();
     }
     break;
-    case 263: {
+    case CFunc::GetSaveSlot: {
         the_game->reset_keymap();
-        return load_game(1, symbol_str("SAVE")); //get_save_spot(); shit
+        return load_game(1, symbol_str("SAVE"));
     }
     break;
-    case 264: {
+    case CFunc::MemReport: {
         printf("mem_report is deprecated\n");
     }
     break;
-    case 265: {
+    case CFunc::MajorVersion: {
         return ENGINE_MAJOR;
     }
     break;
-    case 266: {
+    case CFunc::MinorVersion: {
         return ENGINE_MINOR;
     }
     break;
-    case 267: {
+    case CFunc::DrawDoubleTint: {
         current_object->draw_double_tint(lnumber_value(CAR(args)), lnumber_value(CAR(CDR(args))));
     }
     break;
-    case 268: {
+    case CFunc::ImageWidth: {
         return cache.img(lnumber_value(CAR(args)))->Size().x;
     }
     break;
-    case 269: {
+    case CFunc::ImageHeight: {
         return cache.img(lnumber_value(CAR(args)))->Size().y;
     }
     break;
-    case 270: {
+    case CFunc::ForegroundWidth: {
         return current_level->foreground_width();
     }
     break;
-    case 271: {
+    case CFunc::ForegroundHeight: {
         return current_level->foreground_height();
     }
     break;
-    case 272: {
+    case CFunc::BackgroundWidth: {
         return current_level->background_width();
     }
     break;
-    case 273: {
+    case CFunc::BackgroundHeight: {
         return current_level->background_height();
     }
     break;
-    case 274: {
+    case CFunc::GetKeyCode: {
         return get_keycode(lstring_value(CAR(args)));
     }
-    case 275: {
+    case CFunc::SetCursorShape: {
         int id = lnumber_value(CAR(args));
         args = CDR(args);
         int x = lnumber_value(CAR(args));
@@ -2760,13 +2457,13 @@ long c_caller(long number, void *args)
             wm->SetMouseShape(cache.img(c_target)->copy(), ivec2(x, y));
     }
     break;
-    case 276: {
+    case CFunc::StartServer: {
         if (!main_net_cfg)
             return 0;
         return become_server(game_name);
     }
     break;
-    case 277: {
+    case CFunc::PutString: {
         JCFont *fnt = (JCFont *)lpointer_value(CAR(args));
         args = CDR(args);
         int32_t x = lnumber_value(CAR(args));
@@ -2781,17 +2478,17 @@ long c_caller(long number, void *args)
         fnt->PutString(main_screen, ivec2(x, y), st, color);
     }
     break;
-    case 278:
+    case CFunc::FontWidth:
         return ((JCFont *)lpointer_value(CAR(args)))->Size().x;
         break;
-    case 279:
+    case CFunc::FontHeight:
         return ((JCFont *)lpointer_value(CAR(args)))->Size().y;
         break;
-    case 280:
+    case CFunc::ChatPrint:
         if (chat)
             chat->put_all(lstring_value(CAR(args)));
         break;
-    case 281: {
+    case CFunc::SetPlayerName: {
         view *v = current_object->controller();
         if (!v)
         {
@@ -2801,7 +2498,7 @@ long c_caller(long number, void *args)
             strcpy(v->name, lstring_value(CAR(args)));
     }
     break;
-    case 282: {
+    case CFunc::DrawBar: {
         int32_t x1 = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2814,7 +2511,7 @@ long c_caller(long number, void *args)
         main_screen->Bar(ivec2(x1, y1), ivec2(x2, y2), c);
     }
     break;
-    case 283: {
+    case CFunc::DrawRect: {
         int32_t x1 = lnumber_value(CAR(args));
         args = CDR(args);
         int32_t y1 = lnumber_value(CAR(args));
@@ -2827,38 +2524,38 @@ long c_caller(long number, void *args)
         main_screen->Rectangle(ivec2(x1, y1), ivec2(x2, y2), c);
     }
     break;
-    case 284: {
+    case CFunc::GetOption: {
         if (get_option(lstring_value(CAR(args))))
             return 1;
         else
             return 0;
     }
     break;
-    case 288: {
+    case CFunc::SetDelayOn: {
         if (CAR(args))
             the_game->set_delay(1);
         else
             the_game->set_delay(0);
     }
     break;
-    case 289: {
+    case CFunc::SetLogin: {
         set_login(lstring_value(CAR(args)));
     }
     break;
-    case 290: {
+    case CFunc::EnableChatting: {
         chatting_enabled = 1;
     }
     break;
-    case 291: {
+    case CFunc::DemoBreakEnable: {
         demo_start = 1;
     }
     break;
-    case 292: {
+    case CFunc::AmAClient: {
         if (main_net_cfg && main_net_cfg->state == net_configuration::CLIENT)
             return 1;
     }
     break;
-    case 293: {
+    case CFunc::TimeForNextLevel: {
         if (main_net_cfg &&
             (main_net_cfg->state == net_configuration::CLIENT || main_net_cfg->state == net_configuration::SERVER))
         {
@@ -2871,7 +2568,7 @@ long c_caller(long number, void *args)
             return 0;
     }
     break;
-    case 294: {
+    case CFunc::ResetKills: {
         view *v = player_list;
         for (; v; v = v->next)
         {
@@ -2888,35 +2585,35 @@ long c_caller(long number, void *args)
         }
     }
     break;
-    case 295: {
+    case CFunc::SetGameName: {
         strncpy(game_name, lstring_value(CAR(args)), sizeof(game_name));
         game_name[sizeof(game_name) - 1] = 0;
     }
     break;
-    case 296: {
+    case CFunc::SetNetMinPlayers: {
         if (main_net_cfg)
             main_net_cfg->min_players = lnumber_value(CAR(args));
     }
     break;
-    case 1001: // (set_object_tint)
+    case CFunc::SetObjectTint:
         if (current_object->Controller)
             current_object->Controller->set_tint(lnumber_value(CAR(args)));
         else
             current_object->set_tint(lnumber_value(CAR(args)));
         break;
-    case 1002: //(get_object_tint)
+    case CFunc::GetObjectTint:
         if (current_object->Controller)
             return current_object->Controller->get_tint();
         else
             return current_object->get_tint();
         break;
-    case 1003: //(set_object_team)
+    case CFunc::SetObjectTeam:
         if (current_object->Controller)
             current_object->Controller->set_team(lnumber_value(CAR(args)));
         else
             current_object->set_team(lnumber_value(CAR(args)));
         break;
-    case 1004: //(get_object_team)
+    case CFunc::GetObjectTeam:
         if (current_object->Controller)
             return current_object->Controller->get_team();
         else
@@ -2927,24 +2624,4 @@ long c_caller(long number, void *args)
         return 0;
     }
     return 0;
-}
-
-int get_lprop_number(void *symbol, int def) // returns def if symbol undefined or not number type
-{
-    void *v = symbol_value(symbol);
-    if (v)
-    {
-        switch (item_type(v))
-        {
-        case L_FIXED_POINT:
-        case L_NUMBER: {
-            return lnumber_value(v);
-        }
-        break;
-        default:
-            return def;
-        }
-    }
-    else
-        return def;
 }

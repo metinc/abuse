@@ -878,7 +878,7 @@ LSymbol *add_c_object(void *symbol, int index)
     return NULL;
 }
 
-LSymbol *add_c_function(char const *name, short min_args, short max_args, short number)
+LSymbol *add_c_function(char const *name, short min_args, short max_args, CFunc number)
 {
     total_user_functions++;
     need_perm_space("add_c_function");
@@ -889,11 +889,11 @@ LSymbol *add_c_function(char const *name, short min_args, short max_args, short 
         exit(EXIT_SUCCESS);
     }
     else
-        s->m_function = new_lisp_c_function(min_args, max_args, number);
+        s->m_function = new_lisp_c_function(min_args, max_args, static_cast<int>(number));
     return s;
 }
 
-LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short number)
+LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, CFunc number)
 {
     total_user_functions++;
     need_perm_space("add_c_bool_fun");
@@ -904,7 +904,7 @@ LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short 
         exit(EXIT_SUCCESS);
     }
     else
-        s->m_function = new_lisp_c_bool(min_args, max_args, number);
+        s->m_function = new_lisp_c_bool(min_args, max_args, static_cast<int>(number));
     return s;
 }
 
@@ -1429,8 +1429,8 @@ LObject *LSymbol::EvalFunction(void *arg_list)
             arg_list = lcdr(arg_list);
         }
         if (t == L_C_FUNCTION)
-            ret = LNumber::Create(c_caller(((LSysFunction *)fun)->fun_number, first));
-        else if (c_caller(((LSysFunction *)fun)->fun_number, first))
+            ret = LNumber::Create(c_caller(static_cast<CFunc>(((LSysFunction *)fun)->fun_number), first));
+        else if (c_caller(static_cast<CFunc>(((LSysFunction *)fun)->fun_number), first))
             ret = true_symbol;
         else
             ret = NULL;

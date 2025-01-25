@@ -10,8 +10,6 @@
 
 #ifndef __CLISP_HPP_
 
-int get_lprop_number(void *sybol, int def); // returns def if symbol undefined or not number type
-
 // variables for the status bar
 extern LSymbol *l_chat_input, *l_post_render;
 
