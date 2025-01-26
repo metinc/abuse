@@ -132,8 +132,10 @@ class game_object : public simple_object
     }
 
     game_object *try_move(int32_t x, int32_t y, int32_t &xv, int32_t &yv, int checks); // 1=down,2=up,3=both
-    game_object *bmove(int &whit, game_object *exclude); // ballestic move, return hit object,
-        // or NULL (whit is 1 if hit wall)
+
+    // ballistic move, return hit object or NULL (collision is 1 if hit wall)
+    game_object *bmove(int &collision, game_object *exclude);
+
     TransImage *picture()
     {
         return current_sequence()->get_frame(current_frame, direction);

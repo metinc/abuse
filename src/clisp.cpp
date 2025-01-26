@@ -227,16 +227,16 @@ void *l_caller(LispFunc number, void *args)
     break;
 
     case LispFunc::BMove: {
-        int whit;
+        int collision;
         game_object *o;
         if (args)
             o = (game_object *)lpointer_value(CAR(args)->Eval());
         else
             o = current_object;
-        game_object *hit = current_object->bmove(whit, o);
+        game_object *hit = current_object->bmove(collision, o);
         if (hit)
             return LPointer::Create(hit);
-        else if (whit)
+        else if (collision)
             return NULL;
         else
             return true_symbol;
@@ -1555,7 +1555,8 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::SetFrameAngle: {
-        int tframes = current_object->total_frames(), f;
+        int total_frames = current_object->total_frames();
+        int fraction;
 
         int32_t ang1 = lnumber_value(CAR(args));
         args = CDR(args);
@@ -1570,24 +1571,24 @@ long c_caller(CFunc number, void *args)
         else if (ang2 >= 360)
             ang2 = ang2 % 360;
 
-        int32_t ang = (lnumber_value(CAR(args)) + 90 / tframes) % 360;
+        int32_t ang = (lnumber_value(CAR(args)) + 90 / total_frames) % 360;
         if (ang1 > ang2)
         {
             if (ang < ang1 && ang > ang2)
                 return 0;
             else if (ang >= ang1)
-                f = (ang - ang1) * tframes / (359 - ang1 + ang2 + 1);
+                fraction = (ang - ang1) * total_frames / (359 - ang1 + ang2 + 1);
             else
-                f = (359 - ang1 + ang) * tframes / (359 - ang1 + ang2 + 1);
+                fraction = (359 - ang1 + ang) * total_frames / (359 - ang1 + ang2 + 1);
         }
         else if (ang < ang1 || ang > ang2)
             return 0;
         else
-            f = (ang - ang1) * tframes / (ang2 - ang1 + 1);
+            fraction = (ang - ang1) * total_frames / (ang2 - ang1 + 1);
         if (current_object->direction > 0)
-            current_object->current_frame = f;
+            current_object->current_frame = fraction;
         else
-            current_object->current_frame = tframes - f - 1;
+            current_object->current_frame = total_frames - fraction - 1;
         return 1;
     }
     break;
