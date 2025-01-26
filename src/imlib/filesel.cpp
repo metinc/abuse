@@ -26,6 +26,21 @@
 #include "scroller.h"
 #include "jdir.h"
 
+#include <algorithm>
+#include <cctype>
+
+static bool compare_strings_ignore_case(const char *a, const char *b)
+{
+    while (*a && *b)
+    {
+        if (tolower(*a) != tolower(*b))
+            return tolower(*a) < tolower(*b);
+        a++;
+        b++;
+    }
+    return *a < *b;
+}
+
 class file_picker : public spicker
 {
     char **f, **d;
@@ -88,6 +103,19 @@ void file_picker::note_selection(image *screen, InputManager *inm, int x)
 
             free_up();
             get_directory(cd, f, tf, d, td);
+
+            // Sort directories
+            if (td > 0)
+            {
+                std::sort(d, d + td, compare_strings_ignore_case);
+            }
+
+            // Sort files
+            if (tf > 0)
+            {
+                std::sort(f, f + tf, compare_strings_ignore_case);
+            }
+
             wid = 0;
             int i = 0;
             for (; i < tf; i++)
@@ -134,6 +162,19 @@ file_picker::file_picker(int X, int Y, int ID, int Rows, ifield *Next) : spicker
     strcpy(cd, ".");
 
     get_directory(cd, f, tf, d, td);
+
+    // Sort directories
+    if (td > 0)
+    {
+        std::sort(d, d + td, compare_strings_ignore_case);
+    }
+
+    // Sort files
+    if (tf > 0)
+    {
+        std::sort(f, f + tf, compare_strings_ignore_case);
+    }
+
     wid = 0;
     int i = 0;
     for (; i < tf; i++)
