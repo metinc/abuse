@@ -30,7 +30,6 @@
 	 (setq l_fg               "VG")
 	 (setq l_bg               "HG")
 	 (setq New?               "Neu")
-	 (setq l_EDIT             "Bearbeiten")
 
 	 /********** New for Version D (1.46)   **************/
 

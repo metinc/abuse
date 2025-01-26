@@ -2172,7 +2172,7 @@ void dev_controll::handle_event(Event &ev)
                                                new button(bw * 3, bh * 1, DEV_OBJECTS_DELETE, cache.img(dev_objects),
                                                           new button(bw * 4, bh * 1, DEV_LIGHTS_DELETE,
                                                                      cache.img(dev_lights), NULL))))),
-                        symbol_str("l_EDIT"));
+                        object_names[selected_object->otype]);
 
                     edit_object = selected_object;
                 }

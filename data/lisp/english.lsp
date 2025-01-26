@@ -36,7 +36,6 @@
 	 (setq l_fg               "fg")
 	 (setq l_bg               "bg")
 	 (setq New?               "New?")
-	 (setq l_EDIT             "EDIT")
 
 
 	 /********** New for Version D (1.46)   **************/

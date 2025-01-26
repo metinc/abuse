@@ -30,7 +30,6 @@
 	 (setq l_fg               "PP")
 	 (setq l_bg               "AP")
 	 (setq New?               "Nouveau ?")
-	 (setq l_EDIT             "Editer")
 
 	 /********** New for Version D (1.46)   **************/
 
