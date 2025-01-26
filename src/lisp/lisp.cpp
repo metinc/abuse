@@ -48,54 +48,6 @@ size_t LSymbol::count = 0;
 
 int print_level = 0, trace_level = 0, trace_print_level = 1000;
 int total_user_functions;
-static int evaldepth = 0, maxevaldepth = 0;
-
-int break_level = 0;
-
-void l1print(void *block)
-{
-    if (!block || item_type(block) != L_CONS_CELL)
-    {
-        ((LObject *)block)->Print();
-        return;
-    }
-
-    printf("(");
-    for (; block && item_type(block) == L_CONS_CELL; block = CDR(block))
-    {
-        void *a = CAR(block);
-        if (item_type(a) == L_CONS_CELL)
-            printf("[...]");
-        else
-            ((LObject *)a)->Print();
-    }
-    if (block)
-    {
-        printf(" . ");
-        ((LObject *)block)->Print();
-    }
-    printf(")");
-}
-
-void where_print(int max_lev = -1)
-{
-    printf("Main program\n");
-    if (max_lev == -1)
-        max_lev = PtrRef::stack.m_size;
-    else if (max_lev >= (int)PtrRef::stack.m_size)
-        max_lev = PtrRef::stack.m_size - 1;
-
-    for (int i = 0; i < max_lev; i++)
-    {
-        printf("%d> ", i);
-        ((LObject *)*PtrRef::stack.sdata[i])->Print();
-    }
-}
-
-void print_trace_stack(int max_levels)
-{
-    where_print(max_levels);
-}
 
 void lbreak(char const *format, ...)
 {
@@ -339,23 +291,6 @@ LSysFunction *new_user_lisp_function(int min_args, int max_args, int fun_number)
     LSysFunction *ls = new_lisp_sys_function(min_args, max_args, fun_number);
     ls->m_type = L_L_FUNCTION;
     return ls;
-}
-
-LSymbol *new_lisp_symbol(char *name)
-{
-    size_t size = Max(sizeof(LSymbol), sizeof(LRedirect));
-
-    LSymbol *s = (LSymbol *)LSpace::Current->Alloc(size);
-    PtrRef ref(s);
-
-    s->m_type = L_SYMBOL;
-    s->m_name = LString::Create(name);
-    s->m_value = l_undefined;
-    s->m_function = l_undefined;
-#ifdef L_PROFILE
-    s->time_taken = 0;
-#endif
-    return s;
 }
 
 LNumber *LNumber::Create(long num)
@@ -627,41 +562,6 @@ int32_t lisp_atan2(int32_t dy, int32_t dx)
 {
     return (atan2f(-dy, -dx) + M_PI) * 180.0 / M_PI;
 }
-
-/*
-LSymbol *find_symbol(char const *name)
-{
-  LList *cs;
-  for (cs=(LList *)symbol_list; cs; cs=(LList *)CDR(cs))
-  {
-    if (!strcmp( ((char *)((LSymbol *)cs->m_car)->m_name)+sizeof(LString), name))
-      return (LSymbol *)(cs->m_car);
-  }
-  return NULL;
-}
-
-
-LSymbol *make_find_symbol(char const *name)    // find a symbol, if it doesn't exist it is created
-{
-  LSymbol *s=find_symbol(name);
-  if (s) return s;
-  else
-  {
-    LSpace *sp = LSpace::Current;
-    if (LSpace::Current != &LSpace::Gc)
-      LSpace::Current = &LSpace::Perm;       // make sure all symbols get defined in permanant space
-    LList *cs;
-    cs=LList::Create();
-    s=new_lisp_symbol(name);
-    cs->m_car=s;
-    cs->m_cdr=symbol_list;
-    symbol_list=cs;
-    LSpace::Current = sp;
-  }
-  return s;
-}
-
-*/
 
 LSymbol *LSymbol::Find(char const *name)
 {
@@ -2886,8 +2786,6 @@ LObject *LObject::Eval()
 {
     PtrRef ref1(this);
 
-    maxevaldepth = Max(maxevaldepth, ++evaldepth);
-
     int tstart = trace_level;
 
     if (trace_level)
@@ -2948,11 +2846,6 @@ LObject *LObject::Eval()
         ret->Print();
         printf("\n");
     }
-
-    /*  l_user_stack.push(ret);
-  Lisp::CollectSpace(&LSpace::Perm);
-  ret=l_user_stack.pop(1);  */
-    --evaldepth;
 
     return ret;
 }

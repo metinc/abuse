@@ -285,7 +285,6 @@ extern LSymbol *add_c_function(char const *name, short min_args, short max_args,
 extern LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, CFunc number);
 extern LSymbol *add_lisp_function(char const *name, short min_args, short max_args, LispFunc number);
 int read_ltoken(char *&s, char *buffer);
-void print_trace_stack(int max_levels);
 
 LSysFunction *new_lisp_sys_function(int min_args, int max_args, int fun_number);
 LSysFunction *new_lisp_c_function(int min_args, int max_args, int fun_number);
