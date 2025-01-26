@@ -146,6 +146,7 @@ LObject *Lisp::CollectObject(LObject *x)
             ret = ((LRedirect *)x)->m_ref;
             break;
         default:
+            x->Print();
             lbreak("error: collecting bad object 0x%x\n", item_type(x));
             break;
         }
