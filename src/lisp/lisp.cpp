@@ -99,55 +99,12 @@ void print_trace_stack(int max_levels)
 
 void lbreak(char const *format, ...)
 {
-    break_level++;
-    bFILE *old_file = current_print_file;
-    current_print_file = NULL;
     char st[300];
     va_list ap;
     va_start(ap, format);
     vsprintf(st, format, ap);
     va_end(ap);
-    printf("%s\n", st);
-    int cont = 0;
-    do
-    {
-        printf("type q to quit\n");
-        printf("%d. Break> ", break_level);
-        if (!strcmp(st, "c") || !strcmp(st, "cont") || !strcmp(st, "continue"))
-            cont = 1;
-        else if (!strcmp(st, "w") || !strcmp(st, "where"))
-            where_print();
-        else if (!strcmp(st, "q") || !strcmp(st, "quit"))
-            exit(EXIT_FAILURE);
-        else if (!strcmp(st, "e") || !strcmp(st, "env") || !strcmp(st, "environment"))
-        {
-            printf("Enviorment : \nnot supported right now\n");
-        }
-        else if (!strcmp(st, "h") || !strcmp(st, "help") || !strcmp(st, "?"))
-        {
-            printf("CLIVE Debugger\n");
-            printf(" w, where : show calling parents\n"
-                   " e, env   : show environment\n"
-                   " c, cont  : continue if possible\n"
-                   " q, quit  : quits the program\n"
-                   " h, help  : this\n");
-        }
-        else
-        {
-            char const *s = st;
-            do
-            {
-                LObject *prog = LObject::Compile(s);
-                PtrRef r1(prog);
-                while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
-                    s++;
-                prog->Eval()->Print();
-            } while (*s);
-        }
-
-    } while (!cont);
-    current_print_file = old_file;
-    break_level--;
+    throw std::runtime_error(st);
 }
 
 void need_perm_space(char const *why)
