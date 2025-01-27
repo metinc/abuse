@@ -78,7 +78,7 @@ bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 Settings::Settings()
 {
     //screen
-    this->fullscreen = 0; // start in window
+    this->fullscreen = 1;
     this->borderless = false;
     this->vsync = true;
     this->xres = 320; // default window width
