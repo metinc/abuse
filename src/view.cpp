@@ -309,53 +309,14 @@ void view::get_input()
     int sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4;
     ivec2 sug_p(0, 0);
 
-    // NOTE:(AK) I have commented this out so we don't use the lisp
-    //        file "input.lsp" to get our key mappings.
-    /*    if( DEFINEDP( symbol_function( l_get_local_input ) ) )
+    get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
+    if (m_focus)
     {
-        void *ret = ((LSymbol *)l_get_local_input->EvalFunction(NULL);
-        sug_x = lnumber_value( CAR( ret ) );
-        ret = CDR( ret );
-        sug_y = lnumber_value( CAR( ret ) );
-        ret = CDR( ret );
-        if( CAR( ret ) )
-            sug_b1 = 1;
-        else
-            sug_b1 = 0;
-        ret = CDR( ret );
-        if( CAR( ret ) )
+        sug_p = the_game->MouseToGame(last_demo_mpos);
+        if (last_demo_mbut & 1)
             sug_b2 = 1;
-        else
-            sug_b2 = 0;
-        ret = CDR( ret );
-        int x = lnumber_value( CAR( ret ) );
-        ret = CDR( ret );
-        if( x < 0 )
-            sug_b3 = 1;
-        else
-            sug_b3 = 0;
-        if( x > 0 )
-            sug_b4 = 1;
-        else sug_b4 = 0;
-
-        int32_t bx = lnumber_value( CAR( ret ) );
-        ret = CDR( ret );
-        int32_t by = lnumber_value( CAR( ret ) );
-        ret = CDR( ret );
-        the_game->mouse_to_game( bx, by, sug_px, sug_py, this );
-
-    }
-    else*/
-    {
-        get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
-        if (m_focus)
-        {
-            sug_p = the_game->MouseToGame(last_demo_mpos);
-            if (last_demo_mbut & 1)
-                sug_b2 = 1;
-            if (last_demo_mbut & 2)
-                sug_b1 = 1;
-        }
+        if (last_demo_mbut & 2)
+            sug_b1 = 1;
     }
 
     if (view_changed())
@@ -873,18 +834,6 @@ int total_local_players()
         if (f->local_player())
             t++;
     return t;
-}
-
-void view::set_input(int cx, int cy, int b1, int b2, int b3, int b4, int px, int py)
-{
-    x_suggestion = cx;
-    y_suggestion = cy;
-    b1_suggestion = b1;
-    b2_suggestion = b2;
-    b3_suggestion = b3;
-    b4_suggestion = b4;
-    pointer_x = px;
-    pointer_y = py;
 }
 
 void view::reset_player()

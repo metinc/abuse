@@ -22,7 +22,6 @@ INSTALL(FILES
     lisp/general.lsp
     lisp/german.lsp
     lisp/guns.lsp
-    lisp/input.lsp
     lisp/jugger.lsp
     lisp/ladder.lsp
     lisp/language.lsp

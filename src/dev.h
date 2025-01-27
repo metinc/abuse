@@ -96,7 +96,6 @@ class dev_controll
     void fg_fill(int color, int x, int y, pal_win *p);
     void add_palette(void *args);
     void search_forward();
-    void search_backward();
     void toggle_toolbar();
     void toggle_fgw();
     void toggle_bgw();
@@ -142,7 +141,7 @@ class dev_term : public shell_term
     {
         dv = dev;
     }
-    virtual ~dev_term(){};
+    virtual ~dev_term() {};
     virtual void execute(char *st);
 };
 

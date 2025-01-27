@@ -20,7 +20,7 @@ extern void *l_statbar_ammo_x, *l_statbar_ammo_y, *l_statbar_ammo_w, *l_statbar_
 
     *l_statbar_logo_x, *l_statbar_logo_y, *l_object, *l_tile, *l_fire_object, *l_player_draw, *l_sneaky_draw,
     *l_draw_fast, *l_player_tints, *l_next_song, *l_level_load_start, *l_level_load_end, *l_cdc_logo, *l_keep_backup,
-    *l_switch_to_powerful, *l_mouse_can_switch, *l_ask_save_slot, *l_get_local_input, *l_player_text_color,
+    *l_switch_to_powerful, *l_mouse_can_switch, *l_ask_save_slot, *l_player_text_color,
     *l_level_loaded; // called when a new level is loaded
 
 /******************************** Lisp objects **********************************/

@@ -103,7 +103,6 @@ class view
     void draw_hp();
     void draw_ammo();
     void draw_logo();
-    void set_input(int cx, int cy, int b1, int b2, int b3, int b4, int px, int py);
     int view_changed()
     {
         return suggest.send_view;

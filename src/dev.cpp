@@ -289,11 +289,6 @@ static void show_object_number(game_object *who)
     sprintf(msg, "%s : %d of %d", object_names[who->otype], number, total);
 }
 
-void dev_controll::search_backward()
-{
-    ;
-}
-
 static void single_render()
 {
     // enlarge clip area

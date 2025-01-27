@@ -65,7 +65,7 @@ void *l_main_menu, *l_logo, *l_state_art, *l_abilities, *l_state_sfx, *l_song_li
     *l_fire_object, *l_FIRE, *l_cop_dead_parts, *l_restart_player, *l_help_screens, *l_player_draw, *l_sneaky_draw,
     *l_health_image, *l_fly_image, *l_sneaky_image, *l_draw_fast, *l_player_tints, *l_save_order, *l_next_song,
     *l_level_load_start, *l_level_load_end, *l_cdc_logo, *l_keep_backup, *l_switch_to_powerful, *l_mouse_can_switch,
-    *l_ask_save_slot, *l_get_local_input, *l_player_text_color,
+    *l_ask_save_slot, *l_player_text_color,
     *l_level_loaded; // called when a new level is loaded
 
 char game_name[50];
@@ -179,7 +179,6 @@ void clisp_init()
 
     l_level_load_start = LSymbol::FindOrCreate("level_load_start");
     l_level_load_end = LSymbol::FindOrCreate("level_load_end");
-    l_get_local_input = LSymbol::FindOrCreate("get_local_input");
     l_chat_input = LSymbol::FindOrCreate("chat_input");
     l_player_text_color = LSymbol::FindOrCreate("player_text_color");
 

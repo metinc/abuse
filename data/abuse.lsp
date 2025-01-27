@@ -16,7 +16,6 @@
 (load "lisp/userfuns.lsp")
 (load "lisp/options.lsp")
 (load "lisp/startup.lsp")
-(load "lisp/input.lsp")
 
 (load "lisp/sfx.lsp")
 (load "lisp/gates.lsp")
