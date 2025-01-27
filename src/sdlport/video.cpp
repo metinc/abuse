@@ -108,7 +108,7 @@ void set_mode(int argc, char **argv)
 
     if (!window)
     {
-        show_startup_error("Video : Unable to create window : %s", SDL_GetError());
+        show_startup_error("Video: Unable to create window : %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
@@ -130,8 +130,15 @@ void set_mode(int argc, char **argv)
     {
         // try enabling adaptive vsync
         if (SDL_GL_SetSwapInterval(-1) == -1)
+        {
             // fallback to normal vsync
             SDL_GL_SetSwapInterval(1);
+            printf("Video: Using normal vsync since adaptive vsync is not available\n");
+        }
+        else
+        {
+            printf("Video: Using adaptive vsync\n");
+        }
     }
     else
         SDL_GL_SetSwapInterval(0);
@@ -169,7 +176,7 @@ void set_mode(int argc, char **argv)
 #endif
     if (screen == NULL)
     {
-        show_startup_error("Video : Unable to create 32-bit surface: %s", SDL_GetError());
+        show_startup_error("Video: Unable to create 32-bit surface: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
     //
@@ -179,7 +186,7 @@ void set_mode(int argc, char **argv)
     if (surface == NULL)
     {
         // Our surface is no good, we have to bail.
-        show_startup_error("Video : Unable to create 8-bit surface: %s", SDL_GetError());
+        show_startup_error("Video: Unable to create 8-bit surface: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
@@ -188,7 +195,7 @@ void set_mode(int argc, char **argv)
     if (main_screen == NULL)
     {
         // Our screen image is no good, we have to bail.
-        show_startup_error("Video : Unable to create screen image.");
+        show_startup_error("Video: Unable to create screen image.");
         exit(EXIT_FAILURE);
     }
     main_screen->clear();
@@ -206,7 +213,7 @@ void set_mode(int argc, char **argv)
     //AR shows 640x480 when the size is lower than that... ???
     /*SDL_DisplayMode mode;
     SDL_GetWindowDisplayMode(window, &mode);
-    printf("Video : %dx%d %dbpp\n", mode.w, mode.h, SDL_BITSPERPIXEL(mode.format));*/
+    printf("Video: %dx%d %dbpp\n", mode.w, mode.h, SDL_BITSPERPIXEL(mode.format));*/
 
     update_dirty(main_screen);
 }

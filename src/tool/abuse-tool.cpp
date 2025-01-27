@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
         result = ar_spec.AR_ParseConfig("abuse-tool/extract.txt");
 
         if (result == EXIT_SUCCESS)
-            ar_log.Write("\nAR_ParseConfig() OK");
+            ar_log.Write("AR_ParseConfig() OK");
         else
-            ar_log.Write("\nAR_ParseConfig() FAIL");
+            ar_log.Write("AR_ParseConfig() FAIL");
 
         ar_spec.tx_info.Write("", true);
     }
@@ -112,7 +112,7 @@ int abuse_tool(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    ar_log.Write("\n\nUsage 1: abuse-tool <spec_file> <command> [args...]");
+    ar_log.Write("Usage 1: abuse-tool <spec_file> <command> [args...]");
     ar_log.Write("---------------------------------------------------\n");
 
     int cmd = !strcmp(argv[2], "list")     ? CMD_LIST

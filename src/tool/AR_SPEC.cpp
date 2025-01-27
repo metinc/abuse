@@ -18,6 +18,8 @@
  */
 
 #include "AR_SPEC.h"
+#include <errno.h>
+#include <string.h>
 
 AR_SPEC::AR_SPEC()
 {
@@ -54,13 +56,13 @@ AR_SPEC::AR_SPEC()
 
 int AR_SPEC::AR_ParseConfig(std::string file_path)
 {
-    this->log->Write("\n\nUsage 2: abuse-tool");
+    this->log->Write("Usage 2: abuse-tool");
     this->log->Write("-------------------\n");
 
     std::ifstream filein(file_path.c_str());
     if (!filein.is_open())
     {
-        this->log->Write("\nERROR - AR_ParseConfig() - Failed to open \"" + file_path + "\"\n");
+        this->log->Write("ERROR - AR_ParseConfig() - Failed to open \"" + file_path + "\": " + strerror(errno));
         return EXIT_FAILURE;
     }
 
@@ -84,7 +86,7 @@ int AR_SPEC::AR_ParseConfig(std::string file_path)
         if (!AR_GetAttr(line, attr, value))
         {
             filein.close();
-            this->log->Write("\nERROR - AR_GetAttr() - bad command \"" + line + "\"\n");
+            this->log->Write("ERROR - AR_GetAttr() - bad command \"" + line + "\"");
             return EXIT_FAILURE;
         }
 
@@ -146,24 +148,24 @@ int AR_SPEC::AR_ParseConfig(std::string file_path)
             {
                 //convert .pcx files inside .spe to modern image formats
                 if (AR_ConvertSPEC(value))
-                    this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... OK");
+                    this->log->Write("AR_ConvertSPEC().....\"" + value + "\"..... OK");
                 else
                 {
                     filein.close();
-                    this->log->Write("\nAR_ConvertSPEC().....\"" + value + "\"..... FAILED");
+                    this->log->Write("AR_ConvertSPEC().....\"" + value + "\"..... FAILED");
                     return EXIT_FAILURE;
                 }
             }
             else
             {
                 filein.close();
-                this->log->Write("\nERROR - AR_GetAttr() - bad command \"" + line + "\"\n");
+                this->log->Write("ERROR - AR_GetAttr() - bad command \"" + line + "\"\n");
                 return EXIT_FAILURE;
             }
         }
         catch (const std::exception &e)
         {
-            this->log->Write("\nERROR - Invalid value in \"" + line + "\"\n");
+            this->log->Write("ERROR - Invalid value in \"" + line + "\"\n");
             filein.close();
             return EXIT_FAILURE;
         }
@@ -194,7 +196,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
     jFILE fp(file_path.c_str(), "rb");
     if (fp.open_failure())
     {
-        this->log->Write("\nERROR - AR_ConvertSPEC() - could not open \"" + file_path + "\"\n");
+        this->log->Write("ERROR - AR_ConvertSPEC() - Could not open \"" + file_path + "\": " + strerror(errno));
         return false;
     }
 
@@ -498,7 +500,6 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
 
                                 //SPEC file can have images with different this->alpha settings
                                 //so we mark the this->alpha disabled/solid ones with a +10000 value in the output matrix
-                                //this doesn't apply to tiles, but I don't want to make a new AR_CreatImage()
                                 if (!pixel_alpha)
                                     pixel += 10000;
 
@@ -736,7 +737,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                     else
                     {
                         //doesn't fit
-                        this->log->Write("\nERROR - AR_ConvertSPEC() - doesn't fit \"" + groups[i].name + "\"\n");
+                        this->log->Write("ERROR - AR_ConvertSPEC() - doesn't fit \"" + groups[i].name + "\"");
                         return false;
                     }
                 }
@@ -778,7 +779,7 @@ palette *AR_SPEC::AR_GetPalette(std::string file_path)
     jFILE fp(file_path.c_str(), "r");
     if (fp.open_failure())
     {
-        this->log->Write("\nERROR - AR_GetPalette() - could not open \"" + file_path + "\"\n");
+        this->log->Write("ERROR - AR_GetPalette() - Could not open \"" + file_path + "\": " + strerror(errno) + "");
         return NULL;
     }
 
@@ -794,7 +795,7 @@ palette *AR_SPEC::AR_GetPalette(std::string file_path)
             return pal;
         }
 
-    this->log->Write("\nERROR - AR_GetPalette() - could not find pallete in \"" + file_path + "\"\n");
+    this->log->Write("ERROR - AR_GetPalette() - could not find pallete in \"" + file_path + "\"");
 
     return NULL;
 }
@@ -1066,7 +1067,7 @@ bool AR_SPEC::AR_SaveImage(Mat &ocv, std::string path)
     if (result)
         this->log->Write("Saved to \"" + path_fin + "\"");
     else
-        this->log->Write("\nERROR - imwrite() failed \"" + path_fin + "\"\n");
+        this->log->Write("ERROR - imwrite() failed \"" + path_fin + "\": " + strerror(errno) + "");
 
     return result;
 }
