@@ -80,7 +80,7 @@ Settings::Settings()
     //screen
     this->fullscreen = 0; // start in window
     this->borderless = false;
-    this->vsync = false;
+    this->vsync = true;
     this->xres = 320; // default window width
     this->yres = 200; // default window height
     this->scale = 2; // default window scale
@@ -99,6 +99,7 @@ Settings::Settings()
     this->grab_input = false; // don't grab the input
     this->editor = false; // disable editor mode
     this->physics_update = 65; // original 65ms/15 FPS
+    this->max_fps = 300;
     this->mouse_scale = 0; // match desktop
     this->big_font = false;
     //
@@ -220,6 +221,9 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << std::endl;
     out << "; Physics update time in ms (65ms/15FPS original)" << std::endl;
     out << "physics_update=" << this->physics_update << std::endl;
+    out << std::endl;
+    out << "; Max frames per second (if vsync is off)" << std::endl;
+    out << "max_fps=" << this->max_fps << std::endl;
     out << std::endl;
     out << "local_save=" << this->local_save << std::endl;
     out << std::endl;

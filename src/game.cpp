@@ -2536,12 +2536,12 @@ int main(int argc, char *argv[])
 
         Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
 
-        Uint32 frameStart;
-        constexpr float targetFrameTime = 1000.0f / 144.0f;
+        Uint64 frameStart;
+        float targetFrameTime = 1000.0f / static_cast<float>(settings.max_fps);
 
         while (!g->done())
         {
-            frameStart = SDL_GetTicks();
+            frameStart = SDL_GetTicks64();
 
             music_check();
 
@@ -2577,14 +2577,8 @@ int main(int argc, char *argv[])
 
             service_net_request();
 
-            // elapsed ms since last physics process
-            int elapsedMsFixed = SDL_GetTicks64() - lastFixedUpdate;
-
-            // ms until next physics update
-            int nextFixedMs = std::max(settings.physics_update - elapsedMsFixed, 0);
-
             // make sure physics process gets called every 65 ms
-            if (nextFixedMs == 0)
+            if (SDL_GetTicks64() - lastFixedUpdate >= settings.physics_update)
             {
                 // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
                 lastFixedUpdate = SDL_GetTicks64();
@@ -2597,12 +2591,14 @@ int main(int argc, char *argv[])
 
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
-                g->update_screen((SDL_GetTicks64() - lastFixedUpdate)); // redraw the screen with any changes
+                g->update_screen(
+                    static_cast<uint32_t>(SDL_GetTicks64() - lastFixedUpdate)); // redraw the screen with any changes
 
-            Uint32 frameTime = SDL_GetTicks() - frameStart;
-            if (frameTime < targetFrameTime)
+            auto frameTime = static_cast<uint32_t>(SDL_GetTicks64() - frameStart);
+            if (static_cast<float>(frameTime) < targetFrameTime)
             {
-                SDL_Delay(static_cast<Uint32>(targetFrameTime - frameTime));
+                uint32_t frameTimeDelta = static_cast<uint32_t>(std::round(targetFrameTime)) - frameTime;
+                SDL_Delay(frameTimeDelta);
             }
         }
 
