@@ -158,7 +158,6 @@ void initCFuncs()
     add_c_function("direction", 0, 0, CFunc::Direction);
     add_c_function("set_direction", 1, 1, CFunc::SetDirection);
     add_c_bool_fun("freeze_player", 1, 1, CFunc::FreezePlayer);
-    add_c_function("menu", 1, -1, CFunc::Menu);
     add_c_bool_fun("do_command", 1, 1, CFunc::DoCommand);
     add_c_bool_fun("set_game_state", 1, 1, CFunc::SetGameState);
     add_c_bool_fun("scene:set_text_region", 4, 4, CFunc::SceneSetTextRegion);

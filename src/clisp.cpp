@@ -1028,9 +1028,6 @@ long c_caller(CFunc number, void *args)
         return 1;
     }
     break;
-    case CFunc::Menu:
-        return menu(args, big_font);
-        break;
     case CFunc::DoCommand: {
         Event ev;
         dev_cont->do_command(lstring_value(CAR(args)), ev);

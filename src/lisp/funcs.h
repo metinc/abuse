@@ -158,7 +158,6 @@ enum class CFunc
     Direction,
     SetDirection,
     FreezePlayer, // freeze time
-    Menu,
     DoCommand, // command string
     SetGameState,
     // scene control functions, game must first be set to scene mode.
