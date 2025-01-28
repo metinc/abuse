@@ -2855,8 +2855,8 @@ void Lisp::Init()
     LSymbol::root = NULL;
     total_user_functions = 0;
 
-    LSpace::Tmp.m_free = LSpace::Tmp.m_data = (uint8_t *)malloc(0x1000);
-    LSpace::Tmp.m_size = 0x1000;
+    LSpace::Tmp.m_free = LSpace::Tmp.m_data = (uint8_t *)malloc(0x10000);
+    LSpace::Tmp.m_size = 0x10000;
     LSpace::Tmp.m_name = "temporary space";
 
     LSpace::Perm.m_free = LSpace::Perm.m_data = (uint8_t *)malloc(0x1000);
