@@ -119,15 +119,6 @@ void EventHandler::SysEvent(Event &ev)
     ev.mouse_move.y = y;
     ev.type = EV_MOUSE_MOVE;
 
-    //AR God knows where and what player uses as a final value to aim, m_pos or ev.mouse_move !?
-    //this prevents flickering when aiming with a controller
-    //we need to disable this if we are in the save game state in game, so we can use the mouse
-    if (settings.ctr_aim == 1 && settings.in_game && the_game->ar_state != AR_LOADSAVE)
-    {
-        ev.mouse_move.x = m_pos.x;
-        ev.mouse_move.y = m_pos.y;
-    }
-
     // Left button
     if ((buttons & SDL_BUTTON(1)) && !mouse_buttons[1])
     {
@@ -409,9 +400,7 @@ void EventHandler::SysEvent(Event &ev)
             ev.key = JK_F7;
             break;
 
-        case SDLK_F8: //AR toggle controller aim
-            if (ev.type == EV_KEYRELEASE)
-                settings.ctr_aim = !settings.ctr_aim;
+        case SDLK_F8:
             ev.key = JK_F8;
             break;
 
@@ -600,14 +589,6 @@ void EventHandler::SysEvent(Event &ev)
         break;
 
     case SDL_CONTROLLERAXISMOTION:
-        //AR completely ignore if disabled in the settings
-        //buttons don't matter, because those don't have sensitive sensors that accidentally get triggered by heartbeats and stuff...
-        if (!settings.ctr_aim)
-        {
-            ev.type = EV_SPURIOUS;
-            return;
-        }
-
         switch (sdlev.caxis.axis)
         {
         case SDL_CONTROLLER_AXIS_LEFTX:

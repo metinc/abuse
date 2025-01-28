@@ -260,10 +260,6 @@ int load_game(int show_all,
 
     preview->m_surf->PutImage(first, ivec2(preview->x1(), preview->y1()));
 
-    //AR let me know we are stuck here
-    the_game->ar_stateold = the_game->ar_state;
-    the_game->ar_state = AR_LOADSAVE;
-
     //AR controller ui movement, number icon size 30x25
     static int button_w = 30;
     static int button_h = 25;
@@ -273,12 +269,8 @@ int load_game(int show_all,
     int old_my = wm->GetMousePos().y;
 
     //AR initial position of the mouse in the window for controller use
-    if (settings.ctr_aim)
-    {
-        mx = l_win->m_pos.x + button_w / 2;
-        my = l_win->m_pos.y + button_h / 2;
-        wm->SetMousePos(ivec2(mx, my));
-    }
+    mx = l_win->m_pos.x + button_w / 2;
+    my = l_win->m_pos.y + button_h / 2;
     //
 
     Event ev;
@@ -308,7 +300,7 @@ int load_game(int show_all,
                     quit = 1;
 
                 //AR move cursor over icons
-                if (settings.ctr_aim && ev.type == EV_KEY)
+                if (ev.type == EV_KEY)
                 {
                     if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
                     {
@@ -344,12 +336,6 @@ int load_game(int show_all,
             SDL_Delay(10);
         }
     } while (!got_level && !quit);
-
-    //AR let me know we leaving
-    the_game->ar_state = the_game->ar_stateold;
-    if (settings.ctr_aim)
-        wm->SetMousePos(ivec2(old_mx, old_my)); //put mouse where it was on entering
-    //
 
     wm->close_window(l_win);
     wm->close_window(preview);

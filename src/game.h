@@ -26,16 +26,6 @@
 #include "view.h"
 #include "id.h"
 
-//AR - game states
-enum AR_Stuff
-{
-    AR_INTRO,
-    AR_MAINMENU,
-    AR_PLAY,
-    AR_LOADSAVE,
-    AR_QUIT
-};
-
 #define MAPFW 100
 #define MAPFH 100
 #define MAPBW 100
@@ -126,9 +116,6 @@ class Game
     int nplayers;
     view *first_view, *old_view;
     int state, zoom;
-
-    //AR - game state, so I don't have to rely on the original mess with individual update loops
-    int ar_state, ar_stateold;
 
     void Step();
     void UpdateViews();

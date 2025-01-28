@@ -21,10 +21,10 @@
 #undef CreateWindow
 #endif
 
+#include <string>
+
 #include "common.h"
-
 #include "game.h"
-
 #include "view.h"
 #include "lisp.h"
 #include "jwindow.h"
@@ -368,8 +368,6 @@ void view::get_input()
     base->packet.write_uint16((uint16_t)sug_p.x);
     base->packet.write_uint16((uint16_t)sug_p.y);
 }
-
-#include <string>
 
 void view::add_chat_key(int key) // return string if buf is complete
 {

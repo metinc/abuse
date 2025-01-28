@@ -123,9 +123,8 @@ Settings::Settings()
     this->b4 = key_value("e");
 
     //controller settings
-    this->ctr_aim = false; // controller overide disabled
     this->ctr_aim_correctx = 0;
-    this->ctr_cd = 100;
+    this->ctr_cd = 90;
     this->ctr_rst_s = 10;
     this->ctr_rst_dz = 5000; // aiming
     this->ctr_lst_dzx = 10000; // move left right
@@ -251,9 +250,6 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << std::endl;
     //
     out << "; CONTROLLER SETTINGS" << std::endl;
-    out << std::endl;
-    out << "; Enable aiming" << std::endl;
-    out << "ctr_aim=" << this->ctr_aim << std::endl;
     out << std::endl;
     out << "; Correct crosshair position (x)" << std::endl;
     out << "ctr_aim_x=" << this->ctr_aim_correctx << std::endl;
@@ -441,8 +437,6 @@ bool Settings::ReadConfigFile(std::string folder)
                 this->right_2 = key_value(value.c_str());
 
             //controller settings
-            else if (attr == "ctr_aim")
-                this->ctr_aim = (value == "1");
             else if (attr == "ctr_aim_x")
                 this->ctr_aim_correctx = std::stoi(value);
             else if (attr == "ctr_cd")

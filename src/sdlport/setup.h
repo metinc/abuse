@@ -62,7 +62,6 @@ class Settings
     int b4; //weapon next
 
     //controller settings
-    bool ctr_aim; //enable
     int ctr_aim_correctx; //for some reason game adds black bars on widescreen resolutions and it messes up crosshair position
     int ctr_cd; //crosshair distance from player
     int ctr_rst_s; //right stick sensitivity

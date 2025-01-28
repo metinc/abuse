@@ -168,10 +168,6 @@ class amb_cont : public scroller
 
 int confirm_quit()
 {
-    //AR let me know we are stuck here
-    the_game->ar_stateold = the_game->ar_state;
-    the_game->ar_state = AR_QUIT;
-
     //AR controller ui movement, button size 32x25
     static int button_w = 32;
     static int button_h = 25;
@@ -200,16 +196,6 @@ int confirm_quit()
 
     wm->grab_focus(quitw);
 
-    //AR initial position of the mouse in the window for controller use
-    if (settings.ctr_aim)
-    {
-        mx = quitw->m_pos.x + (hr * 68 / 2 - 32) + button_w / 2;
-        my = quitw->m_pos.y + wm->font()->Size().y * 2 + button_h / 2;
-        wm->SetMousePos(ivec2(mx, my));
-        border_left = mx;
-        border_right = mx + button_w;
-    }
-
     int fin = 0, quit = 0;
 
     while (!fin)
@@ -233,8 +219,8 @@ int confirm_quit()
                 if ((ev.type == EV_KEY && ev.key == JK_ESC) || ev.type == EV_CLOSE_WINDOW)
                     fin = 1;
 
-                //AR move cursor over icons
-                if (settings.ctr_aim && ev.type == EV_KEY)
+                // move cursor over icons (useful for controller)
+                if (ev.type == EV_KEY)
                 {
                     if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
                     {
@@ -265,11 +251,6 @@ int confirm_quit()
 
     wm->close_window(quitw);
     wm->flush_screen();
-
-    //AR let me know we leaving
-    the_game->ar_state = the_game->ar_stateold;
-    if (settings.ctr_aim)
-        wm->SetMousePos(ivec2(old_mx, old_my)); //put mouse where it was on entering
 
     return quit;
 }

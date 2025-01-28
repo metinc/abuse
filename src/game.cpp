@@ -689,6 +689,45 @@ static void post_render()
     }
 }
 
+void controller_aim(view *v)
+{
+    // Aim with the controller each update rather than waiting for input events
+    // Convert to percentage above "dead zone". Don't move if value is below "dead zone". Range is [-32767,32767]
+    float fx = 0;
+    float fy = 0;
+
+    if (fabs(settings.ctr_aim_x) > settings.ctr_rst_dz)
+    {
+        fx = (fabs(settings.ctr_aim_x) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
+    }
+
+    if (fabs(settings.ctr_aim_y) > settings.ctr_rst_dz)
+    {
+        fy = (fabs(settings.ctr_aim_y) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
+    }
+
+    if (fx != 0 || fy != 0)
+    {
+        // Move virtual crosshair inside a circular area based on right stick state and sensitivity
+        float angle = atan2(settings.ctr_aim_y, settings.ctr_aim_x);
+        static float aimx = 0, aimy = 0;
+        aimx += cos(angle) * (settings.ctr_rst_s * fx);
+        aimy += sin(angle) * (settings.ctr_rst_s * fy);
+
+        // Calculate aim based on the virtual crosshair
+        angle = atan2(aimy, aimx);
+
+        // Set position of real crosshair (-13 moves center to chest area)
+        wm->SetMousePos(ivec2(v->m_focus->x - v->xoff() + cos(angle) * settings.ctr_cd + settings.ctr_aim_correctx,
+                              v->m_focus->y - v->yoff() + sin(angle) * settings.ctr_cd - 13));
+
+        // If outside circle, reposition to the edge of circle for the next update
+        // 10 is arbitrary - sensitivity is controlled using settings.ctr_rst_s
+        aimx = cos(angle) * 10;
+        aimy = sin(angle) * 10;
+    }
+}
+
 void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 {
     backtile *bt;
@@ -754,6 +793,7 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
     {
         current_level->interpolate_object_positions(elapsedMsFixed);
         the_game->UpdateViews();
+        controller_aim(v);
     }
 
     int32_t xoff = v->xoff();
@@ -1983,42 +2023,8 @@ void Game::Step()
                 else
                     f->god = 0;
 
-                //AR aim with the controller each update, don't wait for input event (-13 moves center to chest area)
-                if (settings.ctr_aim == 1)
-                {
-                    //convert to percentage above "dead zone", don't move if value below "dead zone", range [-32767,32767]
-                    float fx = 0, fy = 0;
-
-                    if (fabs(settings.ctr_aim_x) > settings.ctr_rst_dz)
-                        fx = (fabs(settings.ctr_aim_x) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-
-                    if (fabs(settings.ctr_aim_y) > settings.ctr_rst_dz)
-                        fy = (fabs(settings.ctr_aim_y) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-
-                    //move virtual crosshair inside a circular area, based on right stick state and sensitivity
-                    float angle = atan2(settings.ctr_aim_y, settings.ctr_aim_x);
-                    aimx += cos(angle) * (settings.ctr_rst_s * fx);
-                    aimy += sin(angle) * (settings.ctr_rst_s * fy);
-
-                    //calculate aim based on the virtual crosshair
-                    angle = atan2(aimy, aimx);
-
-                    //set position of real crosshair
-                    wm->SetMousePos(
-                        ivec2(f->m_focus->x - f->xoff() + cos(angle) * settings.ctr_cd + settings.ctr_aim_correctx,
-                              f->m_focus->y - f->yoff() + sin(angle) * settings.ctr_cd - 13));
-
-                    //if outside circle reposition to the edge of circle for the next update
-                    //10 is just random, sesitivity is controlled using settings.ctr_rst_s
-                    aimx = cos(angle) * 10;
-                    aimy = sin(angle) * 10;
-                }
-                //
-
-                int w, h;
-
-                w = (f->m_bb.x - f->m_aa.x + 1);
-                h = (f->m_bb.y - f->m_aa.y + 1);
+                int w = (f->m_bb.x - f->m_aa.x + 1);
+                int h = (f->m_bb.y - f->m_aa.y + 1);
                 total_active += current_level->add_actives(f->xoff() - w / 4, f->yoff() - h / 4, f->xoff() + w + w / 4,
                                                            f->yoff() + h + h / 4);
             }

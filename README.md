@@ -133,7 +133,6 @@ The mouse controls your aim, with Left button for fire and Right button for spec
 The mouse wheel can be used for changing weapons.
 
 The game has almost full controller support now, there are several settings you can change in the config file:
-- ctr_aim - enable aiming with the right stick
 - ctr_cd - crosshair distance from player
 - ctr_rst_s - right stick/aiming sensitivity
 - ctr_rst_dz - right stick/aiming dead zone

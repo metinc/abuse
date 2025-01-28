@@ -72,14 +72,11 @@ down_2=DOWN
 
 ; CONTROLLER SETTINGS
 
-; Enable aiming
-ctr_aim=0
-
 ; Correct crosshair position (x)
 ctr_aim_x=0
 
 ; Crosshair distance from player
-ctr_cd=100
+ctr_cd=90
 
 ; Right stick/aiming sensitivity
 ctr_rst_s=10

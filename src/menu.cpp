@@ -721,11 +721,6 @@ void main_menu()
 {
     //AR enabled button selection with a controller, enabled highres button images
 
-    //AR let me know we are stuck here
-    the_game->ar_stateold = the_game->ar_state;
-    the_game->ar_state = AR_MAINMENU;
-    //
-
     //default button size 32x25, hires size 50x39
     int button_w = 32;
     int button_h = 25;
@@ -765,12 +760,8 @@ void main_menu()
     int old_my = wm->GetMousePos().y;
 
     //AR initial position of the mouse in the menu for controller use
-    if (settings.ctr_aim)
-    {
-        mx = x + button_w / 2;
-        my = border_up + button_h / 2;
-        wm->SetMousePos(ivec2(mx, my));
-    }
+    mx = x + button_w / 2;
+    my = border_up + button_h / 2;
     //
 
     InputManager *inm = new InputManager(main_screen, list);
@@ -854,7 +845,7 @@ void main_menu()
         }
 
         //AR move cursor over icons
-        if (settings.ctr_aim && ev.type == EV_KEY)
+        if (ev.type == EV_KEY)
         {
             if ((ev.key == get_key_binding("up", 0) || ev.key == get_key_binding("up2", 0)))
             {
@@ -877,10 +868,4 @@ void main_menu()
 
     if (ev.type == EV_MESSAGE && ev.message.id == ID_QUIT) // propogate the quit message
         the_game->end_session();
-
-    //AR let me know we leaving
-    the_game->ar_state = the_game->ar_stateold;
-    if (settings.ctr_aim)
-        wm->SetMousePos(ivec2(old_mx, old_my)); //put mouse where it was on entering
-    //
 }
