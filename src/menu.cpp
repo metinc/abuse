@@ -615,14 +615,7 @@ void main_menu()
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {
-                //AR what is that screen doing in dev.cpp ?
-                if (confirm_quit())
-                    stop_menu = 1;
-                else
-                {
-                    ev.type = EV_SPURIOUS;
-                    start.get_time();
-                }
+                exit(EXIT_SUCCESS);
             }
         }
 
