@@ -13,7 +13,7 @@
 On Arch Linux, install these packages:
 
 ```sh
-sudo pacman -S sdl2 sdl2_mixer opencv cmake
+sudo pacman -S sdl2 sdl2_mixer opencv cmake dpkg rpm-tools
 ```
 
 For other distributions, use the equivalent packages from your package manager.
@@ -62,8 +62,9 @@ abuse
 # Installers (Packages)
 
 The CMake setup includes some CPack configurations to enable building installers.
-Under Windows, it will create a [WIX](http://wixtoolset.org/) installer and a ZIP file.
-Under macOS, it will create a DMG and a TGZ.
+Under Windows, it will create a [WIX](http://wixtoolset.org/) installer and a .zip file.
+Under Linux, it will create .deb, .rpm, and .tar.gz packages.
+Under macOS, it will create .dmg and .tgz files.
 
 To build them under Linux or macOS, run:
 
@@ -71,4 +72,4 @@ To build them under Linux or macOS, run:
 make package
 ```
 
-from inside the `build` folder (or `ninja package` if you’re using the Ninja generator).
+from inside the `build` folder (or `ninja package` if you're using the Ninja generator).
