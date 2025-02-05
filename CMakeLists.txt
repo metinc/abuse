@@ -1,13 +1,11 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.16)
 
-project(abuse C CXX)
-set(abuse_VERSION 0.9)
-set(abuse_VERSION_MAJOR 0)
-set(abuse_VERSION_MINOR 9)
-set(abuse_VERSION_PATCH 0)
-set(abuse_VERSION_TWEAK 0)
+project(abuse 
+    VERSION 0.9.0
+)
 
-# Detect the platform, as there's quite a bit of platform variation
+enable_language(C)
+enable_language(CXX)
 
 if (WIN32)
     # TODO: Think about Win64
@@ -51,7 +49,7 @@ else()
 endif()
 
 add_definitions(-DPACKAGE_NAME="abuse")
-add_definitions(-DPACKAGE_VERSION="${abuse_VERSION}")
+add_definitions(-DPACKAGE_VERSION="${PROJECT_VERSION}")
 add_definitions(-DHAVE_CONFIG_H)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -59,9 +57,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(CPACK_PACKAGE_NAME "Abuse")
 set(CPACK_PACKAGE_VENDOR "Crack-Dot-Com")
-set(CPACK_PACKAGE_VERSION_MAJOR ${abuse_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${abuse_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${abuse_VERSION_PATCH})
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Abuse game")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
 set(CPACK_PACKAGE_EXECUTABLES "abuse;Abuse")
