@@ -82,12 +82,15 @@ set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Abuse")
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING "${abuse_VERSION}")
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_VERSION "${abuse_VERSION}")
 
-target_link_libraries(abuse lisp)
-target_link_libraries(abuse sdlport)
-target_link_libraries(abuse imlib)
-target_link_libraries(abuse net)
-target_link_libraries(abuse ${SDL2_LIBRARY})
-target_link_libraries(abuse ${SDL2_MIXER_LIBRARIES})
+target_link_libraries(abuse
+    lisp
+    sdlport
+    imlib
+    net
+    SDL2::SDL2
+    SDL2_mixer::SDL2_mixer
+)
+
 if(OPENGL_FOUND)
     target_link_libraries(abuse ${OPENGL_LIBRARIES})
 endif(OPENGL_FOUND)

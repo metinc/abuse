@@ -1,18 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
+cmake_policy(SET CMP0074 NEW)
 
 project(abuse 
     VERSION 0.9.0
+    DESCRIPTION "Run and gun game"
+    LANGUAGES C CXX
 )
 
-enable_language(C)
-enable_language(CXX)
+# Options
+option(ABUSE_ENABLE_NETWORK "Enable networking support" ON)
 
-if (WIN32)
-    # TODO: Think about Win64
-    enable_language(RC)
-endif()
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+# Dependencies
 find_package(SDL2 2.0.0 REQUIRED)
 find_package(SDL2_mixer 2.0.0 REQUIRED)
 set(OpenGL_GL_PREFERENCE GLVND)
@@ -22,6 +20,7 @@ find_package(GLEW REQUIRED)
 include_directories(${GLEW_INCLUDE_DIRS})
 link_libraries(${GLEW_LIBRARIES})
 
+# System checks
 include(CheckIncludeFiles)
 
 check_include_files(unistd.h HAVE_UNISTD_H)
@@ -34,19 +33,18 @@ set(HAVE_NETWORK TRUE CACHE BOOL "Enable networking support")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
+# Asset directory setup
 if(WIN32)
-    # For Windows, just use whatever CMake wants
-    set(ASSETDIR ".")
+    set(ASSETDIR "." CACHE PATH "Asset directory")
 elseif(APPLE)
-    # Under Mac OS X, I actually want to redirect this to an app bundle,
-    # which makes things weird.
-    set(ASSETDIR "abuse.app/Contents/Resources/data")
+    set(ASSETDIR "abuse.app/Contents/Resources/data" CACHE PATH "Asset directory")
 else()
-    # Under Linux, match the original autotools prefix
-    set(ASSETDIR "share/abuse")
-    # Only define this for ports that actually use it
-    add_definitions(-DASSETDIR="${CMAKE_INSTALL_PREFIX}/${ASSETDIR}")
+    set(ASSETDIR "share/abuse" CACHE PATH "Asset directory")
 endif()
+
+# Define ASSETDIR for all platforms
+set(ABUSE_ASSETDIR "${CMAKE_INSTALL_PREFIX}/${ASSETDIR}")
+add_definitions(-DASSETDIR="${ABUSE_ASSETDIR}")
 
 add_definitions(-DPACKAGE_NAME="abuse")
 add_definitions(-DPACKAGE_VERSION="${PROJECT_VERSION}")
