@@ -87,11 +87,32 @@ include(CPack)
 add_subdirectory(src)
 add_subdirectory(data)
 
-# Installation targets for Linux (moved here after target creation)
+# Installation targets for Linux
 if(UNIX AND NOT APPLE)
     include(GNUInstallDirs)
     install(TARGETS abuse
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-            DESTINATION ${CMAKE_INSTALL_DATADIR}/abuse)
+    
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+         DESTINATION "${CMAKE_INSTALL_DATADIR}/abuse"
+         FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+endif()
+
+# Windows installation
+if(WIN32)
+    install(TARGETS abuse
+            RUNTIME DESTINATION "$ENV{ProgramFiles}/Abuse")
+    
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+         DESTINATION "$ENV{ProgramFiles}/Abuse/data")
+endif()
+
+# macOS installation
+if(APPLE)
+    install(TARGETS abuse
+            BUNDLE DESTINATION .)
+    
+    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+         DESTINATION "${CMAKE_INSTALL_PREFIX}/abuse.app/Contents/Resources/data")
 endif()
