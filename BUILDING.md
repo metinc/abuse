@@ -73,3 +73,15 @@ make package
 ```
 
 from inside the `build` folder (or `ninja package` if you're using the Ninja generator).
+
+# AppImage
+
+If `appimagetool` is installed on your system, an AppImage will be built automatically. You can download `appimagetool` from the [AppImageKit releases page](https://github.com/AppImage/AppImageKit/releases). Make sure to make it executable and in your PATH.
+
+To build the AppImage (if `appimagetool` is installed):
+
+```sh
+make appimage
+```
+
+This will create an `Abuse-${PROJECT_VERSION}.AppImage` file in the build directory. You can then run this file to play the game.

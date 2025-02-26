@@ -10,6 +10,9 @@ project(abuse
 # Options
 option(ABUSE_ENABLE_NETWORK "Enable networking support" ON)
 
+# Find appimagetool
+find_program(APPIMAGETOOL appimagetool)
+
 # Dependencies
 find_package(SDL2 2.0.0 REQUIRED)
 find_package(SDL2_mixer 2.0.0 REQUIRED)
@@ -93,6 +96,63 @@ if(UNIX AND NOT APPLE)
     install(TARGETS abuse
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     
+    if(APPIMAGETOOL)
+        # AppImage specific installation
+        set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
+
+        # Configure and install AppRun
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/AppRun.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/AppRun"
+            @ONLY
+        )
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AppRun"
+                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                DESTINATION "${APPDIR}")
+
+        # Install main executable
+        install(TARGETS abuse
+                RUNTIME DESTINATION "${APPDIR}/usr/bin")
+
+        # Install game data
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+                DESTINATION "${APPDIR}/usr/share/abuse")
+
+        # Install desktop file and icon
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/abuse.desktop.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/abuse.desktop"
+            @ONLY
+        )
+
+        # Make sure the desktop file is also in the AppDir root as required by AppImage spec
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/abuse.desktop"
+                DESTINATION "${APPDIR}")
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/abuse.desktop"
+                DESTINATION "${APPDIR}/usr/share/applications")
+
+        # Install icon
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
+                DESTINATION "${APPDIR}/usr/share/icons/hicolor/128x128/apps")
+        # Copy icon to AppDir root with both names needed
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
+                DESTINATION "${APPDIR}"
+                RENAME ".DirIcon")
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
+                DESTINATION "${APPDIR}"
+                RENAME "abuse.png")
+
+        # Create AppImage
+        add_custom_target(appimage
+            COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} --prefix ${APPDIR}/usr
+            COMMAND ${CMAKE_COMMAND} -E env ARCH=x86_64 ${APPIMAGETOOL} "${APPDIR}" "Abuse-${PROJECT_VERSION}.AppImage"
+            DEPENDS abuse
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Creating AppImage..."
+        )
+    endif()
+    
+    # Regular installation
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
          DESTINATION "${CMAKE_INSTALL_DATADIR}/abuse"
          FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
