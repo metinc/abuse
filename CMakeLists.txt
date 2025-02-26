@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0074 NEW)
 
 project(abuse 
-    VERSION 0.9.0
+    VERSION 1.0.0
     DESCRIPTION "Run and gun game"
     LANGUAGES C CXX
 )

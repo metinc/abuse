@@ -1,26 +1,42 @@
-# News for Abuse 0.9a (2016)
+# Changelog
+
+## Abuse 1.0.0 - (2025-03-02)
+
+- **FPS Unlocked**: The game is no longer locked to 15 FPS. Frame rate is now interpolated to match your screen refresh rate.
+- **Adaptive VSync**: Added support for FreeSync and G-Sync to eliminate screen tearing.
+- **Music**: Resolved the issue of music not playing by including a SoundFont.
+- **Controller Support**: Automatically detects controllers without requiring additional setup.
+- **No Automatic Weapon Switching**: You now retain your current weapon when picking up a new one.
+- **No 'Are you sure?' Prompt on Quit**: Removed the confirmation prompt for quicker exiting.
+- **Menu & ESC Key**: Pressing ESC from the main menu now returns you to the game instead of quitting.
+- **AppImage Support on Linux**: Added AppImage support, plus `.deb` and `.rpm` packages for easy installation.
+- Fixed typos and corrected character encoding in German and French text.
+- Addressed minor bugs that caused occasional crashes or slowdowns.
+
+## Abuse 0.9a (2016)
 
 - AntonioR's fork of the Xenoveritas SDL2 version
 
 ABUSE:
+
 - enabled custom screen size and resolution
-	- light enabled at high resolutions
+  - light enabled at high resolutions
 - local config file
-	- screen width, height, scale, borderless window, grab input
-	- editor mode
-	- controller aiming, right stick sensitivity, dead zone and crosshair distance from the player
-	- physics update time in ms
+  - screen width, height, scale, borderless window, grab input
+  - editor mode
+  - controller aiming, right stick sensitivity, dead zone and crosshair distance from the player
+  - physics update time in ms
 - unlocked framerate for rendering, physics locked at custom value
 - re-enabled OpenGL rendering, enabled vsync
 - fullscreen scaling and "fit screen" scaling using F11 and F12
 - merged flags_struct and keys_struct into one settings class
 - Xbox controller support:
-	- fixed aiming using the right stick
-	- fixed player movement using left stick and dpad
-	- calculating and updating the crosshair position when aiming with a controller
-	- rebindable controller buttons, saving and loading of button bindings via config file
-	- navigating the main menu and save/load screens using dpad or left stick
-	- toggle controller use using F8
+  - fixed aiming using the right stick
+  - fixed player movement using left stick and dpad
+  - calculating and updating the crosshair position when aiming with a controller
+  - rebindable controller buttons, saving and loading of button bindings via config file
+  - navigating the main menu and save/load screens using dpad or left stick
+  - toggle controller use using F8
 - toggle mouse scale type using F7
 - fixed level music not being played correctly when level was loaded
 - quick load using F9, quick save using F5 on save consoles
@@ -35,22 +51,23 @@ ABUSE:
 - fixed mouse image when choosing initial gamma
 
 ABUSE-TOOL:
-- extracting PCX images in SPEC files to modern image formats using OpenCV
-	- extracting as individual files
-	- extracting as tilemaps
-	- extracting animations as individual files
-	- extracting as a texture atlas using texture packing algorithm
-	- handling transparency in different types of images
-	- padding between images
-	- outline around groups in a texture atlas
-	- external color palettes(tints)
-	- tilemap palettes for tile positions
-	- extraction settings and list of files via "../abuse-tool/extract.txt"
-	- printing to console trough a log, log file saved at "../abuse-tool/log.txt"
-	- list of output texture files, image positions, sizes... saved at "../abuse-tool/texture_info.txt"
-	- created a list of all available SPEC files containing images and added settings for individual SPEC files
 
-# News for Abuse-XV 0.9 (unreleased)
+- extracting PCX images in SPEC files to modern image formats using OpenCV
+  - extracting as individual files
+  - extracting as tilemaps
+  - extracting animations as individual files
+  - extracting as a texture atlas using texture packing algorithm
+  - handling transparency in different types of images
+  - padding between images
+  - outline around groups in a texture atlas
+  - external color palettes(tints)
+  - tilemap palettes for tile positions
+  - extraction settings and list of files via "../abuse-tool/extract.txt"
+  - printing to console trough a log, log file saved at "../abuse-tool/log.txt"
+  - list of output texture files, image positions, sizes... saved at "../abuse-tool/texture_info.txt"
+  - created a list of all available SPEC files containing images and added settings for individual SPEC files
+
+## Abuse-XV 0.9 (unreleased)
 
 - Xenoveritas's fork of the SDL version
 - Change to CMake for easier cross-platform build support
@@ -61,7 +78,7 @@ ABUSE-TOOL:
   - OpenGL support is punted to SDL2 instead of being handled here
   - Which also gets DirectX support plus whatever other backends SDL2 can offer
 
-# News for Abuse 0.8 (2011-05-09)
+## Abuse 0.8 (2011-05-09)
 
 - Support for the original music packs!
 - The fRaBs and main Abuse artwork were merged. Due to name conflicts in the
@@ -77,7 +94,7 @@ ABUSE-TOOL:
   overflows, uninitialised data).
 - New webpage.
 
-# News for Abuse-SDL 0.7.0 (2002-12-15)
+## Abuse-SDL 0.7.0 (2002-12-15)
 
 - Added OpenGL support. (Joris Beugnies)
 - Fixed to compile on MacOSX. (Ben Hines, Julian Mayer)
@@ -85,13 +102,13 @@ ABUSE-TOOL:
 - Can specify the location of the datafiles in the abuserc now.
 - Updated documentation regarding installation of the datafiles.
 
-# News for Abuse-SDL 0.6.1 (2002-02-04)
+## Abuse-SDL 0.6.1 (2002-02-04)
 
 - Fixed video blit routine, giving a large speedup. (Bob Ippolito)
 - Fixed to compile with gcc 3.0.x.
 - Fixed to compile on Sparc systems.(Arto Jantunen)
 
-# News for Abuse-SDL 0.6.0 (2002-01-19)
+## Abuse-SDL 0.6.0 (2002-01-19)
 
 - Rebuilt the make and configure scripts, including patches.(nix)
 - gamma.lsp now stored in the ~/.abuse directory.
@@ -107,7 +124,7 @@ ABUSE-TOOL:
 - Added scaling.
 - Added a man page.
 
-# News for Abuse-SDL 0.5.0 (2001-08-14)
+## Abuse-SDL 0.5.0 (2001-08-14)
 
 - More 100% CPU usage fixes.(Ed Snible)
 - More temp files (light.tbl, end.mem) are now stored in the ~/.abuse/
@@ -117,7 +134,7 @@ ABUSE-TOOL:
 - Added the ability to customise the keys used in the game.
 - Updated documentation.
 
-# News for Abuse-SDL 0.4.8 (2001-04-29)
+## Abuse-SDL 0.4.8 (2001-04-29)
 
 - Stopped Abuse using 100% CPU time in certain places.(Ed Snible)
 - Fixed problem with saving games on some systems.
@@ -130,7 +147,7 @@ ABUSE-TOOL:
   Performance when using this option is still bad.
 - Can now use the mouse to skip the intro story.
 
-# News for Abuse-SDL 0.4.7 (2001-03-09)
+## Abuse-SDL 0.4.7 (2001-03-09)
 
 - Temp files (fastload.dat, level backups etc) are now stored in the ~/.abuse/
   directory.
@@ -143,7 +160,7 @@ ABUSE-TOOL:
 - The numpad can now be used for movement aswell as the cursor keys.
 - Settings can be stored in an rc file (~/.abuse/abuserc).
 
-# News for Abuse-SDL 0.4.6 (2001-02-15)
+## Abuse-SDL 0.4.6 (2001-02-15)
 
 - Don't even check for the existence of a sound file if sound is disabled.
 - Added some checks to the video code to handle failure gracefully.
@@ -151,48 +168,48 @@ ABUSE-TOOL:
 - Fixed the graphic glitches relating to the gamma window and the save game
   dialog.
 
-# News for Abuse-SDL 0.4.5 (2001-02-06)
+## Abuse-SDL 0.4.5 (2001-02-06)
 
 - Stopped loading and trying to play sound files when sound has been disabled.
 
-# News for Abuse-SDL 0.4.4 (2001-02-05)
+## Abuse-SDL 0.4.4 (2001-02-05)
 
 - Adjusted the make and configure scripts.
   - Can now specify the install location with the `--with-abuse-dir` flag to
-    `configure`.  Defaults to `/usr/local/bin` if not specified.
-- Added grab-mouse support.  F12 toggles this on and off.
-- Added screenshot support.  PRNT-SCRN key takes a screenshot.
-- Can now toggle fullscreen during the game.  F11 toggles this on and off.
+    `configure`. Defaults to `/usr/local/bin` if not specified.
+- Added grab-mouse support. F12 toggles this on and off.
+- Added screenshot support. PRNT-SCRN key takes a screenshot.
+- Can now toggle fullscreen during the game. F11 toggles this on and off.
 - Added mousewheel support for changing weapons.
 - Savegames are now stored under ~/.abuse/
 - Window now has it's own icon(abuse.bmp). Looks nicer in tasklists etc.
 - Updated the AUTHORS file as it was a little out of date.
 
-# News for Abuse-SDL 0.4.3 (2001-01-21)
+## Abuse-SDL 0.4.3 (2001-01-21)
 
 - Fixed a problem with initialising the mouse driver.
-- Reenabled net code.  Doesn't work very well yet.
+- Reenabled net code. Doesn't work very well yet.
 
-# News for Abuse-SDL 0.4.2 (2001-01-20)
+## Abuse-SDL 0.4.2 (2001-01-20)
 
 - Fixed to compile under gcc 2.95.2
 - More code tidying.
 
-# News for Abuse-SDL 0.4.1 (2001-01-13)
+## Abuse-SDL 0.4.1 (2001-01-13)
 
 - Rebuilt the make and configure scripts.
 - Added an icon. (abuse.png)
 - Code tidying.
 - Improved key and mouse handling.
 
-# News for Abuse-SDL 0.4 (2000-12-30)
+## Abuse-SDL 0.4 (2000-12-30)
 
 - First release with source available
 - Fixed a _huge_ memory leak caused by the stereo sound stuff. (oops)
 - Fixed a crash if SDL failed to initialise.
 - Tidied up the code, makefiles and configure scripts.
 
-# News for Abuse-SDL 0.3 (2000-12-24)
+## Abuse-SDL 0.3 (2000-12-24)
 
 - Fixed palette changing when running at 8bpp.
 - Fixed draw problem when a window was moved off the screen.
@@ -201,12 +218,12 @@ ABUSE-TOOL:
 - Added stereo sound and panning. (-mono to disable)
 - Removed some stray debug messages that I accidently left in.
 
-# News for Abuse-SDL 0.2 (2000-12-13)
+## Abuse-SDL 0.2 (2000-12-13)
 
 - Removed dependancy on lnx_sndsrv.
   All sound is now handled through the SDL API.
 - Added fullscreen and doublebuffer modes.
 
-# News for Abuse-SDL 0.1 (2000-11-10)
+## Abuse-SDL 0.1 (2000-11-10)
 
 - First public release.
