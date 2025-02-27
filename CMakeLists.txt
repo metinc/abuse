@@ -83,6 +83,7 @@ else()
     
     set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
     set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
+    set(CPACK_RPM_PACKAGE_REQUIRES "SDL2, SDL2_mixer")
 endif()
 
 include(CPack)
