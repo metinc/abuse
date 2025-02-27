@@ -120,8 +120,8 @@ uint8_t *TransImage::ClipToLine(image *screen, ivec2 pos1, ivec2 pos2, ivec2 &po
     uint8_t *parser = m_data;
 
     // Number of lines to skip, number of lines to draw, first line to draw
-    int skiplines = Max(pos1.y - pos.y, 0);
-    ysteps = Min(pos2.y - pos.y, m_size.y - skiplines);
+    int skiplines = std::max(pos1.y - pos.y, 0);
+    ysteps = std::min(pos2.y - pos.y, m_size.y - skiplines);
     pos.y += skiplines;
 
     while (skiplines--)
@@ -138,7 +138,8 @@ uint8_t *TransImage::ClipToLine(image *screen, ivec2 pos1, ivec2 pos2, ivec2 &po
         }
     }
 
-    screen->AddDirty(ivec2(Max(pos.x, pos1.x), pos.y), ivec2(Min(pos.x + m_size.x, pos2.x), pos.y + m_size.y));
+    screen->AddDirty(ivec2(std::max(pos.x, pos1.x), pos.y),
+                     ivec2(std::min(pos.x + m_size.x, pos2.x), pos.y + m_size.y));
     return parser;
 }
 
@@ -153,8 +154,8 @@ void TransImage::PutImageGeneric(image *screen, ivec2 pos, uint8_t color, image 
 
     if (N == SCANLINE)
     {
-        pos1.y = Max(pos1.y, pos.y + amount);
-        pos2.y = Min(pos2.y, pos.y + amount + 1);
+        pos1.y = std::max(pos1.y, pos.y + amount);
+        pos2.y = std::min(pos2.y, pos.y + amount + 1);
         if (pos1.y >= pos2.y)
             return;
     }
@@ -175,7 +176,7 @@ void TransImage::PutImageGeneric(image *screen, ivec2 pos, uint8_t color, image 
         mul = ((16 - amount) << 16 / 16);
 
     if (N == PREDATOR)
-        ysteps = Min(ysteps, pos2.y - 1 - pos.y - 2);
+        ysteps = std::min(ysteps, pos2.y - 1 - pos.y - 2);
 
     screen->Lock();
 
@@ -205,7 +206,7 @@ void TransImage::PutImageGeneric(image *screen, ivec2 pos, uint8_t color, image 
             todo = *datap++;
 
             // Chop left side if necessary, but no more than todo
-            int tochop = Min(todo, Max(pos1.x - ix, 0));
+            int tochop = std::min(todo, std::max(pos1.x - ix, 0));
 
             ix += tochop;
             screen_line += tochop;
@@ -213,7 +214,7 @@ void TransImage::PutImageGeneric(image *screen, ivec2 pos, uint8_t color, image 
             todo -= tochop;
 
             // Chop right side if necessary and process the remaining pixels
-            int count = Min(todo, Max(pos2.x - ix, 0));
+            int count = std::min(todo, std::max(pos2.x - ix, 0));
 
             if (N == NORMAL || N == SCANLINE)
             {

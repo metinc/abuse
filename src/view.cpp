@@ -132,7 +132,7 @@ int32_t view::xoff()
     if (!m_focus)
         return pan_x;
 
-    return Max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x);
+    return std::max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x);
 }
 
 int32_t view::yoff()
@@ -140,7 +140,7 @@ int32_t view::yoff()
     if (!m_focus)
         return pan_y;
 
-    return Max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y);
+    return std::max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y);
 }
 
 // updates the camera position to follow the player
@@ -150,14 +150,14 @@ void view::update_scroll()
         return;
 
     if (m_focus->x > m_lastpos.x)
-        m_lastpos.x = Max(m_lastpos.x, m_focus->x - no_xright);
+        m_lastpos.x = std::max(m_lastpos.x, m_focus->x - no_xright);
     else if (m_focus->x < m_lastpos.x)
-        m_lastpos.x = Min(m_lastpos.x, m_focus->x + no_xleft);
+        m_lastpos.x = std::min(m_lastpos.x, m_focus->x + no_xleft);
 
     if (m_focus->y > m_lastpos.y)
-        m_lastpos.y = Max(m_lastpos.y, m_focus->y - no_ybottom);
+        m_lastpos.y = std::max(m_lastpos.y, m_focus->y - no_ybottom);
     else if (m_focus->y < m_lastpos.y)
-        m_lastpos.y = Min(m_lastpos.y, m_focus->y + no_ytop);
+        m_lastpos.y = std::min(m_lastpos.y, m_focus->y + no_ytop);
 }
 
 static char cur_user_name[20] = {0};

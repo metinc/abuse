@@ -493,8 +493,8 @@ void game_object::draw_above(view *v)
         // calculate pos2.y
         ivec2 pos2 = the_game->GameToMouse(ivec2(x1, draw_to), v);
 
-        pos2.y = Max(v->m_aa.y, pos2.y);
-        pos1.y = Min(v->m_bb.y, pos1.y);
+        pos2.y = std::max(v->m_aa.y, pos2.y);
+        pos1.y = std::min(v->m_bb.y, pos1.y);
         TransImage *p = picture();
 
         for (int i = pos2.y; i <= pos1.y; i++)

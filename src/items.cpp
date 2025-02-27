@@ -69,10 +69,10 @@ boundary::boundary(bFILE *fp, char const *er_name) : point_list(fp)
                 check_left = 1;
         }
 
-        maxx = Max(x1, x2);
-        maxy = Max(y1, y2);
-        minx = Min(x1, x2);
-        miny = Min(y1, y2);
+        maxx = std::max(x1, x2);
+        maxy = std::max(y1, y2);
+        minx = std::min(x1, x2);
+        miny = std::min(y1, y2);
 
         if (skip_next)
             skip_next = 0;
@@ -165,10 +165,10 @@ boundary::boundary(boundary *p) : point_list(p->tot, p->data)
                 check_left = 1;
         }
 
-        maxx = Max(x1, x2);
-        maxy = Max(y1, y2);
-        minx = Min(x1, x2);
-        miny = Min(y1, y2);
+        maxx = std::max(x1, x2);
+        maxy = std::max(y1, y2);
+        minx = std::min(x1, x2);
+        miny = std::min(y1, y2);
 
         if (skip_next)
             skip_next = 0;

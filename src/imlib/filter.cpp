@@ -28,7 +28,7 @@ Filter::Filter(int colors)
 // Creates a conversion filter from one palette to another
 Filter::Filter(palette *from, palette *to)
 {
-    m_size = Max(from->pal_size(), to->pal_size());
+    m_size = std::max(from->pal_size(), to->pal_size());
     m_table = (uint8_t *)malloc(m_size);
 
     uint8_t *dst = m_table;

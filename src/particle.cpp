@@ -226,7 +226,7 @@ void ScatterLine(ivec2 p1, ivec2 p2, int c, int s)
     ivec2 caa, cbb;
     main_screen->GetClip(caa, cbb);
 
-    int t = 1 + Max(abs(p2.x - p1.x), abs(p2.y - p1.y));
+    int t = 1 + std::max(abs(p2.x - p1.x), abs(p2.y - p1.y));
     int xo = p1.x << 16, yo = p1.y << 16, dx = ((p2.x - p1.x) << 16) / t, dy = ((p2.y - p1.y) << 16) / t;
 
     int xm = (1 << s);
@@ -253,7 +253,7 @@ void AScatterLine(ivec2 p1, ivec2 p2, int c1, int c2, int s)
     ivec2 caa, cbb;
     main_screen->GetClip(caa, cbb);
 
-    int t = 1 + Max(abs(p2.x - p1.x), abs(p2.y - p1.y));
+    int t = 1 + std::max(abs(p2.x - p1.x), abs(p2.y - p1.y));
     int xo = p1.x << 16, yo = p1.y << 16, dx = ((p2.x - p1.x) << 16) / t, dy = ((p2.y - p1.y) << 16) / t;
 
     int xm = (1 << s);

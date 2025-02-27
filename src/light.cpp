@@ -537,7 +537,7 @@ void add_light(light_patch *&first, int32_t x1, int32_t y1, int32_t x2, int32_t 
             int ax1, ay1, ax2, ay2;
             if (x1 < p->x1)
             {
-                add_light(first, x1, Max(y1, p->y1), p->x1 - 1, Min(y2, p->y2), who);
+                add_light(first, x1, std::max(y1, p->y1), p->x1 - 1, std::min(y2, p->y2), who);
                 ax1 = p->x1;
             }
             else
@@ -545,7 +545,7 @@ void add_light(light_patch *&first, int32_t x1, int32_t y1, int32_t x2, int32_t 
 
             if (x2 > p->x2)
             {
-                add_light(first, p->x2 + 1, Max(y1, p->y1), x2, Min(y2, p->y2), who);
+                add_light(first, p->x2 + 1, std::max(y1, p->y1), x2, std::min(y2, p->y2), who);
                 ax2 = p->x2;
             }
             else

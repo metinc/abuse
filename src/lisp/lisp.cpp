@@ -180,7 +180,7 @@ LArray *LArray::Create(size_t len, void *rest)
 
 LFixedPoint *LFixedPoint::Create(int32_t x)
 {
-    size_t size = Max(sizeof(LFixedPoint), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LFixedPoint), sizeof(LRedirect));
 
     LFixedPoint *p = (LFixedPoint *)LSpace::Current->Alloc(size);
     p->m_type = L_FIXED_POINT;
@@ -190,7 +190,7 @@ LFixedPoint *LFixedPoint::Create(int32_t x)
 
 LObjectVar *LObjectVar::Create(int index)
 {
-    size_t size = Max(sizeof(LObjectVar), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LObjectVar), sizeof(LRedirect));
 
     LObjectVar *p = (LObjectVar *)LSpace::Current->Alloc(size);
     p->m_type = L_OBJECT_VAR;
@@ -202,7 +202,7 @@ LPointer *LPointer::Create(void *addr)
 {
     if (addr == NULL)
         return NULL;
-    size_t size = Max(sizeof(LPointer), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LPointer), sizeof(LRedirect));
 
     LPointer *p = (LPointer *)LSpace::Current->Alloc(size);
     p->m_type = L_POINTER;
@@ -212,7 +212,7 @@ LPointer *LPointer::Create(void *addr)
 
 LChar *LChar::Create(uint16_t ch)
 {
-    size_t size = Max(sizeof(LChar), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LChar), sizeof(LRedirect));
 
     LChar *c = (LChar *)LSpace::Current->Alloc(size);
     c->m_type = L_CHARACTER;
@@ -237,7 +237,7 @@ struct LString *LString::Create(char const *string, int length)
 
 struct LString *LString::Create(int length)
 {
-    size_t size = Max(sizeof(LString) + length - 1, sizeof(LRedirect));
+    size_t size = std::max(sizeof(LString) + length - 1, sizeof(LRedirect));
 
     LString *s = (LString *)LSpace::Current->Alloc(size);
     s->m_type = L_STRING;
@@ -249,7 +249,7 @@ LUserFunction *new_lisp_user_function(LList *arg_list, LList *block_list)
 {
     PtrRef r1(arg_list), r2(block_list);
 
-    size_t size = Max(sizeof(LUserFunction), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LUserFunction), sizeof(LRedirect));
 
     LUserFunction *lu = (LUserFunction *)LSpace::Current->Alloc(size);
     lu->m_type = L_USER_FUNCTION;
@@ -260,7 +260,7 @@ LUserFunction *new_lisp_user_function(LList *arg_list, LList *block_list)
 
 LSysFunction *new_lisp_sys_function(int min_args, int max_args, int fun_number)
 {
-    size_t size = Max(sizeof(LSysFunction), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LSysFunction), sizeof(LRedirect));
 
     // System functions should reside in permanant space
     LSysFunction *ls = LSpace::Current == &LSpace::Gc ? (LSysFunction *)LSpace::Gc.Alloc(size)
@@ -295,7 +295,7 @@ LSysFunction *new_user_lisp_function(int min_args, int max_args, int fun_number)
 
 LNumber *LNumber::Create(long num)
 {
-    size_t size = Max(sizeof(LNumber), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LNumber), sizeof(LRedirect));
 
     LNumber *n = (LNumber *)LSpace::Current->Alloc(size);
     n->m_type = L_NUMBER;
@@ -305,7 +305,7 @@ LNumber *LNumber::Create(long num)
 
 LList *LList::Create()
 {
-    size_t size = Max(sizeof(LList), sizeof(LRedirect));
+    size_t size = std::max(sizeof(LList), sizeof(LRedirect));
 
     LList *c = (LList *)LSpace::Current->Alloc(size);
     c->m_type = L_CONS_CELL;

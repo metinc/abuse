@@ -2749,8 +2749,8 @@ void level::foreground_intersect(int32_t x1, int32_t y1, int32_t &x2, int32_t &y
     {
         y2 = th * foreground_height() - 1;
     }
-    blockx1 = Max(blockx1, 0);
-    blocky1 = Max(blocky1, 0);
+    blockx1 = std::max(blockx1, 0);
+    blocky1 = std::max(blocky1, 0);
 
     if ((blockx1 > blockx2) || (blocky1 > blocky2))
         return;

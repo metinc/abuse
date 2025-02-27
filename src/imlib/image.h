@@ -51,19 +51,19 @@ class image_descriptor
     image_descriptor(ivec2 size, int keep_dirties = 1, int static_memory = 0);
     int bound_x1(int x1)
     {
-        return Max(x1, m_aa.x);
+        return std::max(x1, m_aa.x);
     }
     int bound_y1(int y1)
     {
-        return Max(y1, m_aa.y);
+        return std::max(y1, m_aa.y);
     }
     int bound_x2(int x2)
     {
-        return Min(x2, m_bb.x);
+        return std::min(x2, m_bb.x);
     }
     int bound_y2(int y2)
     {
-        return Min(y2, m_bb.y);
+        return std::min(y2, m_bb.y);
     }
     inline int x1_clip()
     {
@@ -105,10 +105,10 @@ class image_descriptor
             x2 = x1 + 1;
         if (y2 < y1 + 1)
             y2 = y1 + 1;
-        m_aa.x = Max(x1, 0);
-        m_aa.y = Max(y1, 0);
-        m_bb.x = Min(x2, m_size.x);
-        m_bb.y = Min(y2, m_size.y);
+        m_aa.x = std::max(x1, 0);
+        m_aa.y = std::max(y1, 0);
+        m_bb.x = std::min(x2, m_size.x);
+        m_bb.y = std::min(y2, m_size.y);
     }
     void ReduceDirties();
     void AddDirty(ivec2 aa, ivec2 bb);

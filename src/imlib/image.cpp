@@ -211,7 +211,7 @@ void image::Line(ivec2 p1, ivec2 p2, uint8_t color)
         return;
 
     // We can now assume p1.y <= p2.y
-    AddDirty(ivec2(Min(p1.x, p2.x), p1.y), ivec2(Max(p1.x, p2.x), p2.y) + ivec2(1));
+    AddDirty(ivec2(std::min(p1.x, p2.x), p1.y), ivec2(std::max(p1.x, p2.x), p2.y) + ivec2(1));
 
     ivec2 span = p2 - p1;
     int xi = (span.x < 0) ? -1 : 1;
@@ -223,11 +223,11 @@ void image::Line(ivec2 p1, ivec2 p2, uint8_t color)
 
     int dx = (n > m) ? yi * m_size.x : xi;
     int dy = (n > m) ? xi : yi * m_size.x;
-    int erx = 2 * Max(span.x * xi, span.y * yi);
-    int ery = 2 * Min(span.x * xi, span.y * yi);
+    int erx = 2 * std::max(span.x * xi, span.y * yi);
+    int ery = 2 * std::min(span.x * xi, span.y * yi);
 
     Lock();
-    for (int i = 0, er = 0; i <= Max(n, m); i++)
+    for (int i = 0, er = 0; i <= std::max(n, m); i++)
     {
         *start = color;
         if (er > 0)
@@ -368,10 +368,10 @@ void image::InClip(int x1, int y1, int x2, int y2)
 {
     if (m_special)
     {
-        x1 = Min(x1, m_special->x1_clip());
-        y1 = Min(y1, m_special->y1_clip());
-        x2 = Max(x2, m_special->x2_clip());
-        y2 = Max(y2, m_special->y2_clip());
+        x1 = std::min(x1, m_special->x1_clip());
+        y1 = std::min(y1, m_special->y1_clip());
+        x2 = std::max(x2, m_special->x2_clip());
+        y2 = std::max(y2, m_special->y2_clip());
     }
 
     SetClip(x1, y1, x2, y2);
@@ -618,9 +618,11 @@ void image_descriptor::AddDirty(ivec2 aa, ivec2 bb)
       else */
                 {
                     if (aa.x < p->m_aa.x)
-                        AddDirty(ivec2(aa.x, Max(aa.y, p->m_aa.y)), ivec2(p->m_aa.x, Min(bb.y, p->m_bb.y + 1)));
+                        AddDirty(ivec2(aa.x, std::max(aa.y, p->m_aa.y)),
+                                 ivec2(p->m_aa.x, std::min(bb.y, p->m_bb.y + 1)));
                     if (bb.x > p->m_bb.x + 1)
-                        AddDirty(ivec2(p->m_bb.x + 1, Max(aa.y, p->m_aa.y)), ivec2(bb.x, Min(bb.y, p->m_bb.y + 1)));
+                        AddDirty(ivec2(p->m_bb.x + 1, std::max(aa.y, p->m_aa.y)),
+                                 ivec2(bb.x, std::min(bb.y, p->m_bb.y + 1)));
                     if (aa.y < p->m_aa.y)
                         AddDirty(aa, ivec2(bb.x, p->m_aa.y));
                     if (bb.y - 1 > p->m_bb.y)
@@ -650,10 +652,10 @@ void image::Bar(ivec2 p1, ivec2 p2, uint8_t color)
     }
     else
     {
-        p1.x = Max(p1.x, 0);
-        p1.y = Max(p1.y, 0);
-        p2.x = Min(p2.x, m_size.x - 1);
-        p2.y = Min(p2.y, m_size.y - 1);
+        p1.x = std::max(p1.x, 0);
+        p1.y = std::max(p1.y, 0);
+        p2.x = std::min(p2.x, m_size.x - 1);
+        p2.y = std::min(p2.y, m_size.y - 1);
     }
     if (p2.x < 0 || p2.y < 0 || p1.x >= m_size.x || p1.y >= m_size.y || p2.x < p1.x || p2.y < p1.y)
         return;
@@ -806,10 +808,10 @@ void image::scroll(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t xd, i
     {
         ivec2 caa, cbb;
         m_special->GetClip(caa, cbb);
-        x1 = Max(x1, caa.x);
-        y1 = Max(caa.y, y1);
-        x2 = Min(x2, cbb.x - 1);
-        y2 = Min(y2, cbb.y - 1);
+        x1 = std::max<int>(x1, caa.x);
+        y1 = std::max<int>(caa.y, y1);
+        x2 = std::min<int>(x2, cbb.x - 1);
+        y2 = std::min<int>(y2, cbb.y - 1);
     }
     int16_t xsrc, ysrc, xdst, ydst, xtot = x2 - x1 - abs(xd) + 1, ytot, xt;
     uint8_t *src, *dst;

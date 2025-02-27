@@ -86,7 +86,7 @@ LObject *Lisp::CollectObject(LObject *x)
 {
     LObject *ret = x;
 
-    maxgcdepth = Max(maxgcdepth, ++gcdepth);
+    maxgcdepth = std::max(maxgcdepth, ++gcdepth);
 
     if ((uint8_t *)x >= cstart && (uint8_t *)x < cend)
     {

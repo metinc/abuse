@@ -112,8 +112,8 @@ void EventHandler::SysEvent(Event &ev)
     if (y < 0)
         y = 0;
 
-    x = Min((x << 16) / mouse_xscale, main_screen->Size().x - 1);
-    y = Min((y << 16) / mouse_yscale, main_screen->Size().y - 1);
+    x = std::min((x << 16) / mouse_xscale, main_screen->Size().x - 1);
+    y = std::min((y << 16) / mouse_yscale, main_screen->Size().y - 1);
 
     ev.mouse_move.x = x;
     ev.mouse_move.y = y;

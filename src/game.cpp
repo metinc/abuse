@@ -367,8 +367,8 @@ ivec2 Game::GameToMouse(ivec2 pos, view *v)
     else
         tmp = ivec2(0, 0);
 
-    tmp.x = Max(tmp.x, 0);
-    tmp.y = Max(tmp.y, 0);
+    tmp.x = std::max(tmp.x, 0);
+    tmp.y = std::max(tmp.y, 0);
 
     ivec2 ret(pos.x * AUTOTILE_WIDTH / ftile_width() - tmp.x * AUTOTILE_WIDTH + v->m_aa.x,
               pos.y * AUTOTILE_HEIGHT / ftile_height() - tmp.y * AUTOTILE_HEIGHT + v->m_aa.y);
@@ -902,8 +902,8 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 
     x2 = x1 + (v->m_bb.x - v->m_aa.x + fw) / fw;
     y2 = y1 + (v->m_bb.y - v->m_aa.y + fh) / fh;
-    x2 = Min(x2, current_level->foreground_width() - 1);
-    y2 = Min(y2, current_level->foreground_height() - 1);
+    x2 = std::min(x2, current_level->foreground_width() - 1);
+    y2 = std::min(y2, current_level->foreground_height() - 1);
 
     xinc = fw;
     yinc = fh;
@@ -1897,19 +1897,19 @@ void Game::get_input()
                         case RAISE_MUSIC:
                         case LOWER_MUSIC: {
                             if (ev.message.id == RAISE_SFX && sfx_volume != 127)
-                                sfx_volume = Min(127, sfx_volume + 16);
+                                sfx_volume = std::min(127, sfx_volume + 16);
                             if (ev.message.id == LOWER_SFX && sfx_volume != 0)
-                                sfx_volume = Max(sfx_volume - 16, 0);
+                                sfx_volume = std::max(sfx_volume - 16, 0);
                             if (ev.message.id == RAISE_MUSIC && music_volume != 126)
                             {
-                                music_volume = Min(music_volume + 16, 127);
+                                music_volume = std::min(music_volume + 16, 127);
                                 if (current_song && (sound_avail & MUSIC_INITIALIZED))
                                     current_song->set_volume(music_volume);
                             }
 
                             if (ev.message.id == LOWER_MUSIC && music_volume != 0)
                             {
-                                music_volume = Max(music_volume - 16, 0);
+                                music_volume = std::max(music_volume - 16, 0);
                                 if (current_song && (sound_avail & MUSIC_INITIALIZED))
                                     current_song->set_volume(music_volume);
                             }

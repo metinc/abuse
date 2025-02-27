@@ -39,54 +39,13 @@ using namespace lol;
 //
 // Custom utility functions
 //
-static inline int Min(int a, int b)
-{
-    return a < b ? a : b;
-}
-static inline int Max(int a, int b)
-{
-    return a > b ? a : b;
-}
-static inline unsigned int Min(unsigned int a, unsigned int b)
-{
-    return a < b ? a : b;
-}
-static inline unsigned int Max(unsigned int a, unsigned int b)
-{
-    return a > b ? a : b;
-}
-static inline long Min(long a, long b)
-{
-    return a < b ? a : b;
-}
-static inline long Max(long a, long b)
-{
-    return a > b ? a : b;
-}
-static inline unsigned long Min(unsigned long a, unsigned long b)
-{
-    return a < b ? a : b;
-}
-static inline unsigned long Max(unsigned long a, unsigned long b)
-{
-    return a > b ? a : b;
-}
-static inline float Min(float a, float b)
-{
-    return a < b ? a : b;
-}
-static inline float Max(float a, float b)
-{
-    return a > b ? a : b;
-}
-
 static inline ivec2 Min(ivec2 a, ivec2 b)
 {
-    return ivec2(Min(a.x, b.x), Min(a.y, b.y));
+    return ivec2(std::min(a.x, b.x), std::min(a.y, b.y));
 }
 static inline ivec2 Max(ivec2 a, ivec2 b)
 {
-    return ivec2(Max(a.x, b.x), Max(a.y, b.y));
+    return ivec2(std::max(a.x, b.x), std::max(a.y, b.y));
 }
 
 //

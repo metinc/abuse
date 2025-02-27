@@ -94,7 +94,8 @@ class EventHandler
     }
     void SetMousePos(ivec2 pos)
     {
-        m_pos = ivec2(Min(Max(pos.x, 0), m_screen->Size().x - 1), Min(Max(pos.y, 0), m_screen->Size().y - 1));
+        m_pos = ivec2(std::min(std::max(pos.x, 0), m_screen->Size().x - 1),
+                      std::min(std::max(pos.y, 0), m_screen->Size().y - 1));
         SysWarpMouse(m_pos);
     }
     //AR
