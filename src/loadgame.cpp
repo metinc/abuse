@@ -163,7 +163,7 @@ int show_load_icon()
 {
     for (int slot = 0; slot < MAX_SAVE_GAMES; slot++)
     {
-        std::string path = get_save_path(slot + 1);
+        std::string path = get_save_path(slot);
         bFILE *fp = open_file(path.c_str(), "rb");
         if (fp->open_failure())
         {
