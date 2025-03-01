@@ -355,7 +355,8 @@ bool Settings::ReadConfigFile(std::string folder)
                 this->linear_filter = (value == "1");
             else if (attr == "hires")
                 this->hires = std::stoi(value);
-
+            else if (attr == "max_fps")
+                this->max_fps = std::stoi(value);
             //sound
             else if (attr == "mono")
                 this->mono = (value == "1");
