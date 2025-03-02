@@ -1,6 +1,6 @@
 # Changelog
 
-## Abuse 1.0.0 - (2025-03-02)
+## Abuse 1.0.0 (2025-03-02)
 
 - **FPS Unlocked**: The game is no longer locked to 15 FPS. Frame rate is now interpolated to match your screen refresh rate.
 - **Adaptive VSync**: Added support for FreeSync and G-Sync to eliminate screen tearing.
@@ -88,7 +88,7 @@ ABUSE-TOOL:
   allocator instead of malloc.
 - A new abuse-tool binary helps editing Abuse data files.
 
-# New for Abuse-SDL 0.7.1 (2008-03-02)
+## Abuse-SDL 0.7.1 (2008-03-02)
 
 - Countless bugfixes (memory leaks, alignment issues, 64-bit portability, buffer
   overflows, uninitialised data).
