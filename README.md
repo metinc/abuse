@@ -4,7 +4,7 @@ This is an enhanced version of Abuse based on the original source code that was 
 
 If you have any problems with the game or just want to chat, join my [Discord server](https://discord.gg/T8Kw6kwN). I'll see what I can do to help.
 
-To report a bug, please create a new issue here on GitHub.
+To report a bug, please create a new issue here on GitHub. Pull requests are welcome!
 
 ## Configuration
 
