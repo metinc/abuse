@@ -168,7 +168,7 @@ bool Settings::CreateConfigFile(std::string file_path)
         return false;
     }
 
-    out << "; Abuse-SDL configuration file (v0.9a)" << std::endl;
+    out << "; Abuse configuration file (v" << PACKAGE_VERSION << ")" << std::endl;
     out << std::endl;
     //
     out << "; SCREEN SETTINGS" << std::endl;
@@ -207,7 +207,7 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "mono=" << this->mono << std::endl;
     out << std::endl;
     //
-    out << "; RANDOM SETTINGS" << std::endl;
+    out << "; MISCELLANEOUS SETTINGS" << std::endl;
     out << std::endl;
     out << "; Enable editor mode" << std::endl;
     out << "editor=" << this->editor << std::endl;
@@ -661,12 +661,6 @@ void parseCommandLine(int argc, char **argv)
 //
 void setup(int argc, char **argv)
 {
-    // Display our name and version
-    //printf( "%s %s\n", PACKAGE_NAME, PACKAGE_VERSION );
-
-    //AR
-    printf("%s %s\n", "Abuse", "0.9a");
-
     // Initialize SDL with video and audio support
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) < 0)
     {

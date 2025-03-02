@@ -2292,10 +2292,7 @@ void game_getter(char *st, int max)
 
 void show_startup()
 {
-    //printf("Abuse version %s\n", PACKAGE_VERSION);
-
-    //AR
-    printf("Abuse version %s\n", "0.9a");
+    printf("Abuse version %s\n", PACKAGE_VERSION);
 }
 
 char *get_line(int open_braces)
@@ -2466,11 +2463,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Using %s\n", tcpip.name());
 #endif
 
+    show_startup();
+
     set_no_space_handler(handle_no_space);
 
     setup(argc, argv);
-
-    show_startup();
 
     start_sound(argc, argv);
 
