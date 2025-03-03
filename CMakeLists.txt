@@ -79,7 +79,7 @@ else()
     
     set(CPACK_PACKAGE_CONTACT "Metin Çelik <metincelik88@gmail.com>")
     
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsdl2-mixer-2.0-0")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsdl2-mixer-2.0-0, libglew2.2")
     set(CPACK_DEBIAN_PACKAGE_SECTION "games")
     
     set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
