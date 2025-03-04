@@ -43,12 +43,14 @@ if(WIN32)
 elseif(APPLE)
     set(ASSETDIR "abuse.app/Contents/Resources/data" CACHE PATH "Asset directory")
 else()
+    if(APPIMAGETOOL)
+        set(CMAKE_INSTALL_PREFIX "/usr")
+    endif()
     set(ASSETDIR "share/abuse" CACHE PATH "Asset directory")
 endif()
 
 # Define ASSETDIR for all platforms
-set(ABUSE_ASSETDIR "${CMAKE_INSTALL_PREFIX}/${ASSETDIR}")
-add_definitions(-DASSETDIR="${ABUSE_ASSETDIR}")
+add_definitions(-DASSETDIR="${CMAKE_INSTALL_PREFIX}/${ASSETDIR}")
 
 add_definitions(-DPACKAGE_NAME="abuse")
 add_definitions(-DPACKAGE_VERSION="${PROJECT_VERSION}")
@@ -143,6 +145,29 @@ if(UNIX AND NOT APPLE)
         install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
                 DESTINATION "${APPDIR}"
                 RENAME "abuse.png")
+        
+        # Shared library installation
+        set(LOCAL_LIBS
+            "libGLEW.so.2.2"
+            "libGLEW.so.2.2.0"
+
+            "libSDL2-2.0.so.0"
+            "libSDL2-2.0.so.0.3200.50"
+
+            "libSDL2_mixer-2.0.so.0"
+            "libSDL2_mixer-2.0.so.0.800.1"
+            
+            "libGLU.so.1"
+            "libGLU.so.1.3.1"
+        )
+
+        foreach(LIB_NAME IN LISTS LOCAL_LIBS)
+            unset(LIB_PATH CACHE)
+            find_library(LIB_PATH NAMES "${LIB_NAME}" EXACT PATHS /usr/lib /usr/lib64)
+            if(LIB_PATH)
+                install(FILES "${LIB_PATH}" DESTINATION "${APPDIR}/usr/lib")
+            endif()
+        endforeach()
 
         # Create AppImage
         add_custom_target(appimage

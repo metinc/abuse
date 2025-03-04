@@ -762,7 +762,16 @@ void setup(int argc, char **argv)
     printf("Setting data dir to %s\n", assetDirName);
     set_filename_prefix(assetDirName);
 #else
-    set_filename_prefix(ASSETDIR);
+    // APPDIR means we are running from the AppImage
+    if (getenv("APPDIR") != nullptr)
+    {
+        std::string assetPath = std::string(getenv("APPDIR")) + ASSETDIR;
+        set_filename_prefix(assetPath.c_str());
+    }
+    else
+    {
+        set_filename_prefix(ASSETDIR);
+    }
 #endif
 
     // AR override save game directory to local directory
