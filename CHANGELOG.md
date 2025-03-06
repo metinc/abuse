@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Corrected the behavior of the icon buttons in the main menu.
+- Increased the brightness of the icon buttons in the main menu.
+
 ## Abuse 1.0.0 (2025-03-02)
 
 - **FPS Unlocked**: The game is no longer locked to 15 FPS. Frame rate is now interpolated to match your screen refresh rate.
