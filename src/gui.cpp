@@ -105,6 +105,10 @@ void ico_button::draw(int hover, image *screen)
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
 
+    // Event is needed to show save game preview on hover
+    if (hover && activate_id != -1 && enabled)
+        wm->Push(new Event(activate_id, NULL));
+
     if (!hover)
         up = 1;
 
