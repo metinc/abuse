@@ -96,35 +96,32 @@ void ico_switch_button::handle_event(Event &ev, image *screen, InputManager *im)
         if (!cur_but)
             cur_but = blist;
         cur_but->draw(act, screen);
-        cur_but->handle_event(ev, screen, im);
     }
+    cur_but->handle_event(ev, screen, im);
 }
 
-void ico_button::draw(int active, image *screen)
+void ico_button::draw(int hover, image *screen)
 {
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
 
-    if (active != act && activate_id != -1 && active)
-        wm->Push(new Event(activate_id, NULL));
+    if (!hover)
+        up = 1;
 
-    screen->PutImage(cache.img((up && !active)    ? up_inactive
-                               : (up && active)   ? up_active
-                               : (!up && !active) ? down_inactive
-                                                  : down_active),
-                     ivec2(x1, y1));
+    int image_id = (up && !enabled)    ? up_inactive
+                   : (up && enabled)   ? up_active
+                   : (!up && !enabled) ? down_inactive
+                                       : down_active;
 
-    if (act != active && active && activate_id != -1)
-        wm->Push(new Event(activate_id, NULL));
-    act = active;
+    screen->PutImage(cache.img(image_id), ivec2(x1, y1));
 
-    if (active && key[0])
+    if (hover && key[0])
     {
         int g = 127;
         screen->Bar(ivec2(0, 0), ivec2(144, 20), 0);
         wm->font()->PutString(screen, ivec2(3), symbol_str(key), color_table->Lookup(g >> 3, g >> 3, g >> 3));
     }
-    else if (!active && key[0])
+    else if (!hover && key[0])
     {
         screen->Bar(ivec2(0, 0), ivec2(144, 20), 0);
     }
@@ -135,15 +132,18 @@ extern int sfx_volume;
 
 void ico_button::handle_event(Event &ev, image *screen, InputManager *im)
 {
-    if ((ev.type == EV_KEY && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0))
+    if ((ev.type == EV_KEY) || (ev.type == EV_MOUSE_BUTTON))
     {
         int x1, y1, x2, y2;
         area(x1, y1, x2, y2);
-        up = !up;
-        draw(act, screen);
-        wm->Push(new Event(id, (char *)this));
-        if (S_BUTTON_PRESS_SND)
-            cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
+        up = ev.mouse_button == 0 && ev.key != 13;
+        draw(enabled, screen);
+        if (up)
+        {
+            wm->Push(new Event(id, (char *)this));
+            if (S_BUTTON_PRESS_SND)
+                cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
+        }
     }
 }
 
@@ -175,7 +175,7 @@ ico_button::ico_button(int x, int y, int id, int up_inactive, int down_inactive,
     this->down_active = down_active;
     this->next = next;
     this->activate_id = activate_id;
-    act = 0;
+    enabled = 1;
 }
 
 ico_switch_button::~ico_switch_button()

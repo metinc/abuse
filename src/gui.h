@@ -14,7 +14,7 @@
 
 class ico_button : public ifield
 {
-    int up, act, up_inactive, down_inactive, up_active, down_active;
+    int up, enabled, up_inactive, down_inactive, up_active, down_active;
     int activate_id; // sent when if not -1 when object receives a draw actove
     char key[16];
 

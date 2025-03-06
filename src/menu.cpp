@@ -367,7 +367,7 @@ static ico_button *load_icon(int num, int id, int x, int y, int &h, ifield *next
 
     h = cache.img(a)->Size().y;
 
-    return new ico_button(x, y, id, b, b, a, c, next, -1, key);
+    return new ico_button(x, y, id, b, b, c, a, next, -1, key);
 }
 
 ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
