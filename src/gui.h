@@ -14,13 +14,13 @@
 
 class ico_button : public ifield
 {
-    int up, act, u, d, ua, da; // up, down, up active, down active
+    int up, enabled, up_inactive, down_inactive, up_active, down_active;
     int activate_id; // sent when if not -1 when object receives a draw actove
     char key[16];
 
   public:
-    ico_button(int X, int Y, int ID, int Up, int down, int upa, int downa, ifield *Next, int act_id = -1,
-               char const *help_key = NULL);
+    ico_button(int x, int y, int id, int up_inactive, int down_inactive, int up_active, int down_active, ifield *next,
+               int activate_id = -1, char const *help_key = NULL);
 
     virtual void area(int &x1, int &y1, int &x2, int &y2);
     virtual void draw_first(image *screen)
