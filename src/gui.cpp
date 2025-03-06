@@ -108,7 +108,11 @@ void ico_button::draw(int active, image *screen)
     if (active != act && activate_id != -1 && active)
         wm->Push(new Event(activate_id, NULL));
 
-    screen->PutImage(cache.img((up && !active) ? u : (up && active) ? ua : (!up && !active) ? d : da), ivec2(x1, y1));
+    screen->PutImage(cache.img((up && !active)    ? up_inactive
+                               : (up && active)   ? up_active
+                               : (!up && !active) ? down_inactive
+                                                  : down_active),
+                     ivec2(x1, y1));
 
     if (act != active && active && activate_id != -1)
         wm->Push(new Event(activate_id, NULL));
@@ -147,12 +151,12 @@ void ico_button::area(int &x1, int &y1, int &x2, int &y2)
 {
     x1 = m_pos.x;
     y1 = m_pos.y;
-    x2 = m_pos.x + cache.img(u)->Size().x - 1;
-    y2 = m_pos.y + cache.img(u)->Size().y - 1;
+    x2 = m_pos.x + cache.img(up_inactive)->Size().x - 1;
+    y2 = m_pos.y + cache.img(up_inactive)->Size().y - 1;
 }
 
-ico_button::ico_button(int X, int Y, int ID, int Up, int down, int upa, int downa, ifield *Next, int act_id,
-                       char const *help_key)
+ico_button::ico_button(int x, int y, int id, int up_inactive, int down_inactive, int up_active, int down_active,
+                       ifield *next, int activate_id, char const *help_key)
 {
     if (help_key)
     {
@@ -163,14 +167,14 @@ ico_button::ico_button(int X, int Y, int ID, int Up, int down, int upa, int down
         key[0] = 0;
 
     up = 1;
-    m_pos = ivec2(X, Y);
-    id = ID;
-    u = Up;
-    d = down;
-    ua = upa;
-    da = downa;
-    next = Next;
-    activate_id = act_id;
+    m_pos = ivec2(x, y);
+    this->id = id;
+    this->up_inactive = up_inactive;
+    this->down_inactive = down_inactive;
+    this->up_active = up_active;
+    this->down_active = down_active;
+    this->next = next;
+    this->activate_id = activate_id;
     act = 0;
 }
 
