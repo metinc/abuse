@@ -195,7 +195,7 @@ class level // contain map info and objects
         *(map_bg + pos.x + pos.y * bg_width) = tile;
     }
     void draw_objects(view *v);
-    void interpolate_object_positions(uint32_t elapsedMsFixed);
+    void interpolate_object_positions(float interpolation_ratio);
     void restore_object_positions();
     void draw_areas(view *v);
     void tick();

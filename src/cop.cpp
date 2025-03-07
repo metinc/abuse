@@ -525,11 +525,15 @@ static void do_special_power(game_object *o, int xm, int ym, int but, game_objec
 static int climb_off_handler(game_object *o)
 {
     if (o->next_picture())
+    {
+        o->controller()->pan_y_last = o->controller()->pan_y;
         o->controller()->pan_y -= 4;
+    }
     else
     {
         o->y -= 28;
         o->last_y = o->y;
+        o->controller()->pan_y_last += 28 - 4;
         o->controller()->pan_y += 28;
         o->controller()->m_lastpos.y -= 28;
         o->set_state(stopped);
@@ -541,9 +545,15 @@ static int climb_off_handler(game_object *o)
 static int climb_on_handler(game_object *o)
 {
     if (o->next_picture())
+    {
+        o->controller()->pan_y_last = o->controller()->pan_y;
         o->controller()->pan_y += 4;
+    }
     else
+    {
+        o->controller()->pan_y_last = o->controller()->pan_y;
         o->set_state((character_state)S_climbing);
+    }
     return 0;
 }
 
@@ -614,6 +624,7 @@ static int climb_handler(game_object *o, int xm, int ym, int but)
             // Start climbing down the ladder.
             o->y += 28;
             o->last_y = o->y;
+            o->controller()->pan_y_last -= 28;
             o->controller()->pan_y -= 28;
             o->controller()->m_lastpos.y += 28;
             o->set_state((character_state)S_climb_on);
@@ -631,6 +642,7 @@ static int climb_handler(game_object *o, int xm, int ym, int but)
         else
         {
             o->next_picture();
+            o->controller()->pan_y_last = o->controller()->pan_y;
             return o->mover(xm, ym, but);
         }
     }

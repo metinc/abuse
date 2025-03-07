@@ -69,7 +69,7 @@ class view
 
     short ambient; // ambient lighting setting, used by draw
 
-    int32_t pan_x, pan_y, no_xleft, no_xright, no_ytop, no_ybottom, view_percent;
+    int32_t pan_x, pan_y, pan_x_last, pan_y_last, no_xleft, no_xright, no_ytop, no_ybottom, view_percent;
 
     int32_t last_left, last_right, last_up, last_down, // how many frames ago were these pressed (<=0)
         last_b1, last_b2, last_b3, last_b4, last_hp, last_ammo, last_type;
@@ -99,7 +99,7 @@ class view
     void note_upkey();
     void note_downkey();
     int handle_event(Event &ev);
-    void update_scroll();
+    void update_scroll(float interpolation_ratio);
     void draw_hp();
     void draw_ammo();
     void draw_logo();
@@ -138,6 +138,7 @@ class view
   private:
     uint8_t m_keymap[512 / 8];
     char m_chat_buf[60];
+    float interpolation_ratio;
 };
 
 extern view *player_list;
