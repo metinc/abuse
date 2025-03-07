@@ -118,7 +118,7 @@ class Game
     int state, zoom;
 
     void Step();
-    void UpdateViews();
+    void UpdateViews(float interpolation_ratio);
     void show_help(const std::string &msg);
     void show_help(char const *st);
     void draw_value(image *screen, int x, int y, int w, int h, int val, int max);

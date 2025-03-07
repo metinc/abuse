@@ -429,6 +429,8 @@ void Game::set_state(int new_state)
         if (player_list)
         {
             first_view = new view(player_list->m_focus, NULL, -1);
+            first_view->pan_x_last = first_view->pan_x;
+            first_view->pan_y_last = first_view->pan_y;
             first_view->pan_x = player_list->xoff();
             first_view->pan_y = player_list->yoff();
         }
@@ -791,8 +793,9 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 
     if (dev & DRAW_PEOPLE_LAYER && interpolate)
     {
-        current_level->interpolate_object_positions(elapsedMsFixed);
-        the_game->UpdateViews();
+        float ratio = static_cast<float>(elapsedMsFixed) / static_cast<float>(settings.physics_update);
+        current_level->interpolate_object_positions(ratio);
+        the_game->UpdateViews(ratio);
         controller_aim(v);
     }
 
@@ -2075,12 +2078,12 @@ void Game::Step()
         finished = true;
 }
 
-void Game::UpdateViews()
+void Game::UpdateViews(float interpolation_ratio)
 {
     if (!(dev & EDIT_MODE))
     {
         for (view *v = first_view; v; v = v->next)
-            v->update_scroll();
+            v->update_scroll(interpolation_ratio);
     }
 }
 

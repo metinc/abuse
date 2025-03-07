@@ -129,23 +129,31 @@ int view::weapon_total(int type)
 
 int32_t view::xoff()
 {
-    if (!m_focus)
-        return pan_x;
+    int32_t distance = pan_x - pan_x_last;
+    int32_t pan_x_interpolated = pan_x_last + std::round(distance * this->interpolation_ratio);
 
-    return std::max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x);
+    if (!m_focus)
+        return pan_x_interpolated;
+
+    return std::max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x_interpolated);
 }
 
 int32_t view::yoff()
 {
-    if (!m_focus)
-        return pan_y;
+    int32_t distance = pan_y - pan_y_last;
+    int32_t pan_y_interpolated = pan_y_last + std::round(distance * this->interpolation_ratio);
 
-    return std::max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y);
+    if (!m_focus)
+        return pan_y_interpolated;
+
+    return std::max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y_interpolated);
 }
 
 // updates the camera position to follow the player
-void view::update_scroll()
+void view::update_scroll(float interpolation_ratio)
 {
+    this->interpolation_ratio = interpolation_ratio;
+
     if (!m_focus)
         return;
 
@@ -236,6 +244,8 @@ view::view(game_object *focus, view *Next, int number)
 
     pan_x = 0;
     pan_y = 0;
+    pan_x_last = 0;
+    pan_y_last = 0;
     last_type = 0;
     freeze_time = 0;
 
@@ -1214,9 +1224,11 @@ int32_t view::set_view_var_value(int num, int32_t x)
         break;
 
     case V_PAN_X:
+        pan_x_last = pan_x;
         pan_x = x;
         break;
     case V_PAN_Y:
+        pan_y_last = pan_y;
         pan_y = x;
         break;
     case V_NO_XLEFT:
@@ -1323,13 +1335,19 @@ void view::configure_for_area(area_controller *a)
             {
                 pan_x -= a->view_xoff_speed;
                 if (pan_x < a->view_xoff)
+                {
+                    pan_x_last = pan_x;
                     pan_x = a->view_xoff;
+                }
             }
             else
             {
                 pan_x += a->view_xoff_speed;
                 if (pan_x > a->view_xoff)
+                {
+                    pan_x_last = pan_x;
                     pan_x = a->view_xoff;
+                }
             }
         }
 
@@ -1339,13 +1357,19 @@ void view::configure_for_area(area_controller *a)
             {
                 pan_y -= a->view_yoff_speed;
                 if (pan_y < a->view_yoff)
+                {
+                    pan_y_last = pan_y;
                     pan_y = a->view_yoff;
+                }
             }
             else
             {
                 pan_y += a->view_yoff_speed;
                 if (pan_y > a->view_yoff)
+                {
+                    pan_y_last = pan_y;
                     pan_y = a->view_yoff;
+                }
             }
         }
     }

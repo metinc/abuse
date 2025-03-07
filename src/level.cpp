@@ -597,17 +597,16 @@ game_object *level::all_boundary_setback(game_object *subject, int32_t x1, int32
     return l; // return the last person we intersected
 }
 
-void level::interpolate_object_positions(uint32_t delta)
+void level::interpolate_object_positions(float interpolation_ratio)
 {
-    float ratio = static_cast<float>(delta) / static_cast<float>(settings.physics_update);
     for (game_object *o = first_active; o; o = o->next_active)
     {
         o->x_interpolation_copy = o->x;
         o->y_interpolation_copy = o->y;
         int32_t distance_x = o->x - o->last_x;
         int32_t distance_y = o->y - o->last_y;
-        o->x = o->last_x + std::round(distance_x * ratio);
-        o->y = o->last_y + std::round(distance_y * ratio);
+        o->x = o->last_x + std::round(distance_x * interpolation_ratio);
+        o->y = o->last_y + std::round(distance_y * interpolation_ratio);
     }
 }
 

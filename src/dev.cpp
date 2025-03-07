@@ -1138,6 +1138,8 @@ void dev_controll::do_command(char const *command, Event &ev)
         {
             v->pan_x = 0;
             v->pan_y = 0;
+            v->pan_x_last = 0;
+            v->pan_y_last = 0;
         }
         the_game->need_refresh();
     }
