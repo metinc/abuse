@@ -147,26 +147,35 @@ if(UNIX AND NOT APPLE)
                 RENAME "abuse.png")
         
         # Shared library installation
-        set(LOCAL_LIBS
-            "libGLEW.so.2.2"
-            "libGLEW.so.2.2.0"
-
-            "libSDL2-2.0.so.0"
-            "libSDL2-2.0.so.0.3200.50"
-
-            "libSDL2_mixer-2.0.so.0"
-            "libSDL2_mixer-2.0.so.0.800.1"
-            
-            "libGLU.so.1"
-            "libGLU.so.1.3.1"
+        set(BASE_LIBS
+            "libGLEW"
+            "libSDL2-2.0"
+            "libSDL2_mixer"
+            "libSDL2_mixer-2.0"
+            "libSDL3"
+            "libfluidsynth"
+            "libportaudio"
+            "libinstpatch-1.0"
         )
 
-        foreach(LIB_NAME IN LISTS LOCAL_LIBS)
-            unset(LIB_PATH CACHE)
-            find_library(LIB_PATH NAMES "${LIB_NAME}" EXACT PATHS /usr/lib /usr/lib64)
-            if(LIB_PATH)
-                install(FILES "${LIB_PATH}" DESTINATION "${APPDIR}/usr/lib")
-            endif()
+        # Function to find all matching libraries for a base name
+        function(find_and_install_libraries base_name dest_dir)
+            file(GLOB MATCHING_LIBS 
+                "/usr/lib/${base_name}.so*" 
+                "/usr/lib64/${base_name}.so*"
+                "/usr/lib/x86_64-linux-gnu/${base_name}.so*"
+            )
+            
+            foreach(LIB_PATH IN LISTS MATCHING_LIBS)
+                if(EXISTS "${LIB_PATH}")
+                    install(FILES "${LIB_PATH}" DESTINATION "${dest_dir}")
+                endif()
+            endforeach()
+        endfunction()
+
+        # Find and install all required libraries
+        foreach(BASE_LIB IN LISTS BASE_LIBS)
+            find_and_install_libraries(${BASE_LIB} "${APPDIR}/usr/lib")
         endforeach()
 
         # Create AppImage
