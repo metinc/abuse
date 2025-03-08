@@ -205,7 +205,9 @@ song::song(char const *filename)
         music = Mix_LoadMUS_RW(rw, 0);
         if (!music)
         {
-            printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname.c_str());
+            printf("Sound: ERROR - %s while loading %s. Music won't play. You might be able to fix this by installing "
+                   "FluidSynth.\n",
+                   Mix_GetError(), realname.c_str());
         }
     }
 
