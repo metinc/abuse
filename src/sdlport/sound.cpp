@@ -70,6 +70,10 @@ int sound_init(int argc, char **argv)
     }
     free(sfxdir);
 
+    std::string prefix = std::string(get_filename_prefix()) + "music/soundfont.sf2";
+    printf("Sound: using soundfont at %s\n", prefix.c_str());
+    Mix_SetSoundFonts(prefix.c_str());
+
     if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) < 0)
     {
         printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
@@ -77,11 +81,6 @@ int sound_init(int argc, char **argv)
     }
 
     Mix_AllocateChannels(50);
-
-    char prefix[255];
-    strcpy(prefix, get_filename_prefix());
-    strcat(prefix, "music/soundfont.sf2");
-    Mix_SetSoundFonts(prefix);
 
     int tempChannels = 0;
     Mix_QuerySpec(&audioObtained.freq, &audioObtained.format, &tempChannels);
@@ -182,16 +181,14 @@ song::song(char const *filename)
     rw = NULL;
     music = NULL;
 
-    char realname[255];
-    strcpy(realname, get_filename_prefix());
-    strcat(realname, filename);
+    std::string realname = std::string(get_filename_prefix()) + filename;
 
     uint32_t data_size;
-    data = load_hmi(realname, data_size);
+    data = load_hmi(realname.c_str(), data_size);
 
     if (!data)
     {
-        printf("Sound: ERROR - could not load %s\n", realname);
+        printf("Sound: ERROR - could not load %s\n", realname.c_str());
     }
 
     if (data)
@@ -199,7 +196,7 @@ song::song(char const *filename)
         rw = SDL_RWFromMem(data, data_size);
         if (!rw)
         {
-            printf("Sound: ERROR - SDL_RWFromMem failed on %s\n", realname);
+            printf("Sound: ERROR - SDL_RWFromMem failed on %s\n", realname.c_str());
         }
     }
 
@@ -208,7 +205,7 @@ song::song(char const *filename)
         music = Mix_LoadMUS_RW(rw, 0);
         if (!music)
         {
-            printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname);
+            printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), realname.c_str());
         }
     }
 
