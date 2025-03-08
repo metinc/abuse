@@ -568,7 +568,7 @@ void main_menu()
                 wm->get_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm->handle_event(ev, NULL);
-            if (ev.type == EV_KEY && ev.key == JK_ESC)
+            if (ev.type == EV_KEY && ev.key == JK_ESC && current_level)
                 wm->Push(new Event(ID_RETURN, NULL));
 
             menu_handler(ev, inm);
