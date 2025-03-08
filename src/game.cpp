@@ -2007,7 +2007,6 @@ void Game::Step()
     static float aimx = 0, aimy = 0;
 
     settings.player_touching_console = false;
-    settings.in_game = false;
 
     LSpace::Tmp.Clear();
     if (current_level)
@@ -2018,9 +2017,6 @@ void Game::Step()
         {
             if (f->m_focus)
             {
-                //AR
-                settings.in_game = true;
-
                 if (settings.cheat_god)
                     f->god = 1;
                 else
@@ -2070,7 +2066,6 @@ void Game::Step()
     }
     else if (state == MENU_STATE)
     {
-        settings.in_game = false;
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 

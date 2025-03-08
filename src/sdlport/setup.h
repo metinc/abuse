@@ -43,8 +43,6 @@ class Settings
     short mouse_scale; //mouse scaling in fullscreen, 0 - match desktop, 1 - match game screen
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     //
-    short overlay; //AR ???
-    bool in_game;
 
     std::string quick_load; //quick load
     bool player_touching_console; //only allow quicksave if player is touching the console
