@@ -90,7 +90,9 @@ ifield *ico_switch_button::unlink(int id)
 
 void ico_switch_button::handle_event(Event &ev, image *screen, InputManager *im)
 {
-    if ((ev.type == EV_KEY && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0))
+    bool validEvent =
+        (ev.type == EV_KEYRELEASE && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
+    if (validEvent)
     {
         cur_but = cur_but->next;
         if (!cur_but)
@@ -136,18 +138,24 @@ extern int sfx_volume;
 
 void ico_button::handle_event(Event &ev, image *screen, InputManager *im)
 {
-    if ((ev.type == EV_KEY) || (ev.type == EV_MOUSE_BUTTON))
+    bool validEvent = ((ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && ev.key == 13) || ev.type == EV_MOUSE_BUTTON ||
+                      (ev.type == EV_MOUSE_MOVE && ev.mouse_button > 0);
+    if (!validEvent)
+        return;
+
+    int x1, y1, x2, y2;
+    area(x1, y1, x2, y2);
+    int new_up = (ev.type == EV_KEYRELEASE && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
+    if (new_up != up)
     {
-        int x1, y1, x2, y2;
-        area(x1, y1, x2, y2);
-        up = ev.mouse_button == 0 && ev.key != 13;
+        up = new_up;
         draw(enabled, screen);
-        if (up)
-        {
-            wm->Push(new Event(id, (char *)this));
-            if (S_BUTTON_PRESS_SND)
-                cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
-        }
+    }
+    if (up)
+    {
+        wm->Push(new Event(id, (char *)this));
+        if (S_BUTTON_PRESS_SND)
+            cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
     }
 }
 
