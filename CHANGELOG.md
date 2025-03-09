@@ -5,6 +5,8 @@
 - Corrected the behavior of the icon buttons in the main menu.
 - Increased the brightness of the icon buttons in the main menu.
 - Made camera movement smoother when climbing ladders.
+- Fixed music not working on Linux if FluidSynth was not installed.
+- Fixed crashing when hitting ESC in the main menu before a level was loaded.
 
 ## Abuse 1.0.0 (2025-03-02)
 
