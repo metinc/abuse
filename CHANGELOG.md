@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Abuse 1.0.1 (2025-03-09)
 
 - Corrected the behavior of the icon buttons in the main menu.
 - Increased the brightness of the icon buttons in the main menu.
