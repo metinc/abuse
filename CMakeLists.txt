@@ -67,6 +67,7 @@ set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Abuse game")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
 set(CPACK_PACKAGE_EXECUTABLES "abuse;Abuse")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 if(WIN32)
     set(CPACK_GENERATOR "WIX;ZIP")
@@ -197,11 +198,24 @@ endif()
 
 # Windows installation
 if(WIN32)
+    find_file(SDL2_DLL
+        NAMES SDL2.dll
+        HINTS $ENV{SDL2DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dlls" "C:/msys64/mingw64/bin"
+        PATH_SUFFIXES bin
+    )
+    if(NOT SDL2_DLL)
+        message(WARNING "SDL2.dll not found. Please set SDL2DIR or ensure SDL2.dll is in the specified paths.")
+    endif()
     install(TARGETS abuse
-            RUNTIME DESTINATION "$ENV{ProgramFiles}/Abuse")
+            RUNTIME DESTINATION ".")
     
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-         DESTINATION "$ENV{ProgramFiles}/Abuse/data")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
+            DESTINATION "data")
+    
+    if(SDL2_DLL)
+        install(FILES ${SDL2_DLL}
+                DESTINATION ".")
+    endif()
 endif()
 
 # macOS installation

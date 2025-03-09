@@ -2413,8 +2413,13 @@ void game_net_init(int argc, char **argv)
     }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
+#ifdef WIN32
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+    }
+#endif
     start_argc = argc;
     start_argv = argv;
 

@@ -411,3 +411,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/sfx)
 else()
     message(WARNING "Non-free sound effects not found, sound will not be enabled.")
 endif()
+
+if(WIN32)
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${CMAKE_CURRENT_BINARY_DIR}/../src"
+        COMMENT "Copying assets to the build directory from ${CMAKE_CURRENT_SOURCE_DIR} to ${CMAKE_CURRENT_BINARY_DIR}/../src")
+endif()

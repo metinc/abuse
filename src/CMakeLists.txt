@@ -75,6 +75,10 @@ add_executable(abuse
     ${abuse_RESOURCE_FILES}
 )
 
+if(WIN32)
+    set_target_properties(abuse PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE true)
 # Note this doesn't install the icon, that's done later
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_ICON_FILE "abuse")
@@ -116,23 +120,44 @@ if(WIN32)
     install(TARGETS abuse abuse-tool
         RUNTIME DESTINATION "."
         LIBRARY DESTINATION ".")
-    # We also need to include the SDL DLLs or nothing will work
-    string(FIND "${SDL2_LIBRARY}" ";" INDEX)
-    if (${INDEX} GREATER -1)
-        string(SUBSTRING "${SDL2_LIBRARY}" 0 ${INDEX} SDL2_DLL_PATH)
-    else()
-        set(SDL2_DLL_PATH "${SDL2_LIBRARY}")
-    endif()
-    get_filename_component(SDL2_DLL_PATH "${SDL2_DLL_PATH}" DIRECTORY)
-    install(FILES ${SDL2_DLL_PATH}/SDL2.dll DESTINATION ".")
-    string(FIND "${SDL2_MIXER_LIBRARIES}" ";" INDEX)
-    if (${INDEX} GREATER -1)
-        string(SUBSTRING "${SDL2_MIXER_LIBRARIES}" 0 ${INDEX} SDL2MIXER_DLL_PATH)
-    else()
-        set(SDL2MIXER_DLL_PATH "${SDL2_MIXER_LIBRARIES}")
-    endif()
-    get_filename_component(SDL2MIXER_DLL_PATH "${SDL2MIXER_DLL_PATH}" DIRECTORY)
-    install(FILES ${SDL2MIXER_DLL_PATH}/SDL2_mixer.dll DESTINATION ".")
+    
+    # Find SDL2 and SDL2_mixer DLLs using known bin path
+    find_program(SDL2_DLL_PATH SDL2.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(SDL2MIXER_DLL_PATH SDL2_mixer.dll HINTS "C:/msys64/mingw64/bin")
+    
+    message(STATUS "Found SDL2.dll at: ${SDL2_DLL_PATH}")
+    message(STATUS "Found SDL2_mixer.dll at: ${SDL2MIXER_DLL_PATH}")
+    
+    install(FILES ${SDL2_DLL_PATH} DESTINATION ".")
+    install(FILES ${SDL2MIXER_DLL_PATH} DESTINATION ".")
+    
+    # Find additional required DLLs using known bin path
+    find_program(LIBGCC_DLL_PATH libgcc_s_seh-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBSTDCXX_DLL_PATH libstdc++-6.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBMODPLUG_DLL_PATH libmodplug-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBMPG123_DLL_PATH libmpg123-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBWINPTHREAD_DLL_PATH libwinpthread-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOPUSFILE_DLL_PATH libopusfile-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOPUS_DLL_PATH libopus-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOGG_DLL_PATH libogg-0.dll HINTS "C:/msys64/mingw64/bin")
+    
+    message(STATUS "Found libgcc_s_seh-1.dll at: ${LIBGCC_DLL_PATH}")
+    message(STATUS "Found libstdc++-6.dll at: ${LIBSTDCXX_DLL_PATH}")
+    message(STATUS "Found libmodplug-1.dll at: ${LIBMODPLUG_DLL_PATH}")
+    message(STATUS "Found libmpg123-0.dll at: ${LIBMPG123_DLL_PATH}")
+    message(STATUS "Found libwinpthread-1.dll at: ${LIBWINPTHREAD_DLL_PATH}")
+    message(STATUS "Found libopusfile-0.dll at: ${LIBOPUSFILE_DLL_PATH}")
+    message(STATUS "Found libopus-0.dll at: ${LIBOPUS_DLL_PATH}")
+    message(STATUS "Found libogg-0.dll at: ${LIBOGG_DLL_PATH}")
+    
+    install(FILES ${LIBGCC_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBSTDCXX_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBMODPLUG_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBMPG123_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBWINPTHREAD_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOPUSFILE_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOPUS_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOGG_DLL_PATH} DESTINATION ".")
 else()
     # Under Linux, we want the tools in bin
     install(TARGETS abuse abuse-tool RUNTIME DESTINATION bin
