@@ -209,9 +209,6 @@ if(WIN32)
     install(TARGETS abuse
             RUNTIME DESTINATION ".")
     
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-            DESTINATION "data")
-    
     if(SDL2_DLL)
         install(FILES ${SDL2_DLL}
                 DESTINATION ".")
