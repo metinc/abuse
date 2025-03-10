@@ -13,7 +13,6 @@ The Abuse configuration file has been updated in this version. It is stored loca
 Lines starting with a ';' are comments. Setting an option to '1' turns it on, and '0' turns it off. The following settings can be changed via the config file:
 
 - fullscreen - fullscreen or windowed mode (2 means "real" fullscreen)
-- vsync - vertical sync
 - screen_width - game screen width
 - screen_height - game screen height
 - scale - window scale
