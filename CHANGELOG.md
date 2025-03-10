@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Improved performance of light calculation
 - Fixed VRAM leak by rewriting the renderer
 
 ## Abuse 1.0.1 (2025-03-09)

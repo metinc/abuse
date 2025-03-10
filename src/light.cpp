@@ -929,12 +929,18 @@ void light_screen(image *sc, int32_t screenx, int32_t screeny, uint8_t *light_lo
             screen_line += prefix;
         }
 
+        light_patch *last_lp = f;
+        int current_y = y - caa.y;
         for (x = prefix, count = 0; count < remap_size; count++, x += 8, rem++)
         {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > x || lp->x2 < x); lp = lp->next)
-                ;
-            *rem = calc_light_value(lp, x + screenx, calcy);
+            while (last_lp &&
+                   (last_lp->y1 > current_y || last_lp->y2 < current_y || last_lp->x1 > x || last_lp->x2 < x))
+            {
+                last_lp = last_lp->next;
+                if (!last_lp)
+                    last_lp = f; // Restart from beginning if end reached.
+            }
+            *rem = calc_light_value(last_lp, x + screenx, calcy);
         }
 
         switch (todoy)
@@ -1156,12 +1162,18 @@ void double_light_screen(image *sc, int32_t screenx, int32_t screeny, uint8_t *l
             out_line += prefix * 2;
         }
 
+        light_patch *last_lp = f;
+        int current_y = y - caa.y;
         for (x = prefix, count = 0; count < remap_size; count++, x += 8, rem++)
         {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > x || lp->x2 < x); lp = lp->next)
-                ;
-            *rem = calc_light_value(lp, x + screenx, calcy);
+            while (last_lp &&
+                   (last_lp->y1 > current_y || last_lp->y2 < current_y || last_lp->x1 > x || last_lp->x2 < x))
+            {
+                last_lp = last_lp->next;
+                if (!last_lp)
+                    last_lp = f; // Restart from beginning if end reached.
+            }
+            *rem = calc_light_value(last_lp, x + screenx, calcy);
         }
 
         rem = remap_line;
