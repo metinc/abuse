@@ -20,7 +20,6 @@ class Settings
     //screen
     int fullscreen; //0 - window, 1 - fullscreen window, 2 - "real" fullscreen
     bool borderless; //borderless window
-    bool vsync;
     short xres; //game screen resolution
     short yres;
     short scale; //windows scale

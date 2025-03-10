@@ -23,15 +23,9 @@
 #include "config.h"
 #endif
 
-//AR OpenGL - Windows might complain if we include OpenGL before windows.h
 #ifdef WIN32
 #include <windows.h>
 #endif
-#include <GL/glew.h>
-//Abuse linker->input:
-//	- opengl32.lib
-//	- GLee.lib
-//
 
 #include "SDL.h"
 
@@ -43,13 +37,11 @@
 #include "setup.h"
 #include "errorui.h"
 
-//AR all rendering goes to "main_screen" all over the code
-//then using put_part_image() it is rendered to "surface"...I think
-//then it is rendered to screen using update_window_done() where the surface is first copied to a OGL texture
-
 SDL_Window *window = NULL;
 SDL_Surface *surface = NULL;
 SDL_Surface *screen = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *game_texture = NULL;
 image *main_screen = NULL;
 
 int mouse_xpad, mouse_ypad, mouse_xscale, mouse_yscale;
@@ -60,15 +52,11 @@ extern Settings settings;
 
 void calculate_mouse_scaling();
 
-//AR OpenGL
-SDL_GLContext glcontext;
-GLuint ar_texture;
 SDL_DisplayMode desktop;
 int window_w = 320, window_h = 200;
 bool ar_fullscreen = false;
 int ogl_scale = 1;
 int ogl_w = 320, ogl_h = 200;
-//
 
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 
@@ -85,11 +73,11 @@ void set_mode(int argc, char **argv)
     if (SDL_GetDesktopDisplayMode(0, &desktop) != 0)
         printf("ERROR - failed to get display info\n");
 
-    //AR scale window
+    // Scale window
     window_w = xres * scale;
     window_h = yres * scale;
 
-    //fullscreen "scale"
+    // Fullscreen "scale"
     ogl_w = window_w;
     ogl_h = window_h;
 
@@ -103,8 +91,8 @@ void set_mode(int argc, char **argv)
     if (settings.borderless)
         window_type |= SDL_WINDOW_BORDERLESS;
 
-    window = SDL_CreateWindow("Abuse", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h,
-                              window_type | SDL_WINDOW_OPENGL);
+    window =
+        SDL_CreateWindow("Abuse", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h, window_type);
 
     if (!window)
     {
@@ -121,53 +109,23 @@ void set_mode(int argc, char **argv)
         SDL_FreeSurface(icon);
     }
 
-    // OpenGL
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    glcontext = SDL_GL_CreateContext(window);
-
-    if (settings.vsync)
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!renderer)
     {
-        // try enabling adaptive vsync
-        if (SDL_GL_SetSwapInterval(-1) == -1)
-        {
-            // fallback to normal vsync
-            SDL_GL_SetSwapInterval(1);
-            printf("Video: Using normal vsync since adaptive vsync is not available\n");
-        }
-        else
-        {
-            printf("Video: Using adaptive vsync\n");
-        }
+        show_startup_error("Video: Unable to create renderer : %s", SDL_GetError());
+        exit(EXIT_FAILURE);
     }
-    else
-        SDL_GL_SetSwapInterval(0);
+    SDL_RendererInfo info;
+    SDL_GetRendererInfo(renderer, &info);
+    printf("Renderer: %s\n", info.name);
 
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-
-    glViewport(0, 0, window_w, window_h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, window_w, window_h, 0, -1, 1);
-
-    glEnable(GL_TEXTURE_2D);
-    glGenTextures(1, &ar_texture);
-    glBindTexture(GL_TEXTURE_2D, ar_texture);
+    // Set renderer scaling quality
     if (settings.linear_filter == 1)
-    {
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     else
-    {
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    }
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
 
-    //Create our surface for the OpenGL texture
+    // Create our 32-bit surface for texture conversion
     screen = SDL_CreateRGBSurface(SDL_SWSURFACE, xres, yres, 32,
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
                                   0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
@@ -179,7 +137,14 @@ void set_mode(int argc, char **argv)
         show_startup_error("Video: Unable to create 32-bit surface: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-    //
+
+    // Create texture for rendering
+    game_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, xres, yres);
+    if (game_texture == NULL)
+    {
+        show_startup_error("Video: Unable to create texture: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
 
     // Create our 8-bit surface
     surface = SDL_CreateRGBSurface(0, xres, yres, 8, 0, 0, 0, 0);
@@ -200,7 +165,7 @@ void set_mode(int argc, char **argv)
     }
     main_screen->clear();
 
-    //hide the mouse cursor and set up the mouse
+    // Hide the mouse cursor and set up the mouse
     if (settings.grab_input)
         SDL_SetWindowGrab(window, SDL_TRUE);
     SDL_ShowCursor(0);
@@ -209,18 +174,11 @@ void set_mode(int argc, char **argv)
     if (settings.fullscreen != 0)
         video_change_settings(0, true);
 
-    //print some info
-    //AR shows 640x480 when the size is lower than that... ???
-    /*SDL_DisplayMode mode;
-    SDL_GetWindowDisplayMode(window, &mode);
-    printf("Video: %dx%d %dbpp\n", mode.w, mode.h, SDL_BITSPERPIXEL(mode.format));*/
-
     update_dirty(main_screen);
 }
 
 void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
-    //AR
     if (toggle_fullscreen)
     {
         ar_fullscreen = !ar_fullscreen;
@@ -229,7 +187,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
             SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
             SDL_GetWindowSize(window, &window_w, &window_h);
 
-            //OGL texture rendering size, scale while if fits
+            // Texture rendering size, scale while if fits
             int scl = 1;
             while (1 != 0)
                 if (xres * scl < desktop.w && yres * scl < desktop.h)
@@ -250,19 +208,19 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 
     if (!ar_fullscreen)
     {
-        //scale window
+        // Scale window
         int new_scale = scale + scale_add;
 
         if (new_scale > 0 && xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
         {
-            //scale windows if it fits on screen
+            // Scale windows if it fits on screen
             scale = new_scale;
             SDL_SetWindowSize(window, xres * scale, yres * scale);
         }
     }
     else
     {
-        //scale OGL texture rendering size
+        // Scale texture rendering size
         int new_scale = ogl_scale + scale_add;
 
         if (overscale == 2 && scale_add == -1)
@@ -276,13 +234,13 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
                 {
                     if (yres * ((float)desktop.w / xres) < desktop.h)
                     {
-                        //limit scale by monitor width
+                        // Limit scale by monitor width
                         ogl_w = desktop.w;
                         ogl_h = yres * ((float)desktop.w / xres);
                     }
                     else
                     {
-                        //limit scale by monitor height
+                        // Limit scale by monitor height
                         ogl_w = xres * ((float)desktop.h / yres);
                         ogl_h = desktop.h;
                     }
@@ -291,7 +249,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
                 }
                 else if (overscale == 1)
                 {
-                    //match screen to desktop/monitor size
+                    // Match screen to desktop/monitor size
                     ogl_w = desktop.w;
                     ogl_h = desktop.h;
 
@@ -301,7 +259,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
             }
             else if (xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
             {
-                //scale and keep aspect
+                // Scale and keep aspect
                 ogl_scale = new_scale;
                 ogl_w = xres * ogl_scale;
                 ogl_h = yres * ogl_scale;
@@ -310,15 +268,9 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
         }
     }
 
-    //update size, position and OGL
+    // Update size and position
     SDL_GetWindowSize(window, &window_w, &window_h);
     SDL_SetWindowPosition(window, desktop.w / 2 - window_w / 2, desktop.h / 2 - window_h / 2);
-
-    glViewport(0, 0, window_w, window_h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, window_w, window_h, 0, -1, 1);
-    //
 
     calculate_mouse_scaling();
 }
@@ -365,11 +317,17 @@ void close_graphics()
         delete lastl;
     lastl = NULL;
 
-    // Free our 8-bit surface
+    // Free our surfaces, texture and renderer
     if (surface)
         SDL_FreeSurface(surface);
     if (screen)
         SDL_FreeSurface(screen);
+    if (game_texture)
+        SDL_DestroyTexture(game_texture);
+    if (renderer)
+        SDL_DestroyRenderer(renderer);
+    if (window)
+        SDL_DestroyWindow(window);
 
     delete main_screen;
 }
@@ -499,70 +457,32 @@ void palette::load_nice()
 
 void update_window_done()
 {
-    //AR convert to match the OpenGL texture
+    // Convert 8-bit surface to 32-bit
     SDL_BlitSurface(surface, NULL, screen, NULL);
 
-    //clear the backbuffer
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    // Update the SDL texture with our pixel data
+    SDL_UpdateTexture(game_texture, NULL, screen->pixels, screen->pitch);
 
-    //map the surface to the texture in video memory
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen->w, screen->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, screen->pixels);
-
-    static GLfloat quadVertices[8];
-    static GLfloat quadTexCoords[8];
+    // Clear renderer
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
 
     if (ar_fullscreen)
     {
-        //expand from center so we can scale
-        quadVertices[0] = desktop.w / 2 - ogl_w / 2;
-        quadVertices[1] = desktop.h / 2 - ogl_h / 2;
-        quadVertices[2] = desktop.w / 2 + ogl_w / 2;
-        quadVertices[3] = desktop.h / 2 - ogl_h / 2;
-        quadVertices[4] = desktop.w / 2 - ogl_w / 2;
-        quadVertices[5] = desktop.h / 2 + ogl_h / 2;
-        quadVertices[6] = desktop.w / 2 + ogl_w / 2;
-        quadVertices[7] = desktop.h / 2 + ogl_h / 2;
-
-        quadTexCoords[0] = 0.0f;
-        quadTexCoords[1] = 0.0f;
-        quadTexCoords[2] = 1.0f;
-        quadTexCoords[3] = 0.0f;
-        quadTexCoords[4] = 0.0f;
-        quadTexCoords[5] = 1.0f;
-        quadTexCoords[6] = 1.0f;
-        quadTexCoords[7] = 1.0f;
+        // Center the texture with proper aspect ratio
+        SDL_Rect dest_rect;
+        dest_rect.x = (window_w - ogl_w) / 2;
+        dest_rect.y = (window_h - ogl_h) / 2;
+        dest_rect.w = ogl_w;
+        dest_rect.h = ogl_h;
+        SDL_RenderCopy(renderer, game_texture, NULL, &dest_rect);
     }
     else
     {
-        //match window size
-        quadVertices[0] = 0;
-        quadVertices[1] = 0;
-        quadVertices[2] = window_w;
-        quadVertices[3] = 0;
-        quadVertices[4] = 0;
-        quadVertices[5] = window_h;
-        quadVertices[6] = window_w;
-        quadVertices[7] = window_h;
-
-        quadTexCoords[0] = 0.0f;
-        quadTexCoords[1] = 0.0f;
-        quadTexCoords[2] = 1.0f;
-        quadTexCoords[3] = 0.0f;
-        quadTexCoords[4] = 0.0f;
-        quadTexCoords[5] = 1.0f;
-        quadTexCoords[6] = 1.0f;
-        quadTexCoords[7] = 1.0f;
+        // Fill the window with the texture
+        SDL_RenderCopy(renderer, game_texture, NULL, NULL);
     }
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, quadVertices);
-    glTexCoordPointer(2, GL_FLOAT, 0, quadTexCoords);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_VERTEX_ARRAY);
-
-    SDL_GL_SwapWindow(window);
-    //
+    // Present the renderer
+    SDL_RenderPresent(renderer);
 }

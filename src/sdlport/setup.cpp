@@ -80,7 +80,6 @@ Settings::Settings()
     //screen
     this->fullscreen = 2;
     this->borderless = false;
-    this->vsync = true;
     this->xres = 320; // default window width
     this->yres = 200; // default window height
     this->scale = 2; // default window scale
@@ -176,7 +175,6 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << ";0 - window, 1 - fullscreen window, 2 - fullscreen" << std::endl;
     out << "fullscreen=" << this->fullscreen << std::endl;
     out << "borderless=" << this->borderless << std::endl;
-    out << "vsync=" << this->vsync << std::endl;
     out << std::endl;
     out << "; Game screen size (original 320x200)" << std::endl;
     out << "screen_width=" << this->xres << std::endl;
@@ -221,7 +219,7 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "; Physics update time in ms (65ms/15FPS original)" << std::endl;
     out << "physics_update=" << this->physics_update << std::endl;
     out << std::endl;
-    out << "; Max frames per second (if vsync is off)" << std::endl;
+    out << "; Max frames per second" << std::endl;
     out << "max_fps=" << this->max_fps << std::endl;
     out << std::endl;
     out << "local_save=" << this->local_save << std::endl;
@@ -343,8 +341,6 @@ bool Settings::ReadConfigFile(std::string folder)
                 this->fullscreen = std::stoi(value);
             else if (attr == "borderless")
                 this->borderless = (value == "1");
-            else if (attr == "vsync")
-                this->vsync = (value == "1");
             else if (attr == "screen_width")
                 this->xres = std::stoi(value);
             else if (attr == "screen_height")
