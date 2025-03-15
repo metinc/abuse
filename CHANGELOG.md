@@ -4,6 +4,7 @@
 
 - Improved performance of light calculation
 - Fixed VRAM leak by rewriting the renderer
+- Fixed weapon switching using the mouse wheel
 
 ## Abuse 1.0.1 (2025-03-09)
 

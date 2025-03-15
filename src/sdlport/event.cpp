@@ -219,7 +219,7 @@ void EventHandler::SysEvent(Event &ev)
         {
             // We also need to immediately queue a "release" event or this will
             // be stuck down forever.
-            Event *release_event = new Event();
+            Event *release_event = new Event(ev);
             release_event->key = ev.key;
             release_event->type = EV_KEYRELEASE;
             Push(release_event);
