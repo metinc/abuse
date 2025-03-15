@@ -6,6 +6,16 @@ If you have any problems with the game or just want to chat, join my [Discord se
 
 To report a bug, please create a new issue here on GitHub. Pull requests are welcome!
 
+## fRaBs
+
+The fRaBs (Free Abuse) levels are included as well. If you want to play the fRaBs campaign, start the game using this parameter:
+
+```
+abuse -f levels/frabs00.spe
+```
+
+Then, from the main menu, select "Start New Game".
+
 ## Configuration
 
 The Abuse configuration file has been updated in this version. It is stored locally in the "user" folder as `config.txt`, along with save game files and other original configuration files (such as gamma settings).
