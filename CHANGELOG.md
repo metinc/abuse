@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## Abuse 1.0.2 (2025-03-15)
 
 - Improved performance of light calculation
 - Fixed VRAM leak by rewriting the renderer

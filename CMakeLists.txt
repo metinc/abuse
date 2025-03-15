@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0177 NEW)
 
-project(abuse 
-    VERSION 1.0.1
+project(abuse
+    VERSION 1.0.2
     DESCRIPTION "Run and gun game"
     LANGUAGES C CXX
 )
@@ -79,12 +79,12 @@ elseif(APPLE)
     set(CPACK_GENERATOR "DragNDrop;TGZ")
 else()
     set(CPACK_GENERATOR "TGZ;DEB;RPM")
-    
+
     set(CPACK_PACKAGE_CONTACT "Metin Çelik <metincelik88@gmail.com>")
-    
+
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsdl2-mixer-2.0-0, libglew2.2")
     set(CPACK_DEBIAN_PACKAGE_SECTION "games")
-    
+
     set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
     set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
     set(CPACK_RPM_PACKAGE_REQUIRES "SDL2, SDL2_mixer")
@@ -99,8 +99,8 @@ add_subdirectory(data)
 if(UNIX AND NOT APPLE)
     include(GNUInstallDirs)
     install(TARGETS abuse
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
     if(APPIMAGETOOL)
         # AppImage specific installation
         set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
@@ -112,16 +112,16 @@ if(UNIX AND NOT APPLE)
             @ONLY
         )
         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/AppRun"
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
-                DESTINATION "${APPDIR}")
+            PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+            DESTINATION "${APPDIR}")
 
         # Install main executable
         install(TARGETS abuse
-                RUNTIME DESTINATION "${APPDIR}/usr/bin")
+            RUNTIME DESTINATION "${APPDIR}/usr/bin")
 
         # Install game data
         install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-                DESTINATION "${APPDIR}/usr/share/abuse")
+            DESTINATION "${APPDIR}/usr/share/abuse")
 
         # Install desktop file and icon
         configure_file(
@@ -132,21 +132,21 @@ if(UNIX AND NOT APPLE)
 
         # Make sure the desktop file is also in the AppDir root as required by AppImage spec
         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/abuse.desktop"
-                DESTINATION "${APPDIR}")
+            DESTINATION "${APPDIR}")
         install(FILES "${CMAKE_CURRENT_BINARY_DIR}/abuse.desktop"
-                DESTINATION "${APPDIR}/usr/share/applications")
+            DESTINATION "${APPDIR}/usr/share/applications")
 
         # Install icon
         install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
-                DESTINATION "${APPDIR}/usr/share/icons/hicolor/128x128/apps")
+            DESTINATION "${APPDIR}/usr/share/icons/hicolor/128x128/apps")
         # Copy icon to AppDir root with both names needed
         install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
-                DESTINATION "${APPDIR}"
-                RENAME ".DirIcon")
+            DESTINATION "${APPDIR}"
+            RENAME ".DirIcon")
         install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/doc/abuse.png"
-                DESTINATION "${APPDIR}"
-                RENAME "abuse.png")
-        
+            DESTINATION "${APPDIR}"
+            RENAME "abuse.png")
+
         # Shared library installation
         set(BASE_LIBS
             "libGLEW"
@@ -161,12 +161,12 @@ if(UNIX AND NOT APPLE)
 
         # Function to find all matching libraries for a base name
         function(find_and_install_libraries base_name dest_dir)
-            file(GLOB MATCHING_LIBS 
-                "/usr/lib/${base_name}.so*" 
+            file(GLOB MATCHING_LIBS
+                "/usr/lib/${base_name}.so*"
                 "/usr/lib64/${base_name}.so*"
                 "/usr/lib/x86_64-linux-gnu/${base_name}.so*"
             )
-            
+
             foreach(LIB_PATH IN LISTS MATCHING_LIBS)
                 if(EXISTS "${LIB_PATH}")
                     install(FILES "${LIB_PATH}" DESTINATION "${dest_dir}")
@@ -188,12 +188,12 @@ if(UNIX AND NOT APPLE)
             COMMENT "Creating AppImage..."
         )
     endif()
-    
+
     # Regular installation
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-         DESTINATION "${CMAKE_INSTALL_DATADIR}/abuse"
-         FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/abuse"
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
 
 # Windows installation
@@ -207,19 +207,19 @@ if(WIN32)
         message(WARNING "SDL2.dll not found. Please set SDL2DIR or ensure SDL2.dll is in the specified paths.")
     endif()
     install(TARGETS abuse
-            RUNTIME DESTINATION ".")
-    
+        RUNTIME DESTINATION ".")
+
     if(SDL2_DLL)
         install(FILES ${SDL2_DLL}
-                DESTINATION ".")
+            DESTINATION ".")
     endif()
 endif()
 
 # macOS installation
 if(APPLE)
     install(TARGETS abuse
-            BUNDLE DESTINATION .)
-    
+        BUNDLE DESTINATION .)
+
     file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/data/"
-         DESTINATION "${CMAKE_INSTALL_PREFIX}/abuse.app/Contents/Resources/data")
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/abuse.app/Contents/Resources/data")
 endif()
