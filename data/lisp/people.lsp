@@ -261,65 +261,6 @@
 	(cop_adjust_top (mover xm ym but)))
     (climb_handler xm ym but)))
 
-/*(defun cop_mover (xm ym but)
-  (if (> (yvel) 10)
-      (progn
-	(set_yacel 0)
-	(set_yvel (- (yvel) 1))))  ;; terminal velocity
-  (select (aistate)
-	  (JUST_START
-	   (if (eq but 0)              ; wait till user lets go of button before moving
-	       (progn
-		 (set_aistate NORMAL_PLAY)
-		 (mover xm ym but))
-	     (cop_adjust_top (tick))))
-	  (NORMAL_PLAY
-	   (if (or (<= (hp) 0) (eq (state) dieing) (eq (state) dead))    ; are we dead?
-	       (progn
-		 (if (not (eq (state) dead))
-		     (if (not (eq (state) dieing))
-			 (progn
-			   (set_state dieing)
-			   (set_xvel 0)
-			   (set_yvel 0)
-			   (set_xacel 0)
-			   (set_yacel 0))
-		       (if (not (next_picture))
-			   (set_state dead) nil))
-		   (if (not (eq but 0)) ; wait till dead and pressing but, then reset
-		       (progn
-			 (restart_player)
-			 (set_aistate JUST_START))
-			 (cop_adjust_top (tick))))
-		 0)
-
-	     ; normal play code
-	     (progn
-	       ; check to see if player is firing
-	       (if (equal (bit-and but 1) 1)
-		   (do_special_power xm ym but)
-		 (undo_special_power xm ym but))
-
-	       (let ((ret (player_move xm ym but))
-		     (other (me)))
-		 (with_obj0
-			      (progn
-				(set_x (with_object other (x)))
-				(set_y (- (- (with_object other (y)) -29)
-					  (with_object other (picture_height))))
-				))
-		 (if (and (equal (bit-and but 2) 2)
-			  (not (eq (state) dead)) (not (eq (state) dieing)))
-		     (let ((ammo (ammo_total (current_weapon_type))))
-		       (add_ammo (current_weapon_type) (with_obj0
-								    (user_fun 'FIRE ammo)))
-		       nil))
-		 ret)
-	       )))))
-
-)*/
-
-;;(defun normal_bottom_mover ()  ;; just runs around
 
 (defun dead_cop_part_draw ()
   (if (eq (aitype) 0)
