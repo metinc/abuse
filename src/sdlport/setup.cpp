@@ -148,8 +148,8 @@ Settings::Settings()
     this->ctr_ltg = "b1";
     this->ctr_rtg = "b2";
     //
-    this->ctr_f5 = SDL_CONTROLLER_BUTTON_LEFTSTICK;
-    this->ctr_f9 = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+    this->ctr_f5 = 0;
+    this->ctr_f9 = 0;
 }
 
 //////////
@@ -273,11 +273,10 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "special=ctr_left_trigger" << std::endl;
     out << "fire=ctr_right_shoulder" << std::endl;
     out << "fire=ctr_right_trigger" << std::endl;
-    out << "fire=ctr_right_stick" << std::endl;
     out << "weapon_prev=ctr_x" << std::endl;
     out << "weapon_next=ctr_y" << std::endl;
-    out << "quick_save=ctr_left_stick" << std::endl;
-    out << "quick_load=ctr_right_stick" << std::endl;
+    out << "quick_save=none" << std::endl;
+    out << "quick_load=none" << std::endl;
 
     out.close();
 
