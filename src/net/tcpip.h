@@ -92,7 +92,7 @@ class ip_address : public net_address
     {
         return new ip_address(&addr);
     }
-    ip_address(){};
+    ip_address() {};
     void store_string(char *st, int st_length)
     //{ {{
     {
@@ -168,7 +168,7 @@ class unix_fd : public net_socket
     int fd;
 
   public:
-    unix_fd(int fd) : fd(fd){};
+    unix_fd(int fd) : fd(fd) {};
     virtual int error()
     {
         return FD_ISSET(fd, &tcpip.exception_set);
@@ -282,7 +282,7 @@ class tcp_socket : public unix_fd
 class udp_socket : public unix_fd
 {
   public:
-    udp_socket(int fd) : unix_fd(fd){};
+    udp_socket(int fd) : unix_fd(fd) {};
     virtual int read(void *buf, int size, net_address **addr)
     {
         int tr;
