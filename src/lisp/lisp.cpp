@@ -641,7 +641,7 @@ size_t LList::GetLength()
     size_t ret = 0;
 
 #ifdef TYPE_CHECKING
-    if (this && item_type(this) != (ltype)L_CONS_CELL)
+    if (item_type(this) != (ltype)L_CONS_CELL)
     {
         Print();
         lbreak(" is not a sequence\n");
@@ -1077,7 +1077,7 @@ void LObject::Print()
     switch (item_type(this))
     {
     case L_CONS_CELL:
-        if (!this)
+        if (this == nullptr)
         {
             lprint_string("nil");
         }
@@ -2802,7 +2802,7 @@ LObject *LObject::Eval()
 
     LObject *ret = NULL;
 
-    if (this)
+    if (this != nullptr)
     {
         switch (item_type(this))
         {
