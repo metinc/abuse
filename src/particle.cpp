@@ -95,7 +95,7 @@ part_sequence::part_sequence(void *args)
         fprintf(stderr, "\nparticle sequence : Unable to open %s for reading\n", fn);
         fprintf(stderr, "total files open=%d\n", total_files_open);
 
-        FILE *fp = fopen(fn, "rb");
+        FILE *fp = prefix_fopen(fn, "rb");
         printf("convet = %d\n", fp != NULL);
         exit(EXIT_FAILURE);
     }

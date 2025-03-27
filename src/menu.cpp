@@ -130,10 +130,7 @@ static void create_volume_window()
 
 void save_difficulty()
 {
-    std::string path_fin = get_save_filename_prefix();
-    path_fin += "hardness.lsp";
-
-    FILE *fp = open_FILE(path_fin.c_str(), "wb");
+    FILE *fp = prefix_fopen("hardness.lsp", "wb");
 
     if (!fp)
         printf("Unable to write to file hardness.lsp\n");
@@ -417,17 +414,17 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     ico_button *volume = load_icon(5, ID_VOLUME, x, y, h, NULL, "ic_volume");
     y += h;
 
-    //AR MP doesn't work, so I disabled the button, and with credits it doesn't fit at 320x200
-    /*ico_button *multiplayer = NULL;
-	if(prot)
-	{
-		multiplayer = load_icon(11,ID_NETWORKING,x,y,h,NULL,"ic_networking");
-		y += h;
-	}*/
+    // Multiplayer button
+    ico_button *multiplayer = NULL;
+    if (prot)
+    {
+        multiplayer = load_icon(11, ID_NETWORKING, x, y, h, NULL, "ic_networking");
+        y += h;
+    }
 
     //credits in full version
-    ico_button *sell = load_icon(2, ID_SHOW_SELL, x, y, h, NULL, "ic_sell");
-    y += h;
+    // ico_button *sell = load_icon(2, ID_SHOW_SELL, x, y, h, NULL, "ic_sell");
+    // y += h;
 
     ico_button *quit = load_icon(6, ID_QUIT, x, y, h, NULL, "ic_quit");
     y += h;
@@ -444,15 +441,15 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
 
     color->next = volume;
 
-    /*if(prot)
-	{
-		volume->next = multiplayer;
-		multiplayer->next = sell;
-	}
-	else */
-    volume->next = sell;
+    if (prot)
+    {
+        volume->next = multiplayer;
+        multiplayer->next = quit;
+    }
+    else
+        volume->next = quit;
 
-    sell->next = quit;
+    // sell->next = quit;
 
     ico_button *list = append_list;
 
@@ -550,7 +547,15 @@ void main_menu()
     inm->allow_no_selections();
     inm->clear_current();
 
-    main_screen->AddDirty(ivec2(0), ivec2(320, 200));
+    // Calculate total number of buttons
+    int total_buttons = 5; // Start, Difficulty, Gamma, Volume, Quit
+
+    // Remove difficulty button if we're in multiplayer server/client mode
+    if (main_net_cfg &&
+        (main_net_cfg->state == net_configuration::SERVER || main_net_cfg->state == net_configuration::CLIENT))
+    {
+        total_buttons--;
+    }
 
     Event ev;
 

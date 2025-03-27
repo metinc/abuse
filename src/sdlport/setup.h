@@ -3,10 +3,11 @@
  *  Copyright (c) 1995 Crack dot Com
  *  Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
  *  Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
+ *  Copyright (c) 2024 Andrej Pancik
  *
  *  This software was released into the Public Domain. As with most public
  *  domain software, no warranty is made or implied by Crack dot Com, by
- *  Jonathan Clark, or by Sam Hocevar.
+ *  Jonathan Clark, by Sam Hocevar, or Andrej Pancik.
  */
 
 #ifndef _SETUP_H_
@@ -32,6 +33,7 @@ class Settings
     bool no_music;
     int volume_sound; //0-127
     int volume_music; //0-127
+    std::string soundfont; // Path to custom soundfont file
 
     //random
     bool local_save;
@@ -41,6 +43,7 @@ class Settings
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
     short mouse_scale; //mouse scaling in fullscreen, 0 - match desktop, 1 - match game screen
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
+    std::string language;
     //
 
     std::string quick_load; //quick load
@@ -77,10 +80,10 @@ class Settings
 
     Settings();
 
-    bool CreateConfigFile(std::string file_path);
+    bool CreateConfigFile();
 
     bool ControllerButton(std::string c, std::string b);
-    bool ReadConfigFile(std::string folder);
+    bool ReadConfigFile();
 };
 
 #endif // _SETUP_H_

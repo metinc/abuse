@@ -57,8 +57,6 @@ extern int32_t current_vxadd, current_vyadd;
 extern int frame_panic, massive_frame_panic;
 extern int demo_start, idle_ticks;
 
-extern FILE *open_FILE(char const *filename, char const *mode);
-
 class Game
 {
   public:

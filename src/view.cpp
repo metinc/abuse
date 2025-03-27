@@ -743,10 +743,9 @@ void recalc_local_view_space() // calculates view areas for local players, shoul
         int Xres = small_render ? xres / 2 : xres;
         int Yres = small_render ? yres / 2 : yres;
 
-        int h = Yres / t;
-        int w = h * 320 / 200, y = 5;
-        if (w < 300)
-            w = 300;
+        int h = yres;
+        int w = xres;
+        int y = 0;
 
         for (view *f = player_list; f; f = f->next)
         {
@@ -755,7 +754,7 @@ void recalc_local_view_space() // calculates view areas for local players, shoul
                 f->suggest.cx1 = Xres / 2 - w / 2;
                 f->suggest.cx2 = Xres / 2 + w / 2;
                 if (f->suggest.cx1 < 2)
-                    f->suggest.cx1 = 2;
+                    f->suggest.cx1 = 0;
                 if (f->suggest.cx2 > Xres - 2)
                     f->suggest.cx2 = Xres - 2;
 
@@ -1193,6 +1192,7 @@ int32_t view::set_view_var_value(int num, int32_t x)
         player_number = x;
         if (local_player())
             sbar.associate(this);
+        set_tint(x);
     }
     break;
 

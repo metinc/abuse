@@ -17,7 +17,7 @@ class net_address
     };
     virtual protocol protocol_type() const = 0;
     virtual int equal(const net_address *who) const = 0;
-    int operator==(const net_address &who)
+    int operator==(const net_address &who) const
     {
         return equal(&who);
     }
@@ -25,14 +25,10 @@ class net_address
     virtual int get_port() = 0;
     virtual void print()
     {
-        ;
     }
     virtual net_address *copy() = 0;
     virtual void store_string(char *st, int st_length) = 0; // this should be able to be used get_node_address()
-    virtual ~net_address()
-    {
-        ;
-    }
+    virtual ~net_address() = default;
 };
 
 class net_socket
@@ -47,28 +43,22 @@ class net_socket
     virtual int error() = 0;
     virtual int ready_to_read() = 0;
     virtual int ready_to_write() = 0;
-    virtual int write(void const *buf, int size, net_address *addr = 0) = 0;
-    virtual int read(void *buf, int size, net_address **addr = 0) = 0;
+    virtual int write(void const *buf, int size, net_address *addr = nullptr) = 0;
+    virtual int read(void *buf, int size, net_address **addr = nullptr) = 0;
+
     virtual int get_fd() = 0;
-    virtual ~net_socket()
-    {
-        ;
-    }
+    virtual ~net_socket() = default;
     virtual void read_selectable()
     {
-        ;
     }
     virtual void read_unselectable()
     {
-        ;
     }
     virtual void write_selectable()
     {
-        ;
     }
     virtual void write_unselectable()
     {
-        ;
     }
     virtual int listen(int port)
     {
@@ -76,8 +66,8 @@ class net_socket
     }
     virtual net_socket *accept(net_address *&from)
     {
-        from = 0;
-        return 0;
+        from = nullptr;
+        return nullptr;
     }
 };
 
@@ -102,11 +92,11 @@ class net_protocol
         WRITE_ONLY
     };
 
-    int debug_level(debug_type min_level)
+    int debug_level(const debug_type min_level) const
     {
         return min_level <= debug_setting;
     }
-    void set_debug_printing(debug_type level)
+    void set_debug_printing(const debug_type level)
     {
         debug_setting = level;
     }
@@ -124,7 +114,6 @@ class net_protocol
     virtual int select(int block) = 0; // return # of sockets available for read & writing
     virtual void cleanup()
     {
-        ;
     } // should do any needed pre-exit cleanup stuff
     net_socket *connect_to_server(char const *&server_name, int port, int force_port = 0,
                                   net_socket::socket_type sock_type = net_socket::SOCKET_SECURE);
@@ -132,7 +121,7 @@ class net_protocol
     // Notification methods
     virtual net_socket *start_notify(int port, void *data, int len)
     {
-        return 0;
+        return nullptr;
     }
     virtual void end_notify()
     {
@@ -146,11 +135,10 @@ class net_protocol
     // Find methods
     virtual net_address *find_address(int port, char *name)
     {
-        return 0;
+        return nullptr;
     } // name should be a 256 byte buffer
     virtual void reset_find_list()
     {
-        ;
     }
 
     net_protocol()
@@ -161,7 +149,7 @@ class net_protocol
     }
     virtual ~net_protocol()
     {
-        cleanup();
+        net_protocol::cleanup();
     }
 };
 

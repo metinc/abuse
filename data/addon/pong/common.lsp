@@ -23,8 +23,7 @@
 	  (with_object (bg) (try_move amount 0))))))
 
 
-
-(defun do_nothing () (next_picture) T)
+(defun do_nothing () T)
 
 (defun lhold_ai ()
   (if (> (total_objects) 0)

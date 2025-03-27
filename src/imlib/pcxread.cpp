@@ -94,7 +94,7 @@ int write_PCX_header(FILE *fp)
 
 PCX_type PCX_file_type(char const *filename)
 {
-    FILE *fp = fopen(filename, "rb");
+    FILE *fp = prefix_fopen(filename, "rb");
     if (!fp)
         return not_PCX;
 
@@ -145,7 +145,7 @@ image *read_PCX(char const *filename, palette *&pal)
 {
     if (PCX_file_type(filename) != PCX_8)
         return NULL;
-    FILE *fp = fopen(filename, "rb");
+    FILE *fp = prefix_fopen(filename, "rb");
     read_PCX_header(fp);
 
     image *im = new image(ivec2(PCX_header.xmax - PCX_header.xmin + 1, PCX_header.ymax - PCX_header.ymin + 1));
@@ -169,7 +169,7 @@ image *read_PCX(char const *filename, palette *&pal)
 
 void write_PCX(image *im, palette *pal, char const *filename)
 {
-    FILE *fp = fopen(filename, "wb");
+    FILE *fp = prefix_fopen(filename, "wb");
     if (!fp)
         return;
 

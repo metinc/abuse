@@ -31,14 +31,11 @@
       stack
 */
 
-// Stack where user programs can push data and have it GCed
+// Stack where user programs can push data and have it GCed - these are the values I need to keep
 GrowStack<void> l_user_stack(150);
 
-// Stack of user pointers
+// Stack of user pointers - these are the pointers that need to be updated if values move
 GrowStack<void *> PtrRef::stack(1500);
-
-static size_t reg_ptr_total = 0;
-static void ***reg_ptr_list = NULL;
 
 static uint8_t *cstart, *cend, *collected_start, *collected_end;
 static int gcdepth, maxgcdepth;
@@ -153,20 +150,20 @@ LObject *Lisp::CollectObject(LObject *x)
         ((LRedirect *)x)->m_type = L_COLLECTED_OBJECT;
         ((LRedirect *)x)->m_ref = ret;
     }
-    else if ((uint8_t *)x < collected_start || (uint8_t *)x >= collected_end)
+    else
     {
         // Still need to remap cons_cells lying outside of space, for
         // instance on the stack.
-        for (LObject *cell = NULL; x; cell = x, x = CDR(x))
-        {
-            if (item_type(x) != L_CONS_CELL)
-            {
-                if (cell)
-                    CDR(cell) = CollectObject(CDR(cell));
-                break;
-            }
-            CAR(x) = CollectObject(CAR(x));
-        }
+        // for (LObject *cell = NULL; x; cell = x, x = CDR(x))
+        // {
+        //     if (item_type(x) != L_CONS_CELL)
+        //     {
+        //         if (cell)
+        //             CDR(cell) = CollectObject(CDR(cell));
+        //         break;
+        //     }
+        //     CAR(x) = CollectObject(CAR(x));
+        // }
     }
 
     --gcdepth;
@@ -195,13 +192,6 @@ void Lisp::CollectStacks()
     for (size_t i = 0; i < PtrRef::stack.m_size; i++, d2++)
     {
         void **ptr = *d2;
-        *ptr = CollectObject((LObject *)*ptr);
-    }
-
-    void ***d3 = reg_ptr_list;
-    for (size_t i = 0; i < reg_ptr_total; i++, d3++)
-    {
-        void **ptr = *d3;
         *ptr = CollectObject((LObject *)*ptr);
     }
 }

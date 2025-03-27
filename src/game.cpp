@@ -3,15 +3,18 @@
  *  Copyright (c) 1995 Crack dot Com
  *  Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
  *  Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
+ *  Copyright (c) 2024 Andrej Pancik
  *
  *  This software was released into the Public Domain. As with most public
  *  domain software, no warranty is made or implied by Crack dot Com, by
- *  Jonathan Clark, or by Sam Hocevar.
+ *  Jonathan Clark, by Sam Hocevar, or Andrej Pancik.
  */
 
 #if defined HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include "common.h"
 
 #ifdef WIN32
 #include <WinSock2.h>
@@ -74,14 +77,11 @@
 #include <SDL_timer.h>
 //
 
-#define SHIFT_RIGHT_DEFAULT 0
-#define SHIFT_DOWN_DEFAULT 30
-
 extern CrcManager *net_crcs;
 
 Game *the_game = NULL;
 WindowManager *wm = NULL;
-int dev, shift_down = SHIFT_DOWN_DEFAULT, shift_right = SHIFT_RIGHT_DEFAULT;
+int dev;
 double sum_diffs = 1, total_diffs = 12;
 int total_active = 0;
 int32_t map_xoff = 0, map_yoff = 0;
@@ -105,25 +105,6 @@ Settings settings;
 #include "tcpip.h"
 tcpip_protocol tcpip;
 #endif
-
-FILE *open_FILE(char const *filename, char const *mode)
-{
-    /* FIXME: potential buffer overflow here */
-    char tmp_name[200];
-#ifdef WIN32
-    // Need to make sure it's not an absolute Windows path
-    if (get_filename_prefix() && filename[0] != '/' && (filename[0] != '\0' && filename[1] != ':'))
-#else
-    if (get_filename_prefix() && filename[0] != '/')
-#endif
-    {
-        sprintf(tmp_name, "%s %s", get_filename_prefix(), filename);
-    }
-    else
-        strcpy(tmp_name, filename);
-    //printf("open_FILE(%s)\n", tmp_name);
-    return fopen(tmp_name, mode);
-}
 
 void handle_no_space()
 {
@@ -559,8 +540,8 @@ void Game::load_level(char const *name)
     {
         delete fp;
         current_level = new level(100, 100, name);
-        char msg[100];
-        sprintf(msg, symbol_str("no_file"), name);
+        char msg[200];
+        snprintf(msg, sizeof(msg), "%s: %s", symbol_str("no_file"), name);
         show_help(msg);
     }
     else
@@ -1476,10 +1457,10 @@ Game::Game(int argc, char **argv)
         printf("not detected\n");
 
     // Clean up that old crap
-    char *fastpath = (char *)malloc(strlen(get_save_filename_prefix()) + 13);
-    sprintf(fastpath, "%sfastload.dat", get_save_filename_prefix());
-    unlink(fastpath);
-    free(fastpath);
+    // char *fastpath = (char *)malloc(strlen(get_save_filename_prefix()) + 13);
+    // sprintf(fastpath, "%sfastload.dat", get_save_filename_prefix());
+    // unlink(fastpath);
+    // free(fastpath);
 
     //    ProfilerInit(collectDetailed, bestTimeBase, 2000, 200); //prof
     load_data(argc, argv);
@@ -1620,7 +1601,7 @@ void Game::show_time()
         return;
 
     char str[16];
-    sprintf(str, "%ld", (long)(10000.0f / avg_ms));
+    sprintf(str, "%ld", (long)(1000.0f / avg_ms));
     console_font->PutString(main_screen, first_view->m_aa, str);
 
     sprintf(str, "%d", total_active);
@@ -2160,6 +2141,9 @@ Game::~Game()
     delete wm;
     delete game_font;
     delete big_font;
+    delete ar_big_font;
+    delete save_game_font;
+    delete ar_small_font;
     delete console_font;
     if (total_help_screens)
         free(help_screens);
@@ -2415,13 +2399,6 @@ void game_net_init(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
-#ifdef WIN32
-    if (AttachConsole(ATTACH_PARENT_PROCESS))
-    {
-        freopen("CONOUT$", "w", stdout);
-        freopen("CONOUT$", "w", stderr);
-    }
-#endif
     start_argc = argc;
     start_argv = argv;
 
@@ -2431,62 +2408,15 @@ int main(int argc, char *argv[])
             external_print = 1;
     }
 
-#if (defined(__APPLE__) && !defined(__MACH__))
-    unsigned char km[16];
-
-    fprintf(stderr, "Mac Options: ");
-    xres = 320;
-    yres = 200;
-    GetKeys((uint32_t *)&km);
-    if ((km[0x3a >> 3] >> (0x3a & 7)) & 1 != 0)
-    {
-        dev |= EDIT_MODE;
-        start_edit = 1;
-        start_running = 1;
-        disable_autolight = 1;
-        fprintf(stderr, "Edit Mode...");
-    }
-    if ((km[0x3b >> 3] >> (0x3b & 7)) & 1 != 0)
-    {
-        PixMult = 1;
-        fprintf(stderr, "Single Pixel...");
-    }
-    else
-    {
-        PixMult = 2;
-        fprintf(stderr, "Double Pixel...");
-    }
-    if ((km[0x38 >> 3] >> (0x38 & 7)) & 1 != 0)
-    {
-        xres *= 2;
-        yres *= 2;
-        fprintf(stderr, "Double Size...");
-    }
-    fprintf(stderr, "\n");
-
-    if (tcpip.installed())
-        fprintf(stderr, "Using %s\n", tcpip.name());
-#endif
-
-    show_startup();
-
     set_no_space_handler(handle_no_space);
 
     setup(argc, argv);
 
+    show_startup();
+
     start_sound(argc, argv);
 
     stat_man = new text_status_manager();
-
-#if !defined __CELLOS_LV2__
-    // look to see if we are supposed to fetch the data elsewhere
-    if (getenv("ABUSE_PATH"))
-        set_filename_prefix(getenv("ABUSE_PATH"));
-
-    // look to see if we are supposed to save the data elsewhere
-    if (getenv("ABUSE_SAVE_PATH"))
-        set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
-#endif
 
     jrand_init();
     jrand(); // so compiler doesn't complain
@@ -2595,7 +2525,7 @@ int main(int argc, char *argv[])
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
             }
 
-            server_check();
+            // server_check();
 
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
@@ -2666,6 +2596,13 @@ int main(int argc, char *argv[])
     }
 
     while (main_net_cfg && main_net_cfg->restart_state());
+
+    delete stat_man;
+    delete main_net_cfg;
+    main_net_cfg = NULL;
+
+    set_filename_prefix(NULL); // dealloc this mem if there was any
+    set_save_filename_prefix(NULL);
 
     delete stat_man;
     delete main_net_cfg;

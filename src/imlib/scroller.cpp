@@ -111,17 +111,19 @@ void scroller::dragger_area(int &x1, int &y1, int &x2, int &y2)
 
 int scroller::bh()
 {
+    // TODO 4,4 or 5,5? Swap _W and _H?
     if (vert)
-        return 15;
+        return HS_ICON_W + 4;
     else
-        return 13;
+        return HS_ICON_H + 4;
 }
+
 int scroller::bw()
 {
     if (vert)
-        return 12;
+        return HS_ICON_H + 4;
     else
-        return 14;
+        return HS_ICON_W + 4;
 }
 
 uint8_t *scroller::b1()

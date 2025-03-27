@@ -851,7 +851,7 @@ void dev_controll::toggle_search_window()
     searchw_on = 0;
 }
 
-int open_owin = 0, open_fwin = 0, open_bwin = 0, start_edit = 0, start_nodelay = 0, start_doubled = 0, start_mem = 0;
+int open_owin = 0, open_fwin = 0, open_bwin = 0, start_edit = 0, start_nodelay = 0, start_doubled = 0;
 
 int get_option(char const *name);
 
@@ -863,10 +863,7 @@ void dev_init(int argc, char **argv)
     int i;
     prop = new property_manager;
 
-    std::string path_fin = get_save_filename_prefix();
-    path_fin += "defaults.prp";
-
-    prop->load(path_fin.c_str());
+    prop->load("defaults.prp");
 
     for (i = 1; i < argc; i++)
     {
@@ -877,16 +874,9 @@ void dev_init(int argc, char **argv)
             start_running = 1;
             disable_autolight = 1;
             settings.editor = true;
-            if (get_option("-2"))
-            {
-                printf("%s\n", symbol_str("no2"));
-                exit(EXIT_SUCCESS);
-            }
         }
         else if (!strcmp(argv[i], "-fwin"))
             open_fwin = 1;
-        else if (!strcmp(argv[i], "-show_mem"))
-            start_mem = 1;
         else if (!strcmp(argv[i], "-bwin"))
             open_bwin = 1;
         else if (!strcmp(argv[i], "-owin"))
@@ -915,7 +905,7 @@ void dev_init(int argc, char **argv)
     if (get_option("-no_autolight"))
         disable_autolight = 0;
 
-    if ((get_option("-size") || get_option("-vmode")) && !start_edit)
+    if ((get_option("-size")) && !start_edit)
     {
         printf("%s\n", symbol_str("no_hirez"));
         exit(EXIT_SUCCESS);
@@ -938,10 +928,7 @@ void AR_dev_init()
     dev = 0;
     prop = new property_manager;
 
-    std::string path_fin = get_save_filename_prefix();
-    path_fin += "defaults.prp";
-
-    prop->load(path_fin.c_str());
+    prop->load("defaults.prp");
 
     dev |= EDIT_MODE;
     start_edit = 1;
@@ -1041,7 +1028,7 @@ void dev_controll::load_stuff()
 
 void dev_controll::do_command(char const *command, Event &ev)
 {
-    char fword[50];
+    char fword[150];
     char const *st;
     int l, h, x, y, i;
     if (command[0] == '(') // is this a lisp command?
@@ -3607,7 +3594,7 @@ void pal_win::save(FILE *fp)
 
 void dev_controll::save()
 {
-    FILE *fp = open_FILE("edit.lsp", "w");
+    FILE *fp = prefix_fopen("edit.lsp", "w");
     if (!fp)
         the_game->show_help(symbol_str("no_edit.lsp"));
     else
@@ -3831,10 +3818,7 @@ void dev_cleanup()
 {
     if (start_edit)
     {
-        std::string path_fin = get_save_filename_prefix();
-        path_fin += "defaults.prp";
-
-        prop->load(path_fin.c_str());
+        prop->load("defaults.prp");
     }
 
     delete prop;

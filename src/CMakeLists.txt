@@ -20,6 +20,7 @@ endif()
 
 add_executable(abuse
     common.h
+    file_utils.cpp file_utils.h
     lol/matrix.cpp lol/matrix.h
     specache.cpp specache.h
     netcfg.cpp netcfg.h
@@ -33,8 +34,7 @@ add_executable(abuse
     compiled.cpp compiled.h
     ant.cpp ant.h
     sensor.cpp
-    demo.cpp demo.h
-    lcache.cpp lcache.h
+    demo.cpp demo.h    
     nfclient.cpp nfclient.h
     clisp.cpp clisp.h
     gui.cpp gui.h
@@ -69,7 +69,7 @@ add_executable(abuse
     devsel.cpp devsel.h
     crc.cpp crc.h
     gamma.cpp gamma.h
-    id.h netface.h isllist.h sbar.h
+    id.h isllist.h sbar.h
     nfserver.h
     ui/volumewindow.cpp ui/volumewindow.h
     ${abuse_RESOURCE_FILES}
@@ -100,12 +100,23 @@ if(OPENGL_FOUND)
 endif(OPENGL_FOUND)
 
 add_executable(abuse-tool
+    file_utils.cpp file_utils.h
 	tool/abuse-tool.cpp
 	crc.cpp crc.h
 	tool/AR_SPEC.cpp tool/AR_SPEC.h
 	tool/AR_Help.cpp tool/AR_Help.h)
 
 target_link_libraries(abuse-tool imlib ${OpenCV_LIBS})
+
+if(APPLE)
+    # Link CoreFoundation
+    target_link_libraries(abuse "-framework CoreFoundation")
+endif()
+
+if(APPLE)
+    # Link CoreFoundation
+    target_link_libraries(abuse "-framework CoreFoundation")
+endif()
 
 include_directories(
     ${abuse_SOURCE_DIR}/src
@@ -117,7 +128,7 @@ include_directories(
 )
 if(WIN32)
     # Under Windows, throw them into the root
-    install(TARGETS abuse abuse-tool
+    install(TARGETS abuse
         RUNTIME DESTINATION "."
         LIBRARY DESTINATION ".")
     
@@ -160,7 +171,7 @@ if(WIN32)
     install(FILES ${LIBOGG_DLL_PATH} DESTINATION ".")
 else()
     # Under Linux, we want the tools in bin
-    install(TARGETS abuse abuse-tool RUNTIME DESTINATION bin
+    install(TARGETS abuse RUNTIME DESTINATION bin
     BUNDLE DESTINATION "${CMAKE_INSTALL_PREFIX}")
     if(APPLE)
         # macOS should probably include SDL rather than dynamically link them like Linux does
