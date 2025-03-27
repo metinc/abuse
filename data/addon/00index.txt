@@ -1,0 +1,13 @@
+bgames          includes chess, checkers, connect-4, and othello
+                these games have no AI so they can only be played 2-player
+	        (same computer or networked)
+                To run say abuse -lsf addon/bgames/chess.lsp
+diffsens.zip    example object and a few notes on character object 
+                (difficulty sensor, only turns on when the player is
+                on a set hardness).
+example         A super-simple example of how to add your own tiles into ABUSE
+nextlev2.zip    Next level object replaces abuse's.  Allows you
+                to provide a list of "named" levels which will be loaded
+                sequentially.  Also allows for a different list of levels
+                to bee loaded on diffirent difficulty settings.
+pong            simple arkinoid like game

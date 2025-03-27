@@ -11,6 +11,13 @@
 #ifndef __JWIN__
 #define __JWIN__
 
+#ifdef _WIN32
+// Windows has its own CreateWindow function. It uses preprocessor magic to
+// change between ASCII and wide-character versions, which masks our
+// version of CreateWindow.
+#undef CreateWindow
+#endif
+
 #include "video.h"
 #include "image.h"
 #include "event.h"

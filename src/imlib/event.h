@@ -41,11 +41,29 @@ class Event : public linked_node
     Event()
     {
         type = EV_SPURIOUS;
+        mouse_move = ivec2(0, 0);
+        mouse_button = 0;
+        key = 0;
+        key_special.alt = 0;
+        key_special.ctrl = 0;
+        key_special.shift = 0;
+        window = NULL;
+        window_position = ivec2(0, 0);
+        message.id = 0;
+        message.data = NULL;
     }
 
     Event(int id, char *data)
     {
         type = EV_MESSAGE;
+        mouse_move = ivec2(0, 0);
+        mouse_button = 0;
+        key = 0;
+        key_special.alt = 0;
+        key_special.ctrl = 0;
+        key_special.shift = 0;
+        window = NULL;
+        window_position = ivec2(0, 0);
         message.id = id;
         message.data = data;
     }

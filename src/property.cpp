@@ -134,7 +134,7 @@ void property_manager::set(char const *name, char const *def)
 
 void property_manager::save(char const *filename)
 {
-    FILE *fp = open_FILE(filename, "wb");
+    FILE *fp = prefix_fopen(filename, "wb");
     if (!fp)
         printf("Error opening %s to save properties\n", filename);
     else
@@ -154,7 +154,7 @@ void property_manager::save(char const *filename)
 void property_manager::load(char const *filename)
 {
     char buf[100], *c1, *c2, name[100], str[100];
-    FILE *fp = open_FILE(filename, "rb");
+    FILE *fp = prefix_fopen(filename, "rb");
     if (fp)
     {
         while (!feof(fp))

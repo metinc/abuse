@@ -46,6 +46,10 @@ class ColorFilter
     int Write(bFILE *fp);
     int Lookup(int r, int g, int b)
     {
+        // Clamp input values to valid range
+        r = r >= m_size ? m_size - 1 : (r < 0 ? 0 : r);
+        g = g >= m_size ? m_size - 1 : (g < 0 ? 0 : g);
+        b = b >= m_size ? m_size - 1 : (b < 0 ? 0 : b);
         return m_table[(r * m_size + g) * m_size + b];
     }
 

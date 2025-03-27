@@ -1,5 +1,13 @@
 Authors
 -------
+Andrej Pancik
+  Abuse 2025
+
+Antonio Radojkovic <antonior.software@gmail.com>
+  SDL2 port 0.9a
+
+Daniel "Xenoveritas" Potter
+  SDL2 port 0.9
 
 Metin Çelik <metincelik88@gmail.com>
   Removal of 15 FPS lock and other improvements

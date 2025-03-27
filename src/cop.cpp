@@ -32,13 +32,16 @@ enum
     fire_delay1
 };
 
-#define SHOTGUN 10
-#define GRENADE 2
-#define ROCKET 3
-#define PLASMA 4
-#define FIREBOMB 5
-#define DFRIS 6
-#define LSABER 7
+typedef enum
+{
+    SHOTGUN = 10,
+    GRENADE = 2,
+    ROCKET = 3,
+    PLASMA = 4,
+    FIREBOMB = 5,
+    DFRIS = 6,
+    LSABER = 7
+} WeaponType;
 
 signed char small_fire_off[24 * 2] = // x & y offset from character to end of gun.
     {17,  20, // 1

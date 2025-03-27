@@ -1,7 +1,6 @@
 INSTALL(FILES
     abuse.lsp
     edit.lsp
-    user/hardness.lsp
     icon.bmp
 DESTINATION ${ASSETDIR})
 
@@ -49,7 +48,9 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/addon/aliens)
 
 INSTALL(FILES
-    addon/bong/bong.lsp
+    addon/bong/bong.lsp        
+    addon/bong/pong01.lvl
+    addon/bong/bong.spe
 DESTINATION ${ASSETDIR}/addon/bong)
 
 INSTALL(FILES
@@ -216,6 +217,29 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/addon/pong)
 
 INSTALL(FILES
+    addon/bgames/chess.spe addon/bgames/connect4.lsp
+    addon/bgames/othello.lsp addon/bgames/chess.lsp
+    addon/bgames/bgames.lsp addon/bgames/checkers.lvl
+    addon/bgames/othello.lvl addon/bgames/connect4.lvl
+    addon/bgames/chess.lvl addon/bgames/checkers.lsp
+    addon/bgames/pong.spe
+DESTINATION ${ASSETDIR}/addon/bgames)
+
+INSTALL(FILES
+    addon/quest/quest.lsp    
+    addon/quest/quest.spe
+    addon/quest/main_map.spe
+DESTINATION ${ASSETDIR}/addon/quest)
+
+INSTALL(FILES
+    addon/diffsens/diffsens.lsp addon/diffsens/diffsens.spe
+DESTINATION ${ASSETDIR}/addon/diffsens)
+
+INSTALL(FILES
+    addon/nextlev2/nextlev2.lsp
+DESTINATION ${ASSETDIR}/addon/nextlev2)
+
+INSTALL(FILES
     addon/twist/art/cgc.spe addon/twist/art/dray.spe addon/twist/art/fire.spe
     addon/twist/art/lavap.spe addon/twist/art/legs.spe
     addon/twist/art/mario.spe addon/twist/art/mtile.spe
@@ -277,7 +301,9 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/levels/mac)
 
 INSTALL(FILES
-    addon/bong/bong01.lvl
+    addon/bong/bong.lsp        
+    addon/bong/pong01.lvl
+    addon/bong/bong.spe
 DESTINATION ${ASSETDIR}/addon/bong)
 
 INSTALL(FILES
@@ -331,10 +357,19 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR})
 
 # Check if we have the non-free data
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/soundfonts)
+    message(WARNING "Non-free soundfonts found. Build will include non-free data!")
+    INSTALL(FILES
+        soundfonts/AWE64\ Gold\ Presets.sf2  soundfonts/Roland\ SC-55\ Presets.sf2
+    DESTINATION ${ASSETDIR}/soundfonts)
+else()
+    message(WARNING "Non-free soundfonts not found, sound will not be enabled.")
+endif()
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/music)
     message(WARNING "Non-free music found. Build will include non-free data!")
     INSTALL(FILES
-        music/soundfont.sf2 music/intro.hmi music/victory.hmi
+        music/intro.hmi music/victory.hmi
         music/abuse00.hmi music/abuse01.hmi music/abuse02.hmi music/abuse03.hmi
         music/abuse04.hmi music/abuse06.hmi music/abuse08.hmi music/abuse09.hmi
         music/abuse11.hmi music/abuse13.hmi music/abuse15.hmi music/abuse17.hmi

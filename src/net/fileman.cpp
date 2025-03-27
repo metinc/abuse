@@ -61,13 +61,12 @@ void file_manager::process_net()
     nfs_client *nc, *last = NULL;
     for (nc = nfs_list; nc;) // check for nfs request
     {
-
         int ok = 1;
 
         if (nc->sock->error())
         {
             ok = 0;
-            //fprintf(stderr,"Killing nfs client, socket went bad\n");
+            // fprintf(stderr,"Killing nfs client, socket went bad\n");
         }
         else if (nc->size_to_read && nc->sock->ready_to_write())
             ok = nc->send_read();
@@ -95,13 +94,14 @@ void file_manager::process_net()
 int file_manager::process_nfs_command(nfs_client *c)
 {
     char cmd;
-    if (c->sock->read(&cmd, 1) != 1)
+    if (c->sock->read(/* client_nfs_command */ &cmd, 1) != 1)
         return 0;
+
     switch (cmd)
     {
     case NFCMD_READ: {
         int32_t size;
-        if (c->sock->read(&size, sizeof(size)) != sizeof(size))
+        if (c->sock->read(/* client_read_size */ &size, sizeof(size)) != sizeof(size))
             return 0;
         size = lltl(size);
 
@@ -115,12 +115,12 @@ int file_manager::process_nfs_command(nfs_client *c)
     break;
     case NFCMD_SEEK: {
         int32_t offset;
-        if (c->sock->read(&offset, sizeof(offset)) != sizeof(offset))
+        if (c->sock->read(/* client_seek_offset */ &offset, sizeof(offset)) != sizeof(offset))
             return 0;
         offset = lltl(offset);
         offset = lseek(c->file_fd, offset, 0);
         offset = lltl(offset);
-        if (c->sock->write(&offset, sizeof(offset)) != sizeof(offset))
+        if (c->sock->write(/* server_seek_response */ &offset, sizeof(offset)) != sizeof(offset))
             return 0;
         return 1;
     }
@@ -128,7 +128,7 @@ int file_manager::process_nfs_command(nfs_client *c)
     case NFCMD_TELL: {
         int32_t offset = lseek(c->file_fd, 0, SEEK_CUR);
         offset = lltl(offset);
-        if (c->sock->write(&offset, sizeof(offset)) != sizeof(offset))
+        if (c->sock->write(/* server_tell_response */ &offset, sizeof(offset)) != sizeof(offset))
             return 0;
         return 1;
     }
@@ -160,7 +160,7 @@ int file_manager::nfs_client::send_read() // return 0 if failure on socket, not 
                 ushort tmp = lstl(actual);
                 memcpy(buf, &tmp, sizeof(tmp));
 
-                int write_amount = sock->write(buf, actual + 2);
+                int write_amount = sock->write(/* server_read_data */ buf, actual + 2);
                 if (write_amount != actual + 2)
                 {
                     fprintf(stderr, "write failed\n");
@@ -248,17 +248,18 @@ void file_manager::add_nfs_client(net_socket *sock)
 {
     uint8_t size[2];
     char filename[300], mode[20], *mp;
-    if (sock->read(size, 2) != 2)
+    if (sock->read(/* client_nfs_connect_info */ size, 2) !=
+        2) // read size 2 bytes, because command was parsed by service_net_request() in innet.cpp
     {
         delete sock;
         return;
     }
-    if (sock->read(filename, size[0]) != size[0])
+    if (sock->read(/* client_nfs_filename */ filename, size[0]) != size[0])
     {
         delete sock;
         return;
     }
-    if (sock->read(mode, size[1]) != size[1])
+    if (sock->read(/* client_nfs_mode */ mode, size[1]) != size[1])
     {
         delete sock;
         return;
@@ -285,12 +286,12 @@ void file_manager::add_nfs_client(net_socket *sock)
     }
 
 #ifdef WIN32
-    int f = open(filename, flags, _S_IREAD | _S_IWRITE);
+    int f = prefix_open(filename, flags, _S_IREAD | _S_IWRITE);
 #else
-    int f = open(filename, flags, S_IRWXU | S_IRWXG | S_IRWXO);
+    int f = prefix_open(filename, flags, S_IRWXU | S_IRWXG | S_IRWXO);
 #endif
 
-    FILE *fp = fopen("open.log", "ab");
+    FILE *fp = prefix_fopen("open.log", "ab");
     fprintf(fp, "open file %s, fd=%d\n", filename, f);
     fclose(fp);
 
@@ -298,7 +299,7 @@ void file_manager::add_nfs_client(net_socket *sock)
         f = -1; // make sure this is -1
 
     int32_t ret = lltl(f);
-    if (sock->write(&ret, sizeof(ret)) != sizeof(ret))
+    if (sock->write(/* server_nfs_fd */ &ret, sizeof(ret)) != sizeof(ret))
     {
         delete sock;
         return;
@@ -312,7 +313,7 @@ void file_manager::add_nfs_client(net_socket *sock)
         int32_t size = lseek(f, 0, SEEK_END);
         lseek(f, cur_pos, SEEK_SET);
         size = lltl(size);
-        if (sock->write(&size, sizeof(size)) != sizeof(size))
+        if (sock->write(/* server_nfs_filesize */ &size, sizeof(size)) != sizeof(size))
         {
             close(f);
             delete sock;
@@ -342,25 +343,26 @@ file_manager::remote_file::remote_file(net_socket *sock, char const *filename, c
     next = Next;
     open_local = 0;
 
-    uint8_t sizes[3] = {CLIENT_NFS, strlen(filename) + 1, strlen(mode) + 1};
-    if (sock->write(sizes, 3) != 3)
+    uint8_t sizes[3] = {CLIENT_NFS, static_cast<uint8_t>(strlen(filename) + 1), static_cast<uint8_t>(strlen(mode) + 1)};
+
+    if (sock->write(/* client_nfs_connect_info */ sizes, 3) != 3)
     {
         r_close("could not send open info");
         return;
     }
-    if (sock->write(filename, sizes[1]) != sizes[1])
+    if (sock->write(/* client_nfs_filename */ filename, sizes[1]) != sizes[1])
     {
         r_close("could not send filename");
         return;
     }
-    if (sock->write(mode, sizes[2]) != sizes[2])
+    if (sock->write(/* client_nfs_mode */ mode, sizes[2]) != sizes[2])
     {
         r_close("could not send mode");
         return;
     }
 
     int32_t remote_file_fd;
-    if (sock->read(&remote_file_fd, sizeof(remote_file_fd)) != sizeof(remote_file_fd))
+    if (sock->read(/* server_nfs_fd */ &remote_file_fd, sizeof(remote_file_fd)) != sizeof(remote_file_fd))
     {
         r_close("could not read remote fd");
         return;
@@ -372,7 +374,7 @@ file_manager::remote_file::remote_file(net_socket *sock, char const *filename, c
         return;
     }
 
-    if (sock->read(&size, sizeof(size)) != sizeof(size))
+    if (sock->read(/* server_nfs_filesize */ &size, sizeof(size)) != sizeof(size))
     {
         r_close("could not read remote filesize");
         return;
@@ -386,14 +388,14 @@ int file_manager::remote_file::unbuffered_read(void *buffer, size_t count)
     if (sock && count)
     {
         uint8_t cmd = NFCMD_READ;
-        if (sock->write(&cmd, sizeof(cmd)) != sizeof(cmd))
+        if (sock->write(/* client_nfs_command */ &cmd, sizeof(cmd)) != sizeof(cmd))
         {
             r_close("read : could not send command");
             return 0;
         }
 
         int32_t rsize = lltl(count);
-        if (sock->write(&rsize, sizeof(rsize)) != sizeof(rsize))
+        if (sock->write(/* client_read_size */ &rsize, sizeof(rsize)) != sizeof(rsize))
         {
             r_close("read : could not send size");
             return 0;
@@ -405,7 +407,7 @@ int file_manager::remote_file::unbuffered_read(void *buffer, size_t count)
         ushort packet_size;
         do
         {
-            if (sock->read(&packet_size, sizeof(packet_size)) != sizeof(packet_size))
+            if (sock->read(/* server_read_size */ &packet_size, sizeof(packet_size)) != sizeof(packet_size))
             {
                 fprintf(stderr, "could not read packet size\n");
                 return 0;
@@ -413,11 +415,12 @@ int file_manager::remote_file::unbuffered_read(void *buffer, size_t count)
 
             packet_size = lstl(packet_size);
 
-            ushort size_read = sock->read(buf, packet_size);
+            ushort size_read = sock->read(/* server_read_data */ buf, packet_size);
 
             if (size_read != packet_size)
             {
-                if (sock->read(buf + 2 + size_read, packet_size - size_read) != packet_size - size_read)
+                if (sock->read(/* server_read_data */ buf + 2 + size_read, packet_size - size_read) !=
+                    packet_size - size_read)
                 {
                     fprintf(stderr, "incomplete packet\n");
                     return 0;
@@ -440,14 +443,14 @@ int32_t file_manager::remote_file::unbuffered_tell() // ask server where the off
     if (sock)
     {
         uint8_t cmd = NFCMD_TELL;
-        if (sock->write(&cmd, sizeof(cmd)) != sizeof(cmd))
+        if (sock->write(/* client_nfs_command */ &cmd, sizeof(cmd)) != sizeof(cmd))
         {
             r_close("tell : could not send command");
             return 0;
         }
 
         int32_t offset;
-        if (sock->read(&offset, sizeof(offset)) != sizeof(offset))
+        if (sock->read(/* server_tell_response */ &offset, sizeof(offset)) != sizeof(offset))
         {
             r_close("tell : could not read offset");
             return 0;
@@ -462,20 +465,20 @@ int32_t file_manager::remote_file::unbuffered_seek(int32_t offset) // tell serve
     if (sock)
     {
         uint8_t cmd = NFCMD_SEEK;
-        if (sock->write(&cmd, sizeof(cmd)) != sizeof(cmd))
+        if (sock->write(/* client_nfs_command */ &cmd, sizeof(cmd)) != sizeof(cmd))
         {
             r_close("seek : could not send command");
             return 0;
         }
 
         int32_t off = lltl(offset);
-        if (sock->write(&off, sizeof(off)) != sizeof(off))
+        if (sock->write(/* client_seek_offset */ &off, sizeof(off)) != sizeof(off))
         {
             r_close("seek : could not send offset");
             return 0;
         }
 
-        if (sock->read(&offset, sizeof(offset)) != sizeof(offset))
+        if (sock->read(/* server_seek_response */ &offset, sizeof(offset)) != sizeof(offset))
         {
             r_close("seek : could not read offset");
             return 0;
@@ -557,24 +560,10 @@ int file_manager::rf_open_file(char const *&filename, char const *mode)
         mode++;
     }
 
-    char tmp_name[200];
 #ifdef WIN32
-    if (get_filename_prefix() && filename[0] != '/' && (filename[0] != '\0' && filename[1] != ':'))
+    int f = prefix_open(filename, flags, S_IREAD | S_IWRITE);
 #else
-    if (get_filename_prefix() && filename[0] != '/')
-#endif
-    {
-        sprintf(tmp_name, "%s%s", get_filename_prefix(), filename);
-    }
-    else
-    {
-        strcpy(tmp_name, filename);
-    }
-
-#ifdef WIN32
-    int f = open(tmp_name, flags, S_IREAD | S_IWRITE);
-#else
-    int f = open(tmp_name, flags, S_IRWXU | S_IRWXG | S_IRWXO);
+    int f = prefix_open(filename, flags, S_IRWXU | S_IRWXG | S_IRWXO);
 #endif
     if (f >= 0)
     {
@@ -582,7 +571,7 @@ int file_manager::rf_open_file(char const *&filename, char const *mode)
         return -2;
     }
 
-    fprintf(stderr, "Unable to open file '%s': %s\n", tmp_name, strerror(errno));
+    fprintf(stderr, "Unable to open file '%s': %s\n", filename, strerror(errno));
 
     return -1;
 }

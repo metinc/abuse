@@ -1,12 +1,12 @@
 # Changelog
 
-## Abuse 1.0.2 (2025-03-15)
+## Abuse 1.0.2 by Metin Çelik (2025-03-15)
 
 - Improved performance of light calculation
 - Fixed VRAM leak by rewriting the renderer
 - Fixed weapon switching using the mouse wheel
 
-## Abuse 1.0.1 (2025-03-09)
+## Abuse 1.0.1 by Metin Çelik (2025-03-09)
 
 - Corrected the behavior of the icon buttons in the main menu.
 - Increased the brightness of the icon buttons in the main menu.
@@ -14,7 +14,7 @@
 - Fixed music not working on Linux if FluidSynth was not installed.
 - Fixed crashing when hitting ESC in the main menu before a level was loaded.
 
-## Abuse 1.0.0 (2025-03-02)
+## Abuse 1.0.0 by Metin Çelik (2025-03-02)
 
 - **FPS Unlocked**: The game is no longer locked to 15 FPS. Frame rate is now interpolated to match your screen refresh rate.
 - **Adaptive VSync**: Added support for FreeSync and G-Sync to eliminate screen tearing.
@@ -27,11 +27,33 @@
 - Fixed typos and corrected character encoding in German and French text.
 - Addressed minor bugs that caused occasional crashes or slowdowns.
 
-## Abuse 0.9a (2016)
+## Abuse 2025 by Andrej Pancik (2025-01-07)
 
-- AntonioR's fork of the Xenoveritas SDL2 version
+### Multiplayer
 
-ABUSE:
+- player tints
+- reenable networking GUI
+- name saving/loading
+
+### Rendering
+
+- sharp scaling
+- high DPI screens support
+- widescreen support
+- window resizing
+- remove border from rendering
+
+### Others
+
+- file handling refactor
+- MIDI soundfonts
+- compiles on Mac and Ubuntu
+- new macos icon
+- enable translations through config
+
+## Abuse 0.9a by Antonio Radojkovic (2016)
+
+### Abuse
 
 - enabled custom screen size and resolution
   - light enabled at high resolutions
@@ -64,7 +86,7 @@ ABUSE:
 - set the small font to always be used for save game thumbnails
 - fixed mouse image when choosing initial gamma
 
-ABUSE-TOOL:
+### Abuse Tool
 
 - extracting PCX images in SPEC files to modern image formats using OpenCV
   - extracting as individual files
@@ -81,7 +103,7 @@ ABUSE-TOOL:
   - list of output texture files, image positions, sizes... saved at "../abuse-tool/texture_info.txt"
   - created a list of all available SPEC files containing images and added settings for individual SPEC files
 
-## Abuse-XV 0.9 (unreleased)
+## Abuse-XV 0.9 by Daniel "Xenoveritas" Potter (unreleased)
 
 - Xenoveritas's fork of the SDL version
 - Change to CMake for easier cross-platform build support

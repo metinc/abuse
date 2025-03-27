@@ -34,6 +34,11 @@ class spec_directory_cache
             next = left = right = 0;
         }
         long size;
+        ~filename_node()
+        {
+            free(fn);
+            delete sd;
+        }
     } *fn_root, *fn_list;
     void clear(filename_node *f); // private recursive member
     long size;

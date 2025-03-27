@@ -94,11 +94,11 @@ void file_picker::note_selection(image *screen, InputManager *inm, int x)
             area(x1, y1, x2, y2);
             screen->Bar(ivec2(x1, y1), ivec2(x2, y2), wm->medium_color());
 
-            char st[200], curdir[200];
+            char st[600], curdir[600];
             sprintf(st, "%s/%s", cd, d[x]);
-            getcwd(curdir, 200);
+            getcwd(curdir, 600);
             chdir(st);
-            getcwd(cd, 200);
+            getcwd(cd, 600);
             chdir(curdir);
 
             free_up();
@@ -133,7 +133,7 @@ void file_picker::note_selection(image *screen, InputManager *inm, int x)
     }
     else
     {
-        char nm[200];
+        char nm[600];
         sprintf(nm, "%s/%s", cd, f[x - td]);
         text_field *link = (text_field *)inm->get(sid);
         link->change_data(nm, strlen(nm), 1, screen);

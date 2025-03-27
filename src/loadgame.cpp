@@ -18,6 +18,7 @@
 #include "common.h"
 
 #include "game.h"
+#include "specache.h"
 
 #include "specs.h"
 #include "jwindow.h"
@@ -54,6 +55,14 @@ void load_number_icons()
     {
         char name[100];
         sprintf(name, "nums%04d.pcx", i + 1);
+
+        spec_directory *sd = sd_cache.get_spec_directory("art/icons.spe");
+        if (!sd || !sd->find(name))
+        {
+            printf("File not found in cache: %s. Stopping further loading.\n", name);
+            break; //
+        }
+
         save_buts[i] = cache.reg("art/icons.spe", name, SPEC_IMAGE, 1);
     }
 }
@@ -106,8 +115,8 @@ int get_save_spot()
     int last_free = 0;
     for (int i = MAX_SAVE_GAMES; i > 0;)
     {
-        std::string path = get_save_path(i);
-        FILE *fp = open_FILE(path.c_str(), "rb");
+        std::string name = get_save_path(i);
+        FILE *fp = prefix_fopen(name.c_str(), "rb");
         if (fp)
             i = 0;
         else
@@ -151,7 +160,7 @@ int get_save_spot()
 void get_savegame_name(char *buf) // buf should be at least 50 bytes
 {
     sprintf(buf, "save%04d.spe", (last_save_game_number++) % MAX_SAVE_GAMES + 1);
-    /*  FILE *fp=open_FILE("lastsave.lsp","wb");
+    /*  FILE *fp=prefix_fopen("lastsave.lsp","wb");
   if (fp)
   {
     fprintf(fp,"(setq last_save_game %d)\n",last_save_game_number%MAX_SAVE_GAMES);

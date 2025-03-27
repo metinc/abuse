@@ -6,7 +6,8 @@
 
 (setq load_warn nil)
 (setq section 'game_section)
-(if (not (load "lisp/english.lsp"))             ;; load language specific stuff
+(setq lang_file (concatenate 'string "lisp/" current_language ".lsp"))
+(if (not (load lang_file))             ;; load language specific stuff
     (progn
       (print "Abuse data files not found. Maybe try the `-datadir' option?")
       (quit)))

@@ -23,7 +23,7 @@
 #include "jrand.h"
 #include "lisp.h"
 #include "clisp.h"
-#include "netface.h"
+#include "net/netface.h"
 
 demo_manager demo_man;
 ivec2 last_demo_mpos;

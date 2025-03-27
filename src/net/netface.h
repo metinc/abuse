@@ -54,7 +54,11 @@ enum
     CLCMD_RELOAD_START, // will you please load netstart.spe
     CLCMD_RELOAD_END, // netstart.spe has been loaded, please continue
     CLCMD_REQUEST_RESEND, // input didn't arrive, please resend
-    CLCMD_UNJOIN // causes server to delete you (addes your delete command to next out packet)
+    CLCMD_UNJOIN, // causes server to delete you (addes your delete command to next out packet)
+    SRVCMD_REGISTRATION_OK,
+    SRVCMD_TOO_MANY,
+    SRVCMD_RELOAD_START_OK,
+    SRVCMD_REQUEST_RESEND
 };
 
 // return codes for NFCMD_OPEN
@@ -81,25 +85,25 @@ enum
     INPUT_COLLECTING, // waiting for driver to receive input from clients/server
     INPUT_PROCESSING, // waiting for engine to process input from last tick
     INPUT_RELOAD, // server is waiting on clients to reload, process game packets, but don't store them
-    INPUT_NET_DEAD
-}; // net driver detected an unrecoverable net error, engine should shut down net services
+    INPUT_NET_DEAD // net driver detected an unrecoverable net error, engine should shut down net services
+};
 
 // the net driver should not use any of these except SCMD_DELETE_CLIENT (0) because
 // they are subject to change
 enum
 {
-    SCMD_DELETE_CLIENT,
-    SCMD_VIEW_RESIZE,
-    SCMD_SET_INPUT,
-    SCMD_WEAPON_CHANGE,
-    SCMD_END_OF_PACKET,
-    SCMD_RELOAD,
-    SCMD_KEYPRESS,
-    SCMD_KEYRELEASE,
-    SCMD_EXT_KEYPRESS,
-    SCMD_EXT_KEYRELEASE,
-    SCMD_CHAT_KEYPRESS,
-    SCMD_SYNC
+    SCMD_DELETE_CLIENT, // Remove client from game
+    SCMD_VIEW_RESIZE, // Update view dimensions
+    SCMD_SET_INPUT, // Process client input
+    SCMD_WEAPON_CHANGE, // Weapon switch notification
+    SCMD_END_OF_PACKET, // Packet terminator
+    SCMD_RELOAD, // Level reload command
+    SCMD_KEYPRESS, // Key press event
+    SCMD_KEYRELEASE, // Key release event
+    SCMD_EXT_KEYPRESS, // Extended key press
+    SCMD_EXT_KEYRELEASE, // Extended key release
+    SCMD_CHAT_KEYPRESS, // Chat input
+    SCMD_SYNC // Synchronization check
 };
 
 struct join_struct
@@ -112,21 +116,21 @@ struct join_struct
 struct net_packet
 {
     uint8_t data[PACKET_MAX_SIZE];
-    int packet_prefix_size()
+    static int packet_prefix_size()
     {
         return 5;
     } // 2 byte size, 2 byte check sum, 1 byte packet order
-    uint16_t packet_size()
+    uint16_t packet_size() const
     {
         uint16_t size;
         memcpy(&size, data, sizeof(size));
         return lstl(size);
     }
-    uint8_t tick_received()
+    uint8_t tick_received() const
     {
         return data[4];
     }
-    void set_tick_received(uint8_t x)
+    void set_tick_received(const uint8_t x)
     {
         data[4] = x;
     }
@@ -134,22 +138,22 @@ struct net_packet
     {
         return data + packet_prefix_size();
     }
-    uint16_t get_checksum()
+    uint16_t get_checksum() const
     {
-        uint16_t cs = *((uint16_t *)data + 1);
+        const uint16_t cs = *((uint16_t *)data + 1);
         return lstl(cs);
     }
     uint16_t calc_checksum()
     {
         *((uint16_t *)data + 1) = 0;
-        int i, size = packet_prefix_size() + packet_size();
+        const int size = packet_prefix_size() + packet_size();
         uint8_t c1 = 0, c2 = 0, *p = data;
-        for (i = 0; i < size; i++, p++)
+        for (int i = 0; i < size; i++, p++)
         {
             c1 += *p;
             c2 += c1;
         }
-        uint16_t cs = ((((uint16_t)c1) << 8) | c2);
+        const uint16_t cs = (uint16_t)c1 << 8 | c2;
         *((uint16_t *)data + 1) = lstl(cs);
         return cs;
     }
@@ -159,7 +163,7 @@ struct net_packet
         set_packet_size(0);
     } // 2 bytes for size, 1 byte for tick
 
-    void add_to_packet(void *buf, int size)
+    void add_to_packet(const void *buf, const int size)
     {
         if (size && size + packet_size() + packet_prefix_size() < PACKET_MAX_SIZE)
         {
@@ -167,7 +171,7 @@ struct net_packet
             set_packet_size(packet_size() + size);
         }
     }
-    void write_uint8(uint8_t x)
+    void write_uint8(const uint8_t x)
     {
         add_to_packet(&x, 1);
     }
@@ -182,9 +186,9 @@ struct net_packet
         add_to_packet(&x, 4);
     }
 
-    void set_packet_size(uint16_t x)
+    void set_packet_size(const uint16_t x)
     {
-        uint16_t tmp = lstl(x);
+        const uint16_t tmp = lstl(x);
         memcpy(data, &tmp, sizeof(tmp));
     }
 };

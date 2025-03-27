@@ -92,8 +92,15 @@ spec_directory *spec_directory_cache::get_spec_directory(char const *filename, b
 void spec_directory_cache::clear()
 {
     size = 0;
-    clear(fn_root);
-    fn_root = 0;
+    filename_node *current = fn_list;
+    while (current)
+    {
+        filename_node *next = current->next;
+        delete current; // Free the current node
+        current = next; // Move to the next node
+    }
+    fn_list = nullptr;
+    fn_root = nullptr; // Also nullify the root pointer
 }
 
 void spec_directory_cache::clear(filename_node *f)
