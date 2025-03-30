@@ -2508,16 +2508,16 @@ int main(int argc, char *argv[])
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
 
-            if (demo_man.current_state() == demo_manager::NORMAL)
-                net_send();
-            else
-                demo_man.do_inputs();
-
-            service_net_request();
-
             // make sure physics process gets called every 65 ms
             if (SDL_GetTicks64() - lastFixedUpdate >= settings.physics_update)
             {
+                if (demo_man.current_state() == demo_manager::NORMAL)
+                    net_send();
+                else
+                    demo_man.do_inputs();
+
+                service_net_request();
+
                 // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
                 lastFixedUpdate = SDL_GetTicks64();
 
@@ -2535,8 +2535,7 @@ int main(int argc, char *argv[])
             auto frameTime = static_cast<uint32_t>(SDL_GetTicks64() - frameStart);
             if (static_cast<float>(frameTime) < targetFrameTime)
             {
-                uint32_t frameTimeDelta = static_cast<uint32_t>(std::round(targetFrameTime)) - frameTime;
-                SDL_Delay(frameTimeDelta);
+                SDL_Delay(1);
             }
         }
 
