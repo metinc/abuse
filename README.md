@@ -31,7 +31,7 @@ See the last release available for your platform in the release section. See the
 
 While this repository contains all data files needed to play the base game, these assets come from different sources with varying licenses and historical records. My hope is that the educational and non-profit intentions of this repository will enable it to stay hosted and available. If you prefer to use only clearly-licensed content, please replace the included assets with the public domain subset of the original shareware content available from various archives online.
 
-Save files and configuration are stored in the user folder, which can override default files in the game folder. The game only looks for built-in files if they weren't already found in a the user folder. This allows adding [custom levels](https://dl.pancik.com/abuse/levels/) or [mods](https://dl.pancik.com/abuse/addons/) without affecting the original bundled game files.
+Save files and configuration are stored in the user folder, which can override default files in the game folder. The game only looks for built-in files if they weren't already found in the user folder. This allows adding [custom levels](https://dl.pancik.com/abuse/levels/) or [mods](https://dl.pancik.com/abuse/addons/) without affecting the original bundled game files.
 
 Default paths for user data:
 
