@@ -11,7 +11,6 @@
 #ifndef __JWIN__
 #define __JWIN__
 
-
 #ifdef _WIN32
 // Windows has its own CreateWindow function. It uses preprocessor magic to
 // change between ASCII and wide-character versions, which masks our
@@ -40,7 +39,7 @@ class InputManager
 {
     friend class Jwindow;
 
-public:
+  public:
     InputManager(image *screen, ifield *first);
     InputManager(Jwindow *owner, ifield *first);
     ~InputManager();
@@ -56,7 +55,7 @@ public:
     void release_focus();
     void allow_no_selections();
 
-private:
+  private:
     image *m_surf;
     ifield *m_first, *m_active, *m_grab;
     Jwindow *m_cur, *m_owner;
@@ -68,27 +67,46 @@ class ifield
     friend class Jwindow;
     friend class InputManager;
 
-public :
+  public:
     ifield();
     virtual ~ifield();
 
     virtual void set_owner(Jwindow *owner);
-    virtual void Move(ivec2 pos) { m_pos = pos; }
+    virtual void Move(ivec2 pos)
+    {
+        m_pos = pos;
+    }
     virtual void area(int &x1, int &y1, int &x2, int &y2) = 0;
     virtual void draw_first(image *screen) = 0;
     virtual void draw(int active, image *screen) = 0;
     virtual void handle_event(Event &ev, image *screen, InputManager *im) = 0;
-    virtual int selectable() { return 1; }
-    virtual void remap(Filter *f) { (void)f; }
+    virtual int selectable()
+    {
+        return 1;
+    }
+    virtual void remap(Filter *f)
+    {
+        (void)f;
+    }
     virtual char *read() = 0;
-    virtual ifield *find(int search_id) { if (id==search_id) return this; else return NULL; }
-    virtual ifield *unlink(int id) { (void)id; return NULL; }
+    virtual ifield *find(int search_id)
+    {
+        if (id == search_id)
+            return this;
+        else
+            return NULL;
+    }
+    virtual ifield *unlink(int id)
+    {
+        (void)id;
+        return NULL;
+    }
 
     ivec2 m_pos;
     int id;
     ifield *next;
 
-protected:
+  protected:
     Jwindow *owner;
 };
 
@@ -96,11 +114,11 @@ class Jwindow
 {
     friend class InputManager;
 
-public:
+  public:
     Jwindow *next;
     int backg;
     InputManager *inm;
-    void *local_info;  // pointer to info block for local system (may support windows)
+    void *local_info; // pointer to info block for local system (may support windows)
 
     Jwindow(char const *name = NULL);
     Jwindow(ivec2 pos, ivec2 size, ifield *f, char const *name = NULL);
@@ -108,21 +126,62 @@ public:
 
     virtual void redraw();
     void Resize(ivec2 size);
-    void clear(int color = 0) { m_surf->Bar(ivec2(x1(), y1()),
-                                            ivec2(x2(), y2()), color); }
-    void show() { _hidden = false; }
-    void hide() { _hidden = true; }
-    bool is_hidden() { return _hidden; }
-    void freeze() { _moveable = false; }
-    void thaw() { _moveable = true; }
-    bool is_moveable() { return _moveable; }
-    int x1() { return _x1; }
-    int y1() { return _y1; }
-    int x2() { return _x2; }
-    int y2() { return _y2; }
-    void clip_in() { m_surf->SetClip(ivec2(x1(), y1()), ivec2(x2() + 1, y2() + 1)); }
-    void clip_out() { m_surf->SetClip(ivec2(0), m_size); }
-    char *read(int id) { return inm->get(id)->read(); }
+    void clear(int color = 0)
+    {
+        m_surf->Bar(ivec2(x1(), y1()), ivec2(x2(), y2()), color);
+    }
+    void show()
+    {
+        _hidden = false;
+    }
+    void hide()
+    {
+        _hidden = true;
+    }
+    bool is_hidden()
+    {
+        return _hidden;
+    }
+    void freeze()
+    {
+        _moveable = false;
+    }
+    void thaw()
+    {
+        _moveable = true;
+    }
+    bool is_moveable()
+    {
+        return _moveable;
+    }
+    int x1()
+    {
+        return _x1;
+    }
+    int y1()
+    {
+        return _y1;
+    }
+    int x2()
+    {
+        return _x2;
+    }
+    int y2()
+    {
+        return _y2;
+    }
+    void clip_in()
+    {
+        m_surf->SetClip(ivec2(x1(), y1()), ivec2(x2() + 1, y2() + 1));
+    }
+    void clip_out()
+    {
+        m_surf->SetClip(ivec2(0), m_size);
+    }
+    char *read(int id)
+    {
+        return inm->get(id)->read();
+    }
     void local_close();
 
     static int left_border();
@@ -133,11 +192,11 @@ public:
     ivec2 m_pos, m_size;
     image *m_surf;
 
-protected:
+  protected:
     Jwindow *owner;
     int _x1, _y1, _x2, _y2;
 
-private:
+  private:
     char *_name;
     bool _hidden;
     bool _moveable;
@@ -149,11 +208,11 @@ class WindowManager : public EventHandler
 {
     friend class Jwindow;
 
-protected:
+  protected:
     void add_window(Jwindow *);
     void remove_window(Jwindow *);
 
-public:
+  public:
     WindowManager(image *, palette *, int hi, int med, int low, JCFont *);
     ~WindowManager();
 
@@ -161,28 +220,57 @@ public:
     image *mouse_pic, *mouse_save;
     int hi, med, low, bk; // bright, medium, dark and black colors
     int key_state[512];
-    enum { inputing, dragging } state;
+    enum
+    {
+        inputing,
+        dragging
+    } state;
     int drag_mousex, drag_mousey, frame_suppress;
     Jwindow *drag_window;
     JCFont *fnt, *wframe_fnt;
 
-    Jwindow *CreateWindow(ivec2 pos, ivec2 size,
-                          ifield *fields = NULL, char const *Name = NULL);
+    Jwindow *CreateWindow(ivec2 pos, ivec2 size, ifield *fields = NULL, char const *Name = NULL);
 
-    JCFont *frame_font() { return wframe_fnt; }
+    JCFont *frame_font()
+    {
+        return wframe_fnt;
+    }
     void close_window(Jwindow *j);
     void resize_window(Jwindow *j, int l, int h);
     void move_window(Jwindow *j, int x, int y);
     void get_event(Event &ev);
     void flush_screen();
-    int bright_color() { return hi; }
-    int medium_color() { return med; }
-    int dark_color() { return low; }
-    int black() { return bk; }
-    void set_colors(int Hi, int Med, int Low) { hi=Hi; med=Med; low=Low; }
-    JCFont *font() { return fnt; }
+    int bright_color()
+    {
+        return hi;
+    }
+    int medium_color()
+    {
+        return med;
+    }
+    int dark_color()
+    {
+        return low;
+    }
+    int black()
+    {
+        return bk;
+    }
+    void set_colors(int Hi, int Med, int Low)
+    {
+        hi = Hi;
+        med = Med;
+        low = Low;
+    }
+    JCFont *font()
+    {
+        return fnt;
+    }
 
-    int key_pressed(int x) { return key_state[x]; }
+    int key_pressed(int x)
+    {
+        return key_state[x];
+    }
     void hide_windows();
     void show_windows();
     void hide_window(Jwindow *j);
@@ -190,11 +278,9 @@ public:
     void grab_focus(Jwindow *j);
     void release_focus();
 
-private:
+  private:
     palette *m_pal;
     image *m_surf;
 };
 
 #endif
-
-

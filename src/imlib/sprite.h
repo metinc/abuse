@@ -16,7 +16,7 @@
 
 class Sprite : public linked_node
 {
-public:
+  public:
     Sprite(image *screen, image *visual, ivec2 pos);
     ~Sprite();
 
@@ -24,9 +24,8 @@ public:
 
     image *m_visual, *m_screen, *m_save;
 
-private:
+  private:
     ivec2 m_pos;
 };
 
 #endif
-

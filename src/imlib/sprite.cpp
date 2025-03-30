@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <math.h>
@@ -31,7 +31,7 @@ Sprite::Sprite(image *screen, image *visual, ivec2 pos)
     m_save = new image(visual->Size());
 
     if (m_pos + visual->Size() >= 0 && m_pos < ivec2(xres, yres))
-        m_save->PutPart(m_screen, ivec2(0,0), m_pos, m_pos + m_save->Size());
+        m_save->PutPart(m_screen, ivec2(0, 0), m_pos, m_pos + m_save->Size());
 }
 
 Sprite::~Sprite()
@@ -52,6 +52,5 @@ void Sprite::SetVisual(image *visual, int delete_old)
     }
 
     if (m_pos + visual->Size() >= 0 && m_pos < ivec2(xres, yres))
-        m_save->PutPart(m_screen, ivec2(0,0), m_pos, m_pos + m_save->Size());
+        m_save->PutPart(m_screen, ivec2(0, 0), m_pos, m_pos + m_save->Size());
 }
-

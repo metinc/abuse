@@ -18,7 +18,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+#include "config.h"
 #endif
 
 #include <stdio.h>
@@ -28,9 +28,9 @@
 
 #include "errorui.h"
 
-extern SDL_Window* window;
+extern SDL_Window *window;
 
-void show_error_message(const char *title, const char* format, ... )
+void show_error_message(const char *title, const char *format, ...)
 {
     char buffer[1024];
     va_list args;
@@ -39,16 +39,16 @@ void show_error_message(const char *title, const char* format, ... )
     va_end(args);
     // Always dump the message to stderr
     fputs(buffer, stderr);
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-        title, buffer, window);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, buffer, window);
 }
 
-void show_startup_error(const char* format, ...)
+void show_startup_error(const char *format, ...)
 {
     char buffer[1024];
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, 1024, format, args);
     va_end(args);
-    show_error_message("Error Starting Abuse", "An error occurred which has prevented Abuse from starting:\n\n%s", buffer);
+    show_error_message("Error Starting Abuse", "An error occurred which has prevented Abuse from starting:\n\n%s",
+                       buffer);
 }

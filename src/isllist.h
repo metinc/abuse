@@ -13,105 +13,153 @@
 
 // "inc/isllist.h", line 13.10: 1540-016: (S) protected member "isllist<tcpip_protocol::RequestItem*>::list_node *" cannot be accessed.
 
-template <class T>
-class isllist
+template <class T> class isllist
 {
-public:
-  class list_node
-  {
   public:
-    list_node * next;
-    T data;
-
-    list_node() { }
-    list_node(const T& item) { data = item; }
-  };
-
-  list_node * list;
-
-  class iterator
-  {
-  public:
-    // pseudo-protected - don't use unless you really have to
-    list_node * node;
-    iterator(list_node * p) : node(p) { }
-
-    iterator() { }
-    iterator(const iterator &p) : node(p.node) { }
-
-    int operator==(const iterator &p) { return (node == p.node); }
-    int operator!=(const iterator &p) { return (node != p.node); }
-
-    iterator& operator++() { node = node->next; return *this; }
-    iterator next() { return node->next; }
-
-    T& operator*() { return node->data; }
-  };
-
-  iterator end()   { return (list_node *)(&list); }
-  iterator begin_prev() { return end(); }
-  iterator begin() { return list; }
-
-  int empty() { return begin() == end(); }
-
-  iterator insert_next(iterator pos, T& item)
-  {
-    list_node * p = new list_node(item);
-    p->next = pos.node->next;
-    pos.node->next = p;
-
-    return p;
-  }
-
-  void erase_next(iterator pos)
-  {
-    list_node * p = pos.node->next;
-    pos.node->next = p->next;
-    delete p;
-  }
-
-  int find_prev(iterator& p, T& item)
-  {
-    while (p.node->next != end().node)
+    class list_node
     {
-      if (*(p.next())==item)
-        return 1;
-      ++p;
+      public:
+        list_node *next;
+        T data;
+
+        list_node()
+        {
+        }
+        list_node(const T &item)
+        {
+            data = item;
+        }
+    };
+
+    list_node *list;
+
+    class iterator
+    {
+      public:
+        // pseudo-protected - don't use unless you really have to
+        list_node *node;
+        iterator(list_node *p) : node(p)
+        {
+        }
+
+        iterator()
+        {
+        }
+        iterator(const iterator &p) : node(p.node)
+        {
+        }
+
+        int operator==(const iterator &p)
+        {
+            return (node == p.node);
+        }
+        int operator!=(const iterator &p)
+        {
+            return (node != p.node);
+        }
+
+        iterator &operator++()
+        {
+            node = node->next;
+            return *this;
+        }
+        iterator next()
+        {
+            return node->next;
+        }
+
+        T &operator*()
+        {
+            return node->data;
+        }
+    };
+
+    iterator end()
+    {
+        return (list_node *)(&list);
     }
-    return 0;
-  }
+    iterator begin_prev()
+    {
+        return end();
+    }
+    iterator begin()
+    {
+        return list;
+    }
 
-  void move_next(const iterator&p, const iterator&q)
-  {
-    list_node * tmp;
+    int empty()
+    {
+        return begin() == end();
+    }
 
-    tmp = p.node->next;
-    if (tmp == q.node)
-      return;
-    p.node->next = tmp->next;
-    tmp->next = q.node->next;
-    q.node->next = tmp;
-  }
+    iterator insert_next(iterator pos, T &item)
+    {
+        list_node *p = new list_node(item);
+        p->next = pos.node->next;
+        pos.node->next = p;
 
-  int find(T& item) { iterator p = begin_prev(); return find_prev(p, item); }
-  void insert(T& item) {  insert_next( begin_prev(), item); }
-  void erase() { erase_next( begin_prev() ); }
+        return p;
+    }
 
-  void erase_all()
-  {
-    while (!empty())
-      erase();
-  }
+    void erase_next(iterator pos)
+    {
+        list_node *p = pos.node->next;
+        pos.node->next = p->next;
+        delete p;
+    }
 
-  isllist()
-  {
-    list = (list_node *)&list;
-  }
+    int find_prev(iterator &p, T &item)
+    {
+        while (p.node->next != end().node)
+        {
+            if (*(p.next()) == item)
+                return 1;
+            ++p;
+        }
+        return 0;
+    }
 
-  ~isllist()
-  {
-    erase_all();
-  }
+    void move_next(const iterator &p, const iterator &q)
+    {
+        list_node *tmp;
+
+        tmp = p.node->next;
+        if (tmp == q.node)
+            return;
+        p.node->next = tmp->next;
+        tmp->next = q.node->next;
+        q.node->next = tmp;
+    }
+
+    int find(T &item)
+    {
+        iterator p = begin_prev();
+        return find_prev(p, item);
+    }
+    void insert(T &item)
+    {
+        insert_next(begin_prev(), item);
+    }
+    void erase()
+    {
+        erase_next(begin_prev());
+    }
+
+    void erase_all()
+    {
+        while (!empty())
+            erase();
+    }
+
+    isllist()
+    {
+        list = (list_node *)&list;
+    }
+
+    ~isllist()
+    {
+        erase_all();
+    }
 };
 
 #endif

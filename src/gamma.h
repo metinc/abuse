@@ -12,6 +12,6 @@
 #define __GAMMA_HPP_
 
 #include "palette.h"
-void gamma_correct(palette *&pal, int force_menu=0);
+void gamma_correct(palette *&pal, int force_menu = 0);
 
 #endif

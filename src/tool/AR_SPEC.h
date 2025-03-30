@@ -48,7 +48,7 @@
 //  - tilemaps
 //		SPEC_FORETILE(5)	- one tilemap per .spe file, every tile same size, [0,0,0] pixel color can be transparent (not sure if always)
 //		SPEC_BACKTILE(6)	- one tilemap per .spe file, every tile same size, [0,0,0] pixel color should not be transparent (not sure if always)
-//	- animated				
+//	- animated
 //		SPEC_CHARACTER(7)	- [0,0,0] pixel color should be transparent
 //		SPEC_CHARACTER2(21)	- [0,0,0] pixel color should be transparent
 
@@ -59,8 +59,8 @@
 #include <fstream>
 #include <sstream>
 
-#include <cv.h>
-#include <highgui.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 using namespace cv;
 
 #include "common.h"
@@ -73,68 +73,72 @@ using namespace cv;
 
 enum AR_OpenCV_Stuff
 {
-	AR_OCV_KEEPCOLOR,		// transparency - keep original values
-	AR_OCV_COLORTOALPHA,	// transparency - store in alpha channel (png only)
-	AR_OCV_NEWCOLOR,		// transparency - replace color with new values
-	AR_OCV_FILEPERPCX,		// output - each image will be stored in separate files
-	AR_OCV_FILEPERGROUP,	// output - animations or foregorund/background tilesets will be stored in one file
-	AR_OCV_FILEPERSPEC		// output - all the images in spe file will be stored in one file
+    AR_OCV_KEEPCOLOR, // transparency - keep original values
+    AR_OCV_COLORTOALPHA, // transparency - store in alpha channel (png only)
+    AR_OCV_NEWCOLOR, // transparency - replace color with new values
+    AR_OCV_FILEPERPCX, // output - each image will be stored in separate files
+    AR_OCV_FILEPERGROUP, // output - animations or foregorund/background tilesets will be stored in one file
+    AR_OCV_FILEPERSPEC // output - all the images in spe file will be stored in one file
 };
 
 class AR_ImageGroup
 {
-public:
-	int x, y, w, h;
-	std::string name;
-	std::vector<image*> images;
+  public:
+    int x, y, w, h;
+    std::string name;
+    std::vector<image *> images;
 
-	AR_ImageGroup()
-	{
-		this->x = y = w = h = 0;
-	}
+    AR_ImageGroup()
+    {
+        this->x = y = w = h = 0;
+    }
 };
 
 class AR_SPEC
 {
-public:
-	AR_Log	*log;						//global log
-	AR_Log	tx_info;					//stores image file names, position of images in a texture atlas, size...
+  public:
+    AR_Log *log; //global log
+    AR_Log tx_info; //stores image file names, position of images in a texture atlas, size...
 
-	std::string image_format;
-	
-	int png_compression;				// 0-9, higher value means a smaller size and longer compression time, OpenCV default is 3
-	int jpeg_quality;					// 0-100, higher is better, OpenCV default is 95
+    std::string image_format;
 
-	int alpha;							// handling "transparent" black pixels in animated images
-	int alpha_r, alpha_g, alpha_b;		// new values for transparent color in animated images [0-255], [0,0,0] is default in Abuse
+    int png_compression; // 0-9, higher value means a smaller size and longer compression time, OpenCV default is 3
+    int jpeg_quality; // 0-100, higher is better, OpenCV default is 95
 
-	int output_tilemap;					//all in one or each tile new file
-	int tilemap_rows, tilemap_columns;
-	int tilemap_padding;				//padding between individual tiles in pixels
-	char tilemap_fill;					//fill rows or fill columns
-	std::string tilemap_palette;		//external tile order (edit.lsp)
+    int alpha; // handling "transparent" black pixels in animated images
+    int alpha_r, alpha_g,
+        alpha_b; // new values for transparent color in animated images [0-255], [0,0,0] is default in Abuse
 
-	int output_animation;				//all in one, group(animations), each frame new file
-	int outline_r, outline_g, outline_b;
+    int output_tilemap; //all in one or each tile new file
+    int tilemap_rows, tilemap_columns;
+    int tilemap_padding; //padding between individual tiles in pixels
+    char tilemap_fill; //fill rows or fill columns
+    std::string tilemap_palette; //external tile order (edit.lsp)
 
-	std::string color_palette;			//external pallete for tints (art/tints->cop,ant,gun)
-	int pal_shift;						//shift by 1 can brighten the image, but can mess up colors in some images
+    int output_animation; //all in one, group(animations), each frame new file
+    int outline_r, outline_g, outline_b;
 
-	int group_max;						//form a group every x entries (only for images, sect.spe to be precise)
-	bool pong_the_bong;					//pong and bong SPEC files contain tiles and animations and mess everything up, so every tile will be exported as a separate group
+    std::string color_palette; //external pallete for tints (art/tints->cop,ant,gun)
+    int pal_shift; //shift by 1 can brighten the image, but can mess up colors in some images
 
-	AR_SPEC();
-	
-	int			AR_ParseConfig		(std::string file_path);	
+    int group_max; //form a group every x entries (only for images, sect.spe to be precise)
+    bool
+        pong_the_bong; //pong and bong SPEC files contain tiles and animations and mess everything up, so every tile will be exported as a separate group
 
-	bool		AR_ConvertSPEC		(std::string file_path);
-	palette*	AR_GetPalette		(std::string file_path);
+    AR_SPEC();
 
-	void		AR_PrepareGroups	(std::vector<AR_ImageGroup> &groups, int &surface, int &max_width);
-	int			AR_GetGroup			(std::string name, std::vector<AR_ImageGroup> &groups);	
-	image*		AR_GetImageByName	(std::string name, std::vector<AR_ImageGroup> &groups);//for palette based tile positioning from edit.lsp
-	
-	bool		AR_CreateTile		(image *im, std::string path, palette *pal, palette *pal_custom);
-	bool		AR_CreateImage		(std::vector<std::vector<int> > &m, int w, int h, std::string name, palette *pal, palette *pal_hires, palette *pal_custom);
-	bool		AR_SaveImage		(Mat &ocv, std::string path);
+    int AR_ParseConfig(std::string file_path);
+
+    bool AR_ConvertSPEC(std::string file_path);
+    palette *AR_GetPalette(std::string file_path);
+
+    void AR_PrepareGroups(std::vector<AR_ImageGroup> &groups, int &surface, int &max_width);
+    int AR_GetGroup(std::string name, std::vector<AR_ImageGroup> &groups);
+    image *AR_GetImageByName(std::string name,
+                             std::vector<AR_ImageGroup> &groups); //for palette based tile positioning from edit.lsp
+
+    bool AR_CreateTile(image *im, std::string path, palette *pal, palette *pal_custom);
+    bool AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std::string name, palette *pal,
+                        palette *pal_hires, palette *pal_custom);
+    bool AR_SaveImage(Mat &ocv, std::string path);
 };

@@ -2,7 +2,7 @@
  *  Abuse - dark 2D side-scrolling platform game
  *  Copyright (c) 2001 Anthony Kruize <trandor@labyrinth.net.au>
  *  Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
- *  Copyright (c) 2024 Andrej Pancik
+ *	Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,404 +23,466 @@
 #include "config.h"
 #endif
 
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <array>
-#include <cstring>
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #include "SDL.h"
 
 #include "common.h"
+
+#include "filter.h"
 #include "video.h"
 #include "image.h"
 #include "setup.h"
 #include "errorui.h"
 
-// Core SDL components
-SDL_Window *window = nullptr;
-SDL_Renderer *renderer = nullptr;
-SDL_Surface *surface = nullptr; // 8-bit paletted surface for game rendering
-SDL_Surface *screen = nullptr;  // 32-bit RGB surface for final display
-SDL_Texture *texture = nullptr; // GPU texture for hardware-accelerated rendering
-image *main_screen = nullptr;   // Game's primary drawing surface
+SDL_Window *window = NULL;
+SDL_Surface *surface = NULL;
+SDL_Surface *screen = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *game_texture = NULL;
+image *main_screen = NULL;
 
-// Factors for converting window coordinates to game coordinates
-int mouse_xpad = 0;   // Horizontal padding for letterboxing
-int mouse_ypad = 0;   // Vertical padding for letterboxing
-int mouse_xscale = 1; // 16.16 fixed point horizontal scale factor
-int mouse_yscale = 1; // 16.16 fixed point vertical scale factor
-
-// Virtual screen dimensions (game coordinates)
-int xres = 0;
-int yres = 0;
+int mouse_xpad, mouse_ypad, mouse_xscale, mouse_yscale;
+int xres, yres;
 
 extern palette *lastl;
 extern Settings settings;
 
-bool has_notch()
-{
-// Only proceed with detection on macOS
-#ifdef __APPLE__
-    SDL_Rect display_bounds;
-    SDL_Rect usable_bounds;
+void calculate_mouse_scaling();
 
-    // Get the bounds of the main display (index 0)
-    if (SDL_GetDisplayBounds(0, &display_bounds) != 0 ||
-        SDL_GetDisplayUsableBounds(0, &usable_bounds) != 0)
-    {
-        return false; // Return false on error
-    }
+SDL_DisplayMode desktop;
+int window_w = 320, window_h = 200;
+bool ar_fullscreen = false;
+int ogl_scale = 1;
+int ogl_w = 320, ogl_h = 200;
 
-    // On MacBooks with notch:
-    // - display_bounds represents the full screen including the notch area
-    // - usable_bounds represents the screen excluding the notch area
-    // Therefore, if there's a notch:
-    // - The usable height will be less than display height
-    // - The usable width will equal the display width    
-    return (usable_bounds.h < display_bounds.h &&
-            usable_bounds.w == display_bounds.w &&
-            (display_bounds.h - usable_bounds.h) >= 32 &&
-            (display_bounds.h - usable_bounds.h) <= 37);
-#else
-    return false; // Not macOS, so definitely no notch
-#endif
-}
+void video_change_settings(int scale_add, bool toggle_fullscreen);
 
 //
-// Calculate mouse scaling factors and window aspect ratio
-// This needs to be exposed for event handling
-//
-void handle_window_resize()
-{
-    int window_width, window_height;
-    SDL_GetWindowSize(window, &window_width, &window_height);
-
-    float target_aspect = static_cast<float>(xres) / yres;
-    float current_aspect = static_cast<float>(window_width) / window_height;
-
-    if (current_aspect > target_aspect)
-        window_width = static_cast<int>(window_height * target_aspect);
-    else
-        window_height = static_cast<int>(window_width / target_aspect);
-
-    if(target_aspect != current_aspect)
-        SDL_SetWindowSize(window, window_width, window_height);
-
-    SDL_Rect viewport;
-    SDL_RenderGetViewport(renderer, &viewport);
-
-    mouse_xscale = (window_width << 16) / xres;
-    mouse_yscale = (window_height << 16) / yres;
-
-    mouse_xpad = viewport.x;
-    mouse_ypad = viewport.y;
-}
-
-//
-// Initialize video subsystem
+// set_mode()
+// Set the video mode
 //
 void set_mode(int argc, char **argv)
 {
-    try
-    {
-        // Auto-detect screen dimensions if not specified in settings
-        if (settings.screen_width == 0 || settings.screen_height == 0)
-        {
-            int display_width, display_height;
-            if(has_notch())
-            {                
-                SDL_Rect usable_bounds;
-                if (SDL_GetDisplayUsableBounds(0, &usable_bounds) != 0)
-                {
-                    throw std::runtime_error(SDL_GetError());
-                }
+    int displayIndex = 0;
+    desktop.w = 320;
+    desktop.h = 200;
 
-                display_width = usable_bounds.w;
-                display_height = usable_bounds.h;
-            }
-            else
-            {
-                SDL_DisplayMode display_mode;
-                if (SDL_GetCurrentDisplayMode(0, &display_mode) != 0)
-                {
-                    throw std::runtime_error(SDL_GetError());
-                }
+    if (SDL_GetDesktopDisplayMode(0, &desktop) != 0)
+        printf("ERROR - failed to get display info\n");
 
-                display_width = display_mode.w;
-                display_height = display_mode.h;
-            }                        
-            
-            if (settings.fullscreen)
-            {
-                settings.screen_width = display_width;
-                settings.screen_height = display_height;
-            }
-            else
-            {
-                if (settings.screen_width == 0)
-                {
-                    settings.screen_width = settings.virtual_width;
-                }
-                settings.screen_height = (int)(settings.screen_width * ((float)display_height / display_width));
-            }
-        }
+    // Scale window
+    window_w = xres * scale;
+    window_h = yres * scale;
 
-        // Calculate virtual resolution preserving aspect ratio
-        xres = settings.virtual_width;
-        yres = settings.virtual_height ? settings.virtual_height : (int)(xres * ((float)settings.screen_height / settings.screen_width));
+    // Fullscreen "scale"
+    ogl_w = window_w;
+    ogl_h = window_h;
 
-        // Set up window flags based on display settings
-        uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
-        if (settings.fullscreen == 1)
-            flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-        else if (settings.fullscreen == 2)
-            flags |= SDL_WINDOW_FULLSCREEN;
-        if (settings.borderless)
-            flags |= SDL_WINDOW_BORDERLESS;
+    int window_type = 0;
 
-        // Initialize rendering pipeline:
-        // Window -> Renderer -> Texture -> 32-bit screen surface -> 8-bit game surface
-        window = SDL_CreateWindow("Abuse",
-                                  SDL_WINDOWPOS_CENTERED,
-                                  SDL_WINDOWPOS_CENTERED,
-                                  settings.screen_width,
-                                  settings.screen_height,
-                                  flags);
-        if (!window)
-        {
-            throw std::runtime_error(SDL_GetError());
-        }
-
-        int window_pixel_width, window_pixel_height;
-        SDL_GetWindowSizeInPixels(window, &window_pixel_width, &window_pixel_height);
-
-        float scale_factor = static_cast<float>(window_pixel_width) / settings.screen_width;
-
-        uint32_t render_flags = SDL_RENDERER_ACCELERATED;
-        if (settings.vsync)
-            render_flags |= SDL_RENDERER_PRESENTVSYNC;
-
-        renderer = SDL_CreateRenderer(window, -1, render_flags);
-        if (!renderer)
-        {
-            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
-            if (!renderer)
-            {
-                throw std::runtime_error(SDL_GetError());
-            }
-        }
-
-        SDL_RenderSetScale(renderer, scale_factor, scale_factor);
-
-        SDL_RenderSetLogicalSize(renderer, xres, yres);
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
-                    settings.linear_filter ? "1" : "0");
-
-        main_screen = new image(ivec2(xres, yres), nullptr, 2);
-        if (!main_screen)
-        {
-            throw std::runtime_error("Unable to create screen image");
-        }
-        main_screen->clear();
-
-        surface = SDL_CreateRGBSurface(0, xres, yres, 8, 0, 0, 0, 0);
-        if (!surface)
-        {
-            throw std::runtime_error(SDL_GetError());
-        }
-
-        screen = SDL_CreateRGBSurface(0, xres, yres, 32, 0, 0, 0, 0);
-        if (!screen)
-        {
-            throw std::runtime_error(SDL_GetError());
-        }
-
-        texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                    SDL_TEXTUREACCESS_STREAMING,
-                                    xres, yres);
-        if (!texture)
-        {
-            throw std::runtime_error(SDL_GetError());
-        }        
-
-        handle_window_resize();
-        SDL_ShowCursor(0);
-    }
-    catch (const std::exception &e)
-    {
-        show_startup_error("Video initialization failed: %s", e.what());
-        exit(1);
-    }
-}
-
-//
-// Update video settings (fullscreen, scaling)
-//
-void toggle_fullscreen()
-{
-    // Cycle through fullscreen modes: windowed -> fullscreen desktop -> fullscreen
-    settings.fullscreen = (settings.fullscreen + 1) % 3;
-
-    uint32_t flags = 0;
     if (settings.fullscreen == 1)
-        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+        window_type |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     else if (settings.fullscreen == 2)
-        flags |= SDL_WINDOW_FULLSCREEN;
-    if (settings.borderless)
-        flags |= SDL_WINDOW_BORDERLESS;
+        window_type |= SDL_WINDOW_FULLSCREEN;
 
-    SDL_SetWindowFullscreen(window, flags);
-    handle_window_resize();
+    if (settings.borderless)
+        window_type |= SDL_WINDOW_BORDERLESS;
+
+    window =
+        SDL_CreateWindow("Abuse", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h, window_type);
+
+    if (!window)
+    {
+        show_startup_error("Video: Unable to create window : %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Load the window icon
+    std::string tmp_name = std::string(get_filename_prefix()) + "icon.bmp";
+
+    if (SDL_Surface *icon = SDL_LoadBMP(tmp_name.c_str()); icon != nullptr)
+    {
+        SDL_SetWindowIcon(window, icon);
+        SDL_FreeSurface(icon);
+    }
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!renderer)
+    {
+        show_startup_error("Video: Unable to create renderer : %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+    SDL_RendererInfo info;
+    SDL_GetRendererInfo(renderer, &info);
+    printf("Renderer: %s\n", info.name);
+
+    // Set renderer scaling quality
+    if (settings.linear_filter == 1)
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    else
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+
+    // Create our 32-bit surface for texture conversion
+    screen = SDL_CreateRGBSurface(SDL_SWSURFACE, xres, yres, 32,
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+                                  0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+#else
+                                  0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+#endif
+    if (screen == NULL)
+    {
+        show_startup_error("Video: Unable to create 32-bit surface: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Create texture for rendering
+    game_texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, xres, yres);
+    if (game_texture == NULL)
+    {
+        show_startup_error("Video: Unable to create texture: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Create our 8-bit surface
+    surface = SDL_CreateRGBSurface(0, xres, yres, 8, 0, 0, 0, 0);
+    if (surface == NULL)
+    {
+        // Our surface is no good, we have to bail.
+        show_startup_error("Video: Unable to create 8-bit surface: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    // Create the screen image
+    main_screen = new image(ivec2(xres, yres), NULL, 2);
+    if (main_screen == NULL)
+    {
+        // Our screen image is no good, we have to bail.
+        show_startup_error("Video: Unable to create screen image.");
+        exit(EXIT_FAILURE);
+    }
+    main_screen->clear();
+
+    // Hide the mouse cursor and set up the mouse
+    if (settings.grab_input)
+        SDL_SetWindowGrab(window, SDL_TRUE);
+    SDL_ShowCursor(0);
+    calculate_mouse_scaling();
+
+    if (settings.fullscreen != 0)
+        video_change_settings(0, true);
+
+    update_dirty(main_screen);
+}
+
+void video_change_settings(int scale_add, bool toggle_fullscreen)
+{
+    if (toggle_fullscreen)
+    {
+        ar_fullscreen = !ar_fullscreen;
+        if (ar_fullscreen)
+        {
+            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+            SDL_GetWindowSize(window, &window_w, &window_h);
+
+            // Texture rendering size, scale while if fits
+            int scl = 1;
+            while (1 != 0)
+                if (xres * scl < desktop.w && yres * scl < desktop.h)
+                {
+                    ogl_scale = scl;
+                    ogl_w = xres * ogl_scale;
+                    ogl_h = yres * ogl_scale;
+                    scl++;
+                }
+                else
+                    break;
+        }
+        else
+            SDL_SetWindowFullscreen(window, 0);
+    }
+
+    static int overscale = 0;
+
+    if (!ar_fullscreen)
+    {
+        // Scale window
+        int new_scale = scale + scale_add;
+
+        if (new_scale > 0 && xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
+        {
+            // Scale windows if it fits on screen
+            scale = new_scale;
+            SDL_SetWindowSize(window, xres * scale, yres * scale);
+        }
+    }
+    else
+    {
+        // Scale texture rendering size
+        int new_scale = ogl_scale + scale_add;
+
+        if (overscale == 2 && scale_add == -1)
+            overscale = 0;
+
+        if (new_scale > 0)
+        {
+            if (xres * new_scale >= desktop.w || yres * new_scale >= desktop.h)
+            {
+                if (overscale == 0)
+                {
+                    if (yres * ((float)desktop.w / xres) < desktop.h)
+                    {
+                        // Limit scale by monitor width
+                        ogl_w = desktop.w;
+                        ogl_h = yres * ((float)desktop.w / xres);
+                    }
+                    else
+                    {
+                        // Limit scale by monitor height
+                        ogl_w = xres * ((float)desktop.h / yres);
+                        ogl_h = desktop.h;
+                    }
+                    overscale = 1;
+                    ogl_scale = new_scale;
+                }
+                else if (overscale == 1)
+                {
+                    // Match screen to desktop/monitor size
+                    ogl_w = desktop.w;
+                    ogl_h = desktop.h;
+
+                    overscale = 2;
+                    ogl_scale = new_scale;
+                }
+            }
+            else if (xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
+            {
+                // Scale and keep aspect
+                ogl_scale = new_scale;
+                ogl_w = xres * ogl_scale;
+                ogl_h = yres * ogl_scale;
+                overscale = 0;
+            }
+        }
+    }
+
+    // Update size and position
+    SDL_GetWindowSize(window, &window_w, &window_h);
+    SDL_SetWindowPosition(window, desktop.w / 2 - window_w / 2, desktop.h / 2 - window_h / 2);
+
+    calculate_mouse_scaling();
+}
+
+void calculate_mouse_scaling()
+{
+    if (!ar_fullscreen || settings.mouse_scale == 0)
+    {
+        // We need to determine the appropriate mouse scaling
+        float scale_x = window_w / xres;
+        float scale_y = window_h / yres;
+
+        // Re-calculate the mouse scaling
+        mouse_xscale = (window_w << 16) / xres;
+        mouse_yscale = (window_h << 16) / yres;
+
+        // And calculate the padding
+        mouse_xpad = scale_x;
+        mouse_ypad = scale_y;
+    }
+    else
+    {
+        // We need to determine the appropriate mouse scaling
+        float scale_x = ogl_w / xres;
+        float scale_y = ogl_h / yres;
+
+        // Re-calculate the mouse scaling
+        mouse_xscale = (ogl_w << 16) / xres;
+        mouse_yscale = (ogl_h << 16) / yres;
+
+        // And calculate the padding
+        mouse_xpad = scale_x;
+        mouse_ypad = scale_y;
+    }
 }
 
 //
-// Cleanup video subsystem
+// close_graphics()
+// Shutdown the video mode
 //
 void close_graphics()
-{    
+{
     if (lastl)
-    {
         delete lastl;
-        lastl = nullptr;
-    }
+    lastl = NULL;
 
+    // Free our surfaces, texture and renderer
     if (surface)
-    {
         SDL_FreeSurface(surface);
-        surface = nullptr;
-    }
-
     if (screen)
-    {
         SDL_FreeSurface(screen);
-        screen = nullptr;
-    }
-
-    if (texture)
-    {
-        SDL_DestroyTexture(texture);
-        texture = nullptr;
-    }
-
-    if (main_screen)
-    {
-        delete main_screen;
-        main_screen = nullptr;
-    }
-
+    if (game_texture)
+        SDL_DestroyTexture(game_texture);
     if (renderer)
-    {
         SDL_DestroyRenderer(renderer);
-        renderer = nullptr;
-    }
-
     if (window)
-    {
         SDL_DestroyWindow(window);
-        window = nullptr;
-    }
+
+    delete main_screen;
 }
 
-//
-// Draw a portion of an image to the screen
+// put_part_image()
+// Draw only dirty parts of the image
 //
 void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
-{    
-    CHECK(x1 >= 0 && x2 >= x1 && y1 >= 0 && y2 >= y1);
-    
-    // Skip if completely off screen
-    if (y > yres || x > xres)
-        return;    
+{
+    int xe, ye;
+    SDL_Rect srcrect, dstrect;
+    int ii, jj;
+    int srcx, srcy, xstep, ystep;
+    Uint8 *dpixel;
+    Uint16 dinset;
 
-    // Clip drawing region to screen boundaries
+    if (y > yres || x > xres)
+        return;
+
+    CHECK(x1 >= 0 && x2 >= x1 && y1 >= 0 && y2 >= y1);
+
+    // Adjust if we are trying to draw off the screen
     if (x < 0)
     {
         x1 += -x;
         x = 0;
     }
-
-    int xe = (x + (x2 - x1) >= xres) ? xres - x + x1 - 1 : x2;
+    srcrect.x = x1;
+    if (x + (x2 - x1) >= xres)
+        xe = xres - x + x1 - 1;
+    else
+        xe = x2;
 
     if (y < 0)
     {
         y1 += -y;
         y = 0;
     }
+    srcrect.y = y1;
+    if (y + (y2 - y1) >= yres)
+        ye = yres - y + y1 - 1;
+    else
+        ye = y2;
 
-    int ye = (y + (y2 - y1) >= yres) ? yres - y + y1 - 1 : y2;
-
-    // Nothing to draw after clipping
-    if (x1 >= xe || y1 >= ye)
+    if (srcrect.x >= xe || srcrect.y >= ye)
         return;
 
+    // Scale the image onto the surface
+    srcrect.w = xe - srcrect.x;
+    srcrect.h = ye - srcrect.y;
+    dstrect.x = x;
+    dstrect.y = y;
+    dstrect.w = srcrect.w;
+    dstrect.h = srcrect.h;
+
+    xstep = (srcrect.w << 16) / dstrect.w;
+    ystep = (srcrect.h << 16) / dstrect.h;
+
+    srcy = ((srcrect.y) << 16);
+    dinset = ((surface->w - dstrect.w)) * surface->format->BytesPerPixel;
+
+    // Lock the surface if necessary
     if (SDL_MUSTLOCK(surface))
-    {
         SDL_LockSurface(surface);
-    }
 
-    const int width = xe - x1;
-    const int height = ye - y1;
-    uint8_t *base_pixel = static_cast<uint8_t *>(surface->pixels) + y * surface->pitch + x;
-    const int dst_pitch = surface->pitch;
-        
-    for (int i = 0; i < height; i++)
+    dpixel = (Uint8 *)surface->pixels;
+    dpixel += (dstrect.x + ((dstrect.y) * surface->w)) * surface->format->BytesPerPixel;
+
+    // Update surface part
+    srcy = srcrect.y;
+    dpixel = ((Uint8 *)surface->pixels) + y * surface->w + x;
+    for (ii = 0; ii < srcrect.h; ii++)
     {
-        const uint8_t *src = im->scan_line(y1 + i) + x1;
-        uint8_t *dst = base_pixel + i * dst_pitch;
-        std::memcpy(dst, src, width);
+        memcpy(dpixel, im->scan_line(srcy) + srcrect.x, srcrect.w);
+        dpixel += surface->w;
+        srcy++;
     }
 
+    // Unlock the surface if we locked it.
     if (SDL_MUSTLOCK(surface))
-    {
         SDL_UnlockSurface(surface);
-    }
 }
 
 //
-// Load and apply a palette
+// load()
+// Set the palette
 //
 void palette::load()
 {
-    delete lastl;
+    if (lastl)
+        delete lastl;
     lastl = copy();
 
-    // Force to only 256 colours
+    // Force to only 256 colours.
+    // Shouldn't be needed, but best to be safe.
     if (ncolors > 256)
         ncolors = 256;
 
-    // Set up SDL color palette
-    std::array<SDL_Color, 256> colors{};
-    for (int i = 0; i < ncolors; i++)
+#ifdef WIN32
+    // FIXME: Really, this applies to anything that doesn't allow dynamic stack allocation
+    SDL_Color colors[256];
+#else
+    SDL_Color colors[ncolors];
+#endif
+    for (int ii = 0; ii < ncolors; ii++)
     {
-        colors[i] = {
-            static_cast<uint8_t>(red(i)),
-            static_cast<uint8_t>(green(i)),
-            static_cast<uint8_t>(blue(i)),
-            255};
+        colors[ii].r = red(ii);
+        colors[ii].g = green(ii);
+        colors[ii].b = blue(ii);
+        colors[ii].a = 255;
     }
+    SDL_SetPaletteColors(surface->format->palette, colors, 0, ncolors);
 
-    // Update palette and redraw
-    SDL_SetPaletteColors(surface->format->palette, colors.data(), 0, ncolors);
+    // Now redraw the surface
     update_window_done();
 }
 
+//
+// load_nice()
+//
 void palette::load_nice()
 {
     load();
 }
 
-//
-// Update the window with current screen contents
-//
+// ---- support functions ----
+
 void update_window_done()
 {
-    // Convert paletted surface to 32-bit RGB for display
-    SDL_BlitSurface(surface, nullptr, screen, nullptr);
+    // Convert 8-bit surface to 32-bit
+    SDL_BlitSurface(surface, NULL, screen, NULL);
 
-    // Update GPU texture and render to display
-    SDL_UpdateTexture(texture, nullptr, screen->pixels, screen->pitch);
+    // Update the SDL texture with our pixel data
+    SDL_UpdateTexture(game_texture, NULL, screen->pixels, screen->pitch);
+
+    // Clear renderer
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+
+    if (ar_fullscreen)
+    {
+        // Center the texture with proper aspect ratio
+        SDL_Rect dest_rect;
+        dest_rect.x = (window_w - ogl_w) / 2;
+        dest_rect.y = (window_h - ogl_h) / 2;
+        dest_rect.w = ogl_w;
+        dest_rect.h = ogl_h;
+        SDL_RenderCopy(renderer, game_texture, NULL, &dest_rect);
+    }
+    else
+    {
+        // Fill the window with the texture
+        SDL_RenderCopy(renderer, game_texture, NULL, NULL);
+    }
+
+    // Present the renderer
     SDL_RenderPresent(renderer);
 }

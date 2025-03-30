@@ -405,8 +405,8 @@
 	    (1 (set_aistate (if (> (with_object creator (direction)) 0) 0 180)))
 	    (2  (set_aistate (if (> (with_object creator (direction)) 0) 45 135))))
     (if target (link_object target)))
-
 )
+
 
 (defun rocket_cache (type)
   (list (list SMALL_LIGHT_CLOUD) nil))
@@ -424,38 +424,9 @@
   (abilities (start_hp 4))
   (states "art/missle.spe" (stopped  (seq "miss" 1 32))))
 
-
-/*
-(defun sgun_ai ()
-  (setq sgb_lastx (x))
-  (setq sgb_lasty (y))
-  (setq sgb_speed (/ (* sgb_speed 6) 5))
-  (set_course sgb_angle sgb_speed)
-  (if (eq sgb_lifetime 0)
-      nil
-    (let ((bx (bmove (if (> (total_objects) 0) (get_object 0) nil))))  ; don't hit the guy who fired us.
-      (setq sgb_lifetime (- sgb_lifetime 1))
-      (if (eq bx T) T
-	(progn
-	  (setq sgb_lifetime 0)    ;; disappear next tick
-	  (if (eq bx nil)
-	      (add_object EXPLODE5 (- (x) (random 5)) (- (y) (random 5)) 0)
-	    (progn
-	      (add_object EXPLODE3 (- (x) (random 5)) (- (y) (random 5)) 0)
-	      (do_damage 5 bx (* (cos sgb_angle) 10) (* (sin sgb_angle) 10))))))
-      T)))
-	*/
-
-
+; Draws a laser projectile
 (defun sgun_draw ()
-  (draw_line sgb_lastx (- sgb_lasty 1) (x) (- (y) 1) sgb_medium_color)
-  (draw_line sgb_lastx (+ sgb_lasty 1) (x) (+ (y) 1) sgb_medium_color)
-
-  (draw_line (- sgb_lastx 1) sgb_lasty (- (x) 1) (y) sgb_bright_color)
-  (draw_line (+ sgb_lastx 1) sgb_lasty (+ (x) 1) (y) sgb_medium_color)
-
-
-  (draw_line sgb_lastx sgb_lasty (x) (y) sgb_bright_color)
+  (draw_laser sgb_lastx sgb_lasty sgb_angle sgb_medium_color sgb_bright_color)
 )
 
 

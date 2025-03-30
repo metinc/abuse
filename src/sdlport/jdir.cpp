@@ -19,7 +19,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdio.h>
@@ -28,12 +28,12 @@
 
 #include <sys/types.h>
 #ifdef WIN32
-# include <Windows.h>
+#include <Windows.h>
 #else
-# include <dirent.h>
+#include <dirent.h>
 #endif
 #ifdef HAVE_UNISTD_H
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 void get_directory(char *path, char **&files, int &tfiles, char **&dirs, int &tdirs)
@@ -44,72 +44,72 @@ void get_directory(char *path, char **&files, int &tfiles, char **&dirs, int &td
     tfiles = 0;
     tdirs = 0;
 #ifdef WIN32
-	WIN32_FIND_DATA findData;
-	HANDLE d = FindFirstFile(path, &findData);
-	if (d == INVALID_HANDLE_VALUE)
-		return;
+    WIN32_FIND_DATA findData;
+    HANDLE d = FindFirstFile(path, &findData);
+    if (d == INVALID_HANDLE_VALUE)
+        return;
 
-	do
-	{
-		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-		{
-			tdirs++;
-			dirs = (char **)realloc(dirs, sizeof(char *)*tdirs);
-			dirs[tdirs - 1] = strdup(findData.cFileName);
-		}
-		else
-		{
-			tfiles++;
-			files = (char **)realloc(files, sizeof(char *)*tfiles);
-			files[tfiles - 1] = strdup(findData.cFileName);
-		}
-	} while( FindNextFile(d, &findData) );
-	FindClose( d );
+    do
+    {
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            tdirs++;
+            dirs = (char **)realloc(dirs, sizeof(char *) * tdirs);
+            dirs[tdirs - 1] = strdup(findData.cFileName);
+        }
+        else
+        {
+            tfiles++;
+            files = (char **)realloc(files, sizeof(char *) * tfiles);
+            files[tfiles - 1] = strdup(findData.cFileName);
+        }
+    } while (FindNextFile(d, &findData));
+    FindClose(d);
 
 #else
-    DIR *d = opendir( path );
+    DIR *d = opendir(path);
 
-    if( !d )
+    if (!d)
         return;
 
     char **tlist = NULL;
     int t = 0;
     char curdir[200];
-    getcwd( curdir, 200 );
-    chdir( path );
+    getcwd(curdir, 200);
+    chdir(path);
 
     do
     {
-        de = readdir( d );
-        if( de )
+        de = readdir(d);
+        if (de)
         {
             t++;
-            tlist = (char **)realloc(tlist,sizeof(char *)*t);
-            tlist[t-1] = strdup(de->d_name);
+            tlist = (char **)realloc(tlist, sizeof(char *) * t);
+            tlist[t - 1] = strdup(de->d_name);
         }
-    } while( de );
-    closedir( d );
+    } while (de);
+    closedir(d);
 
-    for( int i=0; i < t; i++ )
+    for (int i = 0; i < t; i++)
     {
-        d = opendir( tlist[i] );
-        if( d )
+        d = opendir(tlist[i]);
+        if (d)
         {
             tdirs++;
-            dirs = (char **)realloc(dirs,sizeof(char *)*tdirs);
-            dirs[tdirs-1] = strdup(tlist[i]);
-            closedir( d );
+            dirs = (char **)realloc(dirs, sizeof(char *) * tdirs);
+            dirs[tdirs - 1] = strdup(tlist[i]);
+            closedir(d);
         }
         else
         {
             tfiles++;
-            files = (char **)realloc(files,sizeof(char *)*tfiles);
-            files[tfiles-1] = strdup(tlist[i]);
+            files = (char **)realloc(files, sizeof(char *) * tfiles);
+            files[tfiles - 1] = strdup(tlist[i]);
         }
-        free( tlist[i] );
+        free(tlist[i]);
     }
-    if( t )
-        free( tlist );
-    chdir( curdir );
+    if (t)
+        free(tlist);
+    chdir(curdir);
 #endif
 }

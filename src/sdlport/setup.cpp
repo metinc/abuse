@@ -39,7 +39,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <string>
-#include <charconv> // for std::from_chars
+#include <filesystem>
 #include "SDL.h"
 
 #include "file_utils.h"
@@ -48,683 +48,768 @@
 #include "setup.h"
 #include "errorui.h"
 
-// AR
+//AR
 #include <fstream>
+#include <sstream>
 extern Settings settings;
 //
 
-extern int sfx_volume, music_volume; // loader.cpp
-unsigned int scale;									 // AR was static, removed for external
+extern int xres, yres; //video.cpp
+extern int sfx_volume, music_volume; //loader.cpp
+unsigned int scale; //AR was static, removed for external
 
 const char *config_filename = "config.txt";
 
-// Modern replacements for AR_ToInt and AR_ToBool
-int AR_ToInt(const std::string &value)
-{
-	int result = 1;
-	std::from_chars(value.data(), value.data() + value.size(), result);
-	return result;
-}
-
-bool AR_ToBool(const std::string &value)
-{
-	return value == "1" || value == "true" || value == "True" || value == "TRUE";
-}
-
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 {
-	attr = value = "";
+    attr = value = "";
 
-	std::size_t found = line.find("=");
+    std::size_t found = line.find("=");
 
-	// no "="
-	if (found == std::string::npos || found == line.size() - 1)
-		return false;
+    //no "="
+    if (found == std::string::npos || found == line.size() - 1)
+        return false;
 
-	attr = line.substr(0, found);
-	value = line.substr(found + 1, line.size() - 1);
+    attr = line.substr(0, found);
+    value = line.substr(found + 1, line.size() - 1);
 
-	// empty attribute or value
-	if (attr.empty() || value.empty())
-		return false;
+    //empty attribute or value
+    if (attr.empty() || value.empty())
+        return false;
 
-	return true;
+    return true;
 }
 
 Settings::Settings()
 {
-	// screen
-	this->fullscreen = 0; // start in window
-	this->borderless = false;
-	this->vsync = false;
-	this->virtual_width = 320;
-	// this->virtual_height  = 200;
-	this->screen_width = 640;
-	// this->screen_height  = 400;
-	this->linear_filter = false; // don't "anti-alias"
-	this->hires = 0;
+    //screen
+    this->fullscreen = 2;
+    this->borderless = false;
+    this->xres = 320; // default window width
+    this->yres = 200; // default window height
+    this->scale = 2; // default window scale
+    this->linear_filter = false; // don't "anti-alias"
+    this->hires = 0;
 
-	// sound
-	this->mono = false;			// disable stereo sound
-	this->no_sound = false; // disable sound
-	this->no_music = false; // disable music
-	this->volume_sound = 127;
-	this->volume_music = 127;
-	this->soundfont = "AWE64 Gold Presets.sf2"; // Empty = don't use custom soundfont
+    //sound
+    this->mono = false; // disable stereo sound
+    this->no_sound = false; // disable sound
+    this->no_music = false; // disable music
+    this->volume_sound = 127;
+    this->volume_music = 127;
+    this->soundfont = "AWE64 Gold Presets.sf2"; // Empty = don't use custom soundfont
 
-	// random
-	this->local_save = true;
-	this->grab_input = false;	 // don't grab the input
-	this->editor = false;			 // disable editor mode
-	this->physics_update = 1000 / 15; // original 65ms/15 FPS
-	this->mouse_scale = 0;		 // match desktop
-	this->big_font = false;
-	this->language = "english";
-	//
-	this->bullet_time = false;
-	this->bullet_time_add = 1.2f;
+    //random
+    this->local_save = false;
+    this->grab_input = false; // don't grab the input
+    this->editor = false; // disable editor mode
+    this->physics_update = 65; // original 65ms/15 FPS
+    this->max_fps = 300;
+    this->mouse_scale = 0; // match desktop
+    this->big_font = false;
+    this->language = "english";
+    //
+    this->player_touching_console = false;
 
-	this->player_touching_console = false;
+    this->cheat_god = false;
+    this->skip_intro = false;
 
-	this->cheat_god = cheat_bullettime = false;
+    //player controls
+    this->up = key_value("w");
+    this->down = key_value("s");
+    this->left = key_value("a");
+    this->right = key_value("d");
+    this->up_2 = key_value("UP");
+    this->down_2 = key_value("DOWN");
+    this->left_2 = key_value("LEFT");
+    this->right_2 = key_value("RIGHT");
+    this->b1 = key_value("SHIFT_L"); //special
+    this->b2 = key_value("f"); //fire
+    this->b3 = key_value("q"); //weapons
+    this->b4 = key_value("e");
 
-	// player controls
-	this->up = key_value("w");
-	this->down = key_value("s");
-	this->left = key_value("a");
-	this->right = key_value("d");
-	this->up_2 = key_value("UP");
-	this->down_2 = key_value("DOWN");
-	this->left_2 = key_value("LEFT");
-	this->right_2 = key_value("RIGHT");
-	this->b1 = key_value("SHIFT_L"); // special
-	this->b2 = key_value("f");			 // fire
-	this->b3 = key_value("q");			 // weapons
-	this->b4 = key_value("e");
-	this->bt = key_value("CTRL_L"); // special2, bulettime
+    //controller settings
+    this->ctr_aim_correctx = 0;
+    this->ctr_cd = 90;
+    this->ctr_rst_s = 10;
+    this->ctr_rst_dz = 5000; // aiming
+    this->ctr_lst_dzx = 10000; // move left right
+    this->ctr_lst_dzy = 25000; // up/jump, down/use
+    this->ctr_aim_x = 0;
+    this->ctr_aim_y = 0;
+    this->ctr_mouse_x = 0;
+    this->ctr_mouse_y = 0;
 
-	// controller settings
-	this->ctr_aim = false; // controller overide disabled
-	this->ctr_aim_correctx = 0;
-	this->ctr_cd = 100;
-	this->ctr_rst_s = 10;
-	this->ctr_rst_dz = 5000;	 // aiming
-	this->ctr_lst_dzx = 10000; // move left right
-	this->ctr_lst_dzy = 25000; // up/jump, down/use
-	this->ctr_aim_x = 0;
-	this->ctr_aim_y = 0;
-	this->ctr_mouse_x = 0;
-	this->ctr_mouse_y = 0;
-
-	// controller buttons
-	this->ctr_a = "up";
-	this->ctr_b = "down";
-	this->ctr_x = "b3";
-	this->ctr_y = "b4";
-	//
-	this->ctr_lst = "b1";
-	this->ctr_rst = "down";
-	//
-	this->ctr_lsr = "b2";
-	this->ctr_rsr = "b3";
-	//
-	this->ctr_ltg = "bt";
-	this->ctr_rtg = "b2";
-	//
-	this->ctr_f5 = SDL_CONTROLLER_BUTTON_LEFTSTICK;
-	this->ctr_f9 = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+    //controller buttons
+    this->ctr_a = "up";
+    this->ctr_b = "down";
+    this->ctr_x = "b3";
+    this->ctr_y = "b4";
+    //
+    this->ctr_lst = "b1";
+    this->ctr_rst = "down";
+    //
+    this->ctr_lsr = "b2";
+    this->ctr_rsr = "b3";
+    //
+    this->ctr_ltg = "b1";
+    this->ctr_rtg = "b2";
+    //
+    this->ctr_f5 = 0;
+    this->ctr_f9 = 0;
 }
+
+//////////
+////////// CREATE DEFAULT "config.txt" FILE
+//////////
 
 bool Settings::CreateConfigFile()
 {
-	fprintf(stderr, "Settings::CreateConfigFile\n");
-	FILE *out = prefix_fopen(config_filename, "w");
-	if (!out)
-	{
-		fprintf(stderr, "ERROR - CreateConfigFile() - Failed to create \"%s\"\n", config_filename);
-		return false;
-	}
+    const std::filesystem::path prefix = get_save_filename_prefix();
+    const std::filesystem::path file_path = prefix / config_filename;
+    std::ofstream out(file_path);
+    if (!out.is_open())
+    {
+        std::string tmp = "ERROR - CreateConfigFile() - Failed to create \"" + file_path.string() + "\"\n";
+        printf(tmp.c_str());
 
-	fprintf(out, "; Abuse-SDL configuration file\n\n");
+        return false;
+    }
 
-	fprintf(out, "; SCREEN SETTINGS\n\n");
-	fprintf(out, ";0 - window, 1 - fullscreen window, 2 - fullscreen\n");
-	fprintf(out, "fullscreen=%d\n", fullscreen);
-	fprintf(out, "borderless=%d\n", borderless);
-	fprintf(out, "vsync=%d\n\n", vsync);
+    out << "; Abuse configuration file (v" << PACKAGE_VERSION << ")" << std::endl;
+    out << std::endl;
+    //
+    out << "; SCREEN SETTINGS" << std::endl;
+    out << std::endl;
+    out << ";0 - window, 1 - fullscreen window, 2 - fullscreen" << std::endl;
+    out << "fullscreen=" << this->fullscreen << std::endl;
+    out << "borderless=" << this->borderless << std::endl;
+    out << std::endl;
+    out << "; Game screen size (original 320x200)" << std::endl;
+    out << "screen_width=" << this->xres << std::endl;
+    out << "screen_height=" << this->yres << std::endl;
+    out << std::endl;
+    out << "; Scale window" << std::endl;
+    out << "scale=" << this->scale << std::endl;
+    out << std::endl;
+    out << "; Enable high resolution screens, buttons and font" << std::endl;
+    out << "hires=" << this->hires << std::endl;
+    out << "big_font=" << this->big_font << std::endl;
+    out << std::endl;
+    out << "; Language selection (english, german, french)\n" << std::endl;
+    out << "language=" << this->language.c_str() << std::endl;
+    out << std::endl;
+    out << "; Use linear texture filter (nearest is default)" << std::endl;
+    out << "linear_filter=" << this->linear_filter << std::endl;
+    out << std::endl;
+    //
+    out << "; SOUND SETTINGS" << std::endl;
+    out << std::endl;
+    out << "; Volume (0-127)" << std::endl;
+    out << "volume_sound=" << this->volume_sound << std::endl;
+    out << "volume_music=" << this->volume_music << std::endl;
+    out << std::endl;
+    out << "; Disable music and sound effects" << std::endl;
+    out << "no_music=" << this->no_music << std::endl;
+    out << "no_sound=" << this->no_sound << std::endl;
+    out << std::endl;
+    out << "; Use mono audio only" << std::endl;
+    out << "mono=" << this->mono << std::endl;
+    out << "; Path to custom soundfont file (optional)\n" << std::endl;
+    out << "soundfont=" << this->soundfont.c_str() << std::endl;
+    out << std::endl;
+    //
+    out << "; MISCELLANEOUS SETTINGS" << std::endl;
+    out << std::endl;
+    out << "; Enable editor mode" << std::endl;
+    out << "editor=" << this->editor << std::endl;
+    out << std::endl;
+    out << "; Grab the mouse and keyboard to the window" << std::endl;
+    out << "grab_input=" << this->grab_input << std::endl;
+    out << std::endl;
+    out << "; Fullscreen mouse scaling (0 - match desktop, 1 - match game screen)" << std::endl;
+    out << "mouse_scale=" << this->mouse_scale << std::endl;
+    out << std::endl;
+    out << "; Physics update time in ms (65ms/15FPS original)" << std::endl;
+    out << "physics_update=" << this->physics_update << std::endl;
+    out << std::endl;
+    out << "; Max frames per second" << std::endl;
+    out << "max_fps=" << this->max_fps << std::endl;
+    out << std::endl;
+    out << "local_save=" << this->local_save << std::endl;
+    out << std::endl;
+    out << "skip_intro=" << this->skip_intro << std::endl;
+    out << std::endl;
+    //
+    out << "; PLAYER CONTROLS" << std::endl;
+    out << std::endl;
+    out << "; Key mappings" << std::endl;
+    out << "left=a" << std::endl;
+    out << "right=d" << std::endl;
+    out << "up=w" << std::endl;
+    out << "down=s" << std::endl;
+    out << "special=SHIFT_L" << std::endl;
+    out << "fire=f" << std::endl;
+    out << "weapon_prev=q" << std::endl;
+    out << "weapon_next=e" << std::endl;
+    out << std::endl;
+    //
+    out << "; Alternative key mappings (only the following controls can have two keyboard bindings)" << std::endl;
+    out << "left_2=LEFT" << std::endl;
+    out << "right_2=RIGHT" << std::endl;
+    out << "up_2=UP" << std::endl;
+    out << "down_2=DOWN" << std::endl;
+    out << std::endl;
+    //
+    out << "; CONTROLLER SETTINGS" << std::endl;
+    out << std::endl;
+    out << "; Correct crosshair position (x)" << std::endl;
+    out << "ctr_aim_x=" << this->ctr_aim_correctx << std::endl;
+    out << std::endl;
+    out << "; Crosshair distance from player" << std::endl;
+    out << "ctr_cd=" << this->ctr_cd << std::endl;
+    out << std::endl;
+    out << "; Right stick/aiming sensitivity" << std::endl;
+    out << "ctr_rst_s=" << this->ctr_rst_s << std::endl;
+    out << std::endl;
+    out << "; Right stick/aiming dead zone" << std::endl;
+    out << "ctr_rst_dz=" << this->ctr_rst_dz << std::endl;
+    out << std::endl;
+    out << "; Left stick/movement dead zones" << std::endl;
+    out << "ctr_lst_dzx=" << this->ctr_lst_dzx << std::endl;
+    out << "ctr_lst_dzy=" << this->ctr_lst_dzy << std::endl;
+    out << std::endl;
+    //
+    out << "; Button mappings (don't use buttons for left/right movement)" << std::endl;
+    out << "up=ctr_a" << std::endl;
+    out << "down=ctr_b" << std::endl;
+    out << "special=ctr_left_shoulder" << std::endl;
+    out << "special=ctr_left_trigger" << std::endl;
+    out << "fire=ctr_right_shoulder" << std::endl;
+    out << "fire=ctr_right_trigger" << std::endl;
+    out << "weapon_prev=ctr_x" << std::endl;
+    out << "weapon_next=ctr_y" << std::endl;
+    out << "quick_save=none" << std::endl;
+    out << "quick_load=none" << std::endl;
 
-	fprintf(out, "; Virtual resolution (internal game resolution). If virtual_height is not specified it is calculated to match aspect ratio of the window\n");
-	fprintf(out, "virtual_width=%d\n", virtual_width);
-	fprintf(out, "; virtual_height=%d\n\n", virtual_height);
+    out.close();
 
-	fprintf(out, "; Screen resolution\n");
-	fprintf(out, "; screen_width=%d\n", screen_width);
-	fprintf(out, "; screen_height=%d\n\n", screen_height);
+    printf("Default \"config.txt\" created\n");
 
-	fprintf(out, "; Enable high resolution screens and font\n");
-	fprintf(out, "hires=%d\n", hires);
-	fprintf(out, "big_font=%d\n\n", big_font);	
+    return true;
 
-	fprintf(out, "; Use linear texture filter (nearest is default)\n");
-	fprintf(out, "linear_filter=%d\n\n", linear_filter);
-
-	fprintf(out, "; SOUND SETTINGS\n\n");
-	fprintf(out, "; Volume (0-127)\n");
-	fprintf(out, "volume_sound=%d\n", this->volume_sound);
-	fprintf(out, "volume_music=%d\n\n", this->volume_music);
-
-	fprintf(out, "; Disable music and sound effects\n");
-	fprintf(out, "no_music=%d\n", this->no_music);
-	fprintf(out, "no_sound=%d\n\n", this->no_sound);
-
-	fprintf(out, "; Use mono audio only\n");
-	fprintf(out, "mono=%d\n", this->mono);
-	fprintf(out, "; Path to custom soundfont file (optional)\n");
-	fprintf(out, "soundfont=%s\n\n", this->soundfont.c_str());
-
-	fprintf(out, "; RANDOM SETTINGS\n\n");
-	fprintf(out, "; Enable editor mode\n");
-	fprintf(out, "editor=%d\n\n", this->editor);
-
-	fprintf(out, "; Grab the mouse and keyboard to the window\n");
-	fprintf(out, "grab_input=%d\n\n", this->grab_input);
-
-	fprintf(out, "; Fullscreen mouse scaling (0 - match desktop, 1 - match game screen)\n");
-	fprintf(out, "mouse_scale=%d\n\n", this->mouse_scale);
-
-	fprintf(out, "; Physics update time in ms (65ms/15FPS original)\n");
-	fprintf(out, "physics_update=%d\n\n", this->physics_update);
-
-	fprintf(out, "; Bullet time (%%)\n");
-	fprintf(out, "bullet_time=%d\n\n", (int)(this->bullet_time_add * 100));
-
-	fprintf(out, "local_save=%d\n\n", this->local_save);
-
-	fprintf(out, "; Language selection (default: english)\n");
-	fprintf(out, "language=%s\n\n", this->language.c_str());
-
-	fprintf(out, "; PLAYER CONTROLS\n\n");
-	fprintf(out, "; Key mappings\n");
-	fprintf(out, "left=a\n");
-	fprintf(out, "right=d\n");
-	fprintf(out, "up=w\n");
-	fprintf(out, "down=s\n");
-	fprintf(out, "special=SHIFT_L\n");
-	fprintf(out, "fire=f\n");
-	fprintf(out, "weapon_prev=q\n");
-	fprintf(out, "weapon_next=e\n");
-	fprintf(out, "special2=CTRL_L\n\n");
-
-	fprintf(out, "; Alternative key mappings (only the following controls can have two keyboard bindings)\n");
-	fprintf(out, "left_2=LEFT\n");
-	fprintf(out, "right_2=RIGHT\n");
-	fprintf(out, "up_2=UP\n");
-	fprintf(out, "down_2=DOWN\n\n");
-
-	fprintf(out, "; CONTROLLER SETTINGS\n\n");
-	fprintf(out, "; Enable aiming\n");
-	fprintf(out, "ctr_aim=%d\n\n", this->ctr_aim);
-
-	fprintf(out, "; Correct crosshair position (x)\n");
-	fprintf(out, "ctr_aim_x=%d\n\n", this->ctr_aim_correctx);
-
-	fprintf(out, "; Crosshair distance from player\n");
-	fprintf(out, "ctr_cd=%d\n\n", this->ctr_cd);
-
-	fprintf(out, "; Right stick/aiming sensitivity\n");
-	fprintf(out, "ctr_rst_s=%d\n\n", this->ctr_rst_s);
-
-	fprintf(out, "; Right stick/aiming dead zone\n");
-	fprintf(out, "ctr_rst_dz=%d\n\n", this->ctr_rst_dz);
-
-	fprintf(out, "; Left stick/movement dead zones\n");
-	fprintf(out, "ctr_lst_dzx=%d\n", this->ctr_lst_dzx);
-	fprintf(out, "ctr_lst_dzy=%d\n\n", this->ctr_lst_dzy);
-
-	fprintf(out, "; Button mappings (don't use buttons for left/right movement)\n");
-	fprintf(out, "up=ctr_a\n");
-	fprintf(out, "down=ctr_b\n");
-	fprintf(out, "special=ctr_left_shoulder\n");
-	fprintf(out, "special=ctr_left_stick\n");
-	fprintf(out, "special2=ctr_left_trigger\n");
-	fprintf(out, "fire=ctr_right_shoulder\n");
-	fprintf(out, "fire=ctr_right_trigger\n");
-	fprintf(out, "fire=ctr_right_stick\n");
-	fprintf(out, "weapon_prev=ctr_x\n");
-	fprintf(out, "weapon_next=ctr_y\n");
-	fprintf(out, "quick_save=ctr_left_stick\n");
-	fprintf(out, "quick_load=ctr_right_stick\n");
-
-	fclose(out);
-
-	printf("Default \"%s\" created\n", config_filename);
-
-	return true;
+    /*
+	#if !((defined __APPLE__) || (defined WIN32))
+	fputs( "; Location of the datafiles\ndatadir=", fd );
+	fputs( ASSETDIR "\n\n", fd );
+	#endif	
+	*/
 }
+
+//////////
+////////// READ CONFIG FILE
+//////////
 
 bool Settings::ReadConfigFile()
 {
-	FILE *filein = prefix_fopen(config_filename, "r");
-	if (!filein)
+    const std::filesystem::path prefix = get_save_filename_prefix();
+    const std::filesystem::path file_path = prefix / config_filename;
+
+    std::ifstream filein(file_path.c_str());
+    if (!filein.is_open())
+    {
+        std::string tmp = "ERROR - ReadConfigFile() - Failed to open \"" + file_path.string() + "\"\n";
+        printf(tmp.c_str());
+
+        //try to create it
+        return CreateConfigFile();
+    }
+
+    std::string line;
+    while (std::getline(filein, line))
+    {
+        //stop reading file
+        if (line == "exit")
+        {
+            filein.close();
+            return true;
+        }
+
+        //skip empty line or ";" which marks a comment
+        if (line.empty() || line[0] == ';')
+            continue;
+
+        std::string attr, value;
+
+        //skip if invalid command
+        if (!AR_GetAttr(line, attr, value))
+        {
+            printf("Ignoring invalid command \"%s\" in %s\n", line.c_str(), file_path.c_str());
+            continue;
+        }
+
+        try
+        {
+            //screen
+            if (attr == "fullscreen")
+                this->fullscreen = std::stoi(value);
+            else if (attr == "borderless")
+                this->borderless = (value == "1");
+            else if (attr == "screen_width")
+                this->xres = std::stoi(value);
+            else if (attr == "screen_height")
+                this->yres = std::stoi(value);
+            else if (attr == "scale")
+                this->scale = std::stoi(value);
+            else if (attr == "linear_filter")
+                this->linear_filter = (value == "1");
+            else if (attr == "hires")
+                this->hires = std::stoi(value);
+            else if (attr == "max_fps")
+                this->max_fps = std::stoi(value);
+            //sound
+            else if (attr == "mono")
+                this->mono = (value == "1");
+            else if (attr == "no_sound")
+                this->no_sound = (value == "1");
+            else if (attr == "no_music")
+                this->no_music = (value == "1");
+            else if (attr == "volume_sound")
+                this->volume_sound = std::stoi(value);
+            else if (attr == "volume_music")
+                this->volume_music = std::stoi(value);
+            else if (attr == "soundfont")
+                this->soundfont = value;
+
+            //random
+            else if (attr == "local_save")
+                this->local_save = (value == "1");
+            else if (attr == "grab_input")
+                this->grab_input = (value == "1");
+            else if (attr == "editor")
+                this->editor = (value == "1");
+            else if (attr == "physics_update")
+                this->physics_update = std::stoi(value);
+            else if (attr == "mouse_scale")
+                this->mouse_scale = std::stoi(value);
+            else if (attr == "big_font")
+                this->big_font = (value == "1");
+            else if (attr == "language")
+                this->language = value;
+            else if (attr == "skip_intro")
+                this->skip_intro = (value == "1");
+
+            //player controls
+            else if (attr == "up")
+            {
+                if (!ControllerButton(attr, value))
+                    this->up = key_value(value.c_str());
+            }
+            else if (attr == "down")
+            {
+                if (!ControllerButton(attr, value))
+                    this->down = key_value(value.c_str());
+            }
+            else if (attr == "left")
+            {
+                if (!ControllerButton(attr, value))
+                    this->left = key_value(value.c_str());
+            }
+            else if (attr == "right")
+            {
+                if (!ControllerButton(attr, value))
+                    this->right = key_value(value.c_str());
+            }
+            //
+            else if (attr == "special")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b1 = key_value(value.c_str());
+            }
+            else if (attr == "fire")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b2 = key_value(value.c_str());
+            }
+            else if (attr == "weapon_prev")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b3 = key_value(value.c_str());
+            }
+            else if (attr == "weapon_next")
+            {
+                if (!ControllerButton(attr, value))
+                    this->b4 = key_value(value.c_str());
+            }
+            //
+            else if (attr == "up_2")
+                this->up_2 = key_value(value.c_str());
+            else if (attr == "down_2")
+                this->down_2 = key_value(value.c_str());
+            else if (attr == "left_2")
+                this->left_2 = key_value(value.c_str());
+            else if (attr == "right_2")
+                this->right_2 = key_value(value.c_str());
+
+            //controller settings
+            else if (attr == "ctr_aim_x")
+                this->ctr_aim_correctx = std::stoi(value);
+            else if (attr == "ctr_cd")
+                this->ctr_cd = std::stoi(value);
+            else if (attr == "ctr_rst_s")
+                this->ctr_rst_s = std::stoi(value);
+            else if (attr == "ctr_rst_dz")
+                this->ctr_rst_dz = std::stoi(value);
+            else if (attr == "ctr_lst_dzx")
+                this->ctr_lst_dzx = std::stoi(value);
+            else if (attr == "ctr_lst_dzy")
+                this->ctr_lst_dzy = std::stoi(value);
+            else if (attr == "quick_save" || attr == "quick_load")
+            {
+                int b = 0;
+
+                if (value == "ctr_a")
+                    b = SDL_CONTROLLER_BUTTON_A;
+                else if (value == "ctr_b")
+                    b = SDL_CONTROLLER_BUTTON_B;
+                else if (value == "ctr_x")
+                    b = SDL_CONTROLLER_BUTTON_X;
+                else if (value == "ctr_y")
+                    b = SDL_CONTROLLER_BUTTON_Y;
+                else if (value == "ctr_left_stick")
+                    b = SDL_CONTROLLER_BUTTON_LEFTSTICK;
+                else if (value == "ctr_right_stick")
+                    b = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+                else if (value == "ctr_left_shoulder")
+                    b = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
+                else if (value == "ctr_right_shoulder")
+                    b = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
+
+                if (attr == "quick_save")
+                    this->ctr_f5 = b;
+                else
+                    this->ctr_f9 = b;
+            }
+            else
+            {
+                printf("Ignoring unknown command \"%s\" in %s\n", line.c_str(), file_path.c_str());
+                continue;
+            }
+        }
+        catch (const std::exception &e)
+        {
+            printf("Ignoring invalid value \"%s\" in %s\n", line.c_str(), file_path.c_str());
+            continue;
+        }
+    }
+
+    filein.close();
+
+    return true;
+
+    /*
+	if( strcasecmp( result, "datadir" ) == 0 )
 	{
-		printf("ERROR - ReadConfigFile() - Failed to open %s\n", config_filename);
-
-		// try to create it
-		return CreateConfigFile();
+	result = strtok( NULL, "\n" );
+	set_filename_prefix( result );
 	}
-
-	char line[512];
-	while (fgets(line, sizeof(line), filein))
-	{
-
-		// Remove newline if present
-		size_t len = strlen(line);
-		if (len > 0 && line[len - 1] == '\n')
-			line[len - 1] = '\0';
-
-		std::string lineStr(line);
-
-		// stop reading file
-		if (lineStr == "exit")
-		{
-			fclose(filein);
-			return true;
-		}
-
-		// skip empty line or ";" which marks a comment
-		if (lineStr.empty() || line[0] == ';')
-			continue;
-
-		std::string attr, value;
-
-		// quit if bad command
-		if (!AR_GetAttr(lineStr, attr, value))
-		{
-			fclose(filein);
-
-			printf("ERROR - ReadConfigFile() - Bad command \"%s\"\n", lineStr.c_str());
-
-			return CreateConfigFile();
-		}
-
-		// screen
-		if (attr == "fullscreen")
-			this->fullscreen = AR_ToInt(value);
-		else if (attr == "borderless")
-			this->borderless = AR_ToBool(value);
-		else if (attr == "vsync")
-			this->vsync = AR_ToBool(value);
-		else if (attr == "virtual_width")
-			this->virtual_width = AR_ToInt(value);
-		else if (attr == "virtual_height")
-			this->virtual_height = AR_ToInt(value);
-		else if (attr == "screen_width")
-			this->screen_width = AR_ToInt(value);
-		else if (attr == "screen_height")
-			this->screen_height = AR_ToInt(value);
-		else if (attr == "linear_filter")
-			this->linear_filter = AR_ToBool(value);
-		else if (attr == "hires")
-			this->hires = AR_ToInt(value);
-
-		// sound
-		else if (attr == "mono")
-			this->mono = AR_ToBool(value);
-		else if (attr == "no_sound")
-			this->no_sound = AR_ToBool(value);
-		else if (attr == "no_music")
-			this->no_music = AR_ToBool(value);
-		else if (attr == "volume_sound")
-			this->volume_sound = AR_ToInt(value);
-		else if (attr == "volume_music")
-			this->volume_music = AR_ToInt(value);
-		else if (attr == "soundfont")
-			this->soundfont = value;
-
-		// random
-		else if (attr == "local_save")
-			this->local_save = AR_ToBool(value);
-		else if (attr == "grab_input")
-			this->grab_input = AR_ToBool(value);
-		else if (attr == "editor")
-			this->editor = AR_ToBool(value);
-		else if (attr == "physics_update")
-			this->physics_update = AR_ToInt(value);
-		else if (attr == "mouse_scale")
-			this->mouse_scale = AR_ToInt(value);
-		else if (attr == "big_font")
-			this->big_font = AR_ToBool(value);
-		else if (attr == "language")
-			this->language = value;
-		else if (attr == "bullet_time")
-			this->bullet_time_add = AR_ToInt(value) / 100.0f;
-
-		// player controls
-		else if (attr == "up")
-		{
-			if (!ControllerButton(attr, value))
-				this->up = key_value(value.c_str());
-		}
-		else if (attr == "down")
-		{
-			if (!ControllerButton(attr, value))
-				this->down = key_value(value.c_str());
-		}
-		else if (attr == "left")
-		{
-			if (!ControllerButton(attr, value))
-				this->left = key_value(value.c_str());
-		}
-		else if (attr == "right")
-		{
-			if (!ControllerButton(attr, value))
-				this->right = key_value(value.c_str());
-		}
-		else if (attr == "special")
-		{
-			if (!ControllerButton(attr, value))
-				this->b1 = key_value(value.c_str());
-		}
-		else if (attr == "fire")
-		{
-			if (!ControllerButton(attr, value))
-				this->b2 = key_value(value.c_str());
-		}
-		else if (attr == "weapon_prev")
-		{
-			if (!ControllerButton(attr, value))
-				this->b3 = key_value(value.c_str());
-		}
-		else if (attr == "weapon_next")
-		{
-			if (!ControllerButton(attr, value))
-				this->b4 = key_value(value.c_str());
-		}
-		else if (attr == "special2")
-		{
-			if (!ControllerButton(attr, value))
-				this->bt = key_value(value.c_str());
-		}
-		else if (attr == "up_2")
-			this->up_2 = key_value(value.c_str());
-		else if (attr == "down_2")
-			this->down_2 = key_value(value.c_str());
-		else if (attr == "left_2")
-			this->left_2 = key_value(value.c_str());
-		else if (attr == "right_2")
-			this->right_2 = key_value(value.c_str());
-
-		// controller settings
-		else if (attr == "ctr_aim")
-			this->ctr_aim = AR_ToBool(value);
-		else if (attr == "ctr_aim_x")
-			this->ctr_aim_correctx = AR_ToInt(value);
-		else if (attr == "ctr_cd")
-			this->ctr_cd = AR_ToInt(value);
-		else if (attr == "ctr_rst_s")
-			this->ctr_rst_s = AR_ToInt(value);
-		else if (attr == "ctr_rst_dz")
-			this->ctr_rst_dz = AR_ToInt(value);
-		else if (attr == "ctr_lst_dzx")
-			this->ctr_lst_dzx = AR_ToInt(value);
-		else if (attr == "ctr_lst_dzy")
-			this->ctr_lst_dzy = AR_ToInt(value);
-		else if (attr == "quick_save" || attr == "quick_load")
-		{
-			int b = 0;
-
-			if (value == "ctr_a")
-				b = SDL_CONTROLLER_BUTTON_A;
-			else if (value == "ctr_b")
-				b = SDL_CONTROLLER_BUTTON_B;
-			else if (value == "ctr_x")
-				b = SDL_CONTROLLER_BUTTON_X;
-			else if (value == "ctr_y")
-				b = SDL_CONTROLLER_BUTTON_Y;
-			else if (value == "ctr_left_stick")
-				b = SDL_CONTROLLER_BUTTON_LEFTSTICK;
-			else if (value == "ctr_right_stick")
-				b = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
-			else if (value == "ctr_left_shoulder")
-				b = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
-			else if (value == "ctr_right_shoulder")
-				b = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
-
-			if (attr == "quick_save")
-				this->ctr_f5 = b;
-			else
-				this->ctr_f9 = b;
-		}
-		else
-		{
-			fclose(filein);
-
-			printf("ERROR - ReadConfigFile() - Bad command \"%s\"\n", lineStr.c_str());
-
-			return CreateConfigFile();
-		}
-	}
-
-	fclose(filein);
-	return true;
+	*/
 }
 
 bool Settings::ControllerButton(std::string c, std::string b)
 {
-	std::string control = c;
+    std::string control = c;
 
-	if (c == "special")
-		control = "b1";
-	else if (c == "fire")
-		control = "b2";
-	else if (c == "weapon_prev")
-		control = "b3";
-	else if (c == "weapon_next")
-		control = "b4";
-	else if (c == "special2")
-		control = "bt";
+    if (c == "special")
+        control = "b1";
+    else if (c == "fire")
+        control = "b2";
+    else if (c == "weapon_prev")
+        control = "b3";
+    else if (c == "weapon_next")
+        control = "b4";
 
-	if (b == "ctr_a")
-	{
-		this->ctr_a = control;
-		return true;
-	}
-	if (b == "ctr_b")
-	{
-		this->ctr_b = control;
-		return true;
-	}
-	if (b == "ctr_x")
-	{
-		this->ctr_x = control;
-		return true;
-	}
-	if (b == "ctr_y")
-	{
-		this->ctr_y = control;
-		return true;
-	}
-	if (b == "ctr_left_stick")
-	{
-		this->ctr_lst = control;
-		return true;
-	}
-	if (b == "ctr_right_stick")
-	{
-		this->ctr_rst = control;
-		return true;
-	}
-	if (b == "ctr_left_shoulder")
-	{
-		this->ctr_lsr = control;
-		return true;
-	}
-	if (b == "ctr_right_shoulder")
-	{
-		this->ctr_rsr = control;
-		return true;
-	}
-	if (b == "ctr_left_trigger")
-	{
-		this->ctr_ltg = control;
-		return true;
-	}
-	if (b == "ctr_right_trigger")
-	{
-		this->ctr_rtg = control;
-		return true;
-	}
+    if (b == "ctr_a")
+    {
+        this->ctr_a = control;
+        return true;
+    };
+    if (b == "ctr_b")
+    {
+        this->ctr_b = control;
+        return true;
+    };
+    if (b == "ctr_x")
+    {
+        this->ctr_x = control;
+        return true;
+    };
+    if (b == "ctr_y")
+    {
+        this->ctr_y = control;
+        return true;
+    };
+    //
+    if (b == "ctr_left_stick")
+    {
+        this->ctr_lst = control;
+        return true;
+    };
+    if (b == "ctr_right_stick")
+    {
+        this->ctr_rst = control;
+        return true;
+    };
+    //
+    if (b == "ctr_left_shoulder")
+    {
+        this->ctr_lsr = control;
+        return true;
+    };
+    if (b == "ctr_right_shoulder")
+    {
+        this->ctr_rsr = control;
+        return true;
+    };
+    //
+    if (b == "ctr_left_trigger")
+    {
+        this->ctr_ltg = control;
+        return true;
+    };
+    if (b == "ctr_right_trigger")
+    {
+        this->ctr_rtg = control;
+        return true;
+    };
 
-	return false;
+    return false;
 }
 
+//
+// Display help
+//
+void showHelp(const char *executableName)
+{
+    printf("\n");
+    printf("Usage: %s [options]\n", executableName);
+    printf("Options:\n\n");
+    printf("** Abuse Options **\n");
+    printf("  -size <arg>       Set the size of the screen\n");
+    printf("  -edit             Startup in editor mode\n");
+    printf("  -a <arg>          Use addon named <arg>\n");
+    printf("  -f <arg>          Load map file named <arg>\n");
+    printf("  -lisp             Startup in lisp interpreter mode\n");
+    printf("  -nodelay          Run at maximum speed\n");
+    printf("\n");
+    printf("** Abuse-SDL Options **\n");
+    printf("  -datadir <arg>    Set the location of the game data to <arg>\n");
+    printf("  -fullscreen       Enable fullscreen mode\n");
+    printf("  -antialias        Enable anti-aliasing\n");
+    printf("  -h, --help        Display this text\n");
+    printf("  -mono             Disable stereo sound\n");
+    printf("  -nosound          Disable sound\n");
+    printf("  -scale <arg>      Scale to <arg>\n");
+    // printf( "  -x <arg>          Set the width to <arg>\n" );
+    // printf( "  -y <arg>          Set the height to <arg>\n" );
+}
+
+//
+// Parse the command-line parameters
+//
 void parseCommandLine(int argc, char **argv)
 {
-	for (int i = 1; i < argc; i++)
-	{
-		if (!strcasecmp(argv[i], "-remote_save"))
-		{
-			settings.local_save = false;
-		}		
-	}
+    // this is called after settings.ReadConfigFile(), so we can override stuff via console
+
+    for (int i = 1; i < argc; i++)
+    {
+        if (!strcasecmp(argv[i], "-remote_save"))
+        {
+            settings.local_save = false;
+        }
+        if (!strcasecmp(argv[i], "-fullscreen"))
+        {
+            settings.fullscreen = 1;
+        }
+        else if (!strcasecmp(argv[i], "-size"))
+        {
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &xres))
+            {
+                xres = 320;
+            }
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &yres))
+            {
+                yres = 200;
+            }
+        }
+        else if (!strcasecmp(argv[i], "-nosound"))
+        {
+            settings.no_sound = 1;
+        }
+        else if (!strcasecmp(argv[i], "-antialias"))
+        {
+            settings.linear_filter = 1;
+        }
+        else if (!strcasecmp(argv[i], "-mono"))
+        {
+            settings.mono = 1;
+        }
+        else if (!strcasecmp(argv[i], "-datadir"))
+        {
+            char datadir[255];
+            if (i + 1 < argc && sscanf(argv[++i], "%s", datadir))
+            {
+                set_filename_prefix(datadir);
+            }
+        }
+        else if (!strcasecmp(argv[i], "-h") || !strcasecmp(argv[i], "--help"))
+        {
+            showHelp(argv[0]);
+            exit(EXIT_SUCCESS);
+        }
+    }
 }
 
+//
+// Setup SDL and configuration
+//
 void setup(int argc, char **argv)
 {
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
-	{
-		show_startup_error("Unable to initialize SDL : %s\n", SDL_GetError());
-		exit(1);
-	}
-	atexit(SDL_Quit);
+    // Initialize SDL with video and audio support
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) < 0)
+    {
+        show_startup_error("Unable to initialize SDL : %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+    atexit(SDL_Quit);
 
-	const char *prefPath = SDL_GetPrefPath("abuse", "data");
+    const char *prefPath = SDL_GetPrefPath("abuse", ".");
 
-	if (prefPath == nullptr)
-	{
-		printf("WARNING: Unable to get save directory path: %s\n", SDL_GetError());
-		printf("         Savegames will use current directory.\n");
-		set_save_filename_prefix("");
-	}
-	else
-	{
-		set_save_filename_prefix(prefPath);
-		SDL_free((void *)prefPath);
-	}
+    if (prefPath == NULL)
+    {
+        printf("WARNING: Unable to get save directory path: %s\n", SDL_GetError());
+        printf("         Savegames will use current directory.\n");
+        set_save_filename_prefix("");
+    }
+    else
+    {
+        set_save_filename_prefix(prefPath);
+        SDL_free((void *)prefPath);
+    }
 
-	printf("Data override %s\n", get_save_filename_prefix());
+    printf("Data override %s\n", get_save_filename_prefix());
 
 #ifdef __APPLE__
-	UInt8 buffer[255];
-	CFURLRef bundleurl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
-	CFURLRef url = CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault,
-														bundleurl,
-														CFSTR("Contents/Resources/data"),
-														true);
+    UInt8 buffer[255];
+    CFURLRef bundleurl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+    CFURLRef url =
+        CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, bundleurl, CFSTR("Contents/Resources/data"), true);
 
-	if (!CFURLGetFileSystemRepresentation(url, true, buffer, 255))
-	{
-		CFRelease(url);
-		CFRelease(bundleurl);
-		exit(1);
-	}
-
-	printf("Data path [%s]\n", (const char *)buffer);
-	set_filename_prefix((const char *)buffer);
-
-	CFRelease(url);
-	CFRelease(bundleurl);
+    if (!CFURLGetFileSystemRepresentation(url, true, buffer, 255))
+    {
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("Data path [%s]\n", buffer);
+        set_filename_prefix((const char *)buffer);
+    }
 #elif defined WIN32
-	char assetDirName[MAX_PATH];
-	GetModuleFileName(NULL, assetDirName, MAX_PATH);
-	size_t cut_at = -1;
-	for (size_t i = 0; assetDirName[i] != '\0'; i++)
-	{
-		if (assetDirName[i] == '\\' || assetDirName[i] == '/')
-		{
-			cut_at = i;
-		}
-	}
-	if (cut_at >= 0)
-		assetDirName[cut_at] = '\0';
-	printf("Data path %s\n", assetDirName);
-	set_filename_prefix(assetDirName);
+    char assetDirName[MAX_PATH];
+    GetModuleFileName(NULL, assetDirName, MAX_PATH);
+    size_t cut_at = -1;
+    for (size_t i = 0; assetDirName[i] != '\0'; i++)
+    {
+        if (assetDirName[i] == '\\' || assetDirName[i] == '/')
+        {
+            cut_at = i;
+        }
+    }
+    if (cut_at >= 0)
+        assetDirName[cut_at] = '\0';
+    printf("Data path %s\n", assetDirName);
+    set_filename_prefix(assetDirName);
 #else
-	set_filename_prefix(ASSETDIR);
-	printf("Data path %s\n", ASSETDIR);
+    set_filename_prefix(ASSETDIR);
+    printf("Data path %s\n", ASSETDIR);
 #endif
 
-	if (getenv("ABUSE_PATH"))
-		set_filename_prefix(getenv("ABUSE_PATH"));
-	if (getenv("ABUSE_SAVE_PATH"))
-		set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
+    if (getenv("ABUSE_PATH"))
+        set_filename_prefix(getenv("ABUSE_PATH"));
+    if (getenv("ABUSE_SAVE_PATH"))
+        set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
 
-	// Process any command-line arguments that might override settings
-	parseCommandLine(argc, argv);
+    // Process any command-line arguments that might override settings
+    parseCommandLine(argc, argv);
 
-	// Load the user's configuration file from the save directory
-	settings.ReadConfigFile();
+    // Load the user's configuration file from the save directory
+    settings.ReadConfigFile();
 
-	// Initialize audio volumes from settings
-	// These variables are defined externally in loader.cpp
-	sfx_volume = settings.volume_sound;
-	music_volume = settings.volume_music;
+    // Initialize audio volumes from settings
+    // These variables are defined externally in loader.cpp
+    scale = settings.scale;
+    xres = settings.xres;
+    yres = settings.yres;
+    sfx_volume = settings.volume_sound;
+    music_volume = settings.volume_music;
 }
 
 int get_key_binding(char const *dir, int i)
 {
-	if (strcasecmp(dir, "left") == 0)
-		return settings.left;
-	else if (strcasecmp(dir, "right") == 0)
-		return settings.right;
-	else if (strcasecmp(dir, "up") == 0)
-		return settings.up;
-	else if (strcasecmp(dir, "down") == 0)
-		return settings.down;
-	else if (strcasecmp(dir, "left2") == 0)
-		return settings.left_2;
-	else if (strcasecmp(dir, "right2") == 0)
-		return settings.right_2;
-	else if (strcasecmp(dir, "up2") == 0)
-		return settings.up_2;
-	else if (strcasecmp(dir, "down2") == 0)
-		return settings.down_2;
-	else if (strcasecmp(dir, "b1") == 0)
-		return settings.b1;
-	else if (strcasecmp(dir, "b2") == 0)
-		return settings.b2;
-	else if (strcasecmp(dir, "b3") == 0)
-		return settings.b3;
-	else if (strcasecmp(dir, "b4") == 0)
-		return settings.b4;
-	else if (strcasecmp(dir, "bt") == 0)
-		return settings.bt;
+    if (strcasecmp(dir, "left") == 0)
+        return settings.left;
+    else if (strcasecmp(dir, "right") == 0)
+        return settings.right;
+    else if (strcasecmp(dir, "up") == 0)
+        return settings.up;
+    else if (strcasecmp(dir, "down") == 0)
+        return settings.down;
+    else if (strcasecmp(dir, "left2") == 0)
+        return settings.left_2;
+    else if (strcasecmp(dir, "right2") == 0)
+        return settings.right_2;
+    else if (strcasecmp(dir, "up2") == 0)
+        return settings.up_2;
+    else if (strcasecmp(dir, "down2") == 0)
+        return settings.down_2;
+    else if (strcasecmp(dir, "b1") == 0)
+        return settings.b1;
+    else if (strcasecmp(dir, "b2") == 0)
+        return settings.b2;
+    else if (strcasecmp(dir, "b3") == 0)
+        return settings.b3;
+    else if (strcasecmp(dir, "b4") == 0)
+        return settings.b4;
 
-	return 0;
+    return 0;
 }
 
+//AR controller
 std::string get_ctr_binding(std::string c)
 {
-	if (c == "ctr_a")
-		return settings.ctr_a;
-	else if (c == "ctr_b")
-		return settings.ctr_b;
-	else if (c == "ctr_x")
-		return settings.ctr_x;
-	else if (c == "ctr_y")
-		return settings.ctr_y;
-	else if (c == "ctr_lst")
-		return settings.ctr_lst;
-	else if (c == "ctr_rst")
-		return settings.ctr_rst;
-	else if (c == "ctr_lsr")
-		return settings.ctr_lsr;
-	else if (c == "ctr_rsh")
-		return settings.ctr_rsr;
-	else if (c == "ctr_ltg")
-		return settings.ctr_ltg;
-	else if (c == "ctr_rtg")
-		return settings.ctr_rtg;
+    if (c == "ctr_a")
+        return settings.ctr_a;
+    else if (c == "ctr_b")
+        return settings.ctr_b;
+    else if (c == "ctr_x")
+        return settings.ctr_x;
+    else if (c == "ctr_y")
+        return settings.ctr_y;
+    //
+    else if (c == "ctr_lst")
+        return settings.ctr_lst;
+    else if (c == "ctr_rst")
+        return settings.ctr_rst;
+    //
+    else if (c == "ctr_lsr")
+        return settings.ctr_lsr;
+    else if (c == "ctr_rsh")
+        return settings.ctr_rsr;
+    //
+    else if (c == "ctr_ltg")
+        return settings.ctr_ltg;
+    else if (c == "ctr_rtg")
+        return settings.ctr_rtg;
 
-	return "";
+    return "";
 }

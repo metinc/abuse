@@ -12,7 +12,9 @@
 #define __LISP_HPP_
 
 #include <cstdlib>
-#include <stdint.h>
+#include <cstdint>
+
+#include "funcs.h"
 
 #ifdef L_PROFILE
 #include "timing.h"
@@ -21,12 +23,8 @@
 #define Cell void
 #define MAX_LISP_TOKEN_LEN 200
 
-#define FIXED_TRIG_SIZE 360               // 360 degrees stored in table
-extern int32_t sin_table[FIXED_TRIG_SIZE];   // this should be filled in by external module
-#define TBS 1662                          // atan table granularity
-extern uint16_t atan_table[TBS];
-#define NILP(x) ((x)==NULL)
-#define DEFINEDP(x) ((x)!=l_undefined)
+#define NILP(x) ((x) == NULL)
+#define DEFINEDP(x) ((x) != l_undefined)
 class bFILE;
 extern bFILE *current_print_file;
 
@@ -132,7 +130,7 @@ struct LString : LObject
     char *GetString();
 
     /* Members */
-private:
+  private:
     char m_str[1]; /* Can be allocated much larger than 1 */
 };
 
@@ -189,13 +187,16 @@ struct LArray : LObject
     static LArray *Create(size_t len, void *rest);
 
     /* Methods */
-    inline LObject **GetData() { return m_data; }
+    inline LObject **GetData()
+    {
+        return m_data;
+    }
     LObject *Get(int x);
 
     /* Members */
     size_t m_len;
 
-private:
+  private:
     LObject *m_data[1]; /* Can be allocated much larger than 1 */
 };
 
@@ -231,7 +232,7 @@ struct LFixedPoint : LObject
 
 class Lisp
 {
-public:
+  public:
     static void Init();
     static void Uninit();
 
@@ -240,7 +241,7 @@ public:
     // Collect temporary or permanent spaces
     static void CollectSpace(LSpace *which_space, int grow);
 
-private:
+  private:
     static LArray *CollectArray(LArray *x);
     static LList *CollectList(LList *x);
     static LObject *CollectObject(LObject *x);
@@ -248,30 +249,20 @@ private:
     static void CollectStacks();
 };
 
-static inline LObject *&CAR(void *x) { return ((LList *)x)->m_car; }
-static inline LObject *&CDR(void *x) { return ((LList *)x)->m_cdr; }
-
-#ifdef __GNUC__
-/*
- * C++ spec says "this" is always NON-NULL, recent versions of gcc will warn
- * about this and optimizes the "if (this)" we use in some places away:
- * "warning: nonnull argument ‘this’ compared to NULL [-Wnonnull-compare]"
- * We rely on "if (this)" checks in several places and refactoring this is
- * non trivial. So we use this little helper marked with
- * __attribute__((optimize("O0"))) to workaround this.
- */
-static inline bool __attribute__((optimize("O0"))) ptr_is_null(void *ptr)
+static inline LObject *&CAR(void *x)
 {
-    return ptr == NULL;
+    return ((LList *)x)->m_car;
 }
-#else
-static inline bool ptr_is_null(void *ptr)
+static inline LObject *&CDR(void *x)
 {
-    return ptr == NULL;
+    return ((LList *)x)->m_cdr;
 }
-#endif
-
-static inline ltype item_type(void *x) { if (!ptr_is_null(x)) return *(ltype *)x; return L_CONS_CELL; }
+static inline ltype item_type(void *x)
+{
+    if (x)
+        return *(ltype *)x;
+    return L_CONS_CELL;
+}
 
 void perm_space();
 void tmp_space();
@@ -288,13 +279,12 @@ void resize_tmp(size_t new_size);
 void resize_perm(size_t new_size);
 
 void push_onto_list(void *object, void *&list);
+extern LSymbol *add_sys_function(char const *name, short min_args, short max_args, SysFunc number);
 LSymbol *add_c_object(void *symbol, int index);
-LSymbol *add_c_function(char const *name, short min_args, short max_args, short number);
-LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, short number);
-LSymbol *add_lisp_function(char const *name, short min_args, short max_args, short number);
+extern LSymbol *add_c_function(char const *name, short min_args, short max_args, CFunc number);
+extern LSymbol *add_c_bool_fun(char const *name, short min_args, short max_args, CFunc number);
+extern LSymbol *add_lisp_function(char const *name, short min_args, short max_args, LispFunc number);
 int read_ltoken(char *&s, char *buffer);
-void print_trace_stack(int max_levels);
-
 
 LSysFunction *new_lisp_sys_function(int min_args, int max_args, int fun_number);
 LSysFunction *new_lisp_c_function(int min_args, int max_args, int fun_number);
@@ -311,21 +301,28 @@ int32_t lisp_atan2(int32_t dy, int32_t dx);
 int32_t lisp_sin(int32_t x);
 int32_t lisp_cos(int32_t x);
 
-extern "C" {
-void lbreak(const char *format, ...);
-} ;
+extern "C"
+{
+    void lbreak(const char *format, ...);
+};
 
-extern void clisp_init();                      // external initalizer call by lisp_init()
-extern long c_caller(long number, void *arg);  // exten c function switches on number
-extern void *l_caller(long number, void *arg);  // exten lisp function switches on number
+extern void clisp_init(); // external initalizer call by lisp_init()
+extern long c_caller(CFunc number, void *arg); // exten c function switches on number
+extern void *l_caller(LispFunc number, void *arg); // exten lisp function switches on number
 
-extern void *l_obj_get(long number);  // exten lisp function switches on number
-extern void l_obj_set(long number, void *arg);  // exten lisp function switches on number
-extern void l_obj_print(long number);  // exten lisp function switches on number
+extern void *l_obj_get(long number); // exten lisp function switches on number
+extern void l_obj_set(long number, void *arg); // exten lisp function switches on number
+extern void l_obj_print(long number); // exten lisp function switches on number
 
 // FIXME: get rid of this later
-static inline LObject *symbol_value(void *sym) { return ((LSymbol *)sym)->GetValue(); }
-static inline char *lstring_value(void *str) { return ((LString *)str)->GetString(); }
+static inline LObject *symbol_value(void *sym)
+{
+    return ((LSymbol *)sym)->GetValue();
+}
+static inline char *lstring_value(void *str)
+{
+    return ((LString *)str)->GetString();
+}
 
 #include "lisp_opt.h"
 

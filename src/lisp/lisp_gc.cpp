@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdlib.h>
@@ -56,7 +56,7 @@ LList *Lisp::CollectList(LList *x)
 {
     LList *prev = NULL, *first = NULL;
 
-    for (; x && item_type(x) == L_CONS_CELL; )
+    for (; x && item_type(x) == L_CONS_CELL;)
     {
         LList *p = LList::Create();
         LObject *old_car = x->m_car;
@@ -83,7 +83,7 @@ LObject *Lisp::CollectObject(LObject *x)
 {
     LObject *ret = x;
 
-    maxgcdepth = Max(maxgcdepth, ++gcdepth);
+    maxgcdepth = std::max(maxgcdepth, ++gcdepth);
 
     if ((uint8_t *)x >= cstart && (uint8_t *)x < cend)
     {
@@ -96,12 +96,10 @@ LObject *Lisp::CollectObject(LObject *x)
             ret = LNumber::Create(((LNumber *)x)->m_num);
             break;
         case L_SYS_FUNCTION:
-            ret = new_lisp_sys_function(((LSysFunction *)x)->min_args,
-                                        ((LSysFunction *)x)->max_args,
+            ret = new_lisp_sys_function(((LSysFunction *)x)->min_args, ((LSysFunction *)x)->max_args,
                                         ((LSysFunction *)x)->fun_number);
             break;
-        case L_USER_FUNCTION:
-        {
+        case L_USER_FUNCTION: {
             LUserFunction *fun = (LUserFunction *)x;
             LList *arg = (LList *)CollectObject(fun->arg_list);
             LList *block = (LList *)CollectObject(fun->block_list);
@@ -115,18 +113,15 @@ LObject *Lisp::CollectObject(LObject *x)
             ret = LChar::Create(((LChar *)x)->m_ch);
             break;
         case L_C_FUNCTION:
-            ret = new_lisp_c_function(((LSysFunction *)x)->min_args,
-                                      ((LSysFunction *)x)->max_args,
+            ret = new_lisp_c_function(((LSysFunction *)x)->min_args, ((LSysFunction *)x)->max_args,
                                       ((LSysFunction *)x)->fun_number);
             break;
         case L_C_BOOL:
-            ret = new_lisp_c_bool(((LSysFunction *)x)->min_args,
-                                  ((LSysFunction *)x)->max_args,
+            ret = new_lisp_c_bool(((LSysFunction *)x)->min_args, ((LSysFunction *)x)->max_args,
                                   ((LSysFunction *)x)->fun_number);
             break;
         case L_L_FUNCTION:
-            ret = new_user_lisp_function(((LSysFunction *)x)->min_args,
-                                         ((LSysFunction *)x)->max_args,
+            ret = new_user_lisp_function(((LSysFunction *)x)->min_args, ((LSysFunction *)x)->max_args,
                                          ((LSysFunction *)x)->fun_number);
             break;
         case L_POINTER:
@@ -148,6 +143,7 @@ LObject *Lisp::CollectObject(LObject *x)
             ret = ((LRedirect *)x)->m_ref;
             break;
         default:
+            x->Print();
             lbreak("error: collecting bad object 0x%x\n", item_type(x));
             break;
         }
@@ -197,7 +193,7 @@ void Lisp::CollectStacks()
     {
         void **ptr = *d2;
         *ptr = CollectObject((LObject *)*ptr);
-    }    
+    }
 }
 
 void Lisp::CollectSpace(LSpace *which_space, int grow)
@@ -231,4 +227,3 @@ void Lisp::CollectSpace(LSpace *which_space, int grow)
 
     LSpace::Current = sp;
 }
-

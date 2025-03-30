@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Abuse
+Comment=Run and gun game
+Exec=usr/bin/abuse
+Icon=abuse
+Terminal=false
+Type=Application
+Categories=Game;ActionGame;
+Version=1.0

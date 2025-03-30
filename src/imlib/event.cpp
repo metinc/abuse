@@ -19,7 +19,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -27,6 +27,7 @@
 #include "event.h"
 #include "video.h"
 #include "filter.h"
+#include <SDL2/SDL_timer.h>
 
 //
 // Constructor
@@ -47,23 +48,13 @@ EventHandler::EventHandler(image *screen, palette *pal)
     //
 
     CHECK(screen && pal);
-    
+
     m_screen = screen;
 
     // Mouse stuff
-    uint8_t mouse_sprite[]=
-    {
-        0, 2, 0, 0, 0, 0, 0, 0,
-        2, 1, 2, 0, 0, 0, 0, 0,
-        2, 1, 1, 2, 0, 0, 0, 0,
-        2, 1, 1, 1, 2, 0, 0, 0,
-        2, 1, 1, 1, 1, 2, 0, 0,
-        2, 1, 1, 1, 1, 1, 2, 0,
-        0, 2, 1, 1, 2, 2, 0, 0,
-        0, 0, 2, 1, 1, 2, 0, 0,
-        0, 0, 2, 1, 1, 2, 0, 0,
-        0, 0, 0, 2, 2, 0, 0, 0
-    };
+    uint8_t mouse_sprite[] = {0, 2, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1,
+                              1, 2, 0, 0, 0, 2, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2,
+                              0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0};
 
     Filter f;
     f.Set(1, pal->brightest(1));
@@ -84,26 +75,25 @@ EventHandler::EventHandler(image *screen, palette *pal)
 // Destructor
 //
 EventHandler::~EventHandler()
-{    
+{
     if (m_sprite)
-        delete m_sprite;    
+        delete m_sprite;
 }
 
 void EventHandler::Get(Event &ev)
 {
     // Sleep until there are events available
-    while(!m_pending)
+    while (!m_pending)
     {
-        Timer tmp;
         IsPending();
 
         if (!m_pending)
-            tmp.WaitMs(1);
+            SDL_Delay(1);
     }
 
     // Return first queued event if applicable
     Event *ep = (Event *)m_events.first();
-    if(ep)
+    if (ep)
     {
         ev = *ep;
         m_events.unlink(ep);

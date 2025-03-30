@@ -17,32 +17,47 @@
 
 class spec_directory_cache
 {
-  class filename_node
-  {
-    public :
-    filename_node *left,*right,*next;
-    char *fn;
-    spec_directory *sd;
-    char *filename() { return fn; }
-    filename_node(char const *filename, spec_directory *dir)
+    class filename_node
     {
-      fn = strdup(filename);
-      sd = dir;
-      next = left = right = 0;
-    }
+      public:
+        filename_node *left, *right, *next;
+        char *fn;
+        spec_directory *sd;
+        char *filename()
+        {
+            return fn;
+        }
+        filename_node(char const *filename, spec_directory *dir)
+        {
+            fn = strdup(filename);
+            sd = dir;
+            next = left = right = 0;
+        }
+        long size;
+        ~filename_node()
+        {
+            free(fn);
+            delete sd;
+        }
+    } *fn_root, *fn_list;
+    void clear(filename_node *f); // private recursive member
     long size;
-    ~filename_node() { free(fn); delete sd; }
-  } *fn_root,*fn_list;
-  void clear(filename_node *f); // private recursive member
-  long size;
-  public :
-  spec_directory *get_spec_directory(char const *filename, bFILE *fp=NULL);
-  spec_directory_cache() { fn_root=0; size=0; }
-  void clear();                             // frees up all allocated memory
-  void load(bFILE *fp);
-  void save(bFILE *fp);
-  ~spec_directory_cache() { clear(); }
-} ;
+
+  public:
+    spec_directory *get_spec_directory(char const *filename, bFILE *fp = NULL);
+    spec_directory_cache()
+    {
+        fn_root = 0;
+        size = 0;
+    }
+    void clear(); // frees up all allocated memory
+    void load(bFILE *fp);
+    void save(bFILE *fp);
+    ~spec_directory_cache()
+    {
+        clear();
+    }
+};
 
 extern spec_directory_cache sd_cache;
 

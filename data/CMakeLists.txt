@@ -1,6 +1,7 @@
 INSTALL(FILES
     abuse.lsp
-    edit.lsp    
+    edit.lsp
+    icon.bmp
 DESTINATION ${ASSETDIR})
 
 # No idea what this was for
@@ -20,7 +21,6 @@ INSTALL(FILES
     lisp/general.lsp
     lisp/german.lsp
     lisp/guns.lsp
-    lisp/input.lsp
     lisp/jugger.lsp
     lisp/ladder.lsp
     lisp/language.lsp
@@ -352,9 +352,9 @@ INSTALL(FILES
     addon/twist/readme.txt
 DESTINATION ${ASSETDIR}/addon/twist)
 
-# INSTALL(FILES
-#     user/defaults.prp
-# DESTINATION ${ASSETDIR})
+INSTALL(FILES
+    user/defaults.prp
+DESTINATION ${ASSETDIR})
 
 # Check if we have the non-free data
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/soundfonts)
@@ -445,4 +445,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/sfx)
     DESTINATION ${ASSETDIR}/addon/twist/sfx)
 else()
     message(WARNING "Non-free sound effects not found, sound will not be enabled.")
+endif()
+
+if(WIN32)
+    add_custom_target(copy_assets ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}"
+            "${CMAKE_CURRENT_BINARY_DIR}/../src"
+        COMMENT "Copying assets to the build directory from ${CMAKE_CURRENT_SOURCE_DIR} to ${CMAKE_CURRENT_BINARY_DIR}/../src")
 endif()

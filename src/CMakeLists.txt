@@ -22,7 +22,6 @@ add_executable(abuse
     common.h
     file_utils.cpp file_utils.h
     lol/matrix.cpp lol/matrix.h
-    lol/timer.cpp lol/timer.h
     specache.cpp specache.h
     netcfg.cpp netcfg.h
     innet.cpp
@@ -44,8 +43,8 @@ add_executable(abuse
     property.cpp property.h
     cache.cpp cache.h
     particle.cpp particle.h
-    objects.cpp objects.h
-    extend.cpp extend.h
+    game_object.cpp game_object.h
+    simple_object.cpp simple_object.h
     console.cpp console.h
     ability.cpp ability.h
     items.cpp items.h
@@ -76,6 +75,10 @@ add_executable(abuse
     ${abuse_RESOURCE_FILES}
 )
 
+if(WIN32)
+    set_target_properties(abuse PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
+
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE true)
 # Note this doesn't install the icon, that's done later
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_ICON_FILE "abuse")
@@ -83,37 +86,37 @@ set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Abuse")
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING "${abuse_VERSION}")
 set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_VERSION "${abuse_VERSION}")
 
-target_link_libraries(abuse lisp)
-target_link_libraries(abuse sdlport)
-target_link_libraries(abuse imlib)
-target_link_libraries(abuse net)
-target_link_libraries(abuse SDL2::SDL2)
-target_link_libraries(abuse SDL2_mixer::SDL2_mixer)
+target_link_libraries(abuse
+    lisp
+    sdlport
+    imlib
+    net
+    SDL2::SDL2
+    SDL2_mixer::SDL2_mixer
+)
+
 if(OPENGL_FOUND)
     target_link_libraries(abuse ${OPENGL_LIBRARIES})
 endif(OPENGL_FOUND)
 
+add_executable(abuse-tool
+    file_utils.cpp file_utils.h
+	tool/abuse-tool.cpp
+	crc.cpp crc.h
+	tool/AR_SPEC.cpp tool/AR_SPEC.h
+	tool/AR_Help.cpp tool/AR_Help.h)
+
+target_link_libraries(abuse-tool imlib ${OpenCV_LIBS})
 
 if(APPLE)
     # Link CoreFoundation
     target_link_libraries(abuse "-framework CoreFoundation")
 endif()
 
-# add_executable(abuse-tool
-# 	tool/abuse-tool.cpp
-# 	crc.cpp crc.h
-# 	tool/AR_SPEC.cpp tool/AR_SPEC.h
-# 	tool/AR_Help.cpp tool/AR_Help.h)
-
 if(APPLE)
     # Link CoreFoundation
     target_link_libraries(abuse "-framework CoreFoundation")
 endif()
-
-# add_executable(abuse-tool tool/abuse-tool.cpp crc.cpp crc.h)
-
-
-# target_link_libraries(abuse-tool imlib)
 
 include_directories(
     ${abuse_SOURCE_DIR}/src
@@ -128,11 +131,44 @@ if(WIN32)
     install(TARGETS abuse
         RUNTIME DESTINATION "."
         LIBRARY DESTINATION ".")
-    # install(TARGETS abuse-tool
-    #     RUNTIME DESTINATION "."
-    #     LIBRARY DESTINATION ".")
-    install(FILES $<TARGET_FILE:SDL2::SDL2> DESTINATION ".")
-    install(FILES $<TARGET_FILE:SDL2_mixer::SDL2_mixer> DESTINATION ".")
+    
+    # Find SDL2 and SDL2_mixer DLLs using known bin path
+    find_program(SDL2_DLL_PATH SDL2.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(SDL2MIXER_DLL_PATH SDL2_mixer.dll HINTS "C:/msys64/mingw64/bin")
+    
+    message(STATUS "Found SDL2.dll at: ${SDL2_DLL_PATH}")
+    message(STATUS "Found SDL2_mixer.dll at: ${SDL2MIXER_DLL_PATH}")
+    
+    install(FILES ${SDL2_DLL_PATH} DESTINATION ".")
+    install(FILES ${SDL2MIXER_DLL_PATH} DESTINATION ".")
+    
+    # Find additional required DLLs using known bin path
+    find_program(LIBGCC_DLL_PATH libgcc_s_seh-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBSTDCXX_DLL_PATH libstdc++-6.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBMODPLUG_DLL_PATH libmodplug-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBMPG123_DLL_PATH libmpg123-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBWINPTHREAD_DLL_PATH libwinpthread-1.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOPUSFILE_DLL_PATH libopusfile-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOPUS_DLL_PATH libopus-0.dll HINTS "C:/msys64/mingw64/bin")
+    find_program(LIBOGG_DLL_PATH libogg-0.dll HINTS "C:/msys64/mingw64/bin")
+    
+    message(STATUS "Found libgcc_s_seh-1.dll at: ${LIBGCC_DLL_PATH}")
+    message(STATUS "Found libstdc++-6.dll at: ${LIBSTDCXX_DLL_PATH}")
+    message(STATUS "Found libmodplug-1.dll at: ${LIBMODPLUG_DLL_PATH}")
+    message(STATUS "Found libmpg123-0.dll at: ${LIBMPG123_DLL_PATH}")
+    message(STATUS "Found libwinpthread-1.dll at: ${LIBWINPTHREAD_DLL_PATH}")
+    message(STATUS "Found libopusfile-0.dll at: ${LIBOPUSFILE_DLL_PATH}")
+    message(STATUS "Found libopus-0.dll at: ${LIBOPUS_DLL_PATH}")
+    message(STATUS "Found libogg-0.dll at: ${LIBOGG_DLL_PATH}")
+    
+    install(FILES ${LIBGCC_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBSTDCXX_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBMODPLUG_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBMPG123_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBWINPTHREAD_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOPUSFILE_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOPUS_DLL_PATH} DESTINATION ".")
+    install(FILES ${LIBOGG_DLL_PATH} DESTINATION ".")
 else()
     # Under Linux, we want the tools in bin
     install(TARGETS abuse RUNTIME DESTINATION bin

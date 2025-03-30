@@ -16,793 +16,746 @@
 
 #include "file_utils.h"
 #include "tcpip.h"
+#include <cctype>
 
-#ifdef WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iphlpapi.h>
-#pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "iphlpapi.lib")
-#else
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
 #include <ifaddrs.h>
-#include <unistd.h>
-#endif
-
-typedef int socket_t;
-
-// Platform-specific definitions
+#include <arpa/inet.h>
 #ifdef WIN32
-#define SOCK_CLOSE closesocket
-#define SOCK_IOCTL ioctlsocket
-#define INVALID_SOCKET_VALUE INVALID_SOCKET
-#define SOCKET_ERROR WSAGetLastError()
-#else
-#define SOCK_CLOSE close
-#define SOCK_IOCTL ioctl
-#define INVALID_SOCKET_VALUE -1
-#define SOCKET_ERROR errno
+#include <iphlpapi.h>
+#pragma comment(lib, "iphlpapi.lib")
 #endif
 
 // Global instances
 static FILE *log_file = nullptr;
 extern int net_start();
 
-#ifdef WIN32
-// Windows initialization
-class WinSockInitializer
-{
-public:
-  WinSockInitializer()
-  {
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-    {
-      DEBUG_LOG("Failed to initialize WinSock\n");
-    }
-  }
-  ~WinSockInitializer()
-  {
-    WSACleanup();
-  }
-};
-static WinSockInitializer winsock_init;
-#endif
-
 // Logging utilities
-static void net_log(const char *st, const void *buf, const long size)
-{  
-#ifdef TCPIP_DEBUG
-  if (!log_file)
-  {
-    log_file = prefix_fopen(net_start() ? "abuseclient.log" : "abuseserver.log", "wb");
-    if (!log_file) {
-      DEBUG_LOG("Failed to open log file\n");
-      return;
+static void net_log(const char *st, void *buf, const long size)
+{
+    if (!log_file)
+    {
+        log_file = prefix_fopen(net_start() ? "abuseclient.log" : "abuseserver.log", "wb");
     }
-  }
 
-  fprintf(log_file, "%s%ld - ", st, size);
+    fprintf(log_file, "%s%ld - ", st, size);
 
-  // Print readable characters
-  for (int i = 0; i < size; i++)
-  {
-    const unsigned char c = *((const unsigned char *)buf + i);
-    fprintf(log_file, "%c", isprint(c) ? c : '~');
-  }
+    // Print readable characters
+    for (int i = 0; i < size; i++)
+    {
+        const unsigned char c = *((unsigned char *)buf + i);
+        fprintf(log_file, "%c", isprint(c) ? c : '~');
+    }
 
-  fprintf(log_file, " : ");
+    fprintf(log_file, " : ");
 
-  // Print hex values
-  for (int i = 0; i < size; i++)
-  {
-    fprintf(log_file, "%02x, ", *((unsigned char *)buf + i));
-  }
+    // Print hex values
+    for (int i = 0; i < size; i++)
+    {
+        fprintf(log_file, "%02x, ", *((unsigned char *)buf + i));
+    }
 
-  fprintf(log_file, "\n");
-  fflush(log_file);
-#endif
+    fprintf(log_file, "\n");
+    fflush(log_file);
 }
 
 // ip_address implementation
 ip_address::ip_address(const sockaddr_in *addr)
 {
-  memcpy(&this->addr, addr, sizeof(this->addr));
+    memcpy(&this->addr, addr, sizeof(this->addr));
 }
 
 net_address::protocol ip_address::protocol_type() const
 {
-  return IP;
+    return IP;
 }
 
 int ip_address::equal(const net_address *who) const
 {
-  if (who->protocol_type() != IP)
-    return 0;
-  return !memcmp(&addr.sin_addr, &((ip_address const *)who)->addr.sin_addr, sizeof(addr.sin_addr));
+    if (who->protocol_type() != IP)
+        return 0;
+    return !memcmp(&addr.sin_addr, &((ip_address const *)who)->addr.sin_addr, sizeof(addr.sin_addr));
 }
 
 int ip_address::set_port(int port)
 {
-  addr.sin_port = htons(port);
-  return 1;
+    addr.sin_port = htons(port);
+    return 1;
 }
 
 void ip_address::print()
 {
-  const unsigned char *c = (unsigned char *)&addr.sin_addr.s_addr;
-  DEBUG_LOG("%d.%d.%d.%d", c[0], c[1], c[2], c[3]);
+    const unsigned char *c = (unsigned char *)&addr.sin_addr.s_addr;
+    DEBUG_LOG("%d.%d.%d.%d", c[0], c[1], c[2], c[3]);
 }
 
 int ip_address::get_port()
 {
-  return htons(addr.sin_port);
+    return htons(addr.sin_port);
 }
 
 net_address *ip_address::copy()
 {
-  return new ip_address(&addr);
+    return new ip_address(&addr);
 }
 
 void ip_address::store_string(char *st, const int st_length)
 {
-  char buf[100];
-  const unsigned char *c = (unsigned char *)&addr.sin_addr.s_addr;
-  snprintf(buf, sizeof(buf), "%d.%d.%d.%d:%d", c[0], c[1], c[2], c[3], htons(addr.sin_port));
-  strncpy(st, buf, st_length);
-  st[st_length - 1] = 0;
+    char buf[100];
+    const unsigned char *c = (unsigned char *)&addr.sin_addr.s_addr;
+    snprintf(buf, sizeof(buf), "%d.%d.%d.%d:%d", c[0], c[1], c[2], c[3], htons(addr.sin_port));
+    strncpy(st, buf, st_length);
+    st[st_length - 1] = 0;
 }
 
 // unix_fd implementation
 unix_fd::~unix_fd()
 {
-  unix_fd::read_unselectable();
-  unix_fd::write_unselectable();
-
-  SOCK_CLOSE(fd);
+    unix_fd::read_unselectable();
+    unix_fd::write_unselectable();
+#ifdef WIN32
+    closesocket(fd);
+#else
+    close(fd);
+#endif
 }
 
 int unix_fd::ready_to_write()
 {
-  timeval tv = {0, 0};
-  fd_set write_check;
-  FD_ZERO(&write_check);
-  FD_SET(fd, &write_check);
-  select(FD_SETSIZE, nullptr, &write_check, nullptr, &tv);
-  return FD_ISSET(fd, &write_check);
+    timeval tv = {0, 0};
+    fd_set write_check;
+    FD_ZERO(&write_check);
+    FD_SET(fd, &write_check);
+    select(FD_SETSIZE, nullptr, &write_check, nullptr, &tv);
+    return FD_ISSET(fd, &write_check);
 }
 
 int unix_fd::write(void const *buf, int size, net_address *addr)
 {
-  net_log("unix_fd::write:", static_cast<const char *>(buf), size);
-  if (addr)
-  {
-    DEBUG_LOG("Cannot change address for this socket type\n");
-  }
-  return ::send(fd, static_cast<const char *>(buf), size, 0);
+    net_log("unix_fd::write:", (char *)buf, size);
+    if (addr)
+        DEBUG_LOG("Cannot change address for this socket type\n");
+#ifdef WIN32
+    return send(fd, (char *)buf, size, 0);
+#else
+    return ::write(fd, buf, size);
+#endif
 }
 
 int unix_fd::read(void *buf, int size, net_address **addr)
 {
-  int tr = ::recv(fd, static_cast<char *>(buf), size, 0);
-  net_log("unix_fd::read:", static_cast<const char *>(buf), tr);
-  if (addr) *addr = nullptr;
-  
-  return tr;
+    int tr = 0;
+#ifdef WIN32
+    tr = recv(fd, (char *)buf, size, 0);
+#else
+    tr = ::read(fd, buf, size);
+#endif
+    net_log("unix_fd::read:", buf, tr);
+    if (addr)
+        *addr = nullptr;
+    return tr;
 }
 
 void unix_fd::broadcastable() const
 {
-  constexpr int option = 1;
-  if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char *>(&option), sizeof(option)) < 0)
-  {
-    DEBUG_LOG("Could not set socket option broadcast");
-  }
+    constexpr int option = 1;
+    if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &option, sizeof(option)) < 0)
+    {
+        DEBUG_LOG("Could not set socket option broadcast");
+    }
 }
 
 // tcp_socket implementation
 int tcp_socket::listen(int port)
 {
-  // Disable Nagle's algorithm
-  int flag = 1;
-  if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-                 (const char *)&flag, sizeof(flag)) == -1)
-  {
-    DEBUG_LOG("Could not set TCP_NODELAY");
-    return 0;
-  }
+    sockaddr_in host{};
+    host.sin_family = AF_INET;
+    host.sin_port = htons(port);
+    host.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  // Allow quick restart after shutdown
-  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-                 (const char *)&flag, sizeof(flag)) == -1)
-  {
-    DEBUG_LOG("Could not set SO_REUSEADDR");
-    return 0;
-  }
+    if (bind(fd, (sockaddr *)&host, sizeof(host)) == -1)
+    {
+        DEBUG_LOG("Could not bind socket to port %d\n", port);
+        return 0;
+    }
 
-  // Keep-alive for detecting dead peers
-  if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
-                 (const char *)&flag, sizeof(flag)) == -1)
-  {
-    DEBUG_LOG("Could not set SO_KEEPALIVE");
-    return 0;
-  }
-  
-  sockaddr_in host{};
-  host.sin_family = AF_INET;
-  host.sin_port = htons(port);
-  host.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (::listen(fd, 5) == -1)
+    {
+        DEBUG_LOG("Could not listen to socket on port %d\n", port);
+        return 0;
+    }
 
-  if (bind(fd, (sockaddr *)&host, sizeof(host)) == -1)
-  {
-    DEBUG_LOG("Could not bind socket to port %d\n", port);
-    return 0;
-  }
-
-  if (::listen(fd, SOMAXCONN) == -1)
-  {
-    DEBUG_LOG("Could not listen to socket on port %d\n", port);
-    return 0;
-  }
-
-  listening = true;
-  return 1;
+    listening = true;
+    return 1;
 }
 
 net_socket *tcp_socket::accept(net_address *&addr)
 {
-  if (!listening)
-  {
+    if (!listening)
+    {
+        addr = nullptr;
+        return nullptr;
+    }
+
+    sockaddr_in from{};
+    socklen_t addr_len = sizeof(from);
+    const int new_fd = ::accept(fd, (sockaddr *)&from, &addr_len);
+
+    if (new_fd >= 0)
+    {
+        addr = new ip_address(&from);
+        return new tcp_socket(new_fd);
+    }
+
     addr = nullptr;
     return nullptr;
-  }
-
-  sockaddr_in from{};
-  socklen_t addr_len = sizeof(from);
-  const socket_t new_fd = ::accept(fd, (sockaddr *)&from, &addr_len);
-
-  if (new_fd != INVALID_SOCKET_VALUE)
-  {
-    addr = new ip_address(&from);
-    return new tcp_socket(new_fd);
-  }
-
-  addr = nullptr;
-  return nullptr;
 }
 
 // udp_socket implementation
 int udp_socket::read(void *buf, const int size, net_address **addr)
 {
-  sockaddr_in temp_addr{};
-  socklen_t addr_size = sizeof(sockaddr_in);
-  int bytes_received = recvfrom(fd, static_cast<char *>(buf), size, 0, (sockaddr *)&temp_addr, &addr_size);
-  if (bytes_received > 0 && addr)
-  {
-    *addr = new ip_address(&temp_addr);
-  }
-  return bytes_received;
+    if (addr)
+    {
+        *addr = new ip_address;
+        socklen_t addr_size = sizeof(sockaddr_in);
+        return recvfrom(fd, buf, size, 0, (sockaddr *)&((ip_address *)*addr)->addr, &addr_size);
+    }
+    return recv(fd, buf, size, 0);
 }
 
 int udp_socket::write(void const *buf, int size, net_address *addr)
 {
-  if (addr)
-  {
-    return sendto(fd, static_cast<const char *>(buf), size, 0,
-                  (sockaddr *)&((ip_address *)addr)->addr,
-                  sizeof(((ip_address *)addr)->addr));
-  }
-
-  return ::send(fd, static_cast<const char *>(buf), size, 0);
+    if (addr)
+    {
+        return sendto(fd, buf, size, 0, (sockaddr *)&((ip_address *)addr)->addr, sizeof(((ip_address *)addr)->addr));
+    }
+#ifdef WIN32
+    return send(fd, (char *)buf, size, 0);
+#else
+    return ::write(fd, buf, size);
+#endif
 }
 
 int udp_socket::listen(int port)
 {
-  sockaddr_in host{};
-  host.sin_family = AF_INET;
-  host.sin_port = htons(port);
-  host.sin_addr.s_addr = htonl(INADDR_ANY);
+    sockaddr_in host{};
+    host.sin_family = AF_INET;
+    host.sin_port = htons(port);
+    host.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  if (bind(fd, (sockaddr *)&host, sizeof(host)) == -1)
-  {
-    DEBUG_LOG("Could not bind socket to port %d\n", port);
-    return 0;
-  }
-  return 1;
+    if (bind(fd, (sockaddr *)&host, sizeof(host)) == -1)
+    {
+        DEBUG_LOG("Could not bind socket to port %d\n", port);
+        return 0;
+    }
+    return 1;
 }
 
 // tcpip_protocol implementation
 tcpip_protocol::tcpip_protocol()
 {
-  FD_ZERO(&master_set);
-  FD_ZERO(&master_write_set);
-  FD_ZERO(&read_set);
-  FD_ZERO(&exception_set);
-  FD_ZERO(&write_set);
+    FD_ZERO(&master_set);
+    FD_ZERO(&master_write_set);
+    FD_ZERO(&read_set);
+    FD_ZERO(&exception_set);
+    FD_ZERO(&write_set);
 }
 
 net_address *tcpip_protocol::get_local_address()
 {
-#ifdef WIN32
-  char host_name[256];
-  if (gethostname(host_name, sizeof(host_name)) == 0)
-  {
-    struct addrinfo hints = {}, *result = nullptr;
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    char my_name[100];
+    gethostname(my_name, sizeof(my_name));
 
-    if (getaddrinfo(host_name, nullptr, &hints, &result) == 0)
+    if (my_name[0] < '0' || my_name[0] > '9')
     {
-      for (struct addrinfo *ptr = result; ptr != nullptr; ptr = ptr->ai_next)
-      {
-        if (ptr->ai_family == AF_INET)
+        const hostent *l_hn = gethostbyname(my_name);
+        if (l_hn)
         {
-          sockaddr_in *ipv4 = (sockaddr_in *)ptr->ai_addr;
-          if (ipv4->sin_addr.s_addr != htonl(INADDR_LOOPBACK))
-          {
             auto *addr = new ip_address;
-            addr->addr = *ipv4;
-            freeaddrinfo(result);
+            memset(&addr->addr, 0, sizeof(addr->addr));
+            memcpy(&addr->addr.sin_addr, *l_hn->h_addr_list, 4);
             return addr;
-          }
         }
-      }
-      freeaddrinfo(result);
     }
-  }
+
+#ifdef WIN32
+    ULONG bufferSize = 15000;
+    PIP_ADAPTER_ADDRESSES adapterAddresses = (PIP_ADAPTER_ADDRESSES)malloc(bufferSize);
+
+    if (GetAdaptersAddresses(AF_INET, 0, nullptr, adapterAddresses, &bufferSize) == NO_ERROR)
+    {
+        for (PIP_ADAPTER_ADDRESSES adapter = adapterAddresses; adapter; adapter = adapter->Next)
+        {
+            for (PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress; unicast; unicast = unicast->Next)
+            {
+                sockaddr_in *sa_in = (sockaddr_in *)unicast->Address.lpSockaddr;
+                if (sa_in->sin_addr.S_un.S_addr != INADDR_LOOPBACK)
+                {
+                    auto *addr = new ip_address;
+                    addr->addr = *sa_in;
+                    free(adapterAddresses);
+                    return addr;
+                }
+            }
+        }
+    }
+    free(adapterAddresses);
 #else
-  struct ifaddrs *ifaddr, *ifa;
-  if (getifaddrs(&ifaddr) == -1)
-  {
-    return nullptr;
-  }
-
-  for (ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
-  {
-    if (ifa->ifa_addr == nullptr)
+    struct ifaddrs *ifaddr, *ifa;
+    if (getifaddrs(&ifaddr) == -1)
     {
-      continue;
+        return nullptr;
     }
 
-    if (ifa->ifa_addr->sa_family == AF_INET)
+    for (ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
     {
-      sockaddr_in *sa_in = (sockaddr_in *)ifa->ifa_addr;
-      if (sa_in->sin_addr.s_addr != htonl(INADDR_LOOPBACK))
-      {
-        auto *addr = new ip_address;
-        addr->addr = *sa_in;
-        printf("Local IP Address: %s\n", inet_ntoa(addr->addr.sin_addr));
-        freeifaddrs(ifaddr);
-        return addr;
-      }
+        if (ifa->ifa_addr == nullptr)
+        {
+            continue;
+        }
+
+        if (ifa->ifa_addr->sa_family == AF_INET)
+        {
+            sockaddr_in *sa_in = (sockaddr_in *)ifa->ifa_addr;
+            if (sa_in->sin_addr.s_addr != htonl(INADDR_LOOPBACK))
+            {
+                auto *addr = new ip_address;
+                addr->addr = *sa_in;
+                printf("Local IP Address: %s\n", inet_ntoa(addr->addr.sin_addr));
+                freeifaddrs(ifaddr);
+                return addr;
+            }
+        }
     }
-  }
-  freeifaddrs(ifaddr);
+    freeifaddrs(ifaddr);
 #endif
 
-  return nullptr;
+    return nullptr;
 }
 
 net_address *tcpip_protocol::get_node_address(char const *&server_name, int def_port, const int force_port)
 {
-  sockaddr_in host{};
-  host.sin_family = AF_INET;
+    sockaddr_in host{};
+    host.sin_family = AF_INET;
 
-  if (isdigit(server_name[0]))
-  {
-    unsigned char tmp[4];
-    const char *np = server_name;
-
-    for (unsigned char &i : tmp)
+    if (isdigit(server_name[0]))
     {
-      int num = 0;
-      while (*np && *np != '.' && *np != ':')
-      {
-        num = num * 10 + (*np - '0');
-        np++;
-      }
-      i = num;
-      if (*np == '.')
-        np++;
+        unsigned char tmp[4];
+        const char *np = server_name;
+
+        for (unsigned char &i : tmp)
+        {
+            int num = 0;
+            while (*np && *np != '.' && *np != ':')
+            {
+                num = num * 10 + (*np - '0');
+                np++;
+            }
+            i = num;
+            if (*np == '.')
+                np++;
+        }
+
+        if (*np == ':' && !force_port)
+        {
+            int port;
+            if (sscanf(np + 1, "%d", &port) == 1)
+            {
+                def_port = port;
+            }
+        }
+
+        host.sin_port = htons(def_port);
+        host.sin_addr.s_addr = htonl(INADDR_ANY);
+        memcpy(&host.sin_addr, tmp, sizeof(in_addr));
+
+        return new ip_address(&host);
     }
 
-    if (*np == ':' && !force_port)
+    char name[256];
+    const char *src = server_name;
+    char *dst = name;
+    while (*src && *src != ':' && *src != '/' && dst < name + sizeof(name) - 1)
     {
-      int port;
-      if (sscanf(np + 1, "%d", &port) == 1)
-      {
-        def_port = port;
-      }
+        *dst++ = *src++;
+    }
+    *dst = 0;
+
+    if (*src == ':' && !force_port)
+    {
+        src++;
+        int port_num;
+        if (sscanf(src, "%d", &port_num) == 1)
+        {
+            def_port = port_num;
+            while (*src && *src != '/')
+                src++;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
+    if (*src == '/')
+        src++;
+
+    const hostent *hp = gethostbyname(name);
+    if (!hp)
+    {
+        DEBUG_LOG("Unable to locate server named '%s'\n", name);
+        return nullptr;
     }
 
     host.sin_port = htons(def_port);
     host.sin_addr.s_addr = htonl(INADDR_ANY);
-    memcpy(&host.sin_addr, tmp, sizeof(in_addr));
+    memcpy(&host.sin_addr, hp->h_addr, hp->h_length);
 
+    server_name = src;
     return new ip_address(&host);
-  }
-
-  char name[256];
-  const char *src = server_name;
-  char *dst = name;
-  while (*src && *src != ':' && *src != '/' && dst < name + sizeof(name) - 1)
-  {
-    *dst++ = *src++;
-  }
-  *dst = 0;
-
-  if (*src == ':' && !force_port)
-  {
-    src++;
-    int port_num;
-    if (sscanf(src, "%d", &port_num) == 1)
-    {
-      def_port = port_num;
-      while (*src && *src != '/')
-        src++;
-    }
-    else
-    {
-      return nullptr;
-    }
-  }
-
-  if (*src == '/')
-    src++;
-
-#ifdef WIN32
-  struct addrinfo hints = {}, *result = nullptr;
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  if (getaddrinfo(name, nullptr, &hints, &result) != 0)
-  {
-    DEBUG_LOG("Unable to locate server named '%s'\n", name);
-    return nullptr;
-  }
-
-  host.sin_port = htons(def_port);
-  host.sin_addr = ((struct sockaddr_in *)result->ai_addr)->sin_addr;
-
-  freeaddrinfo(result);
-#else
-  hostent *hp = gethostbyname(name);
-  if (!hp)
-  {
-    DEBUG_LOG("Unable to locate server named '%s'\n", name);
-    return nullptr;
-  }
-
-  host.sin_port = htons(def_port);
-  host.sin_addr.s_addr = htonl(INADDR_ANY);
-  memcpy(&host.sin_addr, hp->h_addr, hp->h_length);
-#endif
-
-  server_name = src;
-  return new ip_address(&host);
 }
 
 net_socket *tcpip_protocol::connect_to_server(net_address *addr, const net_socket::socket_type sock_type)
 {
-  if (addr->protocol_type() != net_address::IP)
-  {
-    DEBUG_LOG("Protocol type not supported in the executable\n");
-    return nullptr;
-  }
+    if (addr->protocol_type() != net_address::IP)
+    {
+        DEBUG_LOG("Protocol type not supported in the executable\n");
+        return nullptr;
+    }
 
-  socket_t socket_fd = socket(AF_INET,
-                              sock_type == net_socket::SOCKET_SECURE ? SOCK_STREAM : SOCK_DGRAM,
-                              0);
-  if (socket_fd == INVALID_SOCKET_VALUE)
-  {
-    DEBUG_LOG("Unable to create socket (too many open files?)\n");
-    return nullptr;
-  }
+    int socket_fd = socket(AF_INET, sock_type == net_socket::SOCKET_SECURE ? SOCK_STREAM : SOCK_DGRAM, 0);
+    if (socket_fd < 0)
+    {
+        DEBUG_LOG("Unable to create socket (too many open files?)\n");
+        return nullptr;
+    }
 
-  if (connect(socket_fd, (sockaddr *)&((ip_address *)addr)->addr,
-              sizeof(((ip_address *)addr)->addr)) == -1)
-  {
-    DEBUG_LOG("Unable to connect\n");
+    if (connect(socket_fd, (sockaddr *)&((ip_address *)addr)->addr, sizeof(((ip_address *)addr)->addr)) == -1)
+    {
+        DEBUG_LOG("Unable to connect\n");
+#ifdef WIN32
+        closesocket(socket_fd);
+#else
+        close(socket_fd);
+#endif
+        return nullptr;
+    }
 
-    SOCK_CLOSE(socket_fd);
-
-    return nullptr;
-  }
-
-  return sock_type == net_socket::SOCKET_SECURE ? static_cast<net_socket *>(new tcp_socket(socket_fd)) : static_cast<net_socket *>(new udp_socket(socket_fd));
+    return sock_type == net_socket::SOCKET_SECURE ? static_cast<net_socket *>(new tcp_socket(socket_fd))
+                                                  : static_cast<net_socket *>(new udp_socket(socket_fd));
 }
 
 net_socket *tcpip_protocol::create_listen_socket(const int port, const net_socket::socket_type sock_type)
 {
-  const socket_t socket_fd = socket(AF_INET,
-                                    sock_type == net_socket::SOCKET_SECURE ? SOCK_STREAM : SOCK_DGRAM,
-                                    0);
-  if (socket_fd == INVALID_SOCKET_VALUE)
-  {
-    DEBUG_LOG("Unable to create socket (too many open files?)\n");
-    return nullptr;
-  }
+    const int socket_fd = socket(AF_INET, sock_type == net_socket::SOCKET_SECURE ? SOCK_STREAM : SOCK_DGRAM, 0);
+    if (socket_fd < 0)
+    {
+        DEBUG_LOG("Unable to create socket (too many open files?)\n");
+        return nullptr;
+    }
 
-  net_socket *s = sock_type == net_socket::SOCKET_SECURE ? static_cast<net_socket *>(new tcp_socket(socket_fd)) : static_cast<net_socket *>(new udp_socket(socket_fd));
+    net_socket *s = sock_type == net_socket::SOCKET_SECURE ? static_cast<net_socket *>(new tcp_socket(socket_fd))
+                                                           : static_cast<net_socket *>(new udp_socket(socket_fd));
 
-  if (!s->listen(port))
-  {
-    delete s;
-    return nullptr;
-  }
+    if (!s->listen(port))
+    {
+        delete s;
+        return nullptr;
+    }
 
-  return s;
+    return s;
 }
 
 void tcpip_protocol::cleanup()
 {
-  if (notifier)
-  {
-    end_notify();
-  }
+    if (notifier)
+    {
+        end_notify();
+    }
 
-  reset_find_list();
+    reset_find_list();
 
-  if (responder)
-  {
-    delete responder;
-    delete bcast;
-    responder = nullptr;
-    bcast = nullptr;
-  }
+    if (responder)
+    {
+        delete responder;
+        delete bcast;
+        responder = nullptr;
+        bcast = nullptr;
+    }
 }
 
 net_socket *tcpip_protocol::start_notify(const int port, void *data, const int len)
 {
-  if (responder)
-  {
-    delete responder;
-    delete bcast;
-    responder = nullptr;
-    bcast = nullptr;
-  }
+    if (responder)
+    {
+        delete responder;
+        delete bcast;
+        responder = nullptr;
+        bcast = nullptr;
+    }
 
-  const int resp_len = strlen(notify_response);
-  notify_len = len + resp_len + 1;
-  strcpy(notify_data, notify_response);
-  notify_data[resp_len] = '.';
-  memcpy(notify_data + resp_len + 1, data, len);
+    const int resp_len = strlen(notify_response);
+    notify_len = len + resp_len + 1;
+    strcpy(notify_data, notify_response);
+    notify_data[resp_len] = '.';
+    memcpy(notify_data + resp_len + 1, data, len);
 
-  notifier = create_listen_socket(port, net_socket::SOCKET_FAST);
-  if (notifier)
-  {
-    notifier->read_selectable();
-    notifier->write_unselectable();
-  }
-  else
-  {
-    DEBUG_LOG("Couldn't start notifier\n");
-  }
+    notifier = create_listen_socket(port, net_socket::SOCKET_FAST);
+    if (notifier)
+    {
+        notifier->read_selectable();
+        notifier->write_unselectable();
+    }
+    else
+    {
+        DEBUG_LOG("Couldn't start notifier\n");
+    }
 
-  return notifier;
+    return notifier;
 }
 
 void tcpip_protocol::end_notify()
 {
-  delete notifier;
-  notifier = nullptr;
-  notify_len = 0;
+    delete notifier;
+    notifier = nullptr;
+    notify_len = 0;
 }
 
 int tcpip_protocol::handle_notification() const
 {
-  if (!notifier)
-  {
-    return 0;
-  }
-
-  if (notifier->ready_to_read())
-  {
-    char buf[513];
-    net_address *tmp;
-    const int len = notifier->read(buf, 512, &tmp);
-    auto *addr = static_cast<ip_address *>(tmp);
-
-    if (addr && len > 0)
+    if (!notifier)
     {
-      buf[len] = 0;
-      if (strcmp(buf, notify_signature) == 0)
-      {
-        notifier->write(notify_data, notify_len, addr);
-      }
-      delete addr;
+        return 0;
     }
-    return 1;
-  }
 
-  if (notifier->error())
-  {
-    DEBUG_LOG("Error on notification socket!\n");
-    return 1;
-  }
+    if (notifier->ready_to_read())
+    {
+        char buf[513];
+        net_address *tmp;
+        const int len = notifier->read(buf, 512, &tmp);
+        auto *addr = static_cast<ip_address *>(tmp);
 
-  return 0;
+        if (addr && len > 0)
+        {
+            buf[len] = 0;
+            if (strcmp(buf, notify_signature) == 0)
+            {
+                notifier->write(notify_data, notify_len, addr);
+            }
+            delete addr;
+        }
+        return 1;
+    }
+
+    if (notifier->error())
+    {
+        DEBUG_LOG("Error on notification socket!\n");
+        return 1;
+    }
+
+    return 0;
 }
 
 int tcpip_protocol::handle_responder()
 {
-  if (!responder)
-  {
-    return 0;
-  }
-
-  if (responder->ready_to_read())
-  {
-    char buf[513];
-    net_address *tmp;
-    const int len = responder->read(buf, 512, &tmp);
-    auto *addr = static_cast<ip_address *>(tmp);
-
-    if (addr && len > 0)
+    if (!responder)
     {
-      buf[len] = 0;
-      buf[4] = 0; // Limit response signature check
-      if (strcmp(buf, notify_response) == 0)
-      {
-        bool found = false;
-
-        // Check servers list
-        for (p_request p = servers.begin(); !found && p != servers.end(); ++p)
-        {
-          if ((*p)->addr->equal(addr))
-          {
-            found = true;
-          }
-        }
-
-        // Check returned list
-        for (p_request q = returned.begin(); !found && q != returned.end(); ++q)
-        {
-          if ((*q)->addr->equal(addr))
-          {
-            found = true;
-          }
-        }
-
-        if (!found)
-        {
-          auto *request = new RequestItem;
-          request->addr = addr;
-          strncpy(request->name, buf + 5, sizeof(request->name) - 1);
-          request->name[sizeof(request->name) - 1] = 0;
-          servers.insert(request);
-          addr = nullptr; // Prevent deletion
-        }
-      }
-
-      delete addr; // Delete if not stored in servers list
+        return 0;
     }
 
-    return 1;
-  }
+    if (responder->ready_to_read())
+    {
+        char buf[513];
+        net_address *tmp;
+        const int len = responder->read(buf, 512, &tmp);
+        auto *addr = static_cast<ip_address *>(tmp);
 
-  if (responder->error())
-  {
-    DEBUG_LOG("Error on responder socket!\n");
-    return 1;
-  }
+        if (addr && len > 0)
+        {
+            buf[len] = 0;
+            buf[4] = 0; // Limit response signature check
+            if (strcmp(buf, notify_response) == 0)
+            {
+                bool found = false;
 
-  return 0;
+                // Check servers list
+                for (p_request p = servers.begin(); !found && p != servers.end(); ++p)
+                {
+                    if ((*p)->addr->equal(addr))
+                    {
+                        found = true;
+                    }
+                }
+
+                // Check returned list
+                for (p_request q = returned.begin(); !found && q != returned.end(); ++q)
+                {
+                    if ((*q)->addr->equal(addr))
+                    {
+                        found = true;
+                    }
+                }
+
+                if (!found)
+                {
+                    auto *request = new RequestItem;
+                    request->addr = addr;
+                    strncpy(request->name, buf + 5, sizeof(request->name) - 1);
+                    request->name[sizeof(request->name) - 1] = 0;
+                    servers.insert(request);
+                    addr = nullptr; // Prevent deletion
+                }
+            }
+
+            delete addr; // Delete if not stored in servers list
+        }
+
+        return 1;
+    }
+
+    if (responder->error())
+    {
+        DEBUG_LOG("Error on responder socket!\n");
+        return 1;
+    }
+
+    return 0;
 }
 
-int tcpip_protocol::select()
+int tcpip_protocol::select(const int block)
 {
-  // Copy master sets to working sets since select() modifies them
-  memcpy(&read_set, &master_set, sizeof(master_set));
-  memcpy(&exception_set, &master_set, sizeof(master_set));
-  memcpy(&write_set, &master_write_set, sizeof(master_set));
+    memcpy(&read_set, &master_set, sizeof(master_set));
+    memcpy(&exception_set, &master_set, sizeof(master_set));
+    memcpy(&write_set, &master_write_set, sizeof(master_set));
 
-  timeval nonblocking_timeout = {0, 1000}; // 1ms
+    int ret;
+    if (block)
+    {
+        ret = 0;
+        while (ret == 0)
+        {
+            ret = ::select(FD_SETSIZE, &read_set, &write_set, &exception_set, nullptr);
+            if (handle_notification())
+                ret--;
+            if (handle_responder())
+                ret--;
+        }
+    }
+    else
+    {
+        timeval tv = {0, 0};
+        ret = ::select(FD_SETSIZE, &read_set, &write_set, &exception_set, &tv);
+        if (handle_notification())
+            ret--;
+        if (handle_responder())
+            ret--;
+    }
 
-  // Non-blocking mode
-  int ret = ::select(FD_SETSIZE, &read_set, &write_set, &exception_set, &nonblocking_timeout);
-
-  // Handle any events and update return value
-  if (handle_notification()) ret--;
-  if (handle_responder()) ret--;  
-
-  return ret;
+    return ret;
 }
 
 net_address *tcpip_protocol::find_address(const int port, char *name)
 {
-  end_notify();
+    end_notify();
 
-  if (!responder)
-  {
-    responder = create_listen_socket(port, net_socket::SOCKET_FAST);
+    if (!responder)
+    {
+        responder = create_listen_socket(port, net_socket::SOCKET_FAST);
+        if (responder)
+        {
+            responder->read_selectable();
+            responder->write_unselectable();
+            bcast = static_cast<ip_address *>(get_local_address());
+            bcast->set_port(port);
+            *((unsigned char *)&bcast->addr.sin_addr + 3) = 0;
+        }
+    }
+
+    // For debugging purposes always add localhost (127.0.0.1) as the first option
+    // if (servers.empty() && returned.empty())
+    // {
+    //   // Create localhost address
+    //   sockaddr_in localhost{};
+    //   localhost.sin_family = AF_INET;
+    //   localhost.sin_port = htons(port);
+    //   localhost.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // 127.0.0.1
+
+    //   // Add to servers list
+    //   auto *localhost_request = new RequestItem;
+    //   localhost_request->addr = new ip_address(&localhost);
+    //   strncpy(localhost_request->name, "Localhost", sizeof(localhost_request->name) - 1);
+    //   localhost_request->name[sizeof(localhost_request->name) - 1] = 0;
+    //   servers.insert(localhost_request);
+    // }
+
     if (responder)
     {
-      responder->read_selectable();
-      responder->write_unselectable();
-      bcast = static_cast<ip_address *>(get_local_address());
-      if (bcast)
-      {
-        bcast->set_port(port);
-        *((unsigned char *)&bcast->addr.sin_addr + 3) = 0;
-      }
-    }
-  }
+        for (int i = 0; i < 5; i++)
+        {
+            bool found = false;
 
-  if (responder && bcast)
-  {
-    for (int i = 0; i < 5; i++)
+            // Check existing addresses
+            for (p_request p = servers.begin(); !found && p != servers.end(); ++p)
+            {
+                if ((*p)->addr->equal(bcast))
+                {
+                    found = true;
+                }
+            }
+
+            for (p_request q = returned.begin(); !found && q != returned.end(); ++q)
+            {
+                if ((*q)->addr->equal(bcast))
+                {
+                    found = true;
+                }
+            }
+
+            if (!found)
+            {
+                responder->write(notify_signature, strlen(notify_signature), bcast);
+                select(0);
+            }
+
+            *((unsigned char *)&bcast->addr.sin_addr + 3) += 1;
+            select(0);
+
+            if (!servers.empty())
+            {
+                break;
+            }
+        }
+    }
+
+    if (servers.empty())
     {
-      bool found = false;
-
-      // Check existing addresses
-      for (p_request p = servers.begin(); !found && p != servers.end(); ++p)
-      {
-        if ((*p)->addr->equal(bcast))
-        {
-          found = true;
-        }
-      }
-
-      for (p_request q = returned.begin(); !found && q != returned.end(); ++q)
-      {
-        if ((*q)->addr->equal(bcast))
-        {
-          found = true;
-        }
-      }
-
-      if (!found)
-      {
-        responder->write(notify_signature, strlen(notify_signature), bcast);
-        select();
-      }
-
-      *((unsigned char *)&bcast->addr.sin_addr + 3) += 1;
-      select();
-
-      if (!servers.empty())
-      {
-        break;
-      }
+        return nullptr;
     }
-  }
 
-  if (servers.empty())
-  {
-    return nullptr;
-  }
+    // Move first server to returned list and return its address
+    servers.move_next(servers.begin_prev(), returned.begin_prev());
+    auto *ret = static_cast<ip_address *>((*returned.begin())->addr->copy());
+    strncpy(name, (*returned.begin())->name, 256);
+    name[255] = 0;
 
-  // Move first server to returned list and return its address
-  servers.move_next(servers.begin_prev(), returned.begin_prev());
-  auto *ret = static_cast<ip_address *>((*returned.begin())->addr->copy());
-  strncpy(name, (*returned.begin())->name, 256);
-  name[255] = 0;
-
-  return ret;
+    return ret;
 }
 
 void tcpip_protocol::reset_find_list()
 {
-  for (const auto *p : servers)
-  {
-    delete p->addr;
-    delete p;
-  }
+    for (const auto *p : servers)
+    {
+        delete p->addr;
+        delete p;
+    }
 
-  for (const auto *p : returned)
-  {
-    delete p->addr;
-    delete p;
-  }
+    for (const auto *p : returned)
+    {
+        delete p->addr;
+        delete p;
+    }
 
-  servers.erase_all();
-  returned.erase_all();
+    servers.erase_all();
+    returned.erase_all();
 }
 
 #endif // HAVE_NETWORK

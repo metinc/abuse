@@ -38,7 +38,6 @@
 // the number of tracks). HMI files make use of running status notation, the
 // converted files don't.
 
-
 constexpr size_t MAX_NOTE_OFF_EVENTS = 30;
 constexpr uint32_t INVALID_TIME = 0xFFFFFFFF;
 constexpr uint32_t HMI_TRACK_DATA_OFFSET = 0x57;
@@ -57,11 +56,9 @@ struct NoteOffEvent
     }
 };
 
-
 static uint32_t get_int_from_buffer(const uint8_t *buffer)
 {
-    return (buffer[3] << 24) | (buffer[2] << 16) |
-           (buffer[1] << 8) | buffer[0];
+    return (buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) | buffer[0];
 }
 
 static void write_big_endian_number(uint32_t value, uint8_t *buffer)
@@ -108,12 +105,11 @@ static void write_time_value(uint32_t time, uint8_t *&buffer)
     }
 }
 
-static void remember_note_off_event(std::array<NoteOffEvent, MAX_NOTE_OFF_EVENTS> &note_off_events,
-                                    uint32_t time, uint8_t cmd, uint8_t note)
+static void remember_note_off_event(std::array<NoteOffEvent, MAX_NOTE_OFF_EVENTS> &note_off_events, uint32_t time,
+                                    uint8_t cmd, uint8_t note)
 {
     auto it = std::find_if(note_off_events.begin(), note_off_events.end(),
-                           [](const auto &e)
-                           { return e.time == INVALID_TIME; });
+                           [](const auto &e) { return e.time == INVALID_TIME; });
 
     if (it != note_off_events.end())
     {
@@ -124,8 +120,7 @@ static void remember_note_off_event(std::array<NoteOffEvent, MAX_NOTE_OFF_EVENTS
 }
 
 static void process_note_off_events(std::array<NoteOffEvent, MAX_NOTE_OFF_EVENTS> &note_off_events,
-                                    uint32_t current_time, uint32_t &last_time,
-                                    uint8_t *&buffer)
+                                    uint32_t current_time, uint32_t &last_time, uint8_t *&buffer)
 {
     for (auto &event : note_off_events)
     {
@@ -221,9 +216,7 @@ static void convert_hmi_track(uint8_t *input, uint32_t input_size, uint8_t *&out
         case 0x90: // Note on with duration
             *output++ = current_value;
             *output++ = *input++;
-            remember_note_off_event(note_off_events,
-                                    current_time + read_time_value(input),
-                                    current_command,
+            remember_note_off_event(note_off_events, current_time + read_time_value(input), current_command,
                                     current_value);
             break;
 
@@ -249,9 +242,7 @@ static void convert_hmi_track(uint8_t *input, uint32_t input_size, uint8_t *&out
         output += 4;
     }
 
-    write_big_endian_number(
-        static_cast<uint32_t>(output - start_of_buffer - 8),
-        &start_of_buffer[4]);
+    write_big_endian_number(static_cast<uint32_t>(output - start_of_buffer - 8), &start_of_buffer[4]);
 }
 
 uint8_t *load_hmi(char const *filename, uint32_t &data_size)
@@ -288,16 +279,17 @@ uint8_t *load_hmi(char const *filename, uint32_t &data_size)
 
     uint32_t offset_tracks = get_int_from_buffer(&input_buffer[HMI_TRACK_OFFSET_POS]);
     uint32_t next_offset = get_int_from_buffer(&input_buffer[HMI_NEXT_CHUNK_POS]);
-    uint8_t num_tracks = static_cast<uint8_t>(
-        (next_offset - offset_tracks) / sizeof(uint32_t));
+    uint8_t num_tracks = static_cast<uint8_t>((next_offset - offset_tracks) / sizeof(uint32_t));
 
     // Write MIDI header
     const uint8_t midi_header[] = {
-        0x4D, 0x54, 0x68, 0x64,                     // Magic "MThd"
-        0x00, 0x00, 0x00, 0x06,                     // Header length
-        0x00, 0x01,                                 // Format type
+        0x4D, 0x54,
+        0x68, 0x64, // Magic "MThd"
+        0x00, 0x00,
+        0x00, 0x06, // Header length
+        0x00, 0x01, // Format type
         0x00, static_cast<uint8_t>(num_tracks + 1), // Number of tracks
-        0x00, 0xC0                                  // Time division
+        0x00, 0xC0 // Time division
     };
     std::memcpy(output_buffer_ptr, midi_header, sizeof(midi_header));
     output_buffer_ptr += sizeof(midi_header);
@@ -307,8 +299,8 @@ uint8_t *load_hmi(char const *filename, uint32_t &data_size)
         0x4D, 0x54, 0x72, 0x6B, // Magic "MTrk"
         0x00, 0x00, 0x00, 0x0B, // Track length
         0x00, 0xFF, 0x51, 0x03, // Tempo meta event
-        0x18, 0x7F, 0xFF,       // Tempo value
-        0x00, 0xFF, 0x2F, 0x00  // End of track
+        0x18, 0x7F, 0xFF, // Tempo value
+        0x00, 0xFF, 0x2F, 0x00 // End of track
     };
     std::memcpy(output_buffer_ptr, tempo_track, sizeof(tempo_track));
     output_buffer_ptr += sizeof(tempo_track);
@@ -316,11 +308,11 @@ uint8_t *load_hmi(char const *filename, uint32_t &data_size)
     // Convert each track
     for (int i = 0; i < num_tracks; i++)
     {
-        uint32_t track_position = get_int_from_buffer(
-            &input_buffer[offset_tracks + i * sizeof(uint32_t)]);
-        uint32_t track_size = (i == num_tracks - 1)
-                                  ? buffer_size - track_position
-                                  : get_int_from_buffer(&input_buffer[offset_tracks + (i + 1) * sizeof(uint32_t)]) - track_position;
+        uint32_t track_position = get_int_from_buffer(&input_buffer[offset_tracks + i * sizeof(uint32_t)]);
+        uint32_t track_size =
+            (i == num_tracks - 1)
+                ? buffer_size - track_position
+                : get_int_from_buffer(&input_buffer[offset_tracks + (i + 1) * sizeof(uint32_t)]) - track_position;
 
         convert_hmi_track(&input_buffer[track_position], track_size, output_buffer_ptr);
     }

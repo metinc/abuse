@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -34,25 +34,25 @@ void transp_put(image *im, image *screen, uint8_t *table, int x, int y)
         return;
     screen->AddDirty(pos, pos + bb);
 
-  int ye=aa.y+bb.y;
-  int xe=aa.x+bb.x;
+    int ye = aa.y + bb.y;
+    int xe = aa.x + bb.x;
 
-  uint8_t *isl=im->scan_line(aa.y)+aa.x;
-  uint8_t *ssl=screen->scan_line(y)+x;
-  int iw=im->Size().x,sw=screen->Size().x;
+    uint8_t *isl = im->scan_line(aa.y) + aa.x;
+    uint8_t *ssl = screen->scan_line(y) + x;
+    int iw = im->Size().x, sw = screen->Size().x;
 
-  for (int iy=aa.y; iy<ye; iy++,y++,isl+=iw,ssl+=sw)
-  {
-    uint8_t *s=ssl,*i=isl;
-    for (int ix=aa.x; ix<xe; ix++,s++,i++)
+    for (int iy = aa.y; iy < ye; iy++, y++, isl += iw, ssl += sw)
     {
-      if (*i)
-        *s=*i;
-      else *s=table[*s];
+        uint8_t *s = ssl, *i = isl;
+        for (int ix = aa.x; ix < xe; ix++, s++, i++)
+        {
+            if (*i)
+                *s = *i;
+            else
+                *s = table[*s];
+        }
     }
-  }
 }
-
 
 /*
 void transp_put(image *im, image *screen, uint8_t *table, int x, int y)

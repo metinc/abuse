@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include "common.h"
@@ -32,41 +32,19 @@
 / no type  /     0,      0,    0,    0,       0,     0,        0,       0,       0
 } ; */
 
+char const *ability_names[TOTAL_ABILITIES] = {"start_hp",    "start_accel",   "stop_accel",     "jump_xvel",
+                                              "jump_yvel",   "run_top_speed", "jump_top_speed", "tint_color",
+                                              "push_xrange", "walk_top_speed"};
 
-char const *ability_names[TOTAL_ABILITIES] =
-{
-    "start_hp", "start_accel", "stop_accel",
-    "jump_xvel", "jump_yvel",
-    "run_top_speed", "jump_top_speed",
-    "tint_color",
-    "push_xrange",
-    "walk_top_speed"
-};
-
-
-long abil_def[TOTAL_ABILITIES]=
-   { 6,   3,     4,    2,    -16,   10,       6,         0,
-/* hp starta stopa jumpxv  jumpyv run_tops jmp_tops blood_type */
-
-/* push_xrange wlk_tops */
-      0,            6 };
+// abilities default values
+long abil_def[TOTAL_ABILITIES] = {6, 3, 4, 2, -16, 10, 6, 0, 0, 6};
 
 long get_ability_default(ability a)
 {
-  return abil_def[a];
+    return abil_def[a];
 }
 
 long get_ability(int who, ability a)
 {
-  return figures[who]->abil[a];
+    return figures[who]->abil[a];
 }
-
-
-
-
-
-
-
-
-
-

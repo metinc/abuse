@@ -22,6 +22,7 @@
 	  T))
     (if (eq (hp) 0)                          ;; if dead, make an explosion
 	(progn
+	  (play_sound GRENADE_SND 127 (x) (y))
 	  (add_object EXPLODE1 (+ (x) (random 10)) (+ (+ (random 10) (y)) -20)     0)
 	  (add_object EXPLODE1 (- (x) (random 10)) (+ (- (y) (random 10)) -20)     2)
 	  (add_object EXPLODE1 (x) (+ (- (y) (random 20)) -20)                     4)

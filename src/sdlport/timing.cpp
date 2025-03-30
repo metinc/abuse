@@ -19,27 +19,27 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #ifdef WIN32
-# include <Windows.h>
+#include <Windows.h>
 #else
-# include <stdio.h>
-# include <stdlib.h>
-# if defined HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# endif
-# include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#if defined HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+#include <time.h>
 #endif
 
 #include "timing.h"
 
 #ifdef __APPLE__
-// OSX 10.1 has nanosleep and gettimeofday but no headers for them!
-extern "C" {
-int nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
-int gettimeofday(struct timeval *tv, void *tz);
+// OSX 10.1 has nanosleep but no header for it!
+extern "C"
+{
+    int nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
 }
 #endif
 
@@ -57,11 +57,11 @@ time_marker::time_marker()
 void time_marker::get_time()
 {
 #ifdef WIN32
-	// Use GetSystemTimeAsFileTime for this
-	GetSystemTimeAsFileTime(&ticks);
+    // Use GetSystemTimeAsFileTime for this
+    GetSystemTimeAsFileTime(&ticks);
 #else
-    struct timeval tv = { 0, 0 };
-    gettimeofday( &tv, NULL );
+    struct timeval tv = {0, 0};
+    gettimeofday(&tv, NULL);
     seconds = tv.tv_sec;
     micro_seconds = tv.tv_usec;
 #endif
@@ -71,16 +71,15 @@ void time_marker::get_time()
 // diff_time()
 // Find the time difference
 //
-double time_marker::diff_time( time_marker *other )
+double time_marker::diff_time(time_marker *other)
 {
 #if defined WIN32
-	// Convert both sides to __int64
-	__int64 our_ticks = (ticks.dwHighDateTime << 32L) | ticks.dwLowDateTime;
-	__int64 other_ticks = (other->ticks.dwHighDateTime << 32L) | (other->ticks.dwLowDateTime);
-	// Note we're dividing by 10,000,000 here - ticks are in 100ns increments, not microseconds.
-	return (double)(our_ticks - other_ticks) / 10000000.0;
+    // Convert both sides to __int64
+    __int64 our_ticks = (ticks.dwHighDateTime << 32L) | ticks.dwLowDateTime;
+    __int64 other_ticks = (other->ticks.dwHighDateTime << 32L) | (other->ticks.dwLowDateTime);
+    // Note we're dividing by 10,000,000 here - ticks are in 100ns increments, not microseconds.
+    return (double)(our_ticks - other_ticks) / 10000000.0;
 #else
     return (double)(seconds - other->seconds) + (double)(micro_seconds - other->micro_seconds) / 1000000;
 #endif
 }
-

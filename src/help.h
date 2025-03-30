@@ -16,11 +16,6 @@
 extern int total_help_screens;
 extern int *help_screens;
 void help_handle_event(Event &ev);
-void draw_help();        // called from game draw if in help mode
+void draw_help(); // called from game draw if in help mode
 
 #endif
-
-
-
-
-

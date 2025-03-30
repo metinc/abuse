@@ -9,7 +9,7 @@
  */
 
 #if defined HAVE_CONFIG_H
-#   include "config.h"
+#include "config.h"
 #endif
 
 #include <stdlib.h>
@@ -34,9 +34,8 @@ void update_dirty(image *im, int xoff, int yoff)
         dirty_rect *dr = (dirty_rect *)(im->m_special->dirties.first());
         while (count > 0)
         {
-            put_part_image(im, xoff + dr->m_aa.x, yoff + dr->m_aa.y,
-                           dr->m_aa.x, dr->m_aa.y,
-                           dr->m_bb.x + 1, dr->m_bb.y + 1);
+            put_part_image(im, xoff + dr->m_aa.x, yoff + dr->m_aa.y, dr->m_aa.x, dr->m_aa.y, dr->m_bb.x + 1,
+                           dr->m_bb.y + 1);
             dirty_rect *tmp = dr;
             dr = (dirty_rect *)(dr->Next());
             im->m_special->dirties.unlink(tmp);
@@ -48,8 +47,7 @@ void update_dirty(image *im, int xoff, int yoff)
     update_window_done();
 }
 
-void put_image(image * im, int x, int y)
+void put_image(image *im, int x, int y)
 {
     put_part_image(im, x, y, 0, 0, im->Size().x - 1, im->Size().y - 1);
 }
-

@@ -17,7 +17,6 @@
 (load "lisp/userfuns.lsp")
 (load "lisp/options.lsp")
 (load "lisp/startup.lsp")
-(load "lisp/input.lsp")
 
 (load "lisp/sfx.lsp")
 (load "lisp/gates.lsp")
@@ -48,8 +47,6 @@
 (load "addon/twist/lisp/mario.lsp")
 (load "addon/leon/4frabs.lsp")
 (load "addon/newart/newart.lsp")
-
-(setq mouse_can_switch true) ;; allow mouse to switch weapons
 
 (setq bad_guy_list
   (list DARNEL ANT_ROOF TRACK_GUN SPRAY_GUN JUGGER ROB1 WHO ROCKET FLYER

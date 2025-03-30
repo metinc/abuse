@@ -42,16 +42,13 @@ int set_file_server(net_address *addr);
 
 int join_remote_game(char *name);
 int become_server(char *name);
-int get_remote_lsf(net_address *addr, char *filename);   // filename should be 256 bytes
+int get_remote_lsf(net_address *addr, char *filename); // filename should be 256 bytes
 
-
-void send_local_request();                          // sends from *base
-int get_inputs_from_server(unsigned char *buf);     // return bytes read into buf (will be less than PACKET_MAX_SIZE
-
+void send_local_request(); // sends from *base
+int get_inputs_from_server(unsigned char *buf); // return bytes read into buf (will be less than PACKET_MAX_SIZE
 
 int client_number();
 extern net_address *net_server;
-extern base_memory_struct *base;   // points to shm_addr
+extern base_memory_struct *base; // points to shm_addr
 
 #endif
-

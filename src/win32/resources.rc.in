@@ -1,8 +1,8 @@
 #include <Windows.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     ${abuse_VERSION_MAJOR},${abuse_VERSION_MINOR},${abuse_VERSION_PATCH},${abuse_VERSION_TWEAK}
-PRODUCTVERSION  ${abuse_VERSION_MAJOR},${abuse_VERSION_MINOR},${abuse_VERSION_PATCH},${abuse_VERSION_TWEAK}
+FILEVERSION     ${abuse_VERSION_MAJOR},${abuse_VERSION_MINOR},${abuse_VERSION_PATCH},0
+PRODUCTVERSION  ${abuse_VERSION_MAJOR},${abuse_VERSION_MINOR},${abuse_VERSION_PATCH},0
 FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
 FILEFLAGS       (VS_FF_PRIVATEBUILD|VS_FF_DEBUG|VS_FF_PRERELEASE)
 FILEOS          VOS__WINDOWS32
@@ -18,7 +18,7 @@ BEGIN
             VALUE "FileVersion", "${abuse_VERSION}"
             VALUE "InternalName", "abuse.exe"
             VALUE "OriginalFilename", "abuse.exe"
-            VALUE "PrivateBuild", "Xenoveritas version from http://github.com/Xenoveritas/abuse"
+            VALUE "PrivateBuild", "metinc version from https://github.com/metinc/Abuse_1996"
             VALUE "ProductName", "Abuse"
             VALUE "ProductVersion", "${abuse_VERSION}"
         END
