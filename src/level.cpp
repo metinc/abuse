@@ -12,10 +12,6 @@
 #include "config.h"
 #endif
 
-#if (defined(__MACH__) || !defined(__APPLE__))
-#include <sys/stat.h>
-#endif
-
 #include <string.h>
 #include <limits.h>
 #include <time.h>
@@ -2267,21 +2263,20 @@ int level::save(char const *filename, int save_all)
 {
     //AR clisp.case 223 saves the game in game
 
-    char name[255], bkname[255];
-    sprintf(name, "%s%s", get_save_filename_prefix(), filename);
-    sprintf(bkname, "%slevsave.bak", get_save_filename_prefix());
+    char name[255]; //, bkname[255];
 
-    // If keep_backup is defined, create a backup
-    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup))
+    sprintf(name, "%s", filename);
+    // sprintf( bkname, "%slevsave.bak", get_save_filename_prefix() );
+    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup)) // make a backup
     {
         bFILE *fp = open_file(name, "rb"); // does file already exist?
         if (!fp->open_failure())
         {
-            unlink(bkname);
-            bFILE *bk = open_file(bkname, "wb");
+            // unlink( bkname );
+            bFILE *bk = open_file("levsave.bak", "wb");
             if (bk->open_failure())
             {
-                printf("Unable to open backup file '%s': %s\n", bkname, strerror(errno));
+                printf("Unable to open backup file '%s': %s\n", filename, strerror(errno));
             }
             else
             {
@@ -2299,9 +2294,6 @@ int level::save(char const *filename, int save_all)
                 }
             }
             delete bk;
-#if (defined(__MACH__) || !defined(__APPLE__)) && (!defined(WIN32))
-            chmod(bkname, S_IRWXU | S_IRWXG | S_IRWXO);
-#endif
         }
         delete fp;
     }
@@ -3340,7 +3332,7 @@ object_node *level::make_not_list(object_node *list)
 
 void level::write_object_info(char *filename)
 {
-    FILE *fp = open_FILE(filename, "wb");
+    FILE *fp = prefix_fopen(filename, "wb");
     if (fp)
     {
         int i = 0;

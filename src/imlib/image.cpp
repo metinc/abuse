@@ -253,26 +253,45 @@ void image::PutPart(image *im, ivec2 pos, ivec2 aa, ivec2 bb, int transparent)
     ivec2 caa, cbb;
     GetClip(caa, cbb);
 
-    // see if the area to be put is outside of actual image, if so adjust
-    // to fit in the image
-    pos += Min(aa, ivec2(0));
-    aa += Min(aa, ivec2(0));
+    // If aa has negative coordinates, adjust both pos and aa
+    pos -= Min(aa, ivec2(0));
+    aa = Max(aa, ivec2(0));
+
+    // Ensure bb doesn't exceed source image bounds
     bb = Min(bb, im->m_size);
-    // return if it was adjusted so that nothing will be put
+
+    // Early exit if invalid coordinates
     if (!(aa < bb))
         return;
 
-    // see if the image gets clipped off the screen
+    // Check if image is completely outside clip region
     if (!(pos < cbb && pos + (bb - aa) > caa))
         return;
 
-    aa += Max(caa - pos, ivec2(0));
-    pos += Max(caa - pos, ivec2(0));
-    bb = Min(bb, cbb - pos + aa);
-    if (!(aa < bb))
-        return;
+    // Adjust for screen clipping
+    if (pos.x < caa.x)
+    {
+        int dx = caa.x - pos.x;
+        aa.x += dx;
+        pos.x = caa.x;
+    }
+    if (pos.y < caa.y)
+    {
+        int dy = caa.y - pos.y;
+        aa.y += dy;
+        pos.y = caa.y;
+    }
 
+    // Clip right and bottom edges
+    bb = Min(bb, aa + (cbb - pos));
+
+    // Calculate actual span to copy
     ivec2 span = bb - aa;
+
+    // Verify final bounds
+    if (span.x <= 0 || span.y <= 0 || pos.x + span.x > m_size.x || pos.y + span.y > m_size.y ||
+        aa.x + span.x > im->m_size.x || aa.y + span.y > im->m_size.y)
+        return;
 
     AddDirty(pos, pos + span);
 
@@ -283,6 +302,7 @@ void image::PutPart(image *im, ivec2 pos, ivec2 aa, ivec2 bb, int transparent)
     {
         uint8_t *dst = scan_line(pos.y + j) + pos.x;
         uint8_t *src = im->scan_line(aa.y + j) + aa.x;
+
         if (transparent)
         {
             for (int i = 0; i < span.x; i++, src++, dst++)

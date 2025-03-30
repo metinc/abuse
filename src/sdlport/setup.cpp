@@ -3,6 +3,7 @@
  *  Copyright (c) 2001 Anthony Kruize <trandor@labyrinth.net.au>
  *  Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
  *  Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
+ *  Copyright (c) 2024 Andrej Pancik
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,8 +39,10 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <string>
+#include <filesystem>
 #include "SDL.h"
 
+#include "file_utils.h"
 #include "specs.h"
 #include "keys.h"
 #include "setup.h"
@@ -54,6 +57,8 @@ extern Settings settings;
 extern int xres, yres; //video.cpp
 extern int sfx_volume, music_volume; //loader.cpp
 unsigned int scale; //AR was static, removed for external
+
+const char *config_filename = "config.txt";
 
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 {
@@ -92,6 +97,7 @@ Settings::Settings()
     this->no_music = false; // disable music
     this->volume_sound = 127;
     this->volume_music = 127;
+    this->soundfont = "AWE64 Gold Presets.sf2"; // Empty = don't use custom soundfont
 
     //random
     this->local_save = false;
@@ -101,6 +107,7 @@ Settings::Settings()
     this->max_fps = 300;
     this->mouse_scale = 0; // match desktop
     this->big_font = false;
+    this->language = "english";
     //
     this->player_touching_console = false;
 
@@ -156,12 +163,14 @@ Settings::Settings()
 ////////// CREATE DEFAULT "config.txt" FILE
 //////////
 
-bool Settings::CreateConfigFile(std::string file_path)
+bool Settings::CreateConfigFile()
 {
-    std::ofstream out(file_path.c_str());
+    const std::filesystem::path prefix = get_save_filename_prefix();
+    const std::filesystem::path file_path = prefix / config_filename;
+    std::ofstream out(file_path);
     if (!out.is_open())
     {
-        std::string tmp = "ERROR - CreateConfigFile() - Failed to create \"" + file_path + "\"\n";
+        std::string tmp = "ERROR - CreateConfigFile() - Failed to create \"" + file_path.string() + "\"\n";
         printf(tmp.c_str());
 
         return false;
@@ -187,6 +196,9 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << "hires=" << this->hires << std::endl;
     out << "big_font=" << this->big_font << std::endl;
     out << std::endl;
+    out << "; Language selection (english, german, french)\n" << std::endl;
+    out << "language=" << this->language.c_str() << std::endl;
+    out << std::endl;
     out << "; Use linear texture filter (nearest is default)" << std::endl;
     out << "linear_filter=" << this->linear_filter << std::endl;
     out << std::endl;
@@ -203,6 +215,8 @@ bool Settings::CreateConfigFile(std::string file_path)
     out << std::endl;
     out << "; Use mono audio only" << std::endl;
     out << "mono=" << this->mono << std::endl;
+    out << "; Path to custom soundfont file (optional)\n" << std::endl;
+    out << "soundfont=" << this->soundfont.c_str() << std::endl;
     out << std::endl;
     //
     out << "; MISCELLANEOUS SETTINGS" << std::endl;
@@ -296,18 +310,19 @@ bool Settings::CreateConfigFile(std::string file_path)
 ////////// READ CONFIG FILE
 //////////
 
-bool Settings::ReadConfigFile(std::string folder)
+bool Settings::ReadConfigFile()
 {
-    std::string file_path = folder + "config.txt";
+    const std::filesystem::path prefix = get_save_filename_prefix();
+    const std::filesystem::path file_path = prefix / config_filename;
 
     std::ifstream filein(file_path.c_str());
     if (!filein.is_open())
     {
-        std::string tmp = "ERROR - ReadConfigFile() - Failed to open \"" + file_path + "\"\n";
+        std::string tmp = "ERROR - ReadConfigFile() - Failed to open \"" + file_path.string() + "\"\n";
         printf(tmp.c_str());
 
         //try to create it
-        return CreateConfigFile(file_path);
+        return CreateConfigFile();
     }
 
     std::string line;
@@ -363,6 +378,8 @@ bool Settings::ReadConfigFile(std::string folder)
                 this->volume_sound = std::stoi(value);
             else if (attr == "volume_music")
                 this->volume_music = std::stoi(value);
+            else if (attr == "soundfont")
+                this->soundfont = value;
 
             //random
             else if (attr == "local_save")
@@ -377,6 +394,8 @@ bool Settings::ReadConfigFile(std::string folder)
                 this->mouse_scale = std::stoi(value);
             else if (attr == "big_font")
                 this->big_font = (value == "1");
+            else if (attr == "language")
+                this->language = value;
             else if (attr == "skip_intro")
                 this->skip_intro = (value == "1");
 
@@ -664,65 +683,22 @@ void setup(int argc, char **argv)
     }
     atexit(SDL_Quit);
 
-    // Set the savegame directory
-    char *homedir;
-    char *savedir;
-    FILE *fd = NULL;
+    const char *prefPath = SDL_GetPrefPath("abuse", ".");
 
-#ifdef WIN32
-    // Grab the profile dir
-    PWSTR appData;
-    SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, NULL, &appData);
-    // Create a new chunk of memory to save the savedir in
-    size_t savedir_size = lstrlenW(appData) * 2 + 7;
-    savedir = (char *)malloc(savedir_size);
-    wcstombs(savedir, appData, savedir_size);
-    // Append "\Abuse\" to end end of it
-    strcat(savedir, "\\Abuse\\");
-    // If it doesn't exist, create it
-    if ((fd = fopen(savedir, "r")) == NULL)
+    if (prefPath == NULL)
     {
-        // FIXME: Add some error checking here
-        _mkdir(savedir);
-    }
-    else
-    {
-        fclose(fd);
-    }
-    set_save_filename_prefix(savedir);
-    CoTaskMemFree(appData);
-    free(savedir);
-#else
-    if ((homedir = getenv("HOME")) != NULL)
-    {
-        savedir = (char *)malloc(strlen(homedir) + 9);
-        sprintf(savedir, "%s/.abuse/", homedir);
-        // Check if we already have a savegame directory
-        if ((fd = fopen(savedir, "r")) == NULL)
-        {
-            // FIXME: Add some error checking here
-            mkdir(savedir, S_IRUSR | S_IWUSR | S_IXUSR);
-        }
-        else
-        {
-            fclose(fd);
-        }
-        set_save_filename_prefix(savedir);
-        free(savedir);
-    }
-    else
-    {
-        // Warn the user that we couldn't set the savename prefix
-        printf("WARNING: Unable to get $HOME environment variable.\n");
-        printf("         Savegames will probably fail.\n");
-        // Just use the working directory.
-        // Hopefully they have write permissions....
+        printf("WARNING: Unable to get save directory path: %s\n", SDL_GetError());
+        printf("         Savegames will use current directory.\n");
         set_save_filename_prefix("");
     }
-#endif
+    else
+    {
+        set_save_filename_prefix(prefPath);
+        SDL_free((void *)prefPath);
+    }
 
-    // Set the datadir to a default value
-    // (The current directory)
+    printf("Data override %s\n", get_save_filename_prefix());
+
 #ifdef __APPLE__
     UInt8 buffer[255];
     CFURLRef bundleurl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
@@ -735,15 +711,12 @@ void setup(int argc, char **argv)
     }
     else
     {
-        printf("Setting prefix to [%s]\n", buffer);
+        printf("Data path [%s]\n", buffer);
         set_filename_prefix((const char *)buffer);
     }
 #elif defined WIN32
-    // Under Windows, it makes far more sense to assume the data is stored
-    // relative to our executable than anywhere else.
     char assetDirName[MAX_PATH];
     GetModuleFileName(NULL, assetDirName, MAX_PATH);
-    // Find the first \ or / and cut the path there
     size_t cut_at = -1;
     for (size_t i = 0; assetDirName[i] != '\0'; i++)
     {
@@ -754,44 +727,33 @@ void setup(int argc, char **argv)
     }
     if (cut_at >= 0)
         assetDirName[cut_at] = '\0';
-    printf("Setting data dir to %s\n", assetDirName);
+    printf("Data path %s\n", assetDirName);
     set_filename_prefix(assetDirName);
 #else
-    // APPDIR means we are running from the AppImage
-    if (getenv("APPDIR") != nullptr)
-    {
-        std::string assetPath = std::string(getenv("APPDIR")) + ASSETDIR;
-        set_filename_prefix(assetPath.c_str());
-    }
-    else
-    {
-        set_filename_prefix(ASSETDIR);
-    }
+    set_filename_prefix(ASSETDIR);
+    printf("Data path %s\n", ASSETDIR);
 #endif
 
-    // AR override save game directory to local directory
-    if (settings.local_save)
-        set_save_filename_prefix("user/");
+    if (getenv("ABUSE_PATH"))
+        set_filename_prefix(getenv("ABUSE_PATH"));
+    if (getenv("ABUSE_SAVE_PATH"))
+        set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
 
-    printf("Setting save dir to %s\n", get_save_filename_prefix());
+    // Process any command-line arguments that might override settings
+    parseCommandLine(argc, argv);
 
-    // Load the users configuration
-    settings.ReadConfigFile(get_save_filename_prefix());
+    // Load the user's configuration file from the save directory
+    settings.ReadConfigFile();
 
-    // Initialize default settings
+    // Initialize audio volumes from settings
+    // These variables are defined externally in loader.cpp
     scale = settings.scale;
     xres = settings.xres;
     yres = settings.yres;
     sfx_volume = settings.volume_sound;
     music_volume = settings.volume_music;
-
-    // handle command-line parameters
-    parseCommandLine(argc, argv);
 }
 
-//
-// Get the key binding for the requested function
-//
 int get_key_binding(char const *dir, int i)
 {
     if (strcasecmp(dir, "left") == 0)

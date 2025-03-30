@@ -2124,20 +2124,12 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
         bFILE *fp;
         if (static_cast<SysFunc>(fun_number) == SysFunc::LocalLoad)
         {
-            // A special test for gamma.lsp
-            if (strcmp(st, "gamma.lsp") == 0)
-            {
-                char *gammapath;
-                gammapath = (char *)malloc(strlen(get_save_filename_prefix()) + 9 + 1);
-                sprintf(gammapath, "%sgamma.lsp", get_save_filename_prefix());
-                fp = new jFILE(gammapath, "rb");
-                free(gammapath);
-            }
-            else
-                fp = new jFILE(st, "rb");
+            fp = new jFILE(st, "rb");
         }
         else
+        {
             fp = open_file(st, "rb");
+        }
 
         if (fp->open_failure())
         {
@@ -2784,8 +2776,6 @@ LObject *LSymbol::EvalUserFunction(LList *arg_list)
 /* PtrRef check: OK */
 LObject *LObject::Eval()
 {
-    PtrRef ref1(this);
-
     int tstart = trace_level;
 
     if (trace_level)

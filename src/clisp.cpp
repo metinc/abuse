@@ -48,6 +48,11 @@
 extern Settings settings;
 //
 
+//AR
+#include "sdlport/setup.h"
+extern Settings settings;
+//
+
 #define ENGINE_MAJOR 1
 #define ENGINE_MINOR 20
 

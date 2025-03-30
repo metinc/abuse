@@ -107,9 +107,13 @@ void gui_status_manager::update(int percentage)
                 if (p)
                     wy = p->stat_win->m_pos.y + p->stat_win->y2() + 5;
 
+                // Create window first
+                first->stat_win = wm->CreateWindow(ivec2(wx, wy), ivec2(len3, h1 * 2 + h2), NULL, "status");
+
+                // Now calculate mx and my using the newly created window
                 int mx = first->stat_win->x1() + 1;
                 int my = first->stat_win->y1() + wm->font()->Size().y / 2;
-                first->stat_win = wm->CreateWindow(ivec2(wx, wy), ivec2(len3, h1 * 2 + h2), NULL, "status");
+
                 wm->font()->PutString(first->stat_win->m_surf, ivec2(mx, my), first->name, wm->black());
                 wm->font()->PutString(first->stat_win->m_surf, ivec2(mx, my), first->name, wm->bright_color());
                 if (first->show)

@@ -23,7 +23,7 @@
 
 #include "common.h"
 
-#include "netface.h"
+#include "net/netface.h"
 
 #include "specs.h"
 #include "nfserver.h"

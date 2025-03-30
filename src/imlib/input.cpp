@@ -264,7 +264,7 @@ void text_field::change_data(char const *new_data, int new_cursor, // cursor==-1
                              int active, image *screen)
 {
     if (strlen(format) < strlen(new_data))
-        data = (char *)realloc(data, strlen(new_data));
+        data = (char *)realloc(data, strlen(new_data) + 1); // Add 1 for null terminator
 
     strcpy(data, new_data);
     if (new_cursor != -1)

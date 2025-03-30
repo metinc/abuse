@@ -4,7 +4,7 @@ add_library(net STATIC
     fileman.cpp fileman.h
     sock.cpp sock.h
     tcpip.cpp tcpip.h
-    ghandler.h undrv.h
+    ghandler.h netface.h
 )
 
 include_directories(

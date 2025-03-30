@@ -29,12 +29,17 @@ include(CheckIncludeFiles)
 
 check_include_files(unistd.h HAVE_UNISTD_H)
 check_include_files("sys/time.h" HAVE_SYS_TIME_H)
-check_include_files("sys/ioctl.h" HAVE_SYS_IOCTL_H)
-check_include_files("netinet/in.h" HAVE_NETINET_IN_H)
-check_include_files(bstring.h HAVE_BSTRING_H)
 
-set(HAVE_NETWORK TRUE CACHE BOOL "Enable networking support")
+option(HAVE_NETWORK "Enable networking support" TRUE)
 
+if(TCPIP_DEBUG)
+    add_compile_definitions(TCPIP_DEBUG)
+endif()
+
+if(NO_CHECK)
+    add_compile_definitions(NO_CHECK)
+endif()
+        
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 # Asset directory setup
@@ -77,6 +82,8 @@ if(WIN32)
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Abuse")
 elseif(APPLE)
     set(CPACK_GENERATOR "DragNDrop;TGZ")
+    set(CPACK_PACKAGING_INSTALL_PREFIX .)
+    set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 else()
     set(CPACK_GENERATOR "TGZ;DEB;RPM")
 

@@ -319,17 +319,19 @@ void calc_light_table(palette *pal)
 
       for (int intensity=63; intensity>=0; intensity--)
       {
-    if (r>0 || g>0 || b>0)
-          green_light[intensity*256+color]=pal->find_closest(r,g,b);
+        if (r > 0 || g > 0 || b > 0)
+          white_light[intensity * 256 + color] = pal->find_closest(r, g, b);
     else
-          green_light[intensity*256+color]=0;
-    if (r) r--;
-    if ((intensity&1)==1)
-      if (g) g--;
-    if (b) b--;
+          white_light[intensity * 256 + color] = 0;
+        if (r)
+          r--;
+        if (g)
+          g--;
+        if (b)
+          b--;
       }
     }
-    stat_man->pop(); */
+    stat_man->pop();
 
         stat_man->push("tints", NULL);
         uint8_t t[TTINTS * 6] = {

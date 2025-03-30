@@ -11,9 +11,9 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
-#if !defined __CELLOS_LV2__
 #include "SDL_mixer.h"
-#endif
+
+#include "common.h"
 
 /* options are passed via command line */
 
@@ -22,7 +22,6 @@
 
 int sound_init(int argc, char **argv);
 void sound_uninit();
-void print_sound_options(); // print the options avaible for sound
 
 class sound_effect
 {
@@ -33,20 +32,12 @@ class sound_effect
     void play(int volume = 127, int pitch = 128, int panpot = 128);
 
   private:
-#if !defined __CELLOS_LV2__
     Mix_Chunk *m_chunk;
-#endif
 };
 
 class song
 {
   public:
-#if !defined __CELLOS_LV2__
-    char const *name()
-    {
-        return Name;
-    }
-#endif
     song(char const *filename);
     void play(unsigned char volume = 127);
     void stop(long fadeout_time = 0); // time in ms
@@ -55,13 +46,11 @@ class song
     ~song();
 
   private:
-#if !defined __CELLOS_LV2__
     char *Name;
     unsigned char *data;
     unsigned long song_id;
     Mix_Music *music;
     SDL_RWops *rw;
-#endif
 };
 
 #endif
