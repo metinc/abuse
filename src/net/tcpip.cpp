@@ -244,7 +244,7 @@ int udp_socket::listen(int port)
 
     if (bind(fd, (sockaddr *)&host, sizeof(host)) == -1)
     {
-        DEBUG_LOG("Could not bind socket to port %d\n", port);
+        DEBUG_LOG("Could not bind socket to port %d: %s\n", port, strerror(errno));
         return 0;
     }
     return 1;
