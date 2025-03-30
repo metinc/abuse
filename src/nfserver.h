@@ -12,7 +12,7 @@
 #define __NFSERVER_HPP_
 
 #include "specs.h"
-#include "netface.h"
+#include "net/netface.h"
 #include "net/sock.h"
 
 int net_init(int argc, char **argv);

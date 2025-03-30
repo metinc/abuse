@@ -14,9 +14,9 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <stdlib.h>
-#include <cstdint>
+#include <stdint.h>
 #include <string.h>
-#include <string>
+#include <sstream>
 
 #include "linked.h"
 
@@ -60,36 +60,32 @@ enum
 #define SPEC_SEARCH_INSIDE_ONLY 3
 
 /*  struct spec_header
- *  {
- *      char signature[8];
- *      uint16_t entries_count;
- *      struct entry
- *      {
- *          uint8_t type;
- *          uint8_t name_length;
- *          char name[name_length];
- *          uint8_t flags;
- *          if (flags & LINK)
- *          {
- *              uint8_t filename_length;
- *              char filename[filename_length];
- *          }
- *          else
- *          {
- *              uint32_t data_size;
- *              uint32_t offset;
- *          }
- *      } entries[entries_count];
- *  }
- */
+  *  {
+  *      char signature[8];
+  *      uint16_t entries_count;
+  *      struct entry
+  *      {
+  *          uint8_t type;
+  *          uint8_t name_length;
+  *          char name[name_length];
+  *          uint8_t flags;
+  *          if (flags & LINK)
+  *          {
+  *              uint8_t filename_length;
+  *              char filename[filename_length];
+  *          }
+  *          else
+  *          {
+  *              uint32_t data_size;
+  *              uint32_t offset;
+  *          }
+  *      } entries[entries_count];
+  *  }
+  */
 
+std::string get_save_path(int slot);
 void set_spec_main_file(char const *filename, int search_order = SPEC_SEARCH_OUTSIDE_INSIDE);
 
-void set_filename_prefix(char const *prefix);
-char *get_filename_prefix();
-void set_save_filename_prefix(char const *prefix);
-char *get_save_filename_prefix();
-std::string get_save_path(int slot);
 #define JFILE_CLONED 1
 
 class bFILE // base file type which other files should be derived from (jFILE & NFS for now)
@@ -216,10 +212,10 @@ class spec_directory
 };
 
 /*jFILE *add_directory_entry(char *filename,
-                         unsigned short data_type,
-                         char *data_name,
-                         unsigned long data_size,
-                         char *link_filename=NULL); */
+                          unsigned short data_type,
+                          char *data_name,
+                          unsigned long data_size,
+                          char *link_filename=NULL); */
 
 uint16_t read_uint16(FILE *fp);
 uint32_t read_uint32(FILE *fp);

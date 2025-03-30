@@ -37,6 +37,9 @@
 #include "nfserver.h"
 #include "specache.h"
 
+#include "sdlport/setup.h"
+extern Settings settings;
+
 property_manager *prop;
 int *backtiles;
 int *foretiles;
@@ -285,24 +288,14 @@ void load_data(int argc, char **argv)
     pal = NULL;
     color_table = NULL;
 
-#if 0
-    int should_save_sd_cache = 0;
+    char const *lang = settings.language.c_str();
 
-    char *cachepath;
-    cachepath = (char *)malloc( strlen( get_save_filename_prefix() ) + 12 + 1 );
-    sprintf( cachepath, "%ssd_cache.tmp", get_save_filename_prefix() );
-
-    bFILE *load = open_file( cachepath, "rb" );
-    if( !load->open_failure() )
-    {
-        sd_cache.load( load );
-    }
-    else
-    {
-        should_save_sd_cache = 1;
-    }
-    delete load;
-#endif
+    // Temporarily switch to permanent space for the language string
+    LSpace *sp = LSpace::Current;
+    LSpace::Current = &LSpace::Perm;
+    LSymbol *sym = LSymbol::FindOrCreate("current_language");
+    sym->SetValue(LString::Create(lang));
+    LSpace::Current = sp;
 
     // don't let them specify a startup file we are connect elsewhere
     if (!net_start())
@@ -453,22 +446,7 @@ void load_data(int argc, char **argv)
     b_wid = cache.backt(backtiles[0])->im->Size().x;
     b_hi = cache.backt(backtiles[0])->im->Size().y;
 
-#if 0
-    if( should_save_sd_cache )
-    {
-        bFILE *save = open_file( cachepath, "wb" );
-        if( !save->open_failure() )
-        {
-            sd_cache.save( save );
-        }
-        delete save;
-    }
-#endif
-
     sd_cache.clear();
-#if 0
-    free( cachepath );
-#endif
 }
 
 char *load_script(char *name)

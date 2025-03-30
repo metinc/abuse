@@ -37,6 +37,7 @@ Sprite::Sprite(image *screen, image *visual, ivec2 pos)
 Sprite::~Sprite()
 {
     delete m_save;
+    delete m_visual;
 }
 
 void Sprite::SetVisual(image *visual, int delete_old)

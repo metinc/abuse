@@ -3,6 +3,7 @@
  *  Copyright (c) 2001 Anthony Kruize <trandor@labyrinth.net.au>
  *  Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
  *  Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
+ *  Copyright (c) 2024 Andrej Pancik
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,10 +24,12 @@
 #include "config.h"
 #endif
 
-#ifdef WIN32
-#include <Windows.h>
-#endif
 #include <cstring>
+#include <string>
+#include <filesystem>
+#include <memory>
+#include <system_error>
+#include <algorithm>
 
 #include "SDL.h"
 #include "SDL_mixer.h"
@@ -36,225 +39,304 @@
 #include "specs.h"
 #include "setup.h"
 
+// Global settings object (defined setup.cpp)
 extern Settings settings;
-static int sound_enabled = 0;
-static SDL_AudioSpec audioObtained;
 
-//
-// sound_init()
-// Initialise audio
-//
+int enabled = 0; // Indicates if sound system is operational
+SDL_AudioSpec audio_spec; // Stores current audio specifications
+
+/**
+  * @brief Initializes the sound system
+  *
+  * This function performs the following steps:
+  * 1. Verifies the existence of the sfx directory
+  * 2. Initializes SDL_mixer with standard audio parameters
+  * 3. Loads custom soundfonts if specified in settings
+  * 4. Allocates mixing channels
+  * 5. Queries and stores the actual audio specifications
+  *
+  * @param argc Command line argument count (unused)
+  * @param argv Command line arguments (unused)
+  * @return int 0 on failure, non-zero on success
+  */
 int sound_init(int argc, char **argv)
 {
-    //AR sound and music are always enabled, it just never plays if it is diabled in the config file
-    //or if it failed to load the files (sound_enabled==true)
+    // Sound and music are always enabled, they just never play if disabled in config
+    // or if loading the files failed (enabled == false)
 
-    char *sfxdir, *datadir;
+    // Get the path to the game's data directory and sfx subdirectory
+    const std::filesystem::path datadir = get_filename_prefix();
+    const std::filesystem::path sfx_path = datadir / "sfx";
 
-    // Check for the sfx directory, disable sound if we can't find it.
-    datadir = get_filename_prefix();
-    sfxdir = (char *)malloc(strlen(datadir) + 5 + 1);
-    sprintf(sfxdir, "%ssfx", datadir);
-#ifdef WIN32
-    // Attempting to fopen a directory under Windows will fail, and
-    // opendir does not exist. Use GetFileAttributes instead.
-    if (GetFileAttributes(sfxdir) == INVALID_FILE_ATTRIBUTES)
-#else
-    FILE *fd = NULL;
-    if ((fd = fopen(sfxdir, "r")) == NULL)
-#endif
+    // Verify sfx directory exists
+    if (!std::filesystem::exists(sfx_path))
     {
-        // Didn't find the directory, so disable sound.
-        printf("Sound: Disabled (couldn't find the sfx directory %s)\n", sfxdir);
+        printf("Sound: Disabled (couldn't find the sfx directory %s)\n", sfx_path.string().c_str());
         return 0;
     }
-    free(sfxdir);
 
-    std::string prefix = std::string(get_filename_prefix()) + "music/soundfont.sf2";
-    printf("Sound: using soundfont at %s\n", prefix.c_str());
-    Mix_SetSoundFonts(prefix.c_str());
+    int mix_flags = MIX_INIT_MID | MIX_INIT_MP3 | MIX_INIT_OGG;
+    int init_result = Mix_Init(mix_flags);
+    if ((init_result & mix_flags) != mix_flags)
+    {
+        printf("Sound: Warning - Some codecs failed to initialize: %s\n", Mix_GetError());
+        // Continue anyway as some formats might still work
+    }
 
+    // Initialize SDL_mixer with CD quality audio (44.1kHz, 16-bit stereo)
+    // Buffer size of 1024 samples provides good balance of latency and stability
     if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) < 0)
     {
+        Mix_Quit(); // Clean up the codecs we initialized
         printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
         return 0;
     }
 
+    // Load custom soundfont if specified in settings
+    // Soundfonts provide instrument samples for MIDI playback
+    if (!settings.soundfont.empty())
+    {
+        const auto soundfont_path = datadir / "soundfonts" / settings.soundfont;
+
+        if (Mix_SetSoundFonts(soundfont_path.string().c_str()) == 0)
+        {
+            printf("Sound: Failed to load soundfont %s: %s\n", soundfont_path.string().c_str(), Mix_GetError());
+        }
+        else
+        {
+            printf("Sound: Loaded soundfont: %s\n", soundfont_path.string().c_str());
+        }
+    }
+
+    // Allocate mixing channels for simultaneous sound effects
     Mix_AllocateChannels(50);
 
-    int tempChannels = 0;
-    Mix_QuerySpec(&audioObtained.freq, &audioObtained.format, &tempChannels);
-    audioObtained.channels = tempChannels & 0xFF;
+    // Query actual audio specifications that were obtained
+    int temp_channels = 0;
+    Mix_QuerySpec(&audio_spec.freq, &audio_spec.format, &temp_channels);
+    audio_spec.channels = static_cast<uint8_t>(temp_channels & 0xFF);
 
-    sound_enabled = SFX_INITIALIZED | MUSIC_INITIALIZED;
+    // Enable both SFX and music subsystems
+    enabled = SFX_INITIALIZED | MUSIC_INITIALIZED;
 
-    // It's all good
-    return sound_enabled;
+    return enabled;
 }
 
-//
-// sound_uninit
-//
-// Shutdown audio and release any memory left over.
-//
+/**
+  * @brief Shuts down the sound system
+  *
+  * Closes the audio device and marks the system as disabled.
+  * Safe to call even if sound system wasn't initialized.
+  */
 void sound_uninit()
 {
-    if (!sound_enabled)
+    if (!enabled)
         return;
 
     Mix_CloseAudio();
+    Mix_Quit();
+    enabled = false;
 }
 
-//
-// sound_effect constructor
-//
-// Read in the requested .wav file.
-//
-sound_effect::sound_effect(char const *filename)
+/**
+  * @brief Constructor for sound effect objects
+  *
+  * Loads a sound effect from a file and prepares it for playback.
+  * Uses SDL_RWops for memory-based loading to avoid leaving files open.
+  *
+  * @param filename Path to the sound effect file
+  */
+sound_effect::sound_effect(char const *filename) : m_chunk(nullptr)
 {
-    if (!sound_enabled)
+    if (!enabled)
         return;
 
-    jFILE fp(filename, "rb");
-    if (fp.open_failure())
+    // Use prefix_fopen to get the file
+    FILE *file = prefix_fopen(filename, "rb");
+    if (!file)
+    {
+        printf("Failed to open file %s\n", filename);
         return;
+    }
 
-    void *temp_data = malloc(fp.file_size());
-    fp.read(temp_data, fp.file_size());
-    SDL_RWops *rw = SDL_RWFromMem(temp_data, fp.file_size());
-    m_chunk = Mix_LoadWAV_RW(rw, 1);
-    free(temp_data);
+    // Create SDL_RWops from the FILE*
+    SDL_RWops *rw = SDL_RWFromFP(file, SDL_TRUE); // SDL_TRUE means SDL will close the file
+    if (!rw)
+    {
+        printf("Failed to create RWops for %s: %s\n", filename, SDL_GetError());
+        fclose(file);
+        return;
+    }
+
+    m_chunk = Mix_LoadWAV_RW(rw, SDL_TRUE); // 1 means SDL will free the RWops
+    if (!m_chunk)
+    {
+        printf("Failed to load WAV from file %s: %s\n", filename, Mix_GetError());
+    }
 }
 
-//
-// sound_effect destructor
-//
-// Release the audio data.
-//
+/**
+  * @brief Destructor for sound effect objects
+  *
+  * Ensures all instances of this sound effect stop playing
+  * before freeing resources. Uses fade out to avoid audio pops.
+  */
 sound_effect::~sound_effect()
 {
-    if (!sound_enabled)
+    if (!enabled)
         return;
 
-    // Sound effect deletion only happens on level load, so there
-    // is no problem in stopping everything. But the original playing
-    // code handles the sound effects and the "playlist" differently.
-    // Therefore with SDL_mixer, a sound that has not finished playing
-    // on a level load will cut off in the middle. This is most noticable
-    // for the button sound of the load savegame dialog.
-    Mix_FadeOutGroup(-1, 100);
+    // Sound effect deletion only happens on level load
+    Mix_FadeOutGroup(-1, 100); // Fade out all channels over 100ms
     while (Mix_Playing(-1))
+    { // Wait for all sounds to finish
         SDL_Delay(10);
-    Mix_FreeChunk(m_chunk);
+    }
+
+    if (m_chunk)
+    {
+        Mix_FreeChunk(m_chunk);
+        m_chunk = nullptr;
+    }
 }
 
-//
-// sound_effect::play
-//
-// Add a new sample for playing.
-// panpot defines the pan position for the sound effect.
-//   0   - Completely to the right.
-//   128 - Centered.
-//   255 - Completely to the left.
-//
+/**
+  * @brief Plays a sound effect with specified parameters
+  *
+  * @param volume Volume level (0-127)
+  * @param pitch Pitch adjustment (unused in current implementation)
+  * @param panpot Stereo panning (0=left, 128=center, 255=right)
+  */
 void sound_effect::play(int volume, int pitch, int panpot)
 {
-    if (!sound_enabled || settings.no_sound)
+    if (!enabled || settings.no_sound || !m_chunk)
         return;
 
+    // Clamp values to valid ranges
+    volume = std::clamp(volume, 0, 127);
+    panpot = std::clamp(panpot, 0, 255);
+
+    // Play on first available channel (-1)
     int channel = Mix_PlayChannel(-1, m_chunk, 0);
     if (channel > -1)
     {
         Mix_Volume(channel, volume);
-        Mix_SetPanning(channel, panpot, 255 - panpot);
+        Mix_SetPanning(channel, static_cast<uint8_t>(panpot), static_cast<uint8_t>(255 - panpot));
     }
 }
 
-// Play music using SDL_Mixer
-
+/**
+  * @brief Constructor for music/song objects
+  *
+  * Loads a music file (HMI format) and prepares it for playback.
+  * Uses SDL_RWops for memory-based playback to avoid keeping files open.
+  *
+  * @param filename Path to the music file
+  */
 song::song(char const *filename)
+    : data(nullptr), // Raw music data
+      song_id(0), // Playback identifier
+      rw(nullptr), // SDL memory operations
+      music(nullptr) // SDL mixer music object
 {
-    data = NULL;
-    Name = strdup(filename);
-    song_id = 0;
+    if (!filename)
+        return;
 
-    rw = NULL;
-    music = NULL;
-
-    std::string realname = std::string(get_filename_prefix()) + filename;
-
-    uint32_t data_size;
-    data = load_hmi(realname.c_str(), data_size);
-
-    if (!data)
+    try
     {
-        printf("Sound: ERROR - could not load %s\n", realname.c_str());
-    }
+        // Load HMI format music file into memory
+        uint32_t data_size;
+        data = load_hmi(filename, data_size);
 
-    if (data)
-    {
+        if (!data)
+        {
+            printf("Sound: ERROR - could not load %s\n", filename);
+            return;
+        }
+
+        // Create SDL_RWops for memory-based playback
         rw = SDL_RWFromMem(data, data_size);
         if (!rw)
         {
-            printf("Sound: ERROR - SDL_RWFromMem failed on %s\n", realname.c_str());
+            printf("Sound: ERROR - could not create RWops for %s\n", filename);
+            return;
         }
-    }
 
-    if (rw)
-    {
-        music = Mix_LoadMUS_RW(rw, 0);
+        // Load music using SDL_mixer
+        music = Mix_LoadMUS_RW(rw, SDL_FALSE); // 0 means don't free the rwops
+
         if (!music)
         {
-            printf("Sound: ERROR - %s while loading %s. Music won't play. You might be able to fix this by installing "
-                   "FluidSynth.\n",
-                   Mix_GetError(), realname.c_str());
+            printf("Sound: ERROR - %s while loading %s\n", Mix_GetError(), filename);
         }
     }
-
-    const char *err = Mix_GetError();
-    if (err && *err)
+    catch (const std::exception &e)
     {
-        printf("Sound: SDL_mixer warning/error: %s\n", err);
+        printf("Sound: ERROR - Exception while loading %s: %s\n", filename, e.what());
     }
 }
 
+/**
+  * @brief Destructor for music/song objects
+  *
+  * Stops playback and frees all allocated resources.
+  */
 song::~song()
 {
     if (playing())
         stop();
 
-    free(data);
-    free(Name);
+    free(data); // Using free because it was allocated by load_hmi
 
-    Mix_FreeMusic(music);
-    SDL_FreeRW(rw);
+    if (music)
+        Mix_FreeMusic(music);
+    if (rw)
+        SDL_FreeRW(rw);
 }
 
+/**
+  * @brief Starts playing the music
+  *
+  * @param volume Volume level (0-127)
+  */
 void song::play(unsigned char volume)
 {
-    if (!sound_enabled || settings.no_music)
+    if (!enabled || settings.no_music || !music)
         return;
 
     song_id = 1;
-
-    //AR play music in a loop
-    Mix_PlayMusic(this->music, -1);
-    Mix_VolumeMusic(volume);
+    Mix_PlayMusic(music, -1);
+    Mix_VolumeMusic(std::clamp(static_cast<int>(volume), 0, 127));
 }
 
+/**
+  * @brief Stops music playback
+  *
+  * @param fadeout_time Fadeout duration in milliseconds (unused in current implementation)
+  */
 void song::stop(long fadeout_time)
 {
     song_id = 0;
-
-    Mix_FadeOutMusic(100);
+    Mix_FadeOutMusic(100); // Always fade out over 100ms to avoid audio pops
 }
 
+/**
+  * @brief Checks if music is currently playing
+  *
+  * @return int Non-zero if music is playing, 0 otherwise
+  */
 int song::playing()
 {
     return Mix_PlayingMusic();
 }
 
+/**
+  * @brief Sets the music volume
+  *
+  * @param volume New volume level (0-127)
+  */
 void song::set_volume(int volume)
 {
-    Mix_VolumeMusic(volume);
+    if (music)
+        Mix_VolumeMusic(volume);
 }

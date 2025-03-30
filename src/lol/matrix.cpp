@@ -12,12 +12,10 @@
 #include "config.h"
 #endif
 
-#include <cstdlib> /* free() */
-#include <cstring> /* strdup() */
+#include <cmath>
+#include <ostream>
 
 #include "lol/matrix.h"
-
-using namespace std;
 
 namespace lol
 {
@@ -27,7 +25,7 @@ static inline float det3(float a, float b, float c, float d, float e, float f, f
     return a * (e * i - h * f) + b * (f * g - i * d) + c * (d * h - g * e);
 }
 
-static inline float cofact3(mat4 const &mat, int i, int j)
+static inline float cofact3(const mat4 &mat, int i, int j)
 {
     return det3(mat[(i + 1) & 3][(j + 1) & 3], mat[(i + 2) & 3][(j + 1) & 3], mat[(i + 3) & 3][(j + 1) & 3],
                 mat[(i + 1) & 3][(j + 2) & 3], mat[(i + 2) & 3][(j + 2) & 3], mat[(i + 3) & 3][(j + 2) & 3],
@@ -38,7 +36,7 @@ static inline float cofact3(mat4 const &mat, int i, int j)
 template <> float mat4::det() const
 {
     float ret = 0;
-    for (int n = 0; n < 4; n++)
+    for (int n = 0; n < 4; ++n)
         ret += (*this)[n][0] * cofact3(*this, n, 0);
     return ret;
 }
@@ -47,11 +45,11 @@ template <> mat4 mat4::invert() const
 {
     mat4 ret;
     float d = det();
-    if (d)
+    if (d != 0.0f)
     {
         d = 1.0f / d;
-        for (int j = 0; j < 4; j++)
-            for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; ++j)
+            for (int i = 0; i < 4; ++i)
                 ret[j][i] = cofact3(*this, i, j) * d;
     }
     return ret;
@@ -73,47 +71,43 @@ template <> void mat4::printf() const
 #endif
 }
 
-#if !defined __ANDROID__ && !defined WIN32
-// FIXME: How to make this work under Windows?
-template <> std::ostream &operator<<(std::ostream &stream, ivec2 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const ivec2 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, ivec3 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const ivec3 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, ivec4 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const ivec4 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, vec2 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const vec2 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, vec3 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const vec3 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, vec4 const &v)
+template <> std::ostream &operator<<(std::ostream &stream, const vec4 &v)
 {
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")";
 }
 
-template <> std::ostream &operator<<(std::ostream &stream, mat4 const &m)
+template <> std::ostream &operator<<(std::ostream &stream, const mat4 &m)
 {
-    stream << "((" << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << ", " << m[3][0] << "), ";
-    stream << "(" << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << ", " << m[3][1] << "), ";
-    stream << "(" << m[0][2] << ", " << m[1][2] << ", " << m[2][2] << ", " << m[3][2] << "), ";
-    stream << "(" << m[0][3] << ", " << m[1][3] << ", " << m[2][3] << ", " << m[3][3] << "))";
-    return stream;
+    return stream << "((" << m[0][0] << ", " << m[1][0] << ", " << m[2][0] << ", " << m[3][0] << "), "
+                  << "(" << m[0][1] << ", " << m[1][1] << ", " << m[2][1] << ", " << m[3][1] << "), "
+                  << "(" << m[0][2] << ", " << m[1][2] << ", " << m[2][2] << ", " << m[3][2] << "), "
+                  << "(" << m[0][3] << ", " << m[1][3] << ", " << m[2][3] << ", " << m[3][3] << "))";
 }
-#endif
 
 template <> mat4 mat4::ortho(float left, float right, float bottom, float top, float near, float far)
 {
@@ -151,7 +145,7 @@ template <> mat4 mat4::frustum(float left, float right, float bottom, float top,
 
 template <> mat4 mat4::perspective(float theta, float width, float height, float near, float far)
 {
-    float t1 = tanf(theta / 2.0f);
+    float t1 = std::tan(theta / 2.0f);
     float t2 = t1 * height / width;
 
     return frustum(-near * t1, near * t1, -near * t2, near * t2, near, far);
@@ -168,10 +162,10 @@ template <> mat4 mat4::translate(float x, float y, float z)
 
 template <> mat4 mat4::rotate(float theta, float x, float y, float z)
 {
-    float st = sinf(theta);
-    float ct = cosf(theta);
+    float st = std::sin(theta);
+    float ct = std::cos(theta);
 
-    float len = sqrtf(x * x + y * y + z * z);
+    float len = std::sqrt(x * x + y * y + z * z);
     float invlen = len ? 1.0f / len : 0.0f;
     x *= invlen;
     y *= invlen;

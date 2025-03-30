@@ -11,7 +11,9 @@ include_directories(
     ${abuse_SOURCE_DIR}/src/imlib
 )
 
+
 target_link_libraries(lisp SDL2_mixer::SDL2_mixer)
+
 #INCLUDES = -I$(srcdir) -I$(srcdir)/../ -I$(srcdir)/../imlib $(SDL2_CFLAGS)
 
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK

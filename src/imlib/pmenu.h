@@ -62,7 +62,7 @@ class psub_menu
     psub_menu(pmenu_item *First, psub_menu *Next)
     {
         first = First;
-        Next = Next;
+        next = Next;
         win = 0;
         active = 0;
     }

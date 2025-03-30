@@ -17,6 +17,8 @@
 #include <stdio.h>
 #include <cstdint>
 
+#include "file_utils.h"
+
 #ifdef _MSC_VER
 // For simplicity sake, just make snprintf sprintf_s even though they aren't quite the same
 #define snprintf sprintf_s
@@ -96,6 +98,37 @@ static inline uint32_t lltl(uint32_t x)
 #else
 #define CONDITION(x, st) ERROR(x, st)
 #define CHECK(x) CONDITION(x, "Check stop");
+#endif
+
+#ifndef __DEBUG_LOG_HPP_
+#define __DEBUG_LOG_HPP_
+
+#include <stdio.h>
+#include <time.h>
+
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <sys/time.h>
+#endif
+
+#ifdef TCPIP_DEBUG
+#define DEBUG_LOG(fmt, ...)                                                                                            \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        struct timeval tv;                                                                                             \
+        struct tm *tm_info;                                                                                            \
+        char timestr[32];                                                                                              \
+                                                                                                                       \
+        gettimeofday(&tv, NULL);                                                                                       \
+        tm_info = localtime(&tv.tv_sec);                                                                               \
+        strftime(timestr, sizeof(timestr), "%H:%M:%S", tm_info);                                                       \
+        printf("[%s.%03d] %s: " fmt "\n", timestr, (int)(tv.tv_usec / 1000), __FILE__, ##__VA_ARGS__);                 \
+    } while (0)
+#else
+#define DEBUG_LOG(fmt, ...) ((void)0)
+#endif
+
 #endif
 
 #endif // __COMMON_H__

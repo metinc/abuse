@@ -27,15 +27,15 @@ void write_include(image *im, palette *pal, char *filename, char *name)
         if (toupper(tmp_name[j]) < 'A' || toupper(tmp_name[j]) > 'Z')
             tmp_name[j] = '_';
 
-    FILE *fp = fopen(filename, "rb"); // see if the file already exists
+    FILE *fp = prefix_fopen(filename, "rb"); // see if the file already exists
     if (fp)
     {
         fclose(fp);
-        fp = fopen(filename, "ab"); // if so, append to the end and don't write the palette
+        fp = prefix_fopen(filename, "ab"); // if so, append to the end and don't write the palette
         append = 1;
     }
     else
-        fp = fopen(filename, "wb");
+        fp = prefix_fopen(filename, "wb");
 
     if (fp)
     {

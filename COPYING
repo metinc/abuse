@@ -14,10 +14,12 @@ src/sdlport/*:
    Copyright (c) 2001 Anthony Kruize <trandor@labyrinth.net.au>
    Copyright (c) 2005-2011 Sam Hocevar <sam@hocevar.net>
    Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
+   Copyright (c) 2024-2025 Andrej Pancik
    Licensed under the GNU GPL 2+. Please read COPYING.GPL for details.
 src/sdlport/hmi.h:
 src/sdlport/hmi.cpp:
    Copyright (c) 2011 Jochen Schleu <jjs@jjs.at>
+   Copyright (c) 2024-2025 Andrej Pancik
    Licensed under the WTFPL. Please read COPYING.WTFPL for details.
 src/sdlport/errorui.h:
 src/sdlport/errorui.cpp:
@@ -33,8 +35,10 @@ data/music/*:
    Copyright (c) 1995 Bobby Prince <bobby@bpmusic.com>
    Bobby gave Debian permission to redistribute these files.
 
+data/soundfonts/*:
+   Copyright unknown
+
 data/*:
    Copyright (c) 1995 Crack dot Com
-   Copyright (c) 1996-2008 Justin Cassidy <messiah15@dog.com> and others
-   These files were released in the public domain.
+   Copyright (c) 1996-2008 Justin Cassidy <messiah15@dog.com> and others   
 

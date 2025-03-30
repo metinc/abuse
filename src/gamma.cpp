@@ -60,6 +60,11 @@ bool write_gamma_lsp(long darkest_gray)
     return true;
 }
 
+//AR
+#include "sdlport/setup.h"
+extern Settings settings;
+//
+
 class gray_picker : public spicker
 {
   public:
@@ -225,6 +230,8 @@ void gamma_correct(palette *&pal, int force_menu)
         // Event loop
         Event ev;
         wm->flush_screen();
+
+        //AR event loop
         do
         {
             do
