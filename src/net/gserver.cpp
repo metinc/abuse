@@ -33,6 +33,7 @@
 #include "input.h"
 #include "dev.h"
 #include "game.h"
+#include <SDL_timer.h>
 
 extern base_memory_struct *base;
 extern net_socket *comm_sock, *game_sock;
@@ -102,6 +103,8 @@ void game_server::game_start_wait()
         }
 
         service_net_request();
+
+        SDL_Delay(1);
     }
 
     if (stat)
