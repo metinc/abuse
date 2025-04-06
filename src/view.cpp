@@ -731,8 +731,9 @@ int view::drawable()
     return local_player();
 }
 
-void recalc_local_view_space() // calculates view areas for local players, should be called
-    // when adding or deleting local players
+// Calculates view areas for local players.
+// This function should be called when adding or deleting local players.
+void recalc_local_view_space()
 {
     if (main_screen)
     {

@@ -150,7 +150,17 @@ void *top_aim()
                 int best_diff = 200, best_num = 0;
                 int iy = f[1], ix = f[6 * 2];
 
-                int best_angle = lisp_atan2(q->y - iy - v->pointer_y, v->pointer_x - q->x - ix);
+                int pointer_x = v->pointer_x;
+                int pointer_y = v->pointer_y;
+                if (v->local_player())
+                {
+                    ivec2 mouse_pos = wm->GetMousePos();
+                    mouse_pos = the_game->MouseToGame(mouse_pos);
+                    pointer_x = mouse_pos.x;
+                    pointer_y = mouse_pos.y;
+                }
+
+                int best_angle = lisp_atan2(q->y - iy - pointer_y, pointer_x - q->x - ix);
                 for (i = 0; i < 24; i++, f += 2) // check all the angles to see which would best fit animation wise
                 {
                     int this_angle = lisp_atan2(f[1] - iy, f[0] - ix);
@@ -164,10 +174,10 @@ void *top_aim()
                 }
 
                 // if the pointer is too close to the player go with the angle shown, not the angle through the pointer
-                if (abs(q->y - fb[1] - v->pointer_y) < 45 && abs(v->pointer_x - q->x + fb[0]) < 40)
+                if (abs(q->y - fb[1] - pointer_y) < 45 && abs(pointer_x - q->x + fb[0]) < 40)
                     o->lvars[point_angle] = lisp_atan2(fb[1] - iy, fb[0] - ix);
                 else
-                    o->lvars[point_angle] = lisp_atan2(q->y - fb[1] - v->pointer_y, v->pointer_x - (q->x + fb[0]));
+                    o->lvars[point_angle] = lisp_atan2(q->y - fb[1] - pointer_y, pointer_x - (q->x + fb[0]));
 
                 if (q->direction < 0)
                     q->x -= 4;
