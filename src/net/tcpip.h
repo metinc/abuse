@@ -107,7 +107,7 @@ class tcpip_protocol final : public net_protocol
 
     // State management
     void cleanup() override;
-    int select(int block) override;
+    int select(bool block) override;
 
     // Notification methods
     net_socket *start_notify(int port, void *data, int len) override;

@@ -111,7 +111,7 @@ class net_protocol
     virtual net_socket *create_listen_socket(int port, net_socket::socket_type sock_type) = 0;
     virtual int installed() = 0;
     virtual char const *name() = 0;
-    virtual int select(int block) = 0; // return # of sockets available for read & writing
+    virtual int select(bool block) = 0; // return # of sockets available for read & writing
     virtual void cleanup()
     {
     } // should do any needed pre-exit cleanup stuff

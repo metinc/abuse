@@ -389,7 +389,7 @@ void service_net_request()
 #if HAVE_NETWORK
     if (prot)
     {
-        if (prot->select(0))
+        if (prot->select(false))
         {
             // DEBUG_LOG("Network activity detected");
             if (comm_sock && comm_sock->ready_to_read())
