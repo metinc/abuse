@@ -25,7 +25,7 @@
 #include "dev.h"
 
 #include "net/sock.h"
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 #include <dirent.h>
 #include <vector>
 #include <algorithm>
