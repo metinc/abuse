@@ -91,7 +91,7 @@ target_link_libraries(abuse
     sdlport
     imlib
     net
-    SDL2::SDL2
+    SDL3::SDL3
     SDL2_mixer::SDL2_mixer
 )
 
@@ -123,7 +123,7 @@ include_directories(
     ${abuse_SOURCE_DIR}/src/lisp
     ${abuse_SOURCE_DIR}/src/imlib
     ${abuse_SOURCE_DIR}/src/net
-    ${SDL2_INCLUDE_DIR}
+    ${SDL3_INCLUDE_DIR}
     ${SDL2_MIXER_INCLUDE_DIR}
 )
 if(WIN32)
@@ -132,14 +132,14 @@ if(WIN32)
         RUNTIME DESTINATION "."
         LIBRARY DESTINATION ".")
     
-    # Find SDL2 and SDL2_mixer DLLs using known bin path
-    find_program(SDL2_DLL_PATH SDL2.dll HINTS "C:/msys64/mingw64/bin")
+    # Find SDL3 and SDL2_mixer DLLs using known bin path
+    find_program(SDL3_DLL_PATH SDL3.dll HINTS "C:/msys64/mingw64/bin")
     find_program(SDL2MIXER_DLL_PATH SDL2_mixer.dll HINTS "C:/msys64/mingw64/bin")
     
-    message(STATUS "Found SDL2.dll at: ${SDL2_DLL_PATH}")
+    message(STATUS "Found SDL3.dll at: ${SDL3_DLL_PATH}")
     message(STATUS "Found SDL2_mixer.dll at: ${SDL2MIXER_DLL_PATH}")
     
-    install(FILES ${SDL2_DLL_PATH} DESTINATION ".")
+    install(FILES ${SDL3_DLL_PATH} DESTINATION ".")
     install(FILES ${SDL2MIXER_DLL_PATH} DESTINATION ".")
     
     # Find additional required DLLs using known bin path
