@@ -24,28 +24,26 @@
 
 #include <stdio.h>
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
 #include "joy.h"
-
-/* NOTE: No joystick support yet.
- */
 
 int joy_init(int argc, char **argv)
 {
-    int joysticks = SDL_NumJoysticks();
+    int joysticks = 0;
+    SDL_GetJoysticks(&joysticks);
     printf("%d joysticks on system\n", joysticks);
-    for (int i = 0; i < joysticks; i++)
+    for (SDL_JoystickID i = 0; i < joysticks; i++)
     {
-        if (SDL_IsGameController(i))
+        if (SDL_IsGamepad(i))
         {
-            if (SDL_GameControllerOpen(i) == NULL)
+            if (SDL_OpenGamepad(i) == NULL)
             {
                 const char *error = SDL_GetError();
-                printf("Warning : Unable to open game controller %s: %s\n", SDL_JoystickNameForIndex(i), error);
+                printf("Warning : Unable to open game controller %s: %s\n", SDL_GetJoystickNameForID(i), error);
             }
         }
-        printf("  - joystick %d (%s) : %s\n", i, SDL_IsGameController(i) ? "controller" : " joystick ",
-               SDL_JoystickNameForIndex(i));
+        printf("  - joystick %d (%s) : %s\n", i, SDL_IsGamepad(i) ? "controller" : " joystick ",
+               SDL_GetJoystickNameForID(i));
     }
     return joysticks > 0;
 }
