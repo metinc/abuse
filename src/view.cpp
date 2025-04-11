@@ -305,7 +305,7 @@ void view::draw_character_damage()
  */
 uint16_t make_sync()
 {
-    uint16_t x = 0;
+    uint16_t checksum = 0;
     if (!current_level)
         return 0;
     if (current_level)
@@ -314,14 +314,14 @@ uint16_t make_sync()
         {
             if (f->m_focus)
             {
-                x ^= (f->m_focus->x & 0xffff);
-                x ^= (f->m_focus->y & 0xffff);
+                checksum ^= (f->m_focus->x & 0xffff);
+                checksum ^= (f->m_focus->y & 0xffff);
             }
         }
     }
-    x ^= rand_on;
+    checksum ^= rand_on;
 
-    return x;
+    return checksum;
 }
 
 void view::get_input()
