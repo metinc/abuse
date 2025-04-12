@@ -105,6 +105,7 @@ Settings settings;
 #include "tcpip.h"
 tcpip_protocol tcpip;
 #endif
+#include <map>
 
 void handle_no_space()
 {
@@ -1663,11 +1664,19 @@ extern int start_edit;
 
 void Game::get_input()
 {
-    Event ev;
     idle_ticks++;
+    std::map<int, Event> latest_events;
+
     while (event_waiting())
     {
+        Event ev;
         get_event(ev);
+        latest_events[ev.type] = ev; // Store only the last event of each type
+    }
+
+    for (auto &pair : latest_events)
+    {
+        Event &ev = pair.second;
 
         if (ev.type == EV_MOUSE_MOVE)
         {
