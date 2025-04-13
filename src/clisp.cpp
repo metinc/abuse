@@ -494,7 +494,7 @@ void *l_caller(LispFunc number, void *args)
         break;
     case LispFunc::TopAi:
         decrement_fire_delay();
-        return true_symbol;
+        return top_aim(false);
         break;
     case LispFunc::LaserUFun:
         return laser_ufun(args);

@@ -123,8 +123,10 @@ inline int angle_diff(int a1, int a2)
 
 /**
  * Updates the player's weapon aiming angle based on the mouse pointer position.
+ * @param check_local If true, the mouse position is taken from the local player. Should only be used for drawing. Otherwise it might cause
+ *                    the network going out of sync.
  */
-void *top_aim()
+void *top_aim(bool check_local)
 {
     game_object *o = current_object;
     if (o->total_objects()) // make sure we are linked to the main character
@@ -152,7 +154,7 @@ void *top_aim()
 
                 int pointer_x = v->pointer_x;
                 int pointer_y = v->pointer_y;
-                if (v->local_player())
+                if (v->local_player() && check_local)
                 {
                     ivec2 mouse_pos = wm->GetMousePos();
                     mouse_pos = the_game->MouseToGame(mouse_pos);
@@ -185,7 +187,6 @@ void *top_aim()
                 o->x = q->x;
                 o->y = q->y + 29 - q->picture()->Size().y;
 
-                rand_on += o->lvars[point_angle];
                 o->current_frame = best_num;
 
                 o->otype = weapon_types[v->current_weapon]; // switch to correct top part
@@ -807,8 +808,14 @@ void *player_draw(int just_fired_var, int num)
 
 void *top_draw()
 {
-    top_aim();
     game_object *o = current_object;
+    int32_t lvars_point_angle = o->lvars[point_angle];
+    int32_t x = o->x;
+    int32_t y = o->y;
+    short current_frame = o->current_frame;
+    uint16_t otype = o->otype;
+    top_aim(true);
+
     if (o->total_objects())
     {
         game_object *bot = o->get_object(0);
@@ -843,6 +850,13 @@ void *top_draw()
                 o->x -= 4;
         }
     }
+
+    // revert back to original values after drawing
+    o->lvars[point_angle] = lvars_point_angle;
+    o->x = x;
+    o->y = y;
+    o->current_frame = current_frame;
+    o->otype = otype;
     return NULL;
 }
 
