@@ -489,65 +489,13 @@ void level::check_collisions()
 }
 */
 
-game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2)
+game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, bool all)
 {
     game_object *l = NULL;
     int32_t tx1, ty1, tx2, ty2, t_centerx;
     game_object *target = first_active;
-    game_object **blist = block_list;
-    int t = block_total;
-    for (; t; t--, blist++)
-    {
-        target = *blist;
-        if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
-        {
-            target->picture_space(tx1, ty1, tx2, ty2);
-            if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
-                  (y1 < ty1 && y2 < ty1))) // are they semi/overlapping?
-            {
-                t_centerx = target->x_center();
-                boundary *t_damage;
-                if (target->direction > 0)
-                    t_damage = target->current_figure()->f_damage;
-                else
-                    t_damage = target->current_figure()->b_damage;
-                unsigned char *t_dat = t_damage->data, *ins = t_damage->inside;
-                int iter = t_damage->tot - 1;
-                while (iter-- > 0)
-                {
-                    int32_t xp1 = target->x + target->tx(*t_dat);
-                    t_dat++;
-                    int32_t yp1 = target->y + target->ty(*t_dat);
-                    t_dat++;
-                    int32_t xp2 = target->x + target->tx(*t_dat);
-                    int32_t yp2 = target->y + target->ty(t_dat[1]);
-
-                    // now check to see if (x1,y1-x2,y2) intercest with (xp1,yp1-xp2,yp2)
-                    if (*ins)
-                    {
-                        if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, 1))
-                            l = target;
-                    }
-                    else
-                    {
-                        if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, -1))
-                            l = target;
-                    }
-                    ins++;
-                }
-            }
-        }
-    }
-    return l; // return the last person we intersected
-}
-
-game_object *level::all_boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2)
-{
-    game_object *l = NULL;
-    int32_t tx1, ty1, tx2, ty2, t_centerx;
-    game_object *target = first_active;
-    game_object **blist = all_block_list;
-    int t = all_block_total;
+    game_object **blist = all ? all_block_list : block_list;
+    int t = all ? all_block_total : block_total;
     for (; t; t--, blist++)
     {
         target = *blist;
