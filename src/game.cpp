@@ -1143,7 +1143,7 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         main_screen->dirt_on();
 
     rand_on = ro; // restore random start in case in draw funs moved it
-        // ... not every machine will draw the same thing
+    // ... not every machine will draw the same thing
 
     post_render();
 
@@ -2503,9 +2503,6 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
-            if (demo_man.current_state() == demo_manager::NORMAL)
-                net_receive();
-
             // see if a request for a level load was made during the last tick
             if (req_name[0])
             {
@@ -2521,7 +2518,10 @@ int main(int argc, char *argv[])
             if (SDL_GetTicks64() - lastFixedUpdate >= settings.physics_update)
             {
                 if (demo_man.current_state() == demo_manager::NORMAL)
+                {
+                    net_receive();
                     net_send();
+                }
                 else
                     demo_man.do_inputs();
 
