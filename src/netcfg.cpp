@@ -26,6 +26,38 @@
 
 #include "net/sock.h"
 #include <SDL_timer.h>
+#include <dirent.h>
+#include <vector>
+#include <algorithm>
+#include "imlib/scroller.h"
+#include "file_utils.h"
+
+// Static storage for available network levels (single-level selection UI)
+static std::vector<std::string> g_net_levels; // filenames only (e.g. "2play1.spe")
+static std::vector<char *> g_net_levels_c; // c_str pointers for pick_list
+
+static void build_net_level_list()
+{
+    if (!g_net_levels.empty())
+        return;
+    const char *base = get_filename_prefix();
+    std::string dir_path = std::string(base) + "netlevel";
+    DIR *d = opendir(dir_path.c_str());
+    if (!d)
+        return;
+    struct dirent *ent;
+    while ((ent = readdir(d)))
+    {
+        std::string n = ent->d_name;
+        if (n.size() > 4 && n.substr(n.size() - 4) == ".spe")
+            g_net_levels.push_back(n);
+    }
+    closedir(d);
+    std::sort(g_net_levels.begin(), g_net_levels.end());
+    g_net_levels_c.clear();
+    for (auto &s : g_net_levels)
+        g_net_levels_c.push_back((char *)s.c_str());
+}
 
 extern char const *get_login();
 net_configuration *main_net_cfg = NULL;
@@ -183,8 +215,8 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         bFILE *fp = open_file("addon/deathmat/gamename.lsp", "wb");
         if (!fp->open_failure())
         {
-            char str[100];
-            sprintf(str, "(setq gamename \"%s\")\n", game_name);
+            char str[256];
+            snprintf(str, sizeof(str), "(setq gamename \"%s\")\n", game_name);
             fp->write(str, strlen(str) + 1);
         }
         delete fp;
@@ -193,14 +225,21 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         fp = open_file("addon/deathmat/levelset.lsp", "wb");
         if (!fp->open_failure())
         {
-            char str[100];
-            if (((ifield *)(i->get(LEVEL_BOX)->read()))->id == LVL_2)
-                sprintf(str, "(load \"addon/deathmat/small.lsp\")\n");
-            else if (((ifield *)(i->get(LEVEL_BOX)->read()))->id == LVL_4)
-                sprintf(str, "(load \"addon/deathmat/medium.lsp\")\n");
-            else
-                sprintf(str, "(load \"addon/deathmat/large.lsp\")\n");
-            fp->write(str, strlen(str) + 1);
+            int sel_index = -1;
+            ifield *lvl_if = i->get(LEVEL_BOX);
+            if (lvl_if)
+            {
+                pick_list *pl = (pick_list *)lvl_if; /* lvl_if is pick_list (LEVEL_BOX) */
+                if (pl)
+                    sel_index = pl->get_selection();
+            }
+            if (sel_index >= 0 && sel_index < (int)g_net_levels.size())
+            {
+                char str[512];
+                // Prepend directory path
+                snprintf(str, sizeof(str), "(setq net_levels '(\"netlevel/%s\"))\n", g_net_levels[sel_index].c_str());
+                fp->write(str, strlen(str) + 1);
+            }
         }
         delete fp;
 
@@ -230,96 +269,6 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
 }
 
 extern int start_running, demo_start, start_edit;
-
-/*int net_configuration::input()   // pulls up dialog box and input fileds
- {
-   ifield *ilist=NULL;
-   int x=0,y=0;
- 
-   Jwindow *sv=wm->new_window(50,80,-1,-1,new button(0,0,NET_SERVER,symbol_str("server"),
-                      new button(0,wm->font()->height()*2,NET_CLIENT,symbol_str("client"),
-                      new button(0,wm->font()->height()*4,NET_SINGLE,symbol_str("single_play"),
-                      new button(0,wm->font()->height()*6,NET_CANCEL,symbol_str("cancel_net"),
-                         NULL)))),symbol_str("Networking"));
- 
-   Event ev;
-   int done=0;
-   do
-   {
-     wm->flush_screen();
-     do { wm->get_event(ev); } while (ev.type==EV_MOUSE_MOVE && wm->IsPending());
-     if (ev.type==EV_MESSAGE)
-     {
-       if (ev.message.id==NET_SERVER) { done=1; state=RESTART_SERVER;  start_edit=0; demo_start=0; start_running=1; }
-       else if (ev.message.id==NET_CLIENT) { done=1; state=RESTART_CLIENT;  start_edit=0; demo_start=0; start_running=1; }
-       else if (ev.message.id==NET_SINGLE) { done=1; state=RESTART_SINGLE;  start_edit=0; demo_start=0; start_running=0; }
-       else if (ev.message.id==NET_CANCEL) { done=1; }
-     } else if (ev.type==EV_CLOSE_WINDOW || (ev.type==EV_KEY & ev.key==JK_ESC)) done=1;
- 
-   } while (!done);
- 
-   wm->close_window(sv);
-   wm->flush_screen();
- 
-   if (state==RESTART_SINGLE)
-   {
-     strcpy(lsf,"abuse.lsp");
-     return 1;
-   }
-   if (ev.message.id==NET_CANCEL || state==RESTART_SINGLE) return 0;
- 
-   if (state==RESTART_SERVER)
-   {
-     ilist=new button(x,y,NET_CANCEL,symbol_str("cancel_button"),ilist);
-     ilist=new button(x,y,NET_OK,       symbol_str("server"),ilist);
-     ilist=new text_field(x,y,NET_KILLS,symbol_str("kills_to_win"),"******",kills,ilist);
-     ilist=new text_field(x,y,NET_MAX,symbol_str("max_play"),"******",max_players,ilist);
-     ilist=new text_field(x,y,NET_MIN,symbol_str("min_play"),"******",min_players,ilist);
-     ilist=new text_field(x,y,NET_PORT,symbol_str("use_port"),"******",port,ilist);
-     ilist=new text_field(x,y,NET_NAME,symbol_str("your_name"),"****************",name,ilist);
- 
-   } else
-   {
-     ilist=new button(x,y,NET_CANCEL,symbol_str("cancel_button"),ilist);
-     ilist=new button(x,y,NET_OK,symbol_str("client"),ilist);
- //    ilist=new text_field(x,y,NET_PORT,symbol_str("use_port"),"******",port,ilist);
-     ilist=new text_field(x,y,NET_SERVER_PORT,symbol_str("server_port"),"******",server_port,ilist);
-     ilist=new text_field(x,y,NET_SERVER_NAME,symbol_str("server_name"),"*********************************",game_name,ilist);
-     ilist=new text_field(x,y,NET_NAME,symbol_str("your_name"),"****************",name,ilist);
-   }
- 
-   ifield *i=ilist;
-   for (; i; i=i->next)
-   {
-     i->y=y;
-     int x1,y1,x2,y2;
-     i->area(x1,y1,x2,y2);
-     y=y2+2;
-   }
- 
- 
-   Jwindow *nw=wm->new_window(0,0,-1,-1,ilist,symbol_str("Networking"));
- 
-   done=0;
-   do
-   {
-     wm->flush_screen();
-     do { wm->get_event(ev); } while (ev.type==EV_MOUSE_MOVE && wm->IsPending());
-     if (ev.type==EV_MESSAGE && ev.message.id==NET_OK && confirm_inputs(nw,state==RESTART_SERVER))
-       done=1;
-     if (ev.type==EV_MESSAGE && (ev.message.id==NET_CANCEL || ev.message.id==NET_SINGLE))
-        done=1;
-     if (ev.type==EV_CLOSE_WINDOW || (ev.type==EV_KEY && ev.key==JK_ESC))
-       done=1;
- 
-   } while (!done);
-   wm->close_window(nw);
-   wm->flush_screen();
- 
-   return ev.message.id==NET_OK;
- }
- 
- */
 
 void net_configuration::error(char const *message)
 {
@@ -402,15 +351,29 @@ int net_configuration::get_options(int server)
 
     if (server)
     {
-        list = center_ifield(
-            new text_field(x, y + 30, NET_NAME, symbol_str("your_name"), "************************", name, list), x,
-            x + ns_w, NULL);
-        list = center_ifield(new text_field(0, 0, NET_SERVER_NAME, symbol_str("server_name"),
-                                            "************************", game_name, list),
-                             x, x + ns_w, list);
-        list = center_ifield(new info_field(0, 0, 0, symbol_str("min_play"), list), x, x + ns_w, list);
+        // Left column positioning
+        int left_x = x + 40;
+        int left_y = y + 30;
+        int col_gap = 10;
 
-        button_box *b = new button_box(0, 0, NET_MIN, 1, NULL, list);
+        // Right column positioning
+        int right_x = x + ns_w / 3 * 2;
+        int right_y = y + 30;
+
+        // Left column fields
+        list = new text_field(left_x, left_y, NET_NAME, symbol_str("your_name"), "*******************", name, list);
+        left_y += fnt->Size().y + col_gap;
+        list = new text_field(left_x, left_y, NET_SERVER_NAME, symbol_str("server_name"), "*******************",
+                              game_name, list);
+        left_y += fnt->Size().y + 5;
+
+        // Min players label & buttons
+        info_field *min_lbl = new info_field(left_x, left_y, 0, symbol_str("min_play"), list);
+        list = min_lbl;
+        int ax1, ay1, ax2, ay2;
+        min_lbl->area(ax1, ay1, ax2, ay2);
+        left_y = ay2 + 4;
+        button_box *b = new button_box(left_x, left_y, NET_MIN, 1, NULL, list);
         b->add_button(new button(0, 0, MIN_8, "8", NULL));
         b->add_button(new button(0, 0, MIN_7, "7", NULL));
         b->add_button(new button(0, 0, MIN_6, "6", NULL));
@@ -421,15 +384,18 @@ int net_configuration::get_options(int server)
         r->push();
         b->add_button(r);
         b->add_button(new button(0, 0, MIN_1, "1", NULL));
-
-        b->arrange_left_right();
-        center_ifield(b, x, x + ns_w, list);
         b->arrange_left_right();
         list = b;
+        int bx1, by1, bx2, by2;
+        b->area(bx1, by1, bx2, by2);
+        left_y = by2 + col_gap;
 
-        list = center_ifield(new info_field(0, 0, 0, symbol_str("max_play"), list), x, x + ns_w, list);
-
-        b = new button_box(0, 0, NET_MAX, 1, NULL, list);
+        // Max players label & buttons
+        info_field *max_lbl = new info_field(left_x, left_y, 0, symbol_str("max_play"), list);
+        list = max_lbl;
+        max_lbl->area(ax1, ay1, ax2, ay2);
+        left_y = ay2 + 4;
+        b = new button_box(left_x, left_y, NET_MAX, 1, NULL, list);
         button *q = new button(0, 0, MAX_8, "8", NULL);
         q->push();
         b->add_button(q);
@@ -440,26 +406,23 @@ int net_configuration::get_options(int server)
         b->add_button(new button(0, 0, MAX_3, "3", NULL));
         b->add_button(new button(0, 0, MAX_2, "2", NULL));
         b->arrange_left_right();
-        center_ifield(b, x, x + ns_w, list);
-        b->arrange_left_right();
         list = b;
+        b->area(bx1, by1, bx2, by2);
+        left_y = by2 + col_gap;
 
-        list = center_ifield(new info_field(0, 0, 0, symbol_str("level_size"), list), x, x + ns_w, list);
+        // Kills field
+        list = new text_field(left_x, left_y, NET_KILLS, symbol_str("kills_to_win"), "***", "25", list);
 
-        b = new button_box(0, 0, LEVEL_BOX, 1, NULL, list);
-        b->add_button(new button(0, 0, LVL_8, symbol_str("lvl_8"), NULL));
-        b->add_button(new button(0, 0, LVL_4, symbol_str("lvl_4"), NULL));
-        q = new button(0, 0, LVL_2, symbol_str("lvl_2"), NULL);
-        q->push();
-        b->add_button(q);
-
-        b->arrange_left_right();
-        center_ifield(b, x, x + ns_w, list);
-        b->arrange_left_right();
-        list = b;
-
-        list = center_ifield(new text_field(0, 0, NET_KILLS, symbol_str("kills_to_win"), "***", "25", list), x,
-                             x + ns_w, list);
+        // Right column : level selection list
+        build_net_level_list();
+        if (!g_net_levels.empty())
+        {
+            list = new info_field(right_x, right_y, 0, symbol_str("select_level"), list);
+            right_y += fnt->Size().y + 4;
+            pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, 15, g_net_levels_c.data(),
+                                          (int)g_net_levels_c.size(), 0, list, cache.img(window_texture));
+            list = pl;
+        }
     }
     else
     {
