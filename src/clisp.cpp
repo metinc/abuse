@@ -1913,10 +1913,7 @@ long c_caller(CFunc number, void *args)
         if (x2 != nx2 || y2 != ny2)
             return 0;
 
-        if (block_all)
-            current_level->all_boundary_setback(current_object, x1, y1, x2, y2);
-        else
-            current_level->boundary_setback(current_object, x1, y1, x2, y2);
+        current_level->boundary_setback(current_object, x1, y1, x2, y2, block_all);
         return (x2 == nx2 && y2 == ny2);
     }
     break;

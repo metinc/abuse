@@ -601,6 +601,19 @@ int tcpip_protocol::handle_responder()
                     request->addr = addr;
                     strncpy(request->name, buf + 5, sizeof(request->name) - 1);
                     request->name[sizeof(request->name) - 1] = 0;
+                    // Append IP address to the name for display
+                    char ipbuf[32];
+#if defined(WIN32)
+                    strncpy(ipbuf, inet_ntoa(addr->addr.sin_addr), sizeof(ipbuf) - 1);
+                    ipbuf[sizeof(ipbuf) - 1] = 0;
+#else
+                    inet_ntop(AF_INET, &addr->addr.sin_addr, ipbuf, sizeof(ipbuf));
+#endif
+                    size_t cur_len = strlen(request->name);
+                    if (cur_len < sizeof(request->name) - 5) // ensure space for at least ' ()' and some IP
+                    {
+                        snprintf(request->name + cur_len, sizeof(request->name) - cur_len, " (%s)", ipbuf);
+                    }
                     servers.insert(request);
                     addr = nullptr; // Prevent deletion
                 }
@@ -670,71 +683,75 @@ net_address *tcpip_protocol::find_address(const int port, char *name)
 
     if (!responder)
     {
-        responder = create_listen_socket(port, net_socket::SOCKET_FAST);
+        // Use ephemeral port (0) so we don't collide with the actual server port
+        responder = create_listen_socket(0, net_socket::SOCKET_FAST);
         if (responder)
         {
             responder->read_selectable();
             responder->write_unselectable();
-            bcast = static_cast<ip_address *>(get_local_address());
-            bcast->set_port(port);
-            *((unsigned char *)&bcast->addr.sin_addr + 3) = 0;
+            if (auto *ufd = dynamic_cast<unix_fd *>(responder))
+            {
+                ufd->broadcastable();
+            }
+
+            // Determine broadcast address
+#ifndef WIN32
+            struct ifaddrs *ifaddr = nullptr;
+            if (getifaddrs(&ifaddr) == 0)
+            {
+                for (struct ifaddrs *ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+                {
+                    if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET)
+                        continue;
+                    sockaddr_in *sa = (sockaddr_in *)ifa->ifa_addr;
+                    if (sa->sin_addr.s_addr == htonl(INADDR_LOOPBACK))
+                        continue; // skip loopback
+
+                    sockaddr_in baddr{};
+                    baddr.sin_family = AF_INET;
+                    baddr.sin_port = htons(port);
+
+                    if (ifa->ifa_broadaddr && ifa->ifa_broadaddr->sa_family == AF_INET)
+                    {
+                        baddr.sin_addr = ((sockaddr_in *)ifa->ifa_broadaddr)->sin_addr;
+                    }
+                    else if (ifa->ifa_netmask && ifa->ifa_netmask->sa_family == AF_INET)
+                    {
+                        // Compute broadcast = ip | ~netmask
+                        uint32_t ip = ntohl(sa->sin_addr.s_addr);
+                        uint32_t mask = ntohl(((sockaddr_in *)ifa->ifa_netmask)->sin_addr.s_addr);
+                        uint32_t bcast_ip = (ip & mask) | (~mask);
+                        baddr.sin_addr.s_addr = htonl(bcast_ip);
+                    }
+                    else
+                    {
+                        // Fallback to limited broadcast
+                        baddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+                    }
+
+                    bcast = new ip_address(&baddr);
+                    break; // use first suitable interface
+                }
+                freeifaddrs(ifaddr);
+            }
+#endif
+            if (!bcast)
+            {
+                // Fallback to 255.255.255.255
+                sockaddr_in baddr{};
+                baddr.sin_family = AF_INET;
+                baddr.sin_port = htons(port);
+                baddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+                bcast = new ip_address(&baddr);
+            }
         }
     }
 
-    // For debugging purposes always add localhost (127.0.0.1) as the first option
-    // if (servers.empty() && returned.empty())
-    // {
-    //   // Create localhost address
-    //   sockaddr_in localhost{};
-    //   localhost.sin_family = AF_INET;
-    //   localhost.sin_port = htons(port);
-    //   localhost.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // 127.0.0.1
-
-    //   // Add to servers list
-    //   auto *localhost_request = new RequestItem;
-    //   localhost_request->addr = new ip_address(&localhost);
-    //   strncpy(localhost_request->name, "Localhost", sizeof(localhost_request->name) - 1);
-    //   localhost_request->name[sizeof(localhost_request->name) - 1] = 0;
-    //   servers.insert(localhost_request);
-    // }
-
-    if (responder)
+    if (responder && bcast)
     {
-        for (int i = 0; i < 5; i++)
-        {
-            bool found = false;
-
-            // Check existing addresses
-            for (p_request p = servers.begin(); !found && p != servers.end(); ++p)
-            {
-                if ((*p)->addr->equal(bcast))
-                {
-                    found = true;
-                }
-            }
-
-            for (p_request q = returned.begin(); !found && q != returned.end(); ++q)
-            {
-                if ((*q)->addr->equal(bcast))
-                {
-                    found = true;
-                }
-            }
-
-            if (!found)
-            {
-                responder->write(notify_signature, strlen(notify_signature), bcast);
-                select(false);
-            }
-
-            *((unsigned char *)&bcast->addr.sin_addr + 3) += 1;
-            select(false);
-
-            if (!servers.empty())
-            {
-                break;
-            }
-        }
+        // Send a single broadcast probe
+        responder->write(notify_signature, strlen(notify_signature), bcast);
+        select(false);
     }
 
     if (servers.empty())
