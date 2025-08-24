@@ -460,7 +460,7 @@ int game_server::end_reload(int disconnect)
 {
     DEBUG_LOG("Ending reload (disconnect=%d)", disconnect);
     player_client *c = player_list;
-    prot->select(0);
+    prot->select(false);
 
     // Check if any clients still haven't reloaded
     for (; c; c = c->next)
@@ -497,7 +497,7 @@ int game_server::start_reload()
     DEBUG_LOG("Starting level reload");
     player_client *c = player_list;
     reload_state = 1;
-    prot->select(0);
+    prot->select(false);
 
     for (; c; c = c->next)
     {

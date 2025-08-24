@@ -105,6 +105,7 @@ Settings settings;
 #include "tcpip.h"
 tcpip_protocol tcpip;
 #endif
+#include <map>
 
 void handle_no_space()
 {
@@ -1142,7 +1143,7 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         main_screen->dirt_on();
 
     rand_on = ro; // restore random start in case in draw funs moved it
-        // ... not every machine will draw the same thing
+    // ... not every machine will draw the same thing
 
     post_render();
 
@@ -1663,11 +1664,19 @@ extern int start_edit;
 
 void Game::get_input()
 {
-    Event ev;
     idle_ticks++;
+    std::map<int, Event> latest_events;
+
     while (event_waiting())
     {
+        Event ev;
         get_event(ev);
+        latest_events[ev.type] = ev; // Store only the last event of each type
+    }
+
+    for (auto &pair : latest_events)
+    {
+        Event &ev = pair.second;
 
         if (ev.type == EV_MOUSE_MOVE)
         {
@@ -2494,9 +2503,6 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
-            if (demo_man.current_state() == demo_manager::NORMAL)
-                net_receive();
-
             // see if a request for a level load was made during the last tick
             if (req_name[0])
             {
@@ -2512,7 +2518,10 @@ int main(int argc, char *argv[])
             if (SDL_GetTicks64() - lastFixedUpdate >= settings.physics_update)
             {
                 if (demo_man.current_state() == demo_manager::NORMAL)
+                {
+                    net_receive();
                     net_send();
+                }
                 else
                     demo_man.do_inputs();
 

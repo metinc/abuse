@@ -292,26 +292,36 @@ void view::draw_character_damage()
     }
 }
 
+/**
+ * Generates a 16-bit synchronization value based on player positions
+ * 
+ * This function creates a simple checksum by XORing the x and y coordinates
+ * of all players' focus objects, combined with the random number generator state.
+ * The resulting value is used to verify that all clients in a networked game
+ * are synchronized. If the values don't match between clients, it indicates
+ * a desynchronization has occurred.
+ * 
+ * @return A 16-bit synchronization value, or 0 if no level is loaded
+ */
 uint16_t make_sync()
 {
-    uint16_t x = 0;
+    uint16_t checksum = 0;
     if (!current_level)
         return 0;
     if (current_level)
     {
-        view *f = player_list;
-        for (; f; f = f->next)
+        for (view *f = player_list; f; f = f->next)
         {
             if (f->m_focus)
             {
-                x ^= (f->m_focus->x & 0xffff);
-                x ^= (f->m_focus->y & 0xffff);
+                checksum ^= (f->m_focus->x & 0xffff);
+                checksum ^= (f->m_focus->y & 0xffff);
             }
         }
     }
-    x ^= rand_on;
+    checksum ^= rand_on;
 
-    return x;
+    return checksum;
 }
 
 void view::get_input()

@@ -621,7 +621,18 @@ int tcpip_protocol::handle_responder()
     return 0;
 }
 
-int tcpip_protocol::select(const int block)
+/**
+ * Monitors sockets for activity using select() system call.
+ * This method checks all registered sockets for readability, writability, and exceptions.
+ * 
+ * @param block If true, the function blocks until at least one socket is ready;
+ *              if false, it returns immediately regardless of socket status.
+ * 
+ * @return The number of ready sockets, or a negative value if an error occurred.
+ *         Note: The return value is adjusted by subtracting counts for internally
+ *         handled notification and responder events.
+ */
+int tcpip_protocol::select(const bool block)
 {
     memcpy(&read_set, &master_set, sizeof(master_set));
     memcpy(&exception_set, &master_set, sizeof(master_set));
@@ -713,11 +724,11 @@ net_address *tcpip_protocol::find_address(const int port, char *name)
             if (!found)
             {
                 responder->write(notify_signature, strlen(notify_signature), bcast);
-                select(0);
+                select(false);
             }
 
             *((unsigned char *)&bcast->addr.sin_addr + 3) += 1;
-            select(0);
+            select(false);
 
             if (!servers.empty())
             {
