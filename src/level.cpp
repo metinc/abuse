@@ -420,6 +420,9 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
         target = *blist;
         if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
         {
+            // skip friendly hurtable targets so movement passes through teammates
+            if (subject && target->hurtable() && !subject->can_hurt(target))
+                continue;
             target->picture_space(tx1, ty1, tx2, ty2);
             if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
                   (y1 < ty1 && y2 < ty1))) // are they semi/overlapping?

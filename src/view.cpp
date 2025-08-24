@@ -1508,8 +1508,6 @@ int view::get_tint()
 
 void view::set_team(int team)
 {
-    if (team < 0)
-        team = 0;
     _team = team;
     m_focus->set_team(team);
 }
