@@ -522,7 +522,7 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
                     int32_t xp2 = target->x + target->tx(*t_dat);
                     int32_t yp2 = target->y + target->ty(t_dat[1]);
 
-                    // now check to see if (x1,y1-x2,y2) intercest with (xp1,yp1-xp2,yp2)
+                    // now check to see if (x1,y1-x2,y2) intersects with (xp1,yp1-xp2,yp2)
                     if (*ins)
                     {
                         if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, 1))

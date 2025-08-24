@@ -1587,7 +1587,7 @@ game_object *game_object::bmove(int &collision, game_object *exclude)
 
     // check to see if this advancement causes him to collide with objects
     ox2 = nx;
-    oy2 = ny; // save the correct veloicties
+    oy2 = ny; // save the correct velocities
 
     current_level->foreground_intersect(x, y, nx, ny); // first see how far we can travel
     game_object *ret = current_level->boundary_setback(exclude, x, y, nx, ny, true);
