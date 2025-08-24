@@ -601,6 +601,19 @@ int tcpip_protocol::handle_responder()
                     request->addr = addr;
                     strncpy(request->name, buf + 5, sizeof(request->name) - 1);
                     request->name[sizeof(request->name) - 1] = 0;
+                    // Append IP address to the name for display
+                    char ipbuf[32];
+#if defined(WIN32)
+                    strncpy(ipbuf, inet_ntoa(addr->addr.sin_addr), sizeof(ipbuf) - 1);
+                    ipbuf[sizeof(ipbuf) - 1] = 0;
+#else
+                    inet_ntop(AF_INET, &addr->addr.sin_addr, ipbuf, sizeof(ipbuf));
+#endif
+                    size_t cur_len = strlen(request->name);
+                    if (cur_len < sizeof(request->name) - 5) // ensure space for at least ' ()' and some IP
+                    {
+                        snprintf(request->name + cur_len, sizeof(request->name) - cur_len, " (%s)", ipbuf);
+                    }
                     servers.insert(request);
                     addr = nullptr; // Prevent deletion
                 }
