@@ -25,7 +25,7 @@
 #include "dev.h"
 
 #include "net/sock.h"
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 
 extern char const *get_login();
 net_configuration *main_net_cfg = NULL;
