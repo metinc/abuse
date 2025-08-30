@@ -212,17 +212,9 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
 
         strcpy(game_name, s_nm);
 
-        bFILE *fp = open_file("addon/deathmat/gamename.lsp", "wb");
-        if (!fp->open_failure())
-        {
-            char str[256];
-            snprintf(str, sizeof(str), "(setq gamename \"%s\")\n", game_name);
-            fp->write(str, strlen(str) + 1);
-        }
-        delete fp;
         strcpy(lsf, "addon/deathmat/deathmat.lsp");
 
-        fp = open_file("addon/deathmat/levelset.lsp", "wb");
+        bFILE *fp = open_file("addon/deathmat/levelset.lsp", "wb");
         if (!fp->open_failure())
         {
             int sel_index = -1;
@@ -255,15 +247,6 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         }
         strcpy(name, nm);
     }
-
-    bFILE *fp = open_file("addon/deathmat/username.lsp", "wb");
-    if (!fp->open_failure())
-    {
-        char str[200];
-        sprintf(str, "(setq username \"%s\")\n", name);
-        fp->write(str, strlen(str) + 1);
-    }
-    delete fp;
 
     return 1;
 }
