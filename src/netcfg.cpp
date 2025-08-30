@@ -353,7 +353,7 @@ int net_configuration::get_options(int server)
         int col_gap = 10;
 
         // Right column positioning
-        int right_x = x + ns_w / 3 * 2;
+        int right_x = x + ns_w / 3 * 2 - 5;
         int right_y = y + 30;
 
         // Left column fields
@@ -368,7 +368,7 @@ int net_configuration::get_options(int server)
         list = min_lbl;
         int ax1, ay1, ax2, ay2;
         min_lbl->area(ax1, ay1, ax2, ay2);
-        left_y = ay2 + 4;
+        left_y = ay2 + 1;
         button_box *b = new button_box(left_x, left_y, NET_MIN, 1, NULL, list);
         b->add_button(new button(0, 0, MIN_8, "8", NULL));
         b->add_button(new button(0, 0, MIN_7, "7", NULL));
@@ -390,7 +390,7 @@ int net_configuration::get_options(int server)
         info_field *max_lbl = new info_field(left_x, left_y, 0, symbol_str("max_play"), list);
         list = max_lbl;
         max_lbl->area(ax1, ay1, ax2, ay2);
-        left_y = ay2 + 4;
+        left_y = ay2 + 1;
         b = new button_box(left_x, left_y, NET_MAX, 1, NULL, list);
         button *q = new button(0, 0, MAX_8, "8", NULL);
         q->push();
