@@ -100,7 +100,6 @@ static view *lget_view(void *arg, char const *msg)
 }
 
 extern int get_option(char const *name);
-extern void set_login(char const *name);
 
 // called by lisp_init, defines symbols and functions to interface with c
 void clisp_init()
@@ -2535,10 +2534,6 @@ long c_caller(CFunc number, void *args)
             the_game->set_delay(1);
         else
             the_game->set_delay(0);
-    }
-    break;
-    case CFunc::SetLogin: {
-        set_login(lstring_value(CAR(args)));
     }
     break;
     case CFunc::EnableChatting: {

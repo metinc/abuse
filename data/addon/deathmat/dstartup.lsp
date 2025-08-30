@@ -52,19 +52,6 @@
 ;; 	     (print (list 'setq 'server_version_major (major_version) ))
 ;; 	     (print (list 'setq 'server_version_minor (minor_version)))))
 
-
-(if (not (am_a_client))
-    (setq username "Myself"))
-
-;(let ((input (nice_input "DEATHMATCH : Enter your name below" "Name" username)))
-;  (open_file "addon/deathmat/username.lsp" "wb"
-;	     (print (list 'setq 'username
-;			  (concatenate 'string '(#\") input '(#\"))))))
-
-(local_load "addon/deathmat/username.lsp")
-(set_login username)
-
-
 (setq load_warn T)
 
 (if (not (am_a_client))   ;;  are we connecting to a server?
