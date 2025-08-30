@@ -34,6 +34,7 @@
 
 // Static storage for available network levels (single-level selection UI)
 static std::vector<std::string> g_net_levels; // filenames only (e.g. "2play1.spe")
+static std::vector<std::string> g_net_levels_display; // display names (no extension, fixed width)
 static std::vector<char *> g_net_levels_c; // c_str pointers for pick_list
 
 static void build_net_level_list()
@@ -54,9 +55,21 @@ static void build_net_level_list()
     }
     closedir(d);
     std::sort(g_net_levels.begin(), g_net_levels.end());
-    g_net_levels_c.clear();
+    g_net_levels_display.clear();
+    g_net_levels_display.reserve(g_net_levels.size());
     for (auto &s : g_net_levels)
-        g_net_levels_c.push_back((char *)s.c_str());
+    {
+        std::string disp = s.substr(0, s.size() - 4); // strip .spe
+        if (disp.size() > 12)
+            disp = disp.substr(0, 12);
+        else if (disp.size() < 12)
+            disp.append(12 - disp.size(), ' ');
+        g_net_levels_display.push_back(disp);
+    }
+    g_net_levels_c.clear();
+    g_net_levels_c.reserve(g_net_levels_display.size());
+    for (auto &disp : g_net_levels_display)
+        g_net_levels_c.push_back(const_cast<char *>(disp.c_str()));
 }
 
 extern char const *get_login();
