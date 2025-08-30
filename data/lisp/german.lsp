@@ -252,6 +252,7 @@
 	 (setq min_play        "\nMinimale Spielerzahl")          ; V-B (added \n)
 	 (setq use_port        "Spielzahl")
 	 (setq your_name       "Ihr Name")
+	 (setq game_mode       "Spielmodus")
 
          (setq min_error       "Min. Spielerzahl 1-8")
          (setq max_players     "Maximale Spielerzahl erreicht, bitte später versuchen.\n ")

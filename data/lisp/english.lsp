@@ -263,6 +263,7 @@
 	 (setq min_play        "\nMinimum # of players")          ; V-B (added \n)
 	 (setq use_port        "Game number")
 	 (setq your_name       "Your name")
+	 (setq game_mode       "Game mode")
          (setq max_players     "The server already has its maximum number players, try again later\n  Get back to work!!\n")
 	 (setq net_not_reg     "Sorry you cannot play against this server with a demo version\n")
 	 (setq min_wait        "Waiting for %d more player(s) to join!")

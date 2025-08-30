@@ -253,6 +253,7 @@ plan \n"
 	 (setq min_play        "\nNombre min. de joueurs")          ; V-B (added \n)
 	 (setq use_port        "Numéro du jeu")
 	 (setq your_name       "Votre nom")
+	 (setq game_mode       "Mode de jeu")
 
 (setq max_players     "Le serveur a déjà atteint le nombre maximal de joueurs, ressayez plus tard\n")
          (setq net_not_reg     "Désolé, vous ne pouvez pas jouer au jeu sur le réseau avec une version démo\n")
