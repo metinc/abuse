@@ -864,10 +864,7 @@ game_object *game_object::try_move(int32_t x, int32_t y, int32_t &xv, int32_t &y
             x2 = x + xv;
             y2 = y + yv;
             current_level->foreground_intersect(x, y, x2, y2);
-            if (!stoppable())
-                who1 = current_level->boundary_setback(this, x, y, x2, y2);
-            else
-                who1 = current_level->all_boundary_setback(this, x, y, x2, y2);
+            who1 = current_level->boundary_setback(this, x, y, x2, y2, stoppable());
             xv = x2 - x;
             yv = y2 - y;
         }
@@ -878,10 +875,7 @@ game_object *game_object::try_move(int32_t x, int32_t y, int32_t &xv, int32_t &y
             x2 = x + xv;
             y2 = y - h + 1 + yv;
             current_level->foreground_intersect(x, y - h + 1, x2, y2);
-            if (!stoppable())
-                who2 = current_level->all_boundary_setback(this, x, y - h + 1, x2, y2);
-            else
-                who2 = current_level->boundary_setback(this, x, y - h + 1, x2, y2);
+            who2 = current_level->boundary_setback(this, x, y - h + 1, x2, y2, !stoppable());
             xv = x2 - x;
             yv = y2 - y + h - 1;
         }
@@ -1122,7 +1116,7 @@ int game_object::tick() // returns blocked status
                     if (old_vy != 0)
                     {
                         int32_t testx = old_vx < 0 ? -1 : 1, testy = 0; // see if we were stopped left/right
-                            // or just up down
+                        // or just up down
                         try_move(x, y, testx, testy, 1 | up);
                         if (testx == 0) // blocked left/right, set flag
                         {
@@ -1593,10 +1587,10 @@ game_object *game_object::bmove(int &collision, game_object *exclude)
 
     // check to see if this advancement causes him to collide with objects
     ox2 = nx;
-    oy2 = ny; // save the correct veloicties
+    oy2 = ny; // save the correct velocities
 
     current_level->foreground_intersect(x, y, nx, ny); // first see how far we can travel
-    game_object *ret = current_level->all_boundary_setback(exclude, x, y, nx, ny);
+    game_object *ret = current_level->boundary_setback(exclude, x, y, nx, ny, true);
     x = nx;
     y = ny;
     set_fx(nfx & 0xff);

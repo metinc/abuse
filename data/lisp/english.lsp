@@ -204,7 +204,7 @@
 
 
 
-	 (setq level_size "Level size")
+	 (setq select_level "Level")
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Name              Level Total")   ; V-E
 	 (setq space_cont "Press SPACEBAR to continue")        ; V-E
@@ -263,6 +263,7 @@
 	 (setq min_play        "\nMinimum # of players")          ; V-B (added \n)
 	 (setq use_port        "Game number")
 	 (setq your_name       "Your name")
+	 (setq game_mode       "Game mode")
          (setq max_players     "The server already has its maximum number players, try again later\n  Get back to work!!\n")
 	 (setq net_not_reg     "Sorry you cannot play against this server with a demo version\n")
 	 (setq min_wait        "Waiting for %d more player(s) to join!")
@@ -276,7 +277,7 @@
 	 ;                                           "to avoid compatiblity issues please use the -share option\n"))
 
          (setq server_port     "Server Port")
-         (setq server_name     "Game Name")              ; V-B
+         (setq server_name     "Game name")              ; V-B
 	 (setq Networking      "Networking")
          (setq server          " Start New Net Game  ")
          (setq client          " Join Existing Game  ")

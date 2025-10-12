@@ -37,6 +37,12 @@ class net_configuration
     char min_players, max_players;
     short kills;
 
+    enum
+    {
+        DEATHMATCH,
+        COOP
+    } game_mode;
+
     net_configuration();
     int input(); // pulls up dialog box and input fileds
     void cfg_error(char const *msg);

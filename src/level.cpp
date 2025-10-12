@@ -408,99 +408,21 @@ void level::try_pushback(game_object *subject, game_object *target)
     }
 }
 
-/*
-void level::check_collisions()
-{
-  game_object *target,*receiver=NULL;
-  int32_t sx1,sy1,sx2,sy2,tx1,ty1,tx2,ty2,hitx,hity,
-      s_centerx,t_centerx;
-
-  for (game_object *subject=first_active; subject; subject=subject->next_active)
-  {
-    subject->picture_space(sx1,sy1,sx2,sy2);
-    s_centerx=subject->x_center();
-
-    int hit=0;
-    receiver=NULL;
-    for (target=first_active; target; target=target->next_active)
-    {
-      if (target!=subject)
-      {
-    target->picture_space(tx1,ty1,tx2,ty2);
-
-        if (!(sx2<tx1 || sx1>tx2 || sy1>ty2 || sy2<ty1))  // are they semi/overlapping?
-        {
-      try_pushback(subject,target);
-      if (subject->can_hurt(target))    // see if we can hurt him before calculating
-      {
-        t_centerx=target->x_center();
-        point_list *s_hit,*t_damage;
-
-        s_hit=subject->current_figure()->hit;
-        t_damage=target->current_figure()->damage;
-
-        unsigned char *s_dat=s_hit->data,
-        *t_dat;
-        int i,j;
-        for (i=(int)s_hit->tot-1; i>0 && !hit; i--)
-        {
-          for (t_dat=t_damage->data,j=(int)t_damage->tot-1; j>0 && !hit; j--)
-          {
-        int32_t x1,y1,x2,y2,          // define the two line segments to check
-        xp1,yp1,xp2,yp2;
-
-        xp1=target->x+target->tx(*t_dat);  t_dat++;
-        yp1=target->y+target->ty(*t_dat);  t_dat++;
-        xp2=target->x+target->tx(*t_dat);
-        yp2=target->y+target->ty(t_dat[1]);
-
-        x1=subject->x+subject->tx(s_dat[0]);
-        y1=subject->y+subject->ty(s_dat[1]);
-        x2=subject->x+subject->tx(s_dat[2]);
-        y2=subject->y+subject->ty(s_dat[3]);
-
-
-        // ok, now we know which line segemnts to check for intersection
-        // now check to see if (x1,y1-x2,y2) intercest with (xp1,yp1-xp2,yp2)
-        int _x2=x2,_y2=y2;
-        setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2,0);
-
-
-        if (x2!=_x2 || _y2!=y2)
-        {
-          receiver=target;
-          hitx=((x1+x2)/2+(xp1+xp2)/2)/2;
-          hity=((y1+y1)/2+(yp1+yp2)/2)/2;
-        }
-          }
-          s_dat+=2;
-        }
-      }
-    }
-      }
-    }
-    if (receiver)
-    {
-      receiver->do_damage((int)subject->current_figure()->hit_damage,subject,hitx,hity,0,0);
-      subject->note_attack(receiver);
-      hit=1;
-    }
-  }
-}
-*/
-
-game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2)
+game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, bool all)
 {
     game_object *l = NULL;
     int32_t tx1, ty1, tx2, ty2, t_centerx;
     game_object *target = first_active;
-    game_object **blist = block_list;
-    int t = block_total;
+    game_object **blist = all ? all_block_list : block_list;
+    int t = all ? all_block_total : block_total;
     for (; t; t--, blist++)
     {
         target = *blist;
         if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
         {
+            // skip friendly hurtable targets so movement passes through teammates
+            if (subject && target->hurtable() && !subject->can_hurt(target))
+                continue;
             target->picture_space(tx1, ty1, tx2, ty2);
             if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
                   (y1 < ty1 && y2 < ty1))) // are they semi/overlapping?
@@ -522,59 +444,7 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
                     int32_t xp2 = target->x + target->tx(*t_dat);
                     int32_t yp2 = target->y + target->ty(t_dat[1]);
 
-                    // now check to see if (x1,y1-x2,y2) intercest with (xp1,yp1-xp2,yp2)
-                    if (*ins)
-                    {
-                        if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, 1))
-                            l = target;
-                    }
-                    else
-                    {
-                        if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, -1))
-                            l = target;
-                    }
-                    ins++;
-                }
-            }
-        }
-    }
-    return l; // return the last person we intersected
-}
-
-game_object *level::all_boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2)
-{
-    game_object *l = NULL;
-    int32_t tx1, ty1, tx2, ty2, t_centerx;
-    game_object *target = first_active;
-    game_object **blist = all_block_list;
-    int t = all_block_total;
-    for (; t; t--, blist++)
-    {
-        target = *blist;
-        if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
-        {
-            target->picture_space(tx1, ty1, tx2, ty2);
-            if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
-                  (y1 < ty1 && y2 < ty1))) // are they semi/overlapping?
-            {
-                t_centerx = target->x_center();
-                boundary *t_damage;
-                if (target->direction > 0)
-                    t_damage = target->current_figure()->f_damage;
-                else
-                    t_damage = target->current_figure()->b_damage;
-                unsigned char *t_dat = t_damage->data, *ins = t_damage->inside;
-                int iter = t_damage->tot - 1;
-                while (iter-- > 0)
-                {
-                    int32_t xp1 = target->x + target->tx(*t_dat);
-                    t_dat++;
-                    int32_t yp1 = target->y + target->ty(*t_dat);
-                    t_dat++;
-                    int32_t xp2 = target->x + target->tx(*t_dat);
-                    int32_t yp2 = target->y + target->ty(t_dat[1]);
-
-                    // now check to see if (x1,y1-x2,y2) intercest with (xp1,yp1-xp2,yp2)
+                    // now check to see if (x1,y1-x2,y2) intersects with (xp1,yp1-xp2,yp2)
                     if (*ins)
                     {
                         if (setback_intersect(x1, y1, x2, y2, xp1, yp1, xp2, yp2, 1))

@@ -59,10 +59,9 @@ DESTINATION ${ASSETDIR}/addon/claudio)
 
 INSTALL(FILES
     addon/deathmat/cur_lev.lsp addon/deathmat/deathmat.lsp
-    addon/deathmat/dstartup.lsp addon/deathmat/gamename.lsp
-    addon/deathmat/large.lsp addon/deathmat/levelset.lsp
-    addon/deathmat/medium.lsp addon/deathmat/small.lsp
-    addon/deathmat/username.lsp addon/deathmat/version.lsp
+    addon/deathmat/dstartup.lsp addon/deathmat/large.lsp
+    addon/deathmat/levelset.lsp addon/deathmat/medium.lsp
+    addon/deathmat/small.lsp addon/deathmat/version.lsp
 DESTINATION ${ASSETDIR}/addon/deathmat)
 
 INSTALL(FILES

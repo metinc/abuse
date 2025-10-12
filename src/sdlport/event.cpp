@@ -445,53 +445,58 @@ void EventHandler::SysEvent(Event &ev)
             else
                 ev.key = (int)sdlev.key.keysym.sym;
 
-            //AR this shift stuff messes up WSAD player controls when shift is pressed
-
-            // Need to handle the case of shift being pressed
-            // There has to be a better way
-            /*if((sdlev.key.keysym.mod & KMOD_SHIFT) != 0)
+            // Handle shift key combinations for text input
+            if (the_game->state == MENU_STATE && (sdlev.key.keysym.mod & KMOD_SHIFT) != 0)
             {
-                if(sdlev.key.keysym.sym >= SDLK_a &&
-                    sdlev.key.keysym.sym <= SDLK_z)
+                if (sdlev.key.keysym.sym >= SDLK_a && sdlev.key.keysym.sym <= SDLK_z)
                 {
                     ev.key -= 32;
                 }
-                else if(sdlev.key.keysym.sym >= SDLK_1 &&
-                         sdlev.key.keysym.sym <= SDLK_5)
+                else if (sdlev.key.keysym.sym >= SDLK_1 && sdlev.key.keysym.sym <= SDLK_5)
                 {
                     ev.key -= 16;
                 }
                 else
                 {
-                    switch(sdlev.key.keysym.sym)
+                    switch (sdlev.key.keysym.sym)
                     {
                     case SDLK_6:
-                        ev.key = SDLK_CARET; break;
+                        ev.key = SDLK_CARET;
+                        break;
                     case SDLK_7:
                     case SDLK_9:
                     case SDLK_0:
-                        ev.key -= 17; break;
+                        ev.key -= 17;
+                        break;
                     case SDLK_8:
-                        ev.key = SDLK_ASTERISK; break;
+                        ev.key = SDLK_ASTERISK;
+                        break;
                     case SDLK_MINUS:
-                        ev.key = SDLK_UNDERSCORE; break;
+                        ev.key = SDLK_UNDERSCORE;
+                        break;
                     case SDLK_EQUALS:
-                        ev.key = SDLK_PLUS; break;
+                        ev.key = SDLK_PLUS;
+                        break;
                     case SDLK_COMMA:
-                        ev.key = SDLK_LESS; break;
+                        ev.key = SDLK_LESS;
+                        break;
                     case SDLK_PERIOD:
-                        ev.key = SDLK_GREATER; break;
+                        ev.key = SDLK_GREATER;
+                        break;
                     case SDLK_SLASH:
-                        ev.key = SDLK_QUESTION; break;
+                        ev.key = SDLK_QUESTION;
+                        break;
                     case SDLK_SEMICOLON:
-                        ev.key = SDLK_COLON; break;
+                        ev.key = SDLK_COLON;
+                        break;
                     case SDLK_QUOTE:
-                        ev.key = SDLK_QUOTEDBL; break;
+                        ev.key = SDLK_QUOTEDBL;
+                        break;
                     default:
                         break;
                     }
                 }
-            }*/
+            }
             break;
         }
         break;

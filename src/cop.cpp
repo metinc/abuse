@@ -234,15 +234,13 @@ static int player_fire_weapon(game_object *o, int type, game_object *target, int
     // fire try to move up to gun level
 
     int32_t x2 = o->x, y2 = firey;
-    //  current_level->foreground_intersect(other->x,other->y,x2,y2);      // find first location we can actually "see"
-    //  current_level->all_boundary_setback(o,other->x,other->y,x2,y2);       // to make we don't fire through walls
     other->y = y2;
 
     if (other->y == firey) // now try to move out to end of gun if we were not blocked above
     {
         x2 = firex;
         current_level->foreground_intersect(other->x, other->y, x2, y2); // find first location we can actually "see"
-        current_level->all_boundary_setback(other, other->x, other->y, x2, y2); // to make we don't fire through walls
+        current_level->boundary_setback(other, other->x, other->y, x2, y2, true); // to make we don't fire through walls
         o->x = x2;
     }
 
@@ -739,7 +737,7 @@ void *cop_mover(int xm, int ym, int but)
         else if (o->aistate() == 3)
         {
             //AR "Press SPACEBAR to continue", reset after death
-            if (!o->controller() || o->controller()->key_down(JK_SPACE) || o->controller()->key_down(JK_ENTER))
+            if (!o->controller() || but || o->controller()->key_down(JK_SPACE) || o->controller()->key_down(JK_ENTER))
             {
                 // call the user function to reset the player
                 ((LSymbol *)l_restart_player)->EvalFunction(NULL);

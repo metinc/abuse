@@ -40,6 +40,7 @@
 #include "nfserver.h"
 #include "chat.h"
 #include <SDL_timer.h>
+#include "netcfg.h"
 
 #define SHIFT_DOWN_DEFAULT 24
 #define SHIFT_RIGHT_DEFAULT 0
@@ -262,7 +263,10 @@ view::view(game_object *focus, view *Next, int number)
     if (local_player())
         sbar.associate(this);
     set_tint(number);
-    set_team(-1);
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        set_team(0);
+    else
+        set_team(-1);
     sbar.need_refresh();
 }
 
@@ -1508,8 +1512,6 @@ int view::get_tint()
 
 void view::set_team(int team)
 {
-    if (team < 0)
-        team = 0;
     _team = team;
     m_focus->set_team(team);
 }

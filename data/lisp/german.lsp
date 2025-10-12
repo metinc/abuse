@@ -201,7 +201,7 @@
 
 
 
-	 (setq level_size "Levelgröße")
+	 (setq select_level "Level")
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Name              Level gesamt")   ; V-E
 	 (setq space_cont "LEERTASTE, um fortzufahren ")        ; V-E
@@ -247,11 +247,12 @@
 	 (setq input_error     "Eingabefehler")
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ABBRECHEN")
-	 (setq kills_to_win    "Abschüsse, um zu gewinnen:")
+	 (setq kills_to_win    "Kills zum Sieg")
 	 (setq max_play        "Maximale Spielerzahl")
 	 (setq min_play        "\nMinimale Spielerzahl")          ; V-B (added \n)
 	 (setq use_port        "Spielzahl")
 	 (setq your_name       "Ihr Name")
+	 (setq game_mode       "Spielmodus")
 
          (setq min_error       "Min. Spielerzahl 1-8")
          (setq max_players     "Maximale Spielerzahl erreicht, bitte später versuchen.\n ")
@@ -277,7 +278,7 @@
          ;                                           "Kompatibilitätsprobleme können mit der Share- Option vermieden werden\n"))
 
          (setq server_port     "Server-Port")
-         (setq server_name     "Spielname:")
+         (setq server_name     "Spielname")
          (setq Networking      "Netzwerk")
          (setq server          " Neues Netzwerkspiel")
          (setq client          " Spiel beitreten ")

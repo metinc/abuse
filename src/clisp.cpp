@@ -100,7 +100,6 @@ static view *lget_view(void *arg, char const *msg)
 }
 
 extern int get_option(char const *name);
-extern void set_login(char const *name);
 
 // called by lisp_init, defines symbols and functions to interface with c
 void clisp_init()
@@ -1913,10 +1912,7 @@ long c_caller(CFunc number, void *args)
         if (x2 != nx2 || y2 != ny2)
             return 0;
 
-        if (block_all)
-            current_level->all_boundary_setback(current_object, x1, y1, x2, y2);
-        else
-            current_level->boundary_setback(current_object, x1, y1, x2, y2);
+        current_level->boundary_setback(current_object, x1, y1, x2, y2, block_all);
         return (x2 == nx2 && y2 == ny2);
     }
     break;
@@ -2538,10 +2534,6 @@ long c_caller(CFunc number, void *args)
             the_game->set_delay(1);
         else
             the_game->set_delay(0);
-    }
-    break;
-    case CFunc::SetLogin: {
-        set_login(lstring_value(CAR(args)));
     }
     break;
     case CFunc::EnableChatting: {

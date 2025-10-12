@@ -354,7 +354,6 @@ enum class CFunc
     DrawRect, // x1,y1,x2,y2,color
     GetOption,
     SetDelayOn, // T or nil
-    SetLogin, // name
     EnableChatting,
     DemoBreakEnable,
     AmAClient,

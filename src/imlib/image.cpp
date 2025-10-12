@@ -403,16 +403,17 @@ void image::InClip(int x1, int y1, int x2, int y2)
 //
 void image_descriptor::ReduceDirties()
 {
-    ivec2 aa(6000), bb(-1);
+    if (!dirties.first())
+        return;
 
-    for (dirty_rect *p = (dirty_rect *)dirties.first(); p;)
+    ivec2 aa(6000), bb(-1);
+    while (dirties.first())
     {
+        dirty_rect *p = (dirty_rect *)dirties.first();
         aa = Min(aa, p->m_aa);
         bb = Max(bb, p->m_bb);
-        dirty_rect *tmp = (dirty_rect *)p->Next();
         dirties.unlink(p);
         delete p;
-        p = tmp;
     }
     dirties.add_front(new dirty_rect(aa, bb));
 }

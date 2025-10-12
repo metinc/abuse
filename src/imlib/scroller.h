@@ -177,6 +177,10 @@ class pick_list : public scroller
     virtual void area_config();
     virtual void handle_up(image *screen, InputManager *inm);
     virtual void handle_down(image *screen, InputManager *inm);
+    virtual int activate_on_mouse_move()
+    {
+        return 0;
+    }
     int get_selection()
     {
         return lis[cur_sel].number;

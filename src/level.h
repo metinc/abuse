@@ -224,8 +224,8 @@ class level // contain map info and objects
     game_object *find_object(int32_t x, int32_t y);
 
     game_object *damage_intersect(int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, game_object *exclude);
-    game_object *boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2);
-    game_object *all_boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2);
+    game_object *boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2,
+                                  bool all = false);
     int crush(game_object *by_who, int xamount, int yamount);
     int push_characters(game_object *by_who, int xamount, int yamount); // return 0 if fail on any.
     int platform_push(game_object *by_who, int xamount, int yamount);

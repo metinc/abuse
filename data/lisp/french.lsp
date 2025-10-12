@@ -200,7 +200,7 @@ plan \n"
 
 
 
-	 (setq level_size "Taille du niveau")
+	 (setq select_level "Niveau")
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Nom          Total du niveau")   ; V-E
 	 (setq space_cont "Appuyez sur la BARRE D'ESPACE pour continuer")        ; V-E
@@ -248,11 +248,12 @@ plan \n"
 	 (setq input_error     "Erreur de données")
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ANNULER")
-	 (setq kills_to_win    "Quota de morts requis pour changer de niveau")
+	 (setq kills_to_win    "Morts pour gagner")
 	 (setq max_play        "Nombre max. de joueurs")
 	 (setq min_play        "\nNombre min. de joueurs")          ; V-B (added \n)
 	 (setq use_port        "Numéro du jeu")
 	 (setq your_name       "Votre nom")
+	 (setq game_mode       "Mode de jeu")
 
 (setq max_players     "Le serveur a déjà atteint le nombre maximal de joueurs, ressayez plus tard\n")
          (setq net_not_reg     "Désolé, vous ne pouvez pas jouer au jeu sur le réseau avec une version démo\n")
