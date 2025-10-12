@@ -569,10 +569,11 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         char name[256];
         uint8_t len;
         int16_t nkills = lstl(main_net_cfg->kills);
+        uint8_t gmode = (uint8_t)main_net_cfg->game_mode;
 
         if (sock->read(/* client_name_length */ &len, 1) != 1 || sock->read(/* client_name_data */ name, len) != len ||
             sock->read(/* client_port */ &cport, 2) != 2 || sock->write(/* server_port */ &our_port, 2) != 2 ||
-            sock->write(/* server_kills */ &nkills, 2) != 2)
+            sock->write(/* server_kills */ &nkills, 2) != 2 || sock->write(/* server_game_mode */ &gmode, 1) != 1)
         {
             DEBUG_LOG("Failed to exchange connection data");
             return 0;

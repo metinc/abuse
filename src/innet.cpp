@@ -582,12 +582,15 @@ int request_server_entry()
         if (sock->write(/* client_name_length */ &len, 1) != 1 ||
             sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_port */ &our_port, 2) != 2 ||
             sock->read(/* server_port */ &port, 2) != 2 || sock->read(/* server_kills */ &nkills, 2) != 2 ||
-            sock->read(/* server_client_id */ &cnum, 2) != 2 || cnum == 0)
+            sock->read(/* server_game_mode */ &ctype, 1) != 1 || sock->read(/* server_client_id */ &cnum, 2) != 2 ||
+            cnum == 0)
         {
             DEBUG_LOG("Failed to exchange client information");
             delete sock;
             return 0;
         }
+
+        uint8_t gmode = ctype; // reuse tmp var
 
         nkills = lstl(nkills);
         port = lstl(port);
@@ -595,6 +598,8 @@ int request_server_entry()
 
         DEBUG_LOG("Client registration complete - assigned number: %d", client_id);
         main_net_cfg->kills = nkills;
+        main_net_cfg->game_mode =
+            (gmode == net_configuration::COOP) ? net_configuration::COOP : net_configuration::DEATHMATCH;
         net_address *addr = net_server->copy();
         addr->set_port(port);
 
