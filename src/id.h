@@ -145,7 +145,7 @@ enum dev_ids
     ID_QUIT_OK,
     ID_RETURN,
     ID_SHOW_SELL,
-    ID_NETWORKING,
+    ID_MULTIPLAYER,
 
     ID_MESS_STR1,
     ID_MESS_STR2,

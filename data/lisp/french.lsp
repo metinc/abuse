@@ -276,7 +276,7 @@ plan \n"
 
          (setq server_port     "Port du serveur")
          (setq server_name     "Nom du jeu")              ; V-B
-         (setq Networking      "Jeu sur réseau")
+         (setq multiplayer     "Multijoueur")
          (setq server          "Commencer nouveau jeu")
          (setq client          "Participer au jeu en cours ?")
          (setq single_play     "    Sortir du jeu sur réseau    ")  ; V-A
@@ -293,7 +293,7 @@ plan \n"
          (setq ic_load         "Charger jeu sauvegardé")
          (setq ic_start        "Démarrer nouveau jeu")
          (setq ic_sell         "Générique")
-         (setq ic_networking   "Jeu sur réseau")
+         (setq ic_multiplayer  "Multijoueur")
          (setq no_file         "Fichier introuvable '%s'")
          (setq SFXv            "Son")
          (setq MUSICv          "Volume")

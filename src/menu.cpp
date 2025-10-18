@@ -291,7 +291,7 @@ void menu_handler(Event &ev, InputManager *inm)
         }
         break;
 
-        case ID_NETWORKING: {
+        case ID_MULTIPLAYER: {
             if (!volume_window)
             {
                 net_configuration *cfg = new net_configuration;
@@ -418,7 +418,7 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     ico_button *multiplayer = NULL;
     if (prot)
     {
-        multiplayer = load_icon(11, ID_NETWORKING, x, y, h, NULL, "ic_networking");
+        multiplayer = load_icon(11, ID_MULTIPLAYER, x, y, h, NULL, "ic_multiplayer");
         y += h;
     }
 

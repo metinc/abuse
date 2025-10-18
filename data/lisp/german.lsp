@@ -279,7 +279,7 @@
 
          (setq server_port     "Server-Port")
          (setq server_name     "Spielname")
-         (setq Networking      "Netzwerk")
+         (setq multiplayer     "Mehrspieler")
          (setq server          " Neues Netzwerkspiel")
          (setq client          " Spiel beitreten ")
          (setq single_play     "    Netzspiel abbrechen    ")
@@ -296,7 +296,7 @@
          (setq ic_load         "Gespeichertes Spiel laden")
          (setq ic_start        "Neues Spiel")
          (setq ic_sell         "Beteiligte")
-	 (setq ic_networking   "Netzwerk")
+	 (setq ic_multiplayer    "Mehrspieler")
          (setq no_file         "Datei '%s' nicht auffindbar")
          (setq SFXv            "SFX")
          (setq MUSICv          "Musik")

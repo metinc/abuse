@@ -558,7 +558,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
     int ns_w = ns->Size().x, ns_h = ns->Size().y;
     int x = (xres + 1) / 2 - ns_w / 2, y = (yres + 1) / 2 - ns_h / 2;
     main_screen->PutImage(ns, ivec2(x, y));
-    char const *nw_s = symbol_str("Networking");
+    char const *nw_s = symbol_str("multiplayer");
     JCFont *fnt = wm->font();
 
     wm->font()->PutString(main_screen,

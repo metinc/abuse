@@ -278,7 +278,7 @@
 
          (setq server_port     "Server Port")
          (setq server_name     "Game name")              ; V-B
-	 (setq Networking      "Networking")
+	 (setq multiplayer         "Multiplayer")
          (setq server          " Start New Net Game  ")
          (setq client          " Join Existing Game  ")
          (setq single_play     "    Exit Net Game    ")  ; V-A
@@ -299,7 +299,7 @@
 	 ;; XXX: Mac Abuse
 	 ;(setq ic_mackeys      "Setup Keys")
 	 ;(setq ic_macconf      "Screen Options")
-	 (setq ic_networking   "Networking")            ; ----
+	 (setq ic_multiplayer   "Multiplayer")            ; ----
 
 
 	 (setq no_file         "Could not find file '%s'")
