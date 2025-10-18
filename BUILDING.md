@@ -43,7 +43,7 @@ brew install sdl_mixer
 Clone this repository.
 
 ```sh
-git clone https://github.com/metinc/Abuse_1996
+git clone https://github.com/metinc/abuse
 ```
 
 Enter the repository and configure the build:

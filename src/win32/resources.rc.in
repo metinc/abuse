@@ -18,7 +18,7 @@ BEGIN
             VALUE "FileVersion", "${abuse_VERSION}"
             VALUE "InternalName", "abuse.exe"
             VALUE "OriginalFilename", "abuse.exe"
-            VALUE "PrivateBuild", "metinc version from https://github.com/metinc/Abuse_1996"
+            VALUE "PrivateBuild", "metinc version from https://github.com/metinc/abuse"
             VALUE "ProductName", "Abuse"
             VALUE "ProductVersion", "${abuse_VERSION}"
         END
