@@ -730,8 +730,17 @@ void setup(int argc, char **argv)
     printf("Data path %s\n", assetDirName);
     set_filename_prefix(assetDirName);
 #else
-    set_filename_prefix(ASSETDIR);
-    printf("Data path %s\n", ASSETDIR);
+    // APPDIR means we are running from the AppImage
+    if (getenv("APPDIR") != nullptr)
+    {
+        std::string assetPath = std::string(getenv("APPDIR")) + ASSETDIR;
+        set_filename_prefix(assetPath.c_str());
+    }
+    else
+    {
+        set_filename_prefix(ASSETDIR);
+    }
+    printf("Data path %s\n", get_filename_prefix());
 #endif
 
     if (getenv("ABUSE_PATH"))
