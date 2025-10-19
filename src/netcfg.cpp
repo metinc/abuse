@@ -229,7 +229,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         }
 
         char *nm = i->get(NET_NAME)->read();
-        if (strstr(nm, "\""))
+        if (!*nm || strstr(nm, "\""))
         {
             error(symbol_str("name_error"));
             return 0;
@@ -245,7 +245,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         }
 
         char *s_nm = i->get(NET_SERVER_NAME)->read();
-        if (strstr(s_nm, "\""))
+        if (!*s_nm || strstr(s_nm, "\""))
         {
             error(symbol_str("game_error"));
             return 0;
