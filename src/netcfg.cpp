@@ -93,8 +93,6 @@ net_configuration::net_configuration()
 {
     strcpy(name, get_login());
 
-    strcpy(server_name, "My Netgame");
-
     min_players = 2;
     max_players = 8;
     kills = 25;
@@ -691,7 +689,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
 
                 if (still_there)
                 {
-                    game_addr[join_game]->store_string(server_name, sizeof(server_name));
+                    game_addr[join_game]->store_string(server_host, sizeof(server_host));
                     state = RESTART_CLIENT;
                     ret = 1;
                 }

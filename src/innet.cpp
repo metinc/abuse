@@ -99,9 +99,9 @@ int net_init(int argc, char **argv)
         else if (!strcmp(argv[i], "-net") && i < argc - 1)
         {
             i++;
-            DEBUG_LOG("Setting server name to %s", argv[i]);
-            strncpy(main_net_cfg->server_name, argv[i], sizeof(main_net_cfg->server_name) - 1);
-            main_net_cfg->server_name[sizeof(main_net_cfg->server_name) - 1] = '\0';
+            DEBUG_LOG("Setting server host to %s", argv[i]);
+            strncpy(main_net_cfg->server_host, argv[i], sizeof(main_net_cfg->server_host) - 1);
+            main_net_cfg->server_host[sizeof(main_net_cfg->server_host) - 1] = '\0';
             main_net_cfg->state = net_configuration::CLIENT;
         }
         else if (!strcmp(argv[i], "-ndb"))
@@ -176,9 +176,9 @@ int net_init(int argc, char **argv)
     comm_sock = game_sock = NULL;
     if (main_net_cfg->state == net_configuration::CLIENT)
     {
-        DEBUG_LOG("Initializing as client, looking for server: %s", main_net_cfg->server_name);
-        printf("Attempting to locate server %s, please wait\n", main_net_cfg->server_name);
-        char const *sn = main_net_cfg->server_name;
+        DEBUG_LOG("Initializing as client, looking for server: %s", main_net_cfg->server_host);
+        printf("Attempting to locate server %s, please wait\n", main_net_cfg->server_host);
+        char const *sn = main_net_cfg->server_host;
         net_server = prot->get_node_address(sn, DEFAULT_COMM_PORT, 0);
         if (!net_server)
         {

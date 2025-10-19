@@ -90,7 +90,7 @@ class tcpip_protocol final : public net_protocol
 
     // Protocol operations
     net_address *get_local_address() override;
-    net_address *get_node_address(char const *&server_name, int def_port, int force_port) override;
+    net_address *get_node_address(char const *&server_host, int def_port, int force_port) override;
     net_socket *connect_to_server(net_address *addr,
                                   net_socket::socket_type sock_type = net_socket::SOCKET_SECURE) override;
     net_socket *create_listen_socket(int port, net_socket::socket_type sock_type) override;
