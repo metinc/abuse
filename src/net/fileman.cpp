@@ -415,16 +415,17 @@ int file_manager::remote_file::unbuffered_read(void *buffer, size_t count)
 
             packet_size = lstl(packet_size);
 
-            ushort size_read = sock->read(/* server_read_data */ buf, packet_size);
-
-            if (size_read != packet_size)
+            // Read exactly packet_size bytes into buf
+            size_t received = 0;
+            while (received < packet_size)
             {
-                if (sock->read(/* server_read_data */ buf + 2 + size_read, packet_size - size_read) !=
-                    packet_size - size_read)
+                ushort chunk = sock->read(/* server_read_data */ buf + received, packet_size - received);
+                if (chunk == 0)
                 {
                     fprintf(stderr, "incomplete packet\n");
                     return 0;
                 }
+                received += chunk;
             }
 
             memcpy(buffer, buf, packet_size);

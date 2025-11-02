@@ -332,15 +332,15 @@ net_address *tcpip_protocol::get_local_address()
     return nullptr;
 }
 
-net_address *tcpip_protocol::get_node_address(char const *&server_name, int def_port, const int force_port)
+net_address *tcpip_protocol::get_node_address(char const *&server_host, int def_port, const int force_port)
 {
     sockaddr_in host{};
     host.sin_family = AF_INET;
 
-    if (isdigit(server_name[0]))
+    if (isdigit(server_host[0]))
     {
         unsigned char tmp[4];
-        const char *np = server_name;
+        const char *np = server_host;
 
         for (unsigned char &i : tmp)
         {
@@ -372,7 +372,7 @@ net_address *tcpip_protocol::get_node_address(char const *&server_name, int def_
     }
 
     char name[256];
-    const char *src = server_name;
+    const char *src = server_host;
     char *dst = name;
     while (*src && *src != ':' && *src != '/' && dst < name + sizeof(name) - 1)
     {
@@ -410,7 +410,7 @@ net_address *tcpip_protocol::get_node_address(char const *&server_name, int def_
     host.sin_addr.s_addr = htonl(INADDR_ANY);
     memcpy(&host.sin_addr, hp->h_addr, hp->h_length);
 
-    server_name = src;
+    server_host = src;
     return new ip_address(&host);
 }
 

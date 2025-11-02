@@ -32,7 +32,7 @@ class net_configuration
     unsigned short port,
         server_port; // if we are a server, use our_port
     char name[100];
-    char server_name[100];
+    char server_host[100];
 
     char min_players, max_players;
     short kills;

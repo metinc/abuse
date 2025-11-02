@@ -110,8 +110,6 @@ int game_client::process_server_command()
 // Main networking processing loop for client
 int game_client::process_net()
 {
-    DEBUG_LOG("Processing network events");
-
     if (client_sock->error())
     {
         DEBUG_LOG("Client socket error detected");
@@ -121,11 +119,9 @@ int game_client::process_net()
     // Check for incoming game state data
     if (game_sock->ready_to_read())
     {
-        DEBUG_LOG("Game data available");
         net_packet tmp;
 
         int bytes_received = game_sock->read(/* server_game_state */ tmp.data, PACKET_MAX_SIZE);
-        DEBUG_LOG("Received %d bytes of game data", bytes_received);
 
         if (bytes_received == tmp.packet_size() + tmp.packet_prefix_size())
         {
@@ -134,7 +130,6 @@ int game_client::process_net()
             {
                 if (base->current_tick == tmp.tick_received())
                 {
-                    DEBUG_LOG("Valid game packet received for current tick %d", base->current_tick);
                     base->packet = tmp;
                     wait_local_input = 1;
                     base->input_state = INPUT_PROCESSING;
@@ -219,7 +214,6 @@ void game_client::add_engine_input()
         DEBUG_LOG("Skipping input collection - reload in progress");
         return;
     }
-    DEBUG_LOG("Adding engine input for tick %d", base->current_tick);
 
     net_packet *pack = &base->packet;
     base->input_state = INPUT_COLLECTING;
@@ -227,7 +221,6 @@ void game_client::add_engine_input()
     pack->set_tick_received(base->current_tick);
     pack->calc_checksum();
 
-    DEBUG_LOG("Sending input packet (tick %d) to server", base->current_tick);
     game_sock->write(/* client_input_data */ pack->data, pack->packet_size() + pack->packet_prefix_size(),
                      server_data_port);
 }

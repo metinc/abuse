@@ -126,8 +126,6 @@ game_server::player_client::~player_client()
 // Check if all players have submitted input for current tick
 void game_server::check_collection_complete()
 {
-    DEBUG_LOG("Checking input collection status");
-
     player_client *c;
     int got_all = waiting_server_input == 0;
     int add_deletes = 0;
@@ -143,13 +141,7 @@ void game_server::check_collection_complete()
         else if (c->has_joined() && c->wait_input())
         {
             got_all = 0;
-            DEBUG_LOG("Still waiting for input from client %d", c->client_id);
         }
-    }
-
-    if (got_all)
-    {
-        DEBUG_LOG("All clients have submitted input, moving on");
     }
 
     // Remove deleted clients
@@ -190,7 +182,6 @@ void game_server::check_collection_complete()
     // If we have all inputs, send packet to all clients
     if (got_all)
     {
-        DEBUG_LOG("Got all client inputs, broadcasting game state");
         base->packet.calc_checksum();
 
         for (c = player_list; c; c = c->next)
@@ -200,7 +191,6 @@ void game_server::check_collection_complete()
                 c->set_wait_input(1);
                 game_sock->write(/* server_game_state */ base->packet.data,
                                  base->packet.packet_size() + base->packet.packet_prefix_size(), c->data_address);
-                DEBUG_LOG("Sent state to client %d", c->client_id);
             }
         }
 
@@ -208,14 +198,12 @@ void game_server::check_collection_complete()
         game_sock
             ->read_unselectable(); // don't listen to this socket until we are prepared to read next tick's game data
         waiting_server_input = 1;
-        DEBUG_LOG("Processing state complete");
     }
 }
 
 // Add server's own input to the game state
 void game_server::add_engine_input()
 {
-    DEBUG_LOG("Adding server engine input for tick %d", base->current_tick);
     waiting_server_input = 0;
     base->input_state = INPUT_COLLECTING;
     base->packet.set_tick_received(base->current_tick);
@@ -228,7 +216,6 @@ void game_server::add_client_input(char *buf, int size, player_client *c)
 {
     if (c->wait_input()) // don't add if we already have it
     {
-        DEBUG_LOG("Adding input from client %d, size %d bytes", c->client_id, size);
         base->packet.add_to_packet(buf, size);
         c->set_wait_input(0);
         check_collection_complete();
@@ -341,13 +328,11 @@ int game_server::process_client_command(player_client *c)
 // Process all network activity for the server
 int game_server::process_net()
 {
-    DEBUG_LOG("Processing network activity");
     int ret = 0;
 
     // Handle incoming game data
     if ((base->input_state == INPUT_COLLECTING || base->input_state == INPUT_RELOAD) && game_sock->ready_to_read())
     {
-        DEBUG_LOG("Game data available");
         net_packet tmp;
         net_packet *use = &tmp;
         net_address *from;
@@ -355,8 +340,6 @@ int game_server::process_net()
 
         if (from && bytes_received)
         {
-            DEBUG_LOG("Received %d bytes of game data", bytes_received);
-
             if (bytes_received == use->packet_size() + use->packet_prefix_size())
             {
                 uint16_t rec_crc = use->get_checksum();
@@ -373,9 +356,6 @@ int game_server::process_net()
                     {
                         if (base->current_tick == use->tick_received())
                         {
-                            DEBUG_LOG("Valid game data from client %d for current tick (%d)", found->client_id,
-                                      base->current_tick);
-
                             if (base->input_state != INPUT_RELOAD)
                                 add_client_input((char *)use->packet_data(), use->packet_size(), found);
                         }

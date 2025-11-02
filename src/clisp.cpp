@@ -73,7 +73,7 @@ void *l_main_menu, *l_logo, *l_state_art, *l_abilities, *l_state_sfx, *l_song_li
     *l_ask_save_slot, *l_player_text_color,
     *l_level_loaded; // called when a new level is loaded
 
-char game_name[50];
+char game_name[50] = "Abuse Game";
 void *sensor_ai();
 
 // variables for the status bar

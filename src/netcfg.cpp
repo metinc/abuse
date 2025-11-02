@@ -93,8 +93,6 @@ net_configuration::net_configuration()
 {
     strcpy(name, get_login());
 
-    strcpy(server_name, "My Netgame");
-
     min_players = 2;
     max_players = 8;
     kills = 25;
@@ -231,7 +229,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         }
 
         char *nm = i->get(NET_NAME)->read();
-        if (strstr(nm, "\""))
+        if (!*nm || strstr(nm, "\""))
         {
             error(symbol_str("name_error"));
             return 0;
@@ -247,7 +245,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
         }
 
         char *s_nm = i->get(NET_SERVER_NAME)->read();
-        if (strstr(s_nm, "\""))
+        if (!*s_nm || strstr(s_nm, "\""))
         {
             error(symbol_str("game_error"));
             return 0;
@@ -673,7 +671,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
 
             if (options_result)
             {
-                int still_there = 1; // change this back to 0, to check if games are stil alive
+                int still_there = 0; // check if games are still alive
                 time_marker start, now;
                 do
                 {
@@ -691,7 +689,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
 
                 if (still_there)
                 {
-                    game_addr[join_game]->store_string(server_name, sizeof(server_name));
+                    game_addr[join_game]->store_string(server_host, sizeof(server_host));
                     state = RESTART_CLIENT;
                     ret = 1;
                 }
@@ -699,9 +697,8 @@ int net_configuration::input() // pulls up dialog box and input fileds
                     error(symbol_str("not_there"));
 
                 prot->reset_find_list();
-                int i;
-                for (i = 0; i < total_games; i++) // delete all the addresses we found and stored
-                    delete game_addr[join_game];
+                for (int i = 0; i < total_games; i++) // delete all the addresses we found and stored
+                    delete game_addr[i];
             }
         }
         else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER)
