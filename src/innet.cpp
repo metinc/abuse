@@ -457,7 +457,6 @@ void service_net_request()
                 delete game_face;
                 game_face = new game_handler;
             }
-            DEBUG_LOG("Processing network file manager");
             fman->process_net();
         }
     }
@@ -778,7 +777,6 @@ void send_local_request()
 {
     if (prot)
     {
-        DEBUG_LOG("Sending local request, tick: %d", current_level ? current_level->tick_counter() & 0xff : 0);
         if (current_level)
             base->current_tick = (current_level->tick_counter() & 0xff);
         game_face->add_engine_input();
@@ -809,6 +807,7 @@ int get_inputs_from_server(unsigned char *buf)
         int total_retry = 0;
         Jwindow *abort = NULL;
 
+        constexpr double resend_timeout_sec = 0.05;
         while (base->input_state != INPUT_PROCESSING)
         {
             if (!prot)
@@ -820,7 +819,7 @@ int get_inputs_from_server(unsigned char *buf)
             service_net_request();
 
             time_marker now;
-            if (now.diff_time(&start) > 0.05)
+            if (now.diff_time(&start) > resend_timeout_sec)
             {
                 DEBUG_LOG("Missed packet, requesting resend");
                 if (prot->debug_level(net_protocol::DB_IMPORTANT_EVENT))
@@ -870,7 +869,6 @@ int get_inputs_from_server(unsigned char *buf)
         }
     }
 
-    DEBUG_LOG("Processing received input packet");
     memcpy(base->last_packet.data, base->packet.data, base->packet.packet_size() + base->packet.packet_prefix_size());
 
     int size = base->packet.packet_size();
