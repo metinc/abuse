@@ -1,10 +1,18 @@
 # Changelog
 
+## Abuse 1.0.3 by Metin Çelik (2025-10-18)
+
+- Added a Co-op mode.
+- Fixed the server browser.
+- Added level selection to the Net Game menu.
+- Fixed numerous multiplayer-related bugs.
+- Merged Abuse 2025 by @apancik.
+
 ## Abuse 1.0.2 by Metin Çelik (2025-03-15)
 
-- Improved performance of light calculation
-- Fixed VRAM leak by rewriting the renderer
-- Fixed weapon switching using the mouse wheel
+- Improved performance of light calculation.
+- Fixed VRAM leak by rewriting the renderer.
+- Fixed weapon switching using the mouse wheel.
 
 ## Abuse 1.0.1 by Metin Çelik (2025-03-09)
 
