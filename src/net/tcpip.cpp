@@ -18,9 +18,10 @@
 #include "tcpip.h"
 #include <cctype>
 
+#ifndef WIN32
 #include <ifaddrs.h>
 #include <arpa/inet.h>
-#ifdef WIN32
+#else
 #include <iphlpapi.h>
 #pragma comment(lib, "iphlpapi.lib")
 #endif
@@ -158,7 +159,11 @@ int unix_fd::read(void *buf, int size, net_address **addr)
 void unix_fd::broadcastable() const
 {
     constexpr int option = 1;
+#ifdef WIN32
+    if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (const char *)&option, sizeof(option)) < 0)
+#else
     if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &option, sizeof(option)) < 0)
+#endif
     {
         DEBUG_LOG("Could not set socket option broadcast");
     }
@@ -217,16 +222,29 @@ int udp_socket::read(void *buf, const int size, net_address **addr)
     {
         *addr = new ip_address;
         socklen_t addr_size = sizeof(sockaddr_in);
+#ifdef WIN32
+        return recvfrom(fd, (char *)buf, size, 0, (sockaddr *)&((ip_address *)*addr)->addr, &addr_size);
+#else
         return recvfrom(fd, buf, size, 0, (sockaddr *)&((ip_address *)*addr)->addr, &addr_size);
+#endif
     }
+#ifdef WIN32
+    return recv(fd, (char *)buf, size, 0);
+#else
     return recv(fd, buf, size, 0);
+#endif
 }
 
 int udp_socket::write(void const *buf, int size, net_address *addr)
 {
     if (addr)
     {
+#ifdef WIN32
+        return sendto(fd, (const char *)buf, size, 0, (sockaddr *)&((ip_address *)addr)->addr,
+                      sizeof(((ip_address *)addr)->addr));
+#else
         return sendto(fd, buf, size, 0, (sockaddr *)&((ip_address *)addr)->addr, sizeof(((ip_address *)addr)->addr));
+#endif
     }
 #ifdef WIN32
     return send(fd, (char *)buf, size, 0);

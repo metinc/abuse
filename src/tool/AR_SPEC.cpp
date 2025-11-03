@@ -21,6 +21,8 @@
 #include <errno.h>
 #include <string.h>
 
+using namespace cv;
+
 AR_SPEC::AR_SPEC()
 {
     this->log = NULL;
@@ -1036,7 +1038,7 @@ bool AR_SPEC::AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std
     return AR_SaveImage(ocv, name);
 }
 
-bool AR_SPEC::AR_SaveImage(Mat &ocv, std::string path)
+bool AR_SPEC::AR_SaveImage(cv::Mat &ocv, std::string path)
 {
     //set parameters and save image
 

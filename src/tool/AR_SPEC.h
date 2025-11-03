@@ -61,7 +61,6 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui.hpp>
-using namespace cv;
 
 #include "common.h"
 #include "specs.h"
@@ -140,5 +139,5 @@ class AR_SPEC
     bool AR_CreateTile(image *im, std::string path, palette *pal, palette *pal_custom);
     bool AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std::string name, palette *pal,
                         palette *pal_hires, palette *pal_custom);
-    bool AR_SaveImage(Mat &ocv, std::string path);
+    bool AR_SaveImage(cv::Mat &ocv, std::string path);
 };

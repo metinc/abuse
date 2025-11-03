@@ -17,5 +17,5 @@ target_link_libraries(net SDL2_mixer::SDL2_mixer)
 add_definitions(-DNO_CHECK)
 
 if(WIN32)
-    target_link_libraries(net ws2_32)
+    target_link_libraries(net ws2_32 iphlpapi)
 endif()

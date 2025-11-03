@@ -84,6 +84,8 @@ make package
 
 from inside the `build` folder (or `ninja package` if you're using the Ninja generator).
 
+Under Windows you can use [MSYS2 MinGW 64-bit](https://www.msys2.org/) to run the command.
+
 # AppImage
 
 If `appimagetool` is installed on your system, an AppImage will be built automatically. You can download `appimagetool` from the [AppImageKit releases page](https://github.com/AppImage/AppImageKit/releases). Make sure to make it executable and in your PATH.
