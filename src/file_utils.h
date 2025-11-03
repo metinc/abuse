@@ -1,12 +1,13 @@
 #ifndef FILE_UTILS_H
 #define FILE_UTILS_H
 
-#include "common.h"
+#include <stdio.h>
 
 #ifdef WIN32
+#include <winsock2.h>
 #include <io.h>
 #include <fcntl.h>
-typedef unsigned int mode_t;
+#include <sys/types.h>
 
 // Define missing POSIX constants for Windows
 #ifndef O_ACCMODE
@@ -28,8 +29,14 @@ typedef unsigned int mode_t;
 // Map POSIX open to Windows _open
 #define open _open
 #else
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#endif
+
+// Forward declare common.h dependency to avoid circular include
+#ifndef __COMMON_H__
+#include "common.h"
 #endif
 
 void set_filename_prefix(char const *prefix);

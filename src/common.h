@@ -25,6 +25,18 @@
 #endif
 
 #ifdef WIN32
+// Define WIN32_LEAN_AND_MEAN before including windows.h to prevent conflicts
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+// Prevent windows.h from defining min/max macros
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+// Prevent windows.h from defining ERROR
+#ifndef NOGDI
+#define NOGDI
+#endif
 #define PATH_SEPARATOR "\\"
 #define PATH_SEPARATOR_CHAR '\\'
 #else
@@ -77,12 +89,7 @@ static inline uint32_t lltl(uint32_t x)
     return x;
 }
 
-#ifdef _WINDOWS_
-// Windows defines its own ERROR macro for use with GDI. We don't care.
-#undef ERROR
-#endif
-
-#define ERROR(x, st)                                                                                                   \
+#define ABUSE_ERROR(x, st)                                                                                             \
     {                                                                                                                  \
         if (!(x))                                                                                                      \
         {                                                                                                              \
@@ -90,6 +97,12 @@ static inline uint32_t lltl(uint32_t x)
             exit(EXIT_FAILURE);                                                                                        \
         }                                                                                                              \
     }
+
+// Undefine Windows ERROR macro if it exists and use our own
+#ifdef ERROR
+#undef ERROR
+#endif
+#define ERROR ABUSE_ERROR
 
 // These macros should be removed for the non-debugging version
 #ifdef NO_CHECK
