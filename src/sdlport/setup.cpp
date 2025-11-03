@@ -40,7 +40,7 @@
 #include <signal.h>
 #include <string>
 #include <filesystem>
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
 #include "file_utils.h"
 #include "specs.h"
@@ -469,21 +469,21 @@ bool Settings::ReadConfigFile()
                 int b = 0;
 
                 if (value == "ctr_a")
-                    b = SDL_CONTROLLER_BUTTON_A;
+                    b = SDL_GAMEPAD_BUTTON_SOUTH;
                 else if (value == "ctr_b")
-                    b = SDL_CONTROLLER_BUTTON_B;
+                    b = SDL_GAMEPAD_BUTTON_EAST;
                 else if (value == "ctr_x")
-                    b = SDL_CONTROLLER_BUTTON_X;
+                    b = SDL_GAMEPAD_BUTTON_WEST;
                 else if (value == "ctr_y")
-                    b = SDL_CONTROLLER_BUTTON_Y;
+                    b = SDL_GAMEPAD_BUTTON_NORTH;
                 else if (value == "ctr_left_stick")
-                    b = SDL_CONTROLLER_BUTTON_LEFTSTICK;
+                    b = SDL_GAMEPAD_BUTTON_LEFT_STICK;
                 else if (value == "ctr_right_stick")
-                    b = SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+                    b = SDL_GAMEPAD_BUTTON_RIGHT_STICK;
                 else if (value == "ctr_left_shoulder")
-                    b = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
+                    b = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
                 else if (value == "ctr_right_shoulder")
-                    b = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
+                    b = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
 
                 if (attr == "quick_save")
                     this->ctr_f5 = b;
@@ -676,11 +676,12 @@ void parseCommandLine(int argc, char **argv)
 void setup(int argc, char **argv)
 {
     // Initialize SDL with video and audio support
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD) < 0)
     {
-        show_startup_error("Unable to initialize SDL : %s\n", SDL_GetError());
+        show_startup_error("Unable to initialize SDL: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
+
     atexit(SDL_Quit);
 
     const char *prefPath = SDL_GetPrefPath("abuse", ".");

@@ -39,7 +39,7 @@
 #include "sbar.h"
 #include "nfserver.h"
 #include "chat.h"
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 #include "netcfg.h"
 
 #define SHIFT_DOWN_DEFAULT 24

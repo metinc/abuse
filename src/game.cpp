@@ -32,7 +32,7 @@
 
 #ifdef __APPLE__
 // SDL for OSX needs to override main()
-#include "SDL.h"
+#include <SDL3/SDL.h>
 #endif
 
 #include "common.h"
@@ -74,7 +74,7 @@
 
 //AR
 #include "sdlport/setup.h"
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 //
 
 extern CrcManager *net_crcs;
@@ -513,7 +513,7 @@ void Game::show_help(const std::string &msg)
 void Game::show_help(const char *msg)
 {
     strcpy(help_text, msg);
-    help_start_time = SDL_GetTicks64();
+    help_start_time = SDL_GetTicks();
     help_active = true;
 }
 
@@ -1074,7 +1074,7 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         {
             if (help_active)
             {
-                Uint64 now = SDL_GetTicks64();
+                Uint64 now = SDL_GetTicks();
                 Uint64 elapsed = now - help_start_time;
 
                 if (elapsed > settings.physics_update + HELP_FADE_MS)
@@ -1218,12 +1218,12 @@ template <int N> static void Fade(image *im, int steps)
         main_screen->PutImage(im, ivec2((xres + 1 - im->Size().x) / 2, (yres + 1 - im->Size().y) / 2));
     }
 
-    Uint64 start_ms = SDL_GetTicks64();
+    Uint64 start_ms = SDL_GetTicks();
 
     // Keep looping until we exceed total fade time (duration * steps)
     while (true)
     {
-        Uint64 elapsed = (SDL_GetTicks64() - start_ms);
+        Uint64 elapsed = (SDL_GetTicks() - start_ms);
 
         if (elapsed >= duration * steps)
             break;
@@ -1361,7 +1361,7 @@ void do_title()
         // HACK: Disable wheel for now since it'll trigger skipping the intro
         wm->SetIgnoreWheelEvents(true);
 
-        Uint64 start_ms = SDL_GetTicks64();
+        Uint64 start_ms = SDL_GetTicks();
 
         while (ev.type != EV_KEY && ev.type != EV_MOUSE_BUTTON)
         {
@@ -1369,7 +1369,7 @@ void do_title()
             if (settings.hires || settings.big_font)
                 hr = 2;
 
-            Uint64 elapsed = SDL_GetTicks64() - start_ms;
+            Uint64 elapsed = SDL_GetTicks() - start_ms;
 
             // 120 ms per step
             Uint64 i = elapsed / 120;
@@ -2481,14 +2481,14 @@ int main(int argc, char *argv[])
             g->update_screen(); // redraw the screen with any changes
         }
 
-        Uint64 lastFixedUpdate = SDL_GetTicks64(); // last fixed 65 ms update
+        Uint64 lastFixedUpdate = SDL_GetTicks(); // last fixed 65 ms update
 
         Uint64 frameStart;
         float targetFrameTime = 1000.0f / static_cast<float>(settings.max_fps);
 
         while (!g->done())
         {
-            frameStart = SDL_GetTicks64();
+            frameStart = SDL_GetTicks();
 
             music_check();
 
@@ -2515,7 +2515,7 @@ int main(int argc, char *argv[])
             g->get_input();
 
             // make sure physics process gets called every 65 ms
-            if (SDL_GetTicks64() - lastFixedUpdate >= settings.physics_update)
+            if (SDL_GetTicks() - lastFixedUpdate >= settings.physics_update)
             {
                 if (demo_man.current_state() == demo_manager::NORMAL)
                 {
@@ -2528,7 +2528,7 @@ int main(int argc, char *argv[])
                 service_net_request();
 
                 // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
-                lastFixedUpdate = SDL_GetTicks64();
+                lastFixedUpdate = SDL_GetTicks();
 
                 // process all the objects in the world
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
@@ -2539,9 +2539,9 @@ int main(int argc, char *argv[])
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
                 g->update_screen(
-                    static_cast<uint32_t>(SDL_GetTicks64() - lastFixedUpdate)); // redraw the screen with any changes
+                    static_cast<uint32_t>(SDL_GetTicks() - lastFixedUpdate)); // redraw the screen with any changes
 
-            auto frameTime = static_cast<uint32_t>(SDL_GetTicks64() - frameStart);
+            auto frameTime = static_cast<uint32_t>(SDL_GetTicks() - frameStart);
             if (static_cast<float>(frameTime) < targetFrameTime)
             {
                 SDL_Delay(1);
