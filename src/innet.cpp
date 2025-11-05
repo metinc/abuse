@@ -16,7 +16,6 @@
 
 #include "common.h"
 
-#include "demo.h"
 #include "specs.h"
 #include "level.h"
 #include "game.h"
@@ -312,27 +311,6 @@ int NF_set_file_server(net_address *addr)
     }
     else
         return 0;
-}
-
-int NF_set_file_server(char const *name)
-{
-    DEBUG_LOG("Setting file server by name: %s", name);
-    if (prot)
-    {
-        net_address *addr = prot->get_node_address(name, DEFAULT_COMM_PORT, 0);
-        if (addr)
-        {
-            int ret = NF_set_file_server(addr);
-            delete addr;
-            return ret;
-        }
-        else
-        {
-            DEBUG_LOG("Failed to resolve server address");
-            return 0;
-        }
-    }
-    return 0;
 }
 
 int NF_open_file(char const *filename, char const *mode)
@@ -924,11 +902,6 @@ int become_server(char *name)
         return 1;
     }
     return 0;
-}
-
-void read_new_views()
-{
-    DEBUG_LOG("Reading new views");
 }
 
 void wait_min_players()

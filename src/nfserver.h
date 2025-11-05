@@ -36,7 +36,6 @@ int NF_set_file_server(net_address *addr);
 int request_server_entry();
 int server_entry_continue();
 void net_reload();
-void read_new_views();
 int set_file_server(char const *name);
 int set_file_server(net_address *addr);
 
