@@ -8,6 +8,7 @@
  *  Jonathan Clark, or by Sam Hocevar.
  */
 
+#include <cstdio>
 #if defined HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -27,13 +28,10 @@
 #include "game.h"
 #include "view.h"
 #include "lisp.h"
-#include "jwindow.h"
 #include "configuration.h"
-#include "scroller.h"
 #include "id.h"
 #include "dev.h"
 #include "jrand.h"
-#include "transp.h"
 #include "clisp.h"
 #include "demo.h"
 #include "sbar.h"
@@ -1239,12 +1237,12 @@ int32_t view::set_view_var_value(int num, int32_t x)
         break;
 
     case V_PAN_X:
-        pan_x_last = pan_x;
         pan_x = x;
+        pan_x_last = x;
         break;
     case V_PAN_Y:
-        pan_y_last = pan_y;
         pan_y = x;
+        pan_y_last = x;
         break;
     case V_NO_XLEFT:
         no_xleft = x;
