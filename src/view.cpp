@@ -1239,12 +1239,12 @@ int32_t view::set_view_var_value(int num, int32_t x)
         break;
 
     case V_PAN_X:
-        pan_x_last = pan_x;
         pan_x = x;
+        pan_x_last = x;
         break;
     case V_PAN_Y:
-        pan_y_last = pan_y;
         pan_y = x;
+        pan_y_last = x;
         break;
     case V_NO_XLEFT:
         no_xleft = x;
