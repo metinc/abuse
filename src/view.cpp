@@ -8,6 +8,7 @@
  *  Jonathan Clark, or by Sam Hocevar.
  */
 
+#include <cstdio>
 #if defined HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -27,13 +28,10 @@
 #include "game.h"
 #include "view.h"
 #include "lisp.h"
-#include "jwindow.h"
 #include "configuration.h"
-#include "scroller.h"
 #include "id.h"
 #include "dev.h"
 #include "jrand.h"
-#include "transp.h"
 #include "clisp.h"
 #include "demo.h"
 #include "sbar.h"
