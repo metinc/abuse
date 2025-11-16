@@ -3,7 +3,7 @@ cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0177 NEW)
 
 project(abuse
-    VERSION 1.0.3
+    VERSION 1.0.4
     DESCRIPTION "Run and gun game"
     LANGUAGES C CXX
 )

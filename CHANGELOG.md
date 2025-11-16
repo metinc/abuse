@@ -1,5 +1,9 @@
 # Changelog
 
+## Abuse 1.0.4 by Metin Çelik (2025-11-16)
+
+- Fixed a bug in the interpolation code that caused screen shaking.
+
 ## Abuse 1.0.3 by Metin Çelik (2025-10-18)
 
 - Added a Co-op mode.
