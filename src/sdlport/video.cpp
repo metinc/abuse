@@ -27,7 +27,7 @@
 #include <windows.h>
 #endif
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
 #include "common.h"
 
@@ -70,8 +70,15 @@ void set_mode(int argc, char **argv)
     desktop.w = 320;
     desktop.h = 200;
 
-    if (SDL_GetDesktopDisplayMode(0, &desktop) != 0)
-        printf("ERROR - failed to get display info\n");
+    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(displayIndex);
+    if (mode)
+    {
+        desktop = *mode;
+    }
+    else
+    {
+        printf("Failed to get desktop display mode: %s\n", SDL_GetError());
+    }
 
     // Scale window
     window_w = xres * scale;
@@ -81,18 +88,18 @@ void set_mode(int argc, char **argv)
     ogl_w = window_w;
     ogl_h = window_h;
 
-    int window_type = 0;
+    SDL_WindowFlags window_flags = 0;
 
-    if (settings.fullscreen == 1)
-        window_type |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-    else if (settings.fullscreen == 2)
-        window_type |= SDL_WINDOW_FULLSCREEN;
+    // if (settings.fullscreen == 1)
+    //     window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    // else
+    if (settings.fullscreen == 2)
+        window_flags |= SDL_WINDOW_FULLSCREEN;
 
     if (settings.borderless)
-        window_type |= SDL_WINDOW_BORDERLESS;
+        window_flags |= SDL_WINDOW_BORDERLESS;
 
-    window =
-        SDL_CreateWindow("Abuse", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h, window_type);
+    window = SDL_CreateWindow("Abuse", window_w, window_h, window_flags);
 
     if (!window)
     {
@@ -106,32 +113,27 @@ void set_mode(int argc, char **argv)
     if (SDL_Surface *icon = SDL_LoadBMP(tmp_name.c_str()); icon != nullptr)
     {
         SDL_SetWindowIcon(window, icon);
-        SDL_FreeSurface(icon);
+        SDL_DestroySurface(icon);
     }
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer)
     {
         show_startup_error("Video: Unable to create renderer : %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-    SDL_RendererInfo info;
-    SDL_GetRendererInfo(renderer, &info);
-    printf("Renderer: %s\n", info.name);
+
+    // Set renderer flags
+    SDL_SetRenderVSync(renderer, true);
+
+    const char *rendererName = SDL_GetRendererName(renderer);
+    printf("Renderer: %s\n", rendererName);
 
     // Set renderer scaling quality
-    if (settings.linear_filter == 1)
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    else
-        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+    SDL_SetHint("SDL_RENDER_SCALE_QUALITY", settings.linear_filter == 1 ? "linear" : "nearest");
 
     // Create our 32-bit surface for texture conversion
-    screen = SDL_CreateRGBSurface(SDL_SWSURFACE, xres, yres, 32,
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-                                  0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
-#else
-                                  0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
-#endif
+    screen = SDL_CreateSurface(xres, yres, SDL_PIXELFORMAT_RGBA32);
     if (screen == NULL)
     {
         show_startup_error("Video: Unable to create 32-bit surface: %s", SDL_GetError());
@@ -147,7 +149,7 @@ void set_mode(int argc, char **argv)
     }
 
     // Create our 8-bit surface
-    surface = SDL_CreateRGBSurface(0, xres, yres, 8, 0, 0, 0, 0);
+    surface = SDL_CreateSurface(xres, yres, SDL_PIXELFORMAT_INDEX8);
     if (surface == NULL)
     {
         // Our surface is no good, we have to bail.
@@ -167,8 +169,8 @@ void set_mode(int argc, char **argv)
 
     // Hide the mouse cursor and set up the mouse
     if (settings.grab_input)
-        SDL_SetWindowGrab(window, SDL_TRUE);
-    SDL_ShowCursor(0);
+        SDL_SetWindowMouseGrab(window, true);
+    SDL_HideCursor();
     calculate_mouse_scaling();
 
     if (settings.fullscreen != 0)
@@ -184,7 +186,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
         ar_fullscreen = !ar_fullscreen;
         if (ar_fullscreen)
         {
-            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+            SDL_SetWindowFullscreen(window, true);
             SDL_GetWindowSize(window, &window_w, &window_h);
 
             // Texture rendering size, scale while if fits
@@ -201,7 +203,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
                     break;
         }
         else
-            SDL_SetWindowFullscreen(window, 0);
+            SDL_SetWindowFullscreen(window, false);
     }
 
     static int overscale = 0;
@@ -319,9 +321,9 @@ void close_graphics()
 
     // Free our surfaces, texture and renderer
     if (surface)
-        SDL_FreeSurface(surface);
+        SDL_DestroySurface(surface);
     if (screen)
-        SDL_FreeSurface(screen);
+        SDL_DestroySurface(screen);
     if (game_texture)
         SDL_DestroyTexture(game_texture);
     if (renderer)
@@ -387,14 +389,14 @@ void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
     ystep = (srcrect.h << 16) / dstrect.h;
 
     srcy = ((srcrect.y) << 16);
-    dinset = ((surface->w - dstrect.w)) * surface->format->BytesPerPixel;
+    dinset = ((surface->w - dstrect.w)) * SDL_BYTESPERPIXEL(surface->format);
 
     // Lock the surface if necessary
     if (SDL_MUSTLOCK(surface))
         SDL_LockSurface(surface);
 
     dpixel = (Uint8 *)surface->pixels;
-    dpixel += (dstrect.x + ((dstrect.y) * surface->w)) * surface->format->BytesPerPixel;
+    dpixel += (dstrect.x + ((dstrect.y) * surface->w)) * SDL_BYTESPERPIXEL(surface->format);
 
     // Update surface part
     srcy = srcrect.y;
@@ -439,7 +441,8 @@ void palette::load()
         colors[ii].b = blue(ii);
         colors[ii].a = 255;
     }
-    SDL_SetPaletteColors(surface->format->palette, colors, 0, ncolors);
+    SDL_Palette *palette = SDL_CreateSurfacePalette(surface);
+    SDL_SetPaletteColors(palette, colors, 0, ncolors);
 
     // Now redraw the surface
     update_window_done();
@@ -458,7 +461,7 @@ void palette::load_nice()
 void update_window_done()
 {
     // Convert 8-bit surface to 32-bit
-    SDL_BlitSurface(surface, NULL, screen, NULL);
+    SDL_BlitSurfaceUnchecked(surface, NULL, screen, NULL);
 
     // Update the SDL texture with our pixel data
     SDL_UpdateTexture(game_texture, NULL, screen->pixels, screen->pitch);
@@ -470,17 +473,17 @@ void update_window_done()
     if (ar_fullscreen)
     {
         // Center the texture with proper aspect ratio
-        SDL_Rect dest_rect;
+        SDL_FRect dest_rect;
         dest_rect.x = (window_w - ogl_w) / 2;
         dest_rect.y = (window_h - ogl_h) / 2;
         dest_rect.w = ogl_w;
         dest_rect.h = ogl_h;
-        SDL_RenderCopy(renderer, game_texture, NULL, &dest_rect);
+        SDL_RenderTexture(renderer, game_texture, NULL, &dest_rect);
     }
     else
     {
         // Fill the window with the texture
-        SDL_RenderCopy(renderer, game_texture, NULL, NULL);
+        SDL_RenderTexture(renderer, game_texture, NULL, NULL);
     }
 
     // Present the renderer

@@ -27,7 +27,7 @@
 #include "event.h"
 #include "video.h"
 #include "filter.h"
-#include <SDL2/SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 
 //
 // Constructor

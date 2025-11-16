@@ -31,8 +31,8 @@
 #include <system_error>
 #include <algorithm>
 
-#include "SDL.h"
-#include "SDL_mixer.h"
+#include <SDL3/SDL.h>
+#include <SDL_mixer.h>
 
 #include "sound.h"
 #include "hmi.h"
@@ -85,7 +85,7 @@ int sound_init(int argc, char **argv)
 
     // Initialize SDL_mixer with CD quality audio (44.1kHz, 16-bit stereo)
     // Buffer size of 1024 samples provides good balance of latency and stability
-    if (Mix_OpenAudio(44100, AUDIO_S16SYS, 2, 1024) < 0)
+    if (Mix_OpenAudio(44100, SDL_AUDIO_S16, 2, 1024) < 0)
     {
         Mix_Quit(); // Clean up the codecs we initialized
         printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
@@ -160,7 +160,7 @@ sound_effect::sound_effect(char const *filename) : m_chunk(nullptr)
     }
 
     // Create SDL_RWops from the FILE*
-    SDL_RWops *rw = SDL_RWFromFP(file, SDL_TRUE); // SDL_TRUE means SDL will close the file
+    SDL_RWops *rw = SDL_RWFromFP(file, true); // true means SDL will close the file
     if (!rw)
     {
         printf("Failed to create RWops for %s: %s\n", filename, SDL_GetError());
@@ -168,7 +168,7 @@ sound_effect::sound_effect(char const *filename) : m_chunk(nullptr)
         return;
     }
 
-    m_chunk = Mix_LoadWAV_RW(rw, SDL_TRUE); // 1 means SDL will free the RWops
+    m_chunk = Mix_LoadWAV_RW(rw, true); // 1 means SDL will free the RWops
     if (!m_chunk)
     {
         printf("Failed to load WAV from file %s: %s\n", filename, Mix_GetError());
@@ -263,7 +263,7 @@ song::song(char const *filename)
         }
 
         // Load music using SDL_mixer
-        music = Mix_LoadMUS_RW(rw, SDL_FALSE); // 0 means don't free the rwops
+        music = Mix_LoadMUS_RW(rw, false);
 
         if (!music)
         {
