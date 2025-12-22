@@ -97,7 +97,7 @@ Settings::Settings()
     this->no_music = false; // disable music
     this->volume_sound = 127;
     this->volume_music = 127;
-    this->soundfont = "AWE64 Gold Presets.sf2"; // Empty = don't use custom soundfont
+    this->soundfont = ""; // Empty = don't use custom soundfont
 
     //random
     this->local_save = false;
@@ -610,6 +610,7 @@ void showHelp(const char *executableName)
     printf("  -mono             Disable stereo sound\n");
     printf("  -nosound          Disable sound\n");
     printf("  -scale <arg>      Scale to <arg>\n");
+    printf("  -soundfont <arg>  Use soundfont file <arg> for MIDI playback\n");
     // printf( "  -x <arg>          Set the width to <arg>\n" );
     // printf( "  -y <arg>          Set the height to <arg>\n" );
 }
@@ -619,7 +620,7 @@ void showHelp(const char *executableName)
 //
 void parseCommandLine(int argc, char **argv)
 {
-    // this is called after settings.ReadConfigFile(), so we can override stuff via console
+    // Command-line arguments override settings from config file
 
     for (int i = 1; i < argc; i++)
     {
@@ -660,6 +661,13 @@ void parseCommandLine(int argc, char **argv)
             if (i + 1 < argc && sscanf(argv[++i], "%s", datadir))
             {
                 set_filename_prefix(datadir);
+            }
+        }
+        else if (!strcasecmp(argv[i], "-soundfont"))
+        {
+            if (i + 1 < argc)
+            {
+                settings.soundfont = argv[++i];
             }
         }
         else if (!strcasecmp(argv[i], "-h") || !strcasecmp(argv[i], "--help"))
@@ -748,11 +756,11 @@ void setup(int argc, char **argv)
     if (getenv("ABUSE_SAVE_PATH"))
         set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
 
-    // Process any command-line arguments that might override settings
-    parseCommandLine(argc, argv);
-
     // Load the user's configuration file from the save directory
     settings.ReadConfigFile();
+
+    // Process any command-line arguments that might override settings
+    parseCommandLine(argc, argv);
 
     // Initialize audio volumes from settings
     // These variables are defined externally in loader.cpp
