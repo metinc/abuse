@@ -82,6 +82,20 @@ int sound_init(int argc, char **argv)
         printf("Sound: Warning - Some codecs failed to initialize: %s\n", Mix_GetError());
         // Continue anyway as some formats might still work
     }
+    const int num_decoders = Mix_GetNumMusicDecoders();
+    if (num_decoders > 0)
+    {
+        printf("Sound: Music decoders:");
+        for (int i = 0; i < num_decoders; i++)
+        {
+            printf("%s%s", (i == 0) ? " " : ", ", Mix_GetMusicDecoder(i));
+        }
+        printf("\n");
+    }
+    else
+    {
+        printf("Sound: No music decoders available!\n");
+    }
 
     // Initialize SDL_mixer with CD quality audio (44.1kHz, 16-bit stereo)
     // Buffer size of 1024 samples provides good balance of latency and stability
@@ -98,7 +112,11 @@ int sound_init(int argc, char **argv)
     {
         const auto soundfont_path = datadir / "soundfonts" / settings.soundfont;
 
-        if (Mix_SetSoundFonts(soundfont_path.string().c_str()) == 0)
+        if (!std::filesystem::exists(soundfont_path))
+        {
+            printf("Sound: Soundfont not found: %s\n", soundfont_path.string().c_str());
+        }
+        else if (Mix_SetSoundFonts(soundfont_path.string().c_str()) == 0)
         {
             printf("Sound: Failed to load soundfont %s: %s\n", soundfont_path.string().c_str(), Mix_GetError());
         }
@@ -106,6 +124,14 @@ int sound_init(int argc, char **argv)
         {
             printf("Sound: Loaded soundfont: %s\n", soundfont_path.string().c_str());
         }
+    }
+    else
+    {
+        printf("Sound: No custom soundfont specified, using default.\n");
+    }
+    if (const char *sf = Mix_GetSoundFonts())
+    {
+        printf("Sound: Current soundfont(s): %s\n", sf);
     }
 
     // Allocate mixing channels for simultaneous sound effects
