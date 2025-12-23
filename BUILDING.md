@@ -24,7 +24,7 @@ CMake and WiX can both be installed individually or via the [Chocolatey package 
 
     choco install cmake wixtoolset
 
-For Windows, the easiest way to get SDL2 and SDL2_mixer installed is via [vcpkg](https://vcpkg.io/en/index.html). Follow the [getting started instructions](https://vcpkg.io/en/getting-started.html). With it installed there should be nothing else to do, the `vcpkg.json` file indicates the required SDL2 and SDL2-mixer dependencies.
+For Windows, the easiest way to get SDL2 and SDL2_mixer installed is via [vcpkg](https://vcpkg.io/en/index.html). Follow the [getting started instructions](https://vcpkg.io/en/getting-started.html). With it installed there should be nothing else to do, the `vcpkg.json` file indicates the required SDL2 and SDL2-mixer dependencies with the `fluidsynth` feature enabled so custom soundfonts work on Windows (MIDI fallback without it will ignore custom soundfonts).
 
 With that set up, the CMake generation should succeed without any error.
 
