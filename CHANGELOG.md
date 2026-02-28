@@ -1,5 +1,11 @@
 # Changelog
 
+## Abuse 1.0.5 by Metin Çelik (2026-02-28)
+
+- Fixed a bug on Windows that caused the movement inputs to get stuck.
+- Fixed a bug that caused the game to switch from fullscreen to window when starting a multiplayer game.
+- Fixed soundfont command-line parameter not being handled.
+
 ## Abuse 1.0.4 by Metin Çelik (2025-11-16)
 
 - Fixed a bug in the interpolation code that caused screen shaking.
