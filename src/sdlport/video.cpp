@@ -329,6 +329,8 @@ void close_graphics()
     if (window)
         SDL_DestroyWindow(window);
 
+    ar_fullscreen = false;
+
     delete main_screen;
 }
 
