@@ -190,6 +190,7 @@ void EventHandler::SysEvent(Event &ev)
             calculate_mouse_scaling();
             break;
         }
+        break;
     case SDL_MOUSEWHEEL:
         if (m_ignore_wheel_events)
             break;
