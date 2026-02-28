@@ -193,16 +193,22 @@ void get_movement(int player, int &x, int &y, int &b1, int &b2, int &b3, int &b4
         }
         else*/
         {
-            if (is_pressed(key_map[player].left) || is_pressed(key_map[player].left_2))
+            bool left = is_pressed(key_map[player].left) || is_pressed(key_map[player].left_2);
+            bool right = is_pressed(key_map[player].right) || is_pressed(key_map[player].right_2);
+            if (left && right)
+                x = 0; // opposing directions cancel out
+            else if (left)
                 x = -1;
-            else if (is_pressed(key_map[player].right) || is_pressed(key_map[player].right_2))
+            else if (right)
                 x = 1;
             else
                 x = 0;
 
-            if (is_pressed(key_map[player].up) || is_pressed(key_map[player].up_2))
+            bool up = is_pressed(key_map[player].up) || is_pressed(key_map[player].up_2);
+            bool down = is_pressed(key_map[player].down) || is_pressed(key_map[player].down_2);
+            if (up)
                 y = -1;
-            else if (is_pressed(key_map[player].down) || is_pressed(key_map[player].down_2))
+            else if (down)
                 y = 1;
             else
                 y = 0;
