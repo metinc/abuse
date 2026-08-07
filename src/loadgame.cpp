@@ -34,7 +34,7 @@
 
 //AR
 #include "sdlport/setup.h"
-#include <SDL_timer.h>
+#include <SDL3/SDL_timer.h>
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
 //

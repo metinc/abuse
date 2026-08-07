@@ -15,8 +15,8 @@ option(ABUSE_ENABLE_NETWORK "Enable networking support" ON)
 find_program(APPIMAGETOOL appimagetool)
 
 # Dependencies
-find_package(SDL2 2.0.0 REQUIRED)
-find_package(SDL2_mixer 2.0.0 REQUIRED)
+find_package(SDL3 3.4.0 REQUIRED)
+find_package(SDL3_mixer 3.2.0 REQUIRED)
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -89,12 +89,12 @@ else()
 
     set(CPACK_PACKAGE_CONTACT "Metin Çelik <metincelik88@gmail.com>")
 
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsdl2-mixer-2.0-0, libglew2.2")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl3-0, libsdl3-mixer0, libglew2.2")
     set(CPACK_DEBIAN_PACKAGE_SECTION "games")
 
     set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
     set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
-    set(CPACK_RPM_PACKAGE_REQUIRES "SDL2, SDL2_mixer")
+    set(CPACK_RPM_PACKAGE_REQUIRES "SDL3, SDL3_mixer")
 endif()
 
 include(CPack)
@@ -157,10 +157,8 @@ if(UNIX AND NOT APPLE)
         # Shared library installation
         set(BASE_LIBS
             "libGLEW"
-            "libSDL2-2.0"
-            "libSDL2_mixer"
-            "libSDL2_mixer-2.0"
             "libSDL3"
+            "libSDL3_mixer"
             "libfluidsynth"
             "libportaudio"
             "libinstpatch-1.0"
@@ -205,19 +203,19 @@ endif()
 
 # Windows installation
 if(WIN32)
-    find_file(SDL2_DLL
-        NAMES SDL2.dll
-        HINTS $ENV{SDL2DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dlls" "C:/msys64/mingw64/bin"
+    find_file(SDL3_DLL
+        NAMES SDL3.dll
+        HINTS $ENV{SDL3DIR} "${CMAKE_CURRENT_SOURCE_DIR}/dlls" "C:/msys64/mingw64/bin"
         PATH_SUFFIXES bin
     )
-    if(NOT SDL2_DLL)
-        message(WARNING "SDL2.dll not found. Please set SDL2DIR or ensure SDL2.dll is in the specified paths.")
+    if(NOT SDL3_DLL)
+        message(WARNING "SDL3.dll not found. Please set SDL3DIR or ensure SDL3.dll is in the specified paths.")
     endif()
     install(TARGETS abuse
         RUNTIME DESTINATION ".")
 
-    if(SDL2_DLL)
-        install(FILES ${SDL2_DLL}
+    if(SDL3_DLL)
+        install(FILES ${SDL3_DLL}
             DESTINATION ".")
     endif()
 endif()

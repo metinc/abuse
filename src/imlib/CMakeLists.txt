@@ -27,6 +27,6 @@ add_library(imlib STATIC
 
 include_directories(${abuse_SOURCE_DIR}/src)
 add_definitions(-DNO_CHECK)
-#INCLUDES = -I$(srcdir) -I$(srcdir)/.. $(SDL2_CFLAGS)
+#INCLUDES = -I$(srcdir) -I$(srcdir)/.. $(SDL3_CFLAGS)
 
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK

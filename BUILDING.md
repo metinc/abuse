@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- SDL2
-- SDL2_mixer
+- SDL3
+- SDL3_mixer
 - [CMake 3.16 or later](http://www.cmake.org/)
 - GL libraries and headers (e.g., mesa, libgl, or similar) for OpenGL support
 - OpenCV library for extracting PCX images in SPEC files using `abuse-tool`
@@ -13,20 +13,10 @@
 On Arch Linux, install these packages:
 
 ```sh
-sudo pacman -S sdl2 sdl2_mixer opencv cmake dpkg rpm-tools
+sudo pacman -S sdl3 sdl3_mixer opencv cmake dpkg rpm-tools
 ```
 
 For other distributions, use the equivalent packages from your package manager.
-
-Building in Windows via the command line involves using the Visual Studio developer environment. Visual Studio should have installed a shortcut named "Developer Command Prompt for VS 2019" (or whatever version used - the latest is recommended) - this runs a CMD file that sets the necessary environment variables to use the Visual Studio command line tools. Commands need to be run within this environment for CMake to locate Visual Studio and for the development tools to be available.
-
-CMake and WiX can both be installed individually or via the [Chocolatey package manager](https://chocolatey.org/). Via Chocolatey, the command to install CMake and the WiX toolset is simply:
-
-    choco install cmake wixtoolset
-
-For Windows, the easiest way to get SDL2 and SDL2_mixer installed is via [vcpkg](https://vcpkg.io/en/index.html). Follow the [getting started instructions](https://vcpkg.io/en/getting-started.html). With it installed there should be nothing else to do, the `vcpkg.json` file indicates the required SDL2 and SDL2-mixer dependencies.
-
-With that set up, the CMake generation should succeed without any error.
 
 ### macOS
 
@@ -34,8 +24,8 @@ macOS should have many of the necessary tools already. The easiest method for in
 
 ```sh
 brew install cmake
-brew install sdl
-brew install sdl_mixer
+brew install sdl3
+brew install sdl3_mixer
 ```
 
 # Compiling

@@ -11,7 +11,7 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
-#include "SDL_mixer.h"
+#include <SDL3_mixer/SDL_mixer.h>
 
 #include "common.h"
 
@@ -32,7 +32,7 @@ class sound_effect
     void play(int volume = 127, int pitch = 128, int panpot = 128);
 
   private:
-    Mix_Chunk *m_chunk;
+    MIX_Audio *m_audio;
 };
 
 class song
@@ -46,11 +46,8 @@ class song
     ~song();
 
   private:
-    char *Name;
-    unsigned char *data;
-    unsigned long song_id;
-    Mix_Music *music;
-    SDL_RWops *rw;
+    MIX_Audio *m_audio;
+    MIX_Track *m_track;
 };
 
 #endif
