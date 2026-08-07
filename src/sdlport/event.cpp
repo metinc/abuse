@@ -34,6 +34,7 @@
 #include "timing.h"
 #include "sprite.h"
 #include "game.h"
+#include "joy.h"
 #include "setup.h"
 
 extern SDL_Window *window;
@@ -42,6 +43,7 @@ extern SDL_Renderer *renderer;
 extern bool fullscreen;
 
 extern Settings settings;
+extern int has_joystick;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
@@ -106,9 +108,14 @@ bool use_left_stick = false;
 
 void EventHandler::SysInit()
 {
-    // Ignore activate events
-    // This event is gone in SDL2, should we be ignoring the replacement? Dunno
-    //SDL_EventState(SDL_ACTIVEEVENT, SDL_IGNORE);
+    if (!SDL_StartTextInput(window))
+        fprintf(stderr, "Warning: Unable to start text input: %s\n", SDL_GetError());
+}
+
+void EventHandler::SysUninit()
+{
+    if (window && SDL_TextInputActive(window))
+        SDL_StopTextInput(window);
 }
 
 void EventHandler::SysWarpMouse(ivec2 pos)
@@ -287,6 +294,11 @@ void EventHandler::SysEvent(Event &ev)
             break;
         }
         break;
+    case SDL_EVENT_TEXT_INPUT:
+        ev.type = EV_TEXT_INPUT;
+        ev.text = sdlev.text.text ? sdlev.text.text : "";
+        break;
+
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
         //AR EV_SPURIOUS has the same value as JK_SPACE, so this is probably all wrong
@@ -471,65 +483,16 @@ void EventHandler::SysEvent(Event &ev)
             break;
 
         default:
+            SDL_Keycode keycode = sdlev.key.key;
+            if (the_game->state == MENU_STATE)
+                keycode = SDL_GetKeyFromScancode(sdlev.key.scancode, sdlev.key.mod, false);
+
             //AR this will crash in game.cpp calling key_down() which can go up to 64
             //so I set it to a random key which shouldn't do anything in the game
-            if ((int)sdlev.key.key > JK_MAX_KEY)
+            if (keycode > JK_MAX_KEY)
                 ev.key = JK_MAX_KEY;
             else
-                ev.key = (int)sdlev.key.key;
-
-            // Handle shift key combinations for text input
-            if (the_game->state == MENU_STATE && (sdlev.key.mod & SDL_KMOD_SHIFT) != 0)
-            {
-                if (sdlev.key.key >= SDLK_A && sdlev.key.key <= SDLK_Z)
-                {
-                    ev.key -= 32;
-                }
-                else if (sdlev.key.key >= SDLK_1 && sdlev.key.key <= SDLK_5)
-                {
-                    ev.key -= 16;
-                }
-                else
-                {
-                    switch (sdlev.key.key)
-                    {
-                    case SDLK_6:
-                        ev.key = SDLK_CARET;
-                        break;
-                    case SDLK_7:
-                    case SDLK_9:
-                    case SDLK_0:
-                        ev.key -= 17;
-                        break;
-                    case SDLK_8:
-                        ev.key = SDLK_ASTERISK;
-                        break;
-                    case SDLK_MINUS:
-                        ev.key = SDLK_UNDERSCORE;
-                        break;
-                    case SDLK_EQUALS:
-                        ev.key = SDLK_PLUS;
-                        break;
-                    case SDLK_COMMA:
-                        ev.key = SDLK_LESS;
-                        break;
-                    case SDLK_PERIOD:
-                        ev.key = SDLK_GREATER;
-                        break;
-                    case SDLK_SLASH:
-                        ev.key = SDLK_QUESTION;
-                        break;
-                    case SDLK_SEMICOLON:
-                        ev.key = SDLK_COLON;
-                        break;
-                    case SDLK_APOSTROPHE:
-                        ev.key = SDLK_DBLAPOSTROPHE;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-            }
+                ev.key = static_cast<int>(keycode);
             break;
         }
         break;
@@ -625,6 +588,39 @@ void EventHandler::SysEvent(Event &ev)
         }
         ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
         break;
+
+    case SDL_EVENT_GAMEPAD_ADDED:
+        has_joystick = joy_handle_added(sdlev.gdevice.which);
+        ev.type = EV_SPURIOUS;
+        break;
+
+    case SDL_EVENT_GAMEPAD_REMOVED: {
+        has_joystick = joy_handle_removed(sdlev.gdevice.which);
+        use_left_stick = false;
+        settings.ctr_aim_x = 0;
+        settings.ctr_aim_y = 0;
+
+        // Release every action a disconnected gamepad may have held so the
+        // player cannot remain moving, firing, or navigating a menu.
+        const char *bindings[] = {"up", "down", "left", "right", "b1", "b2", "b3", "b4"};
+        for (const char *binding : bindings)
+        {
+            Event *release = new Event;
+            release->type = EV_KEYRELEASE;
+            release->key = get_key_binding(binding, 0);
+            Push(release);
+        }
+        const int special_keys[] = {JK_ENTER, JK_ESC, JK_F1};
+        for (int key : special_keys)
+        {
+            Event *release = new Event;
+            release->type = EV_KEYRELEASE;
+            release->key = key;
+            Push(release);
+        }
+        ev.type = EV_SPURIOUS;
+        break;
+    }
 
     case SDL_EVENT_GAMEPAD_AXIS_MOTION:
         switch (sdlev.gaxis.axis)

@@ -83,7 +83,7 @@ class Game
     // How long it takes to completely fade out a help text.
     static const uint16_t HELP_FADE_MS = 1000;
 
-    int has_joystick, no_delay;
+    int no_delay;
 
     Jwindow *top_menu, *joy_win, *last_input;
     JCFont *game_font;

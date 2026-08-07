@@ -12,7 +12,6 @@
 #include "config.h"
 #endif
 
-#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -214,16 +213,24 @@ int shell_term::handle_event(Event &ev)
                 shcmd[0] = 0;
             }
             break;
-            default: {
-                if (ev.key < 256 && isprint(ev.key))
-                {
-                    int x = strlen(shcmd);
-                    shcmd[x + 1] = 0;
-                    shcmd[x] = ev.key;
-                    put_char(ev.key);
-                }
+            default:
+                break;
             }
             break;
+        }
+        case EV_TEXT_INPUT: {
+            for (unsigned char ch : ev.text)
+            {
+                if (ch < ' ' || ch > '~')
+                    continue;
+
+                const size_t length = strlen(shcmd);
+                if (length + 1 < sizeof(shcmd))
+                {
+                    shcmd[length] = static_cast<char>(ch);
+                    shcmd[length + 1] = 0;
+                    put_char(static_cast<char>(ch));
+                }
             }
             break;
         }
