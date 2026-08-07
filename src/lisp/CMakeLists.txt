@@ -12,8 +12,8 @@ include_directories(
 )
 
 
-target_link_libraries(lisp SDL2_mixer::SDL2_mixer)
+target_link_libraries(lisp SDL3_mixer::SDL3_mixer)
 
-#INCLUDES = -I$(srcdir) -I$(srcdir)/../ -I$(srcdir)/../imlib $(SDL2_CFLAGS)
+#INCLUDES = -I$(srcdir) -I$(srcdir)/../ -I$(srcdir)/../imlib $(SDL3_CFLAGS)
 
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK

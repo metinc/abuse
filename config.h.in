@@ -44,8 +44,8 @@
 /* Define to 1 to activate final release */
 #cmakedefine HAVE_RELEASE
 
-/* Define to 1 if you have the <SDL/SDL_mixer.h> header file. */
-#cmakedefine HAVE_SDL_SDL_MIXER_H
+/* Define to 1 if you have the <SDL3_mixer/SDL_mixer.h> header file. */
+#cmakedefine HAVE_SDL3_MIXER_SDL_MIXER_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #cmakedefine HAVE_STDINT_H

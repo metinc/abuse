@@ -30,21 +30,23 @@
 int joy_init(int argc, char **argv)
 {
     int joysticks = 0;
-    SDL_GetJoysticks(&joysticks);
+    SDL_JoystickID *joystick_ids = SDL_GetJoysticks(&joysticks);
     printf("%d joysticks on system\n", joysticks);
-    for (SDL_JoystickID i = 0; i < joysticks; i++)
+    for (int i = 0; i < joysticks; i++)
     {
-        if (SDL_IsGamepad(i))
+        const SDL_JoystickID id = joystick_ids[i];
+        if (SDL_IsGamepad(id))
         {
-            if (SDL_OpenGamepad(i) == NULL)
+            if (SDL_OpenGamepad(id) == NULL)
             {
                 const char *error = SDL_GetError();
-                printf("Warning : Unable to open game controller %s: %s\n", SDL_GetJoystickNameForID(i), error);
+                printf("Warning : Unable to open game controller %s: %s\n", SDL_GetJoystickNameForID(id), error);
             }
         }
-        printf("  - joystick %d (%s) : %s\n", i, SDL_IsGamepad(i) ? "controller" : " joystick ",
-               SDL_GetJoystickNameForID(i));
+        printf("  - joystick %d (%s) : %s\n", id, SDL_IsGamepad(id) ? "controller" : " joystick ",
+               SDL_GetJoystickNameForID(id));
     }
+    SDL_free(joystick_ids);
     return joysticks > 0;
 }
 

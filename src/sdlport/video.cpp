@@ -66,11 +66,11 @@ void video_change_settings(int scale_add, bool toggle_fullscreen);
 //
 void set_mode(int argc, char **argv)
 {
-    int displayIndex = 0;
+    const SDL_DisplayID display = SDL_GetPrimaryDisplay();
     desktop.w = 320;
     desktop.h = 200;
 
-    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(displayIndex);
+    const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
     if (mode)
     {
         desktop = *mode;
@@ -463,7 +463,8 @@ void palette::load_nice()
 void update_window_done()
 {
     // Convert 8-bit surface to 32-bit
-    SDL_BlitSurfaceUnchecked(surface, NULL, screen, NULL);
+    // The SDL3 unchecked blitter requires non-null, pre-clipped rectangles.
+    SDL_BlitSurface(surface, NULL, screen, NULL);
 
     // Update the SDL texture with our pixel data
     SDL_UpdateTexture(game_texture, NULL, screen->pixels, screen->pitch);

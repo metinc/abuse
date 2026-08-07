@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - SDL3
-- SDL2_mixer
+- SDL3_mixer
 - [CMake 3.16 or later](http://www.cmake.org/)
 - GL libraries and headers (e.g., mesa, libgl, or similar) for OpenGL support
 - OpenCV library for extracting PCX images in SPEC files using `abuse-tool`
@@ -13,7 +13,7 @@
 On Arch Linux, install these packages:
 
 ```sh
-sudo pacman -S sdl3 sdl2_mixer opencv cmake dpkg rpm-tools
+sudo pacman -S sdl3 sdl3_mixer opencv cmake dpkg rpm-tools
 ```
 
 For other distributions, use the equivalent packages from your package manager.
@@ -24,8 +24,8 @@ macOS should have many of the necessary tools already. The easiest method for in
 
 ```sh
 brew install cmake
-brew install sdl
-brew install sdl_mixer
+brew install sdl3
+brew install sdl3_mixer
 ```
 
 # Compiling

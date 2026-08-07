@@ -66,18 +66,15 @@ bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 
     std::size_t found = line.find("=");
 
-    //no "="
-    if (found == std::string::npos || found == line.size() - 1)
+    // no "=" or no attribute name
+    if (found == std::string::npos || found == 0)
         return false;
 
     attr = line.substr(0, found);
-    value = line.substr(found + 1, line.size() - 1);
+    value = line.substr(found + 1);
 
-    //empty attribute or value
-    if (attr.empty() || value.empty())
-        return false;
-
-    return true;
+    // Empty values are valid for optional string settings such as soundfont.
+    return !attr.empty();
 }
 
 Settings::Settings()
@@ -684,7 +681,7 @@ void parseCommandLine(int argc, char **argv)
 void setup(int argc, char **argv)
 {
     // Initialize SDL with video and audio support
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD) < 0)
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD))
     {
         show_startup_error("Unable to initialize SDL: %s", SDL_GetError());
         exit(EXIT_FAILURE);
