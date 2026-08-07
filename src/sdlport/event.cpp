@@ -227,6 +227,13 @@ void EventHandler::SysEvent(Event &ev)
         exit(EXIT_SUCCESS);
         break;
     case SDL_EVENT_WINDOW_RESIZED:
+        break;
+    case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+        fullscreen = true;
+        break;
+    case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+        fullscreen = false;
+        break;
     case SDL_EVENT_WINDOW_MAXIMIZED:
     case SDL_EVENT_WINDOW_RESTORED:
     case SDL_EVENT_WINDOW_MINIMIZED:

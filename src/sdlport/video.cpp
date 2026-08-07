@@ -55,6 +55,70 @@ bool fullscreen = false;
 
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 
+namespace
+{
+struct WindowedBounds
+{
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    bool valid = false;
+};
+
+WindowedBounds windowed_bounds;
+
+bool window_is_fullscreen()
+{
+    return window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+}
+
+void remember_windowed_bounds()
+{
+    if (!window || window_is_fullscreen())
+        return;
+
+    windowed_bounds.valid = SDL_GetWindowPosition(window, &windowed_bounds.x, &windowed_bounds.y) &&
+                            SDL_GetWindowSize(window, &windowed_bounds.w, &windowed_bounds.h);
+}
+
+bool configure_fullscreen_mode()
+{
+    // A null mode requests borderless desktop fullscreen.
+    if (settings.fullscreen != 2)
+    {
+        if (SDL_SetWindowFullscreenMode(window, nullptr))
+            return true;
+        fprintf(stderr, "Video: Unable to select borderless desktop fullscreen mode: %s\n", SDL_GetError());
+        return false;
+    }
+
+    const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
+    const SDL_DisplayMode *desktop_mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
+    SDL_DisplayMode mode{};
+    if (!desktop_mode || !SDL_GetClosestFullscreenDisplayMode(display, desktop_mode->w, desktop_mode->h,
+                                                               desktop_mode->refresh_rate, true, &mode))
+    {
+        fprintf(stderr, "Video: No exclusive fullscreen mode matching the desktop; using borderless desktop mode: %s\n",
+                SDL_GetError());
+        if (SDL_SetWindowFullscreenMode(window, nullptr))
+            return true;
+        fprintf(stderr, "Video: Unable to select fallback borderless desktop fullscreen mode: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (!SDL_SetWindowFullscreenMode(window, &mode))
+    {
+        fprintf(stderr, "Video: Unable to select exclusive fullscreen mode %dx%d: %s\n", mode.w, mode.h,
+                SDL_GetError());
+        return false;
+    }
+
+    printf("Video: Exclusive fullscreen mode %dx%d at %.2f Hz\n", mode.w, mode.h, mode.refresh_rate);
+    return true;
+}
+}
+
 // VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
 // than square. Apply that correction to 8:5 game resolutions while leaving
 // explicitly configured square-pixel resolutions unchanged.
@@ -97,12 +161,6 @@ void set_mode(int argc, char **argv)
 
     SDL_WindowFlags window_flags = 0;
 
-    // if (settings.fullscreen == 1)
-    //     window_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-    // else
-    if (settings.fullscreen == 2)
-        window_flags |= SDL_WINDOW_FULLSCREEN;
-
     if (settings.borderless)
         window_flags |= SDL_WINDOW_BORDERLESS;
 
@@ -113,6 +171,11 @@ void set_mode(int argc, char **argv)
         show_startup_error("Video: Unable to create window : %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
+
+    // Set this after creation so SDL preserves the exact configured initial
+    // size instead of constraining it to the compositor's recommended size.
+    if (!SDL_SetWindowResizable(window, true))
+        fprintf(stderr, "Video: Unable to make the window resizable: %s\n", SDL_GetError());
 
     // Load the window icon
     std::string tmp_name = std::string(get_filename_prefix()) + "icon.bmp";
@@ -196,14 +259,35 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
     if (toggle_fullscreen)
     {
-        fullscreen = !fullscreen;
-        if (fullscreen)
-            SDL_SetWindowFullscreen(window, true);
-        else
-            SDL_SetWindowFullscreen(window, false);
+        const bool enter_fullscreen = !window_is_fullscreen();
+        if (enter_fullscreen)
+        {
+            remember_windowed_bounds();
+            if (!configure_fullscreen_mode())
+                return;
+        }
+
+        if (!SDL_SetWindowFullscreen(window, enter_fullscreen))
+        {
+            fprintf(stderr, "Video: Unable to %s fullscreen mode: %s\n", enter_fullscreen ? "enter" : "leave",
+                    SDL_GetError());
+            return;
+        }
+
+        // Fullscreen requests can be asynchronous. Synchronize before using
+        // the resulting state or restoring the saved windowed bounds.
+        SDL_SyncWindow(window);
+        fullscreen = window_is_fullscreen();
+
+        if (!enter_fullscreen && !fullscreen && windowed_bounds.valid)
+        {
+            SDL_SetWindowSize(window, windowed_bounds.w, windowed_bounds.h);
+            SDL_SetWindowPosition(window, windowed_bounds.x, windowed_bounds.y);
+            SDL_SyncWindow(window);
+        }
     }
 
-    if (!fullscreen)
+    if (scale_add != 0 && !window_is_fullscreen())
     {
         // Scale window
         int new_scale = scale + scale_add;
@@ -212,14 +296,25 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
         if (new_scale > 0 && xres * new_scale <= desktop.w && corrected_height * new_scale <= desktop.h)
         {
             // Scale windows if it fits on screen
+            int old_x;
+            int old_y;
+            int old_w;
+            int old_h;
+            SDL_GetWindowPosition(window, &old_x, &old_y);
+            SDL_GetWindowSize(window, &old_w, &old_h);
+
             scale = new_scale;
-            SDL_SetWindowSize(window, xres * scale, corrected_height * scale);
+            const int new_w = xres * scale;
+            const int new_h = corrected_height * scale;
+            SDL_SetWindowSize(window, new_w, new_h);
+            SDL_SetWindowPosition(window, old_x + (old_w - new_w) / 2, old_y + (old_h - new_h) / 2);
+            SDL_SyncWindow(window);
+            remember_windowed_bounds();
         }
     }
 
-    // Update size and position
+    // Cache the actual size accepted by the window system.
     SDL_GetWindowSize(window, &window_w, &window_h);
-    SDL_SetWindowPosition(window, desktop.w / 2 - window_w / 2, desktop.h / 2 - window_h / 2);
 }
 
 //
@@ -245,6 +340,7 @@ void close_graphics()
         SDL_DestroyWindow(window);
 
     fullscreen = false;
+    windowed_bounds = {};
 
     delete main_screen;
 }

@@ -212,7 +212,7 @@ bool Settings::CreateConfigFile()
     //
     out << "; SCREEN SETTINGS" << std::endl;
     out << std::endl;
-    out << ";0 - window, 1 - fullscreen window, 2 - fullscreen" << std::endl;
+    out << ";0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen" << std::endl;
     out << "fullscreen=" << this->fullscreen << std::endl;
     out << "borderless=" << this->borderless << std::endl;
     out << std::endl;
@@ -635,7 +635,7 @@ void showHelp(const char *executableName)
     printf("\n");
     printf("** Abuse-SDL Options **\n");
     printf("  -datadir <arg>    Set the location of the game data to <arg>\n");
-    printf("  -fullscreen       Enable fullscreen mode\n");
+    printf("  -fullscreen       Enable borderless desktop fullscreen mode\n");
     printf("  -antialias        Enable anti-aliasing\n");
     printf("  -h, --help        Display this text\n");
     printf("  -mono             Disable stereo sound\n");
