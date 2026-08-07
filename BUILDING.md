@@ -4,17 +4,18 @@
 
 - SDL3
 - SDL3_mixer
-- [CMake 3.16 or later](http://www.cmake.org/)
-- GL libraries and headers (e.g., mesa, libgl, or similar) for OpenGL support
-- OpenCV library for extracting PCX images in SPEC files using `abuse-tool`
+- [CMake 3.21 or later](https://cmake.org/)
+- OpenCV (only when building the optional `abuse-tool` asset extraction utility)
 
 ### Linux
 
 On Arch Linux, install these packages:
 
 ```sh
-sudo pacman -S sdl3 sdl3_mixer opencv cmake dpkg rpm-tools
+sudo pacman -S sdl3 sdl3_mixer cmake dpkg rpm-tools
 ```
+
+Also install `opencv` if you want to build `abuse-tool`.
 
 For other distributions, use the equivalent packages from your package manager.
 
@@ -26,6 +27,7 @@ macOS should have many of the necessary tools already. The easiest method for in
 brew install cmake
 brew install sdl3
 brew install sdl3_mixer
+brew install opencv # Only needed for abuse-tool
 ```
 
 # Compiling
@@ -40,6 +42,13 @@ Enter the repository and configure the build:
 
 ```sh
 cmake -B build
+```
+
+The `abuse-tool` utility is enabled by default. To build only the game and
+avoid the OpenCV dependency, configure with:
+
+```sh
+cmake -B build -DABUSE_BUILD_TOOLS=OFF
 ```
 
 Next, build and install:
@@ -78,12 +87,24 @@ Under Windows you can use [MSYS2 MinGW 64-bit](https://www.msys2.org/) to run th
 
 # AppImage
 
-If `appimagetool` is installed on your system, an AppImage will be built automatically. You can download `appimagetool` from the [AppImageKit releases page](https://github.com/AppImage/AppImageKit/releases). Make sure to make it executable and in your PATH.
-
-To build the AppImage (if `appimagetool` is installed):
+The `appdir` target always creates a clean AppDir from the same canonical
+CMake install rules used by normal installs and CPack packages:
 
 ```sh
-make appimage
+cmake --build build --target appdir
 ```
 
-This will create an `Abuse-${PROJECT_VERSION}.AppImage` file in the build directory. You can then run this file to play the game.
+If `appimagetool` is installed, CMake also provides an `appimage` target.
+You can download `appimagetool` from the [AppImageKit releases
+page](https://github.com/AppImage/AppImageKit/releases). Make sure it is
+executable and in your `PATH`.
+
+To build the AppImage:
+
+```sh
+cmake --build build --target appimage
+```
+
+This creates `Abuse-<version>-<architecture>.AppImage` in the build directory.
+The AppDir is removed and recreated for each build, so stale libraries and
+assets cannot leak into a new image.

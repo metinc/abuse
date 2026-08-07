@@ -9,7 +9,7 @@ add_subdirectory(sdlport)
 if (WIN32)
     # FIXME: Where should this logic reside? Whatever, first generate the
     # resource script...
-    get_filename_component(abuse_ICON_PATH ${CPACK_WIX_PRODUCT_ICON} ABSOLUTE)
+    get_filename_component(abuse_ICON_PATH "${CMAKE_SOURCE_DIR}/doc/icon.ico" ABSOLUTE)
     configure_file(win32/resources.rc.in ${CMAKE_CURRENT_BINARY_DIR}/resources.rc ESCAPE_QUOTES NEWLINE_STYLE WIN32)
     # And then include it
     # FIXME: I think this means the build location can't have spaces
@@ -79,12 +79,15 @@ if(WIN32)
     set_target_properties(abuse PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
-set_target_properties(abuse PROPERTIES MACOSX_BUNDLE true)
-# Note this doesn't install the icon, that's done later
-set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_ICON_FILE "abuse")
-set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "Abuse")
-set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING "${abuse_VERSION}")
-set_target_properties(abuse PROPERTIES MACOSX_BUNDLE_BUNDLE_VERSION "${abuse_VERSION}")
+if(APPLE)
+    set_target_properties(abuse PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_ICON_FILE "abuse"
+        MACOSX_BUNDLE_BUNDLE_NAME "Abuse"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    )
+endif()
 
 target_link_libraries(abuse
     lisp
@@ -95,27 +98,20 @@ target_link_libraries(abuse
     SDL3_mixer::SDL3_mixer
 )
 
-if(OPENGL_FOUND)
-    target_link_libraries(abuse ${OPENGL_LIBRARIES})
-endif(OPENGL_FOUND)
+if(ABUSE_BUILD_TOOLS)
+    add_executable(abuse-tool
+        file_utils.cpp file_utils.h
+        tool/abuse-tool.cpp
+        crc.cpp crc.h
+        tool/AR_SPEC.cpp tool/AR_SPEC.h
+        tool/AR_Help.cpp tool/AR_Help.h)
 
-add_executable(abuse-tool
-    file_utils.cpp file_utils.h
-	tool/abuse-tool.cpp
-	crc.cpp crc.h
-	tool/AR_SPEC.cpp tool/AR_SPEC.h
-	tool/AR_Help.cpp tool/AR_Help.h)
-
-target_link_libraries(abuse-tool imlib ${OpenCV_LIBS})
-
-if(APPLE)
-    # Link CoreFoundation
-    target_link_libraries(abuse "-framework CoreFoundation")
+    target_include_directories(abuse-tool PRIVATE ${OpenCV_INCLUDE_DIRS})
+    target_link_libraries(abuse-tool PRIVATE imlib ${OpenCV_LIBS})
 endif()
 
 if(APPLE)
-    # Link CoreFoundation
-    target_link_libraries(abuse "-framework CoreFoundation")
+    target_link_libraries(abuse PRIVATE "-framework CoreFoundation")
 endif()
 
 include_directories(
@@ -124,56 +120,3 @@ include_directories(
     ${abuse_SOURCE_DIR}/src/imlib
     ${abuse_SOURCE_DIR}/src/net
 )
-if(WIN32)
-    # Under Windows, throw them into the root
-    install(TARGETS abuse
-        RUNTIME DESTINATION "."
-        LIBRARY DESTINATION ".")
-    
-    # Find SDL3 and SDL3_mixer DLLs using known bin path
-    find_program(SDL3_DLL_PATH SDL3.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(SDL3MIXER_DLL_PATH SDL3_mixer.dll HINTS "C:/msys64/mingw64/bin")
-    
-    message(STATUS "Found SDL3.dll at: ${SDL3_DLL_PATH}")
-    message(STATUS "Found SDL3_mixer.dll at: ${SDL3MIXER_DLL_PATH}")
-    
-    install(FILES ${SDL3_DLL_PATH} DESTINATION ".")
-    install(FILES ${SDL3MIXER_DLL_PATH} DESTINATION ".")
-    
-    # Find additional required DLLs using known bin path
-    find_program(LIBGCC_DLL_PATH libgcc_s_seh-1.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBSTDCXX_DLL_PATH libstdc++-6.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBMODPLUG_DLL_PATH libmodplug-1.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBMPG123_DLL_PATH libmpg123-0.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBWINPTHREAD_DLL_PATH libwinpthread-1.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBOPUSFILE_DLL_PATH libopusfile-0.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBOPUS_DLL_PATH libopus-0.dll HINTS "C:/msys64/mingw64/bin")
-    find_program(LIBOGG_DLL_PATH libogg-0.dll HINTS "C:/msys64/mingw64/bin")
-    
-    message(STATUS "Found libgcc_s_seh-1.dll at: ${LIBGCC_DLL_PATH}")
-    message(STATUS "Found libstdc++-6.dll at: ${LIBSTDCXX_DLL_PATH}")
-    message(STATUS "Found libmodplug-1.dll at: ${LIBMODPLUG_DLL_PATH}")
-    message(STATUS "Found libmpg123-0.dll at: ${LIBMPG123_DLL_PATH}")
-    message(STATUS "Found libwinpthread-1.dll at: ${LIBWINPTHREAD_DLL_PATH}")
-    message(STATUS "Found libopusfile-0.dll at: ${LIBOPUSFILE_DLL_PATH}")
-    message(STATUS "Found libopus-0.dll at: ${LIBOPUS_DLL_PATH}")
-    message(STATUS "Found libogg-0.dll at: ${LIBOGG_DLL_PATH}")
-    
-    install(FILES ${LIBGCC_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBSTDCXX_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBMODPLUG_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBMPG123_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBWINPTHREAD_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBOPUSFILE_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBOPUS_DLL_PATH} DESTINATION ".")
-    install(FILES ${LIBOGG_DLL_PATH} DESTINATION ".")
-else()
-    # Under Linux, we want the tools in bin
-    install(TARGETS abuse RUNTIME DESTINATION bin
-    BUNDLE DESTINATION "${CMAKE_INSTALL_PREFIX}")
-    if(APPLE)
-        # macOS should probably include SDL rather than dynamically link them like Linux does
-        # Add icon
-        install(FILES "../macOS/abuse.icns" DESTINATION "${CMAKE_INSTALL_PREFIX}/abuse.app/Contents/Resources")
-    endif()
-endif()
