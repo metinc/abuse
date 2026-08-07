@@ -44,21 +44,32 @@ SDL_Renderer *renderer = NULL;
 SDL_Texture *game_texture = NULL;
 image *main_screen = NULL;
 
-int mouse_xpad, mouse_ypad, mouse_xscale, mouse_yscale;
 int xres, yres;
 
 extern palette *lastl;
 extern Settings settings;
 
-void calculate_mouse_scaling();
-
 SDL_DisplayMode desktop;
-int window_w = 320, window_h = 200;
-bool ar_fullscreen = false;
-int ogl_scale = 1;
-int ogl_w = 320, ogl_h = 200;
+int window_w = 320, window_h = 240;
+bool fullscreen = false;
 
 void video_change_settings(int scale_add, bool toggle_fullscreen);
+
+// VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
+// than square. Apply that correction to 8:5 game resolutions while leaving
+// explicitly configured square-pixel resolutions unchanged.
+static int display_height()
+{
+    constexpr int vga_storage_width = 8;
+    constexpr int vga_storage_height = 5;
+    constexpr int vga_display_width = 4;
+    constexpr int vga_display_height = 3;
+
+    if (static_cast<int64_t>(xres) * vga_storage_height == static_cast<int64_t>(yres) * vga_storage_width)
+        return xres * vga_display_height / vga_display_width;
+
+    return yres;
+}
 
 //
 // set_mode()
@@ -68,7 +79,7 @@ void set_mode(int argc, char **argv)
 {
     const SDL_DisplayID display = SDL_GetPrimaryDisplay();
     desktop.w = 320;
-    desktop.h = 200;
+    desktop.h = 240;
 
     const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
     if (mode)
@@ -82,11 +93,7 @@ void set_mode(int argc, char **argv)
 
     // Scale window
     window_w = xres * scale;
-    window_h = yres * scale;
-
-    // Fullscreen "scale"
-    ogl_w = window_w;
-    ogl_h = window_h;
+    window_h = display_height() * scale;
 
     SDL_WindowFlags window_flags = 0;
 
@@ -126,11 +133,17 @@ void set_mode(int argc, char **argv)
     // Set renderer flags
     SDL_SetRenderVSync(renderer, true);
 
+    // Present the original 320x200 framebuffer through a 320x240 logical
+    // canvas. SDL uniformly fits that corrected 4:3 image to the window and
+    // handles letterboxing, resizing and high-DPI output for us.
+    if (!SDL_SetRenderLogicalPresentation(renderer, xres, display_height(), SDL_LOGICAL_PRESENTATION_LETTERBOX))
+    {
+        show_startup_error("Video: Unable to configure logical presentation: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
     const char *rendererName = SDL_GetRendererName(renderer);
     printf("Renderer: %s\n", rendererName);
-
-    // Set renderer scaling quality
-    SDL_SetHint("SDL_RENDER_SCALE_QUALITY", settings.linear_filter == 1 ? "linear" : "nearest");
 
     // Create our 32-bit surface for texture conversion
     screen = SDL_CreateSurface(xres, yres, SDL_PIXELFORMAT_RGBA32);
@@ -147,6 +160,7 @@ void set_mode(int argc, char **argv)
         show_startup_error("Video: Unable to create texture: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
+    SDL_SetTextureScaleMode(game_texture, settings.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
 
     // Create our 8-bit surface
     surface = SDL_CreateSurface(xres, yres, SDL_PIXELFORMAT_INDEX8);
@@ -171,7 +185,6 @@ void set_mode(int argc, char **argv)
     if (settings.grab_input)
         SDL_SetWindowMouseGrab(window, true);
     SDL_HideCursor();
-    calculate_mouse_scaling();
 
     if (settings.fullscreen != 0)
         video_change_settings(0, true);
@@ -183,130 +196,30 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
     if (toggle_fullscreen)
     {
-        ar_fullscreen = !ar_fullscreen;
-        if (ar_fullscreen)
-        {
+        fullscreen = !fullscreen;
+        if (fullscreen)
             SDL_SetWindowFullscreen(window, true);
-            SDL_GetWindowSize(window, &window_w, &window_h);
-
-            // Texture rendering size, scale while if fits
-            int scl = 1;
-            while (1 != 0)
-                if (xres * scl < desktop.w && yres * scl < desktop.h)
-                {
-                    ogl_scale = scl;
-                    ogl_w = xres * ogl_scale;
-                    ogl_h = yres * ogl_scale;
-                    scl++;
-                }
-                else
-                    break;
-        }
         else
             SDL_SetWindowFullscreen(window, false);
     }
 
-    static int overscale = 0;
-
-    if (!ar_fullscreen)
+    if (!fullscreen)
     {
         // Scale window
         int new_scale = scale + scale_add;
+        const int corrected_height = display_height();
 
-        if (new_scale > 0 && xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
+        if (new_scale > 0 && xres * new_scale <= desktop.w && corrected_height * new_scale <= desktop.h)
         {
             // Scale windows if it fits on screen
             scale = new_scale;
-            SDL_SetWindowSize(window, xres * scale, yres * scale);
-        }
-    }
-    else
-    {
-        // Scale texture rendering size
-        int new_scale = ogl_scale + scale_add;
-
-        if (overscale == 2 && scale_add == -1)
-            overscale = 0;
-
-        if (new_scale > 0)
-        {
-            if (xres * new_scale >= desktop.w || yres * new_scale >= desktop.h)
-            {
-                if (overscale == 0)
-                {
-                    if (yres * ((float)desktop.w / xres) < desktop.h)
-                    {
-                        // Limit scale by monitor width
-                        ogl_w = desktop.w;
-                        ogl_h = yres * ((float)desktop.w / xres);
-                    }
-                    else
-                    {
-                        // Limit scale by monitor height
-                        ogl_w = xres * ((float)desktop.h / yres);
-                        ogl_h = desktop.h;
-                    }
-                    overscale = 1;
-                    ogl_scale = new_scale;
-                }
-                else if (overscale == 1)
-                {
-                    // Match screen to desktop/monitor size
-                    ogl_w = desktop.w;
-                    ogl_h = desktop.h;
-
-                    overscale = 2;
-                    ogl_scale = new_scale;
-                }
-            }
-            else if (xres * new_scale <= desktop.w && yres * new_scale <= desktop.h)
-            {
-                // Scale and keep aspect
-                ogl_scale = new_scale;
-                ogl_w = xres * ogl_scale;
-                ogl_h = yres * ogl_scale;
-                overscale = 0;
-            }
+            SDL_SetWindowSize(window, xres * scale, corrected_height * scale);
         }
     }
 
     // Update size and position
     SDL_GetWindowSize(window, &window_w, &window_h);
     SDL_SetWindowPosition(window, desktop.w / 2 - window_w / 2, desktop.h / 2 - window_h / 2);
-
-    calculate_mouse_scaling();
-}
-
-void calculate_mouse_scaling()
-{
-    if (!ar_fullscreen || settings.mouse_scale == 0)
-    {
-        // We need to determine the appropriate mouse scaling
-        float scale_x = window_w / xres;
-        float scale_y = window_h / yres;
-
-        // Re-calculate the mouse scaling
-        mouse_xscale = (window_w << 16) / xres;
-        mouse_yscale = (window_h << 16) / yres;
-
-        // And calculate the padding
-        mouse_xpad = scale_x;
-        mouse_ypad = scale_y;
-    }
-    else
-    {
-        // We need to determine the appropriate mouse scaling
-        float scale_x = ogl_w / xres;
-        float scale_y = ogl_h / yres;
-
-        // Re-calculate the mouse scaling
-        mouse_xscale = (ogl_w << 16) / xres;
-        mouse_yscale = (ogl_h << 16) / yres;
-
-        // And calculate the padding
-        mouse_xpad = scale_x;
-        mouse_ypad = scale_y;
-    }
 }
 
 //
@@ -331,7 +244,7 @@ void close_graphics()
     if (window)
         SDL_DestroyWindow(window);
 
-    ar_fullscreen = false;
+    fullscreen = false;
 
     delete main_screen;
 }
@@ -473,21 +386,8 @@ void update_window_done()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    if (ar_fullscreen)
-    {
-        // Center the texture with proper aspect ratio
-        SDL_FRect dest_rect;
-        dest_rect.x = (window_w - ogl_w) / 2;
-        dest_rect.y = (window_h - ogl_h) / 2;
-        dest_rect.w = ogl_w;
-        dest_rect.h = ogl_h;
-        SDL_RenderTexture(renderer, game_texture, NULL, &dest_rect);
-    }
-    else
-    {
-        // Fill the window with the texture
-        SDL_RenderTexture(renderer, game_texture, NULL, NULL);
-    }
+    const SDL_FRect dest_rect = {0.0f, 0.0f, static_cast<float>(xres), static_cast<float>(display_height())};
+    SDL_RenderTexture(renderer, game_texture, NULL, &dest_rect);
 
     // Present the renderer
     SDL_RenderPresent(renderer);

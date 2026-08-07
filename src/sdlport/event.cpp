@@ -38,16 +38,67 @@
 
 extern SDL_Window *window;
 extern SDL_Surface *surface;
+extern SDL_Renderer *renderer;
+extern bool fullscreen;
 
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
-extern int mouse_xpad, mouse_ypad, mouse_xscale, mouse_yscale;
 short mouse_buttons[5] = {0, 0, 0, 0, 0};
 // From setup.cpp:
 void video_change_settings(int scale_add, bool toggle_fullscreen);
-void calculate_mouse_scaling(void);
+
+static ivec2 window_to_game(float window_x, float window_y)
+{
+    float game_x;
+    float game_y;
+
+    if (fullscreen && settings.mouse_scale == 0)
+    {
+        int window_w;
+        int window_h;
+        SDL_GetWindowSize(window, &window_w, &window_h);
+        game_x = window_x * main_screen->Size().x / window_w;
+        game_y = window_y * main_screen->Size().y / window_h;
+    }
+    else
+    {
+        int logical_w;
+        int logical_h;
+        SDL_RendererLogicalPresentation mode;
+        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
+        SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &game_x, &game_y);
+        game_x *= static_cast<float>(main_screen->Size().x) / logical_w;
+        game_y *= static_cast<float>(main_screen->Size().y) / logical_h;
+    }
+
+    const int x = std::max(0, std::min(static_cast<int>(std::round(game_x)), main_screen->Size().x - 1));
+    const int y = std::max(0, std::min(static_cast<int>(std::round(game_y)), main_screen->Size().y - 1));
+    return ivec2(x, y);
+}
+
+static void game_to_window(ivec2 pos, float &window_x, float &window_y)
+{
+    if (fullscreen && settings.mouse_scale == 0)
+    {
+        int window_w;
+        int window_h;
+        SDL_GetWindowSize(window, &window_w, &window_h);
+        window_x = static_cast<float>(pos.x) * window_w / main_screen->Size().x;
+        window_y = static_cast<float>(pos.y) * window_h / main_screen->Size().y;
+    }
+    else
+    {
+        int logical_w;
+        int logical_h;
+        SDL_RendererLogicalPresentation mode;
+        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
+        const float logical_x = static_cast<float>(pos.x) * logical_w / main_screen->Size().x;
+        const float logical_y = static_cast<float>(pos.y) * logical_h / main_screen->Size().y;
+        SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y);
+    }
+}
 
 //AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
 //so I disable it if the user uses a D-pad, and enable it if the user uses the stick and passes the dead zone
@@ -62,11 +113,11 @@ void EventHandler::SysInit()
 
 void EventHandler::SysWarpMouse(ivec2 pos)
 {
-    // This should take into account mouse scaling.
-    pos.x = ((pos.x * mouse_xscale + 0x8000) >> 16) + mouse_xpad;
-    pos.y = ((pos.y * mouse_yscale + 0x8000) >> 16) + mouse_ypad;
+    float window_x;
+    float window_y;
+    game_to_window(pos, window_x, window_y);
     //AR this repositions the system mouse based on in game values, so I turned it off for controller aiming
-    SDL_WarpMouseInWindow(window, pos.x, pos.y);
+    SDL_WarpMouseInWindow(window, window_x, window_y);
 }
 
 //
@@ -103,23 +154,10 @@ void EventHandler::SysEvent(Event &ev)
     // Sort the mouse out
     float x_f, y_f;
     SDL_MouseButtonFlags buttons = SDL_GetMouseState(&x_f, &y_f);
-    //round to int
-    int x = std::round(x_f);
-    int y = std::round(y_f);
+    const ivec2 game_pos = window_to_game(x_f, y_f);
 
-    // Remove any padding SDL may have added
-    x -= mouse_xpad;
-    if (x < 0)
-        x = 0;
-    y -= mouse_ypad;
-    if (y < 0)
-        y = 0;
-
-    x = std::min((x << 16) / mouse_xscale, main_screen->Size().x - 1);
-    y = std::min((y << 16) / mouse_yscale, main_screen->Size().y - 1);
-
-    ev.mouse_move.x = x;
-    ev.mouse_move.y = y;
+    ev.mouse_move.x = game_pos.x;
+    ev.mouse_move.y = game_pos.y;
     ev.type = EV_MOUSE_MOVE;
 
     // Left button
@@ -185,9 +223,6 @@ void EventHandler::SysEvent(Event &ev)
     case SDL_EVENT_WINDOW_MAXIMIZED:
     case SDL_EVENT_WINDOW_RESTORED:
     case SDL_EVENT_WINDOW_MINIMIZED:
-        // Recalculate mouse scaling and padding. Note that we may end up
-        // double-doing this, but whatever. Who cares.
-        calculate_mouse_scaling();
         break;
     case SDL_EVENT_MOUSE_WHEEL:
         if (m_ignore_wheel_events)
@@ -394,7 +429,6 @@ void EventHandler::SysEvent(Event &ev)
                     settings.mouse_scale = 1;
                 else
                     settings.mouse_scale = 0;
-                calculate_mouse_scaling();
             }
             ev.key = JK_F7;
             break;
