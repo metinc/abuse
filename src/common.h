@@ -116,27 +116,19 @@ static inline uint32_t lltl(uint32_t x)
 #ifndef __DEBUG_LOG_HPP_
 #define __DEBUG_LOG_HPP_
 
-#include <stdio.h>
-#include <time.h>
-
-#ifdef WIN32
-#include <windows.h>
-#else
-#include <sys/time.h>
-#endif
-
 #ifdef TCPIP_DEBUG
+#include <SDL3/SDL_time.h>
+
 #define DEBUG_LOG(fmt, ...)                                                                                            \
     do                                                                                                                 \
     {                                                                                                                  \
-        struct timeval tv;                                                                                             \
-        struct tm *tm_info;                                                                                            \
-        char timestr[32];                                                                                              \
-                                                                                                                       \
-        gettimeofday(&tv, NULL);                                                                                       \
-        tm_info = localtime(&tv.tv_sec);                                                                               \
-        strftime(timestr, sizeof(timestr), "%H:%M:%S", tm_info);                                                       \
-        printf("[%s.%03d] %s: " fmt "\n", timestr, (int)(tv.tv_usec / 1000), __FILE__, ##__VA_ARGS__);                 \
+        SDL_Time current_time;                                                                                         \
+        SDL_DateTime date_time;                                                                                        \
+        if (SDL_GetCurrentTime(&current_time) && SDL_TimeToDateTime(current_time, &date_time, true))                   \
+            printf("[%02d:%02d:%02d.%03d] %s: " fmt "\n", date_time.hour, date_time.minute, date_time.second,          \
+                   date_time.nanosecond / 1000000, __FILE__, ##__VA_ARGS__);                                           \
+        else                                                                                                           \
+            printf("[time unavailable] %s: " fmt "\n", __FILE__, ##__VA_ARGS__);                                      \
     } while (0)
 #else
 #define DEBUG_LOG(fmt, ...) ((void)0)

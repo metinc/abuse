@@ -110,10 +110,6 @@ if(ABUSE_BUILD_TOOLS)
     target_link_libraries(abuse-tool PRIVATE imlib ${OpenCV_LIBS})
 endif()
 
-if(APPLE)
-    target_link_libraries(abuse PRIVATE "-framework CoreFoundation")
-endif()
-
 include_directories(
     ${abuse_SOURCE_DIR}/src
     ${abuse_SOURCE_DIR}/src/lisp

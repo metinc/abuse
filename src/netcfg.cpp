@@ -25,8 +25,8 @@
 #include "dev.h"
 
 #include "net/sock.h"
+#include <SDL3/SDL_filesystem.h>
 #include <SDL3/SDL_timer.h>
-#include <dirent.h>
 #include <vector>
 #include <algorithm>
 #include "imlib/scroller.h"
@@ -47,17 +47,20 @@ static void build_level_list(bool is_coop)
 
     const char *base = get_filename_prefix();
     std::string dir_path = std::string(base) + (is_coop ? "levels" : "netlevel");
-    DIR *d = opendir(dir_path.c_str());
-    if (!d)
+    int match_count = 0;
+    char **matches = SDL_GlobDirectory(dir_path.c_str(), "*.spe", 0, &match_count);
+    if (!matches)
         return;
-    struct dirent *ent;
-    while ((ent = readdir(d)))
+
+    for (int i = 0; i < match_count; ++i)
     {
-        std::string n = ent->d_name;
-        if (n.size() > 4 && n.substr(n.size() - 4) == ".spe")
-            g_net_levels.push_back(n);
+        SDL_PathInfo info;
+        const std::string full_path = dir_path + "/" + matches[i];
+        if (SDL_GetPathInfo(full_path.c_str(), &info) && info.type == SDL_PATHTYPE_FILE)
+            g_net_levels.emplace_back(matches[i]);
     }
-    closedir(d);
+    SDL_free(matches);
+
     std::sort(g_net_levels.begin(), g_net_levels.end());
     g_net_levels_display.clear();
     g_net_levels_display.reserve(g_net_levels.size());

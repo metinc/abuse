@@ -41,8 +41,11 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DI
 # consume the same install rules. ASSETDIR remains the compiled-in fallback.
 if(WIN32)
     set(ASSETDIR "." CACHE PATH "Asset installation directory")
+    set(ABUSE_ASSETDIR_FROM_BASE ".")
 elseif(APPLE)
     set(ASSETDIR "abuse.app/Contents/Resources/data" CACHE PATH "Asset installation directory")
+    # SDL_GetBasePath() returns Contents/Resources for an application bundle.
+    set(ABUSE_ASSETDIR_FROM_BASE "data")
 else()
     set(ASSETDIR "${CMAKE_INSTALL_DATADIR}/abuse" CACHE PATH "Asset installation directory")
 endif()
@@ -53,8 +56,21 @@ else()
     set(ABUSE_DEFAULT_ASSETDIR "${CMAKE_INSTALL_PREFIX}/${ASSETDIR}")
 endif()
 
+if(NOT DEFINED ABUSE_ASSETDIR_FROM_BASE)
+    file(RELATIVE_PATH ABUSE_ASSETDIR_FROM_BASE
+        "${CMAKE_INSTALL_FULL_BINDIR}" "${ABUSE_DEFAULT_ASSETDIR}")
+    file(TO_CMAKE_PATH "${ABUSE_ASSETDIR_FROM_BASE}" ABUSE_ASSETDIR_FROM_BASE)
+endif()
+
+# Keep an explicit last-resort path for running the uninstalled executable.
+# Installed and packaged builds find their assets relative to SDL_GetBasePath()
+# first, so this path is only used when running directly from the build tree.
+file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data" ABUSE_DEVELOPMENT_ASSETDIR)
+
 add_compile_definitions(
     ASSETDIR="${ABUSE_DEFAULT_ASSETDIR}"
+    ABUSE_ASSETDIR_FROM_BASE="${ABUSE_ASSETDIR_FROM_BASE}"
+    ABUSE_DEVELOPMENT_ASSETDIR="${ABUSE_DEVELOPMENT_ASSETDIR}"
     PACKAGE_NAME="abuse"
     PACKAGE_VERSION="${PROJECT_VERSION}"
     HAVE_CONFIG_H

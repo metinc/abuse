@@ -51,6 +51,16 @@ avoid the OpenCV dependency, configure with:
 cmake -B build -DABUSE_BUILD_TOOLS=OFF
 ```
 
+Build and run directly from the build tree:
+
+```sh
+cmake --build build
+./build/src/abuse
+```
+
+The uninstalled executable automatically uses the repository's `data`
+directory. Installing is only required when testing an installed layout.
+
 Next, build and install:
 
 ```sh
