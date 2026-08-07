@@ -37,7 +37,7 @@ endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-# Keep install destinations relative so CMake, CPack, and AppImage staging all
+# Keep install destinations relative so CMake, CPack, and linuxdeploy staging all
 # consume the same install rules. ASSETDIR remains the compiled-in fallback.
 if(WIN32)
     set(ASSETDIR "." CACHE PATH "Asset installation directory")
@@ -80,8 +80,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(src)
 add_subdirectory(data)
 
-# One canonical installation layout. Platform packagers and the AppImage
-# staging target below consume these same rules.
+# One canonical installation layout. Platform packagers and linuxdeploy consume
+# these same rules.
 if(WIN32)
     install(TARGETS abuse
         RUNTIME_DEPENDENCIES
@@ -94,10 +94,7 @@ elseif(APPLE)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/macOS/abuse.icns"
         DESTINATION "abuse.app/Contents/Resources")
 else()
-    # Record the dependency set without adding libraries to regular system
-    # installs. The AppImage-only component consumes it below.
     install(TARGETS abuse
-        RUNTIME_DEPENDENCY_SET abuse_appimage_dependencies
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     )
 
@@ -111,97 +108,63 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
 
-    set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/AppRun.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/AppRun"
-        @ONLY
-    )
-    file(CHMOD "${CMAKE_CURRENT_BINARY_DIR}/AppRun" PERMISSIONS
-        OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        GROUP_READ GROUP_EXECUTE
-        WORLD_READ WORLD_EXECUTE)
-
     # SDL_mixer loads FluidSynth at runtime, so it is not visible in abuse's
-    # normal link dependency graph. Add it explicitly when available, then let
-    # CMake resolve its transitive runtime dependencies.
+    # normal link dependency graph. Pass it to linuxdeploy explicitly so that
+    # it and its transitive runtime dependencies are bundled.
     find_library(FLUIDSYNTH_RUNTIME_LIBRARY NAMES fluidsynth)
-    if(FLUIDSYNTH_RUNTIME_LIBRARY)
-        add_library(abuse_fluidsynth_runtime SHARED IMPORTED)
-        set_target_properties(abuse_fluidsynth_runtime PROPERTIES
-            IMPORTED_LOCATION "${FLUIDSYNTH_RUNTIME_LIBRARY}")
-        install(IMPORTED_RUNTIME_ARTIFACTS abuse_fluidsynth_runtime
-            RUNTIME_DEPENDENCY_SET abuse_appimage_dependencies
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            COMPONENT AppImage
-            EXCLUDE_FROM_ALL)
-        # Preserve FluidSynth's SONAME symlink chain. Installing an imported
-        # library alone only copies the path returned by find_library().
-        install(CODE
-            "file(COPY \"${FLUIDSYNTH_RUNTIME_LIBRARY}\" DESTINATION \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}\" FOLLOW_SYMLINK_CHAIN)"
-            COMPONENT AppImage
-            EXCLUDE_FROM_ALL)
-    else()
-        message(STATUS "FluidSynth was not found; AppImage MIDI playback will use another available SDL_mixer backend")
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" APPIMAGE_ARCH)
+    if(APPIMAGE_ARCH MATCHES "^(amd64|x64|x86_64)$")
+        set(APPIMAGE_ARCH x86_64)
+    elseif(APPIMAGE_ARCH MATCHES "^(aarch64|arm64)$")
+        set(APPIMAGE_ARCH aarch64)
+    elseif(APPIMAGE_ARCH MATCHES "^(i[3-6]86|x86)$")
+        set(APPIMAGE_ARCH i686)
     endif()
 
-    install(RUNTIME_DEPENDENCY_SET abuse_appimage_dependencies
-        PRE_EXCLUDE_REGEXES
-            "^ld-linux.*"
-            "^libc\\.so.*"
-            "^libdl\\.so.*"
-            "^libm\\.so.*"
-            "^libpthread\\.so.*"
-            "^librt\\.so.*"
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        COMPONENT AppImage
-        EXCLUDE_FROM_ALL
-    )
-
-    add_custom_target(appdir
-        COMMAND ${CMAKE_COMMAND} -E remove_directory "${APPDIR}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${APPDIR}"
-        COMMAND ${CMAKE_COMMAND} -E env "DESTDIR=${APPDIR}"
-            ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix /usr
-        COMMAND ${CMAKE_COMMAND} -E env "DESTDIR=${APPDIR}"
-            ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix /usr --component AppImage
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/AppRun" "${APPDIR}/AppRun"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.desktop"
-            "${APPDIR}/com.github.Xenoveritas.abuse.desktop"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.png"
-            "${APPDIR}/com.github.Xenoveritas.abuse.png"
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.png"
-            "${APPDIR}/.DirIcon"
-        DEPENDS abuse
-        COMMENT "Staging the canonical install tree in ${APPDIR}"
-        VERBATIM
-    )
-
-    find_program(APPIMAGETOOL appimagetool)
-    if(APPIMAGETOOL)
-        string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" APPIMAGE_ARCH)
-        if(APPIMAGE_ARCH MATCHES "^(amd64|x64|x86_64)$")
-            set(APPIMAGE_ARCH x86_64)
-        elseif(APPIMAGE_ARCH MATCHES "^(aarch64|arm64)$")
-            set(APPIMAGE_ARCH aarch64)
-        elseif(APPIMAGE_ARCH MATCHES "^(i[3-6]86|x86)$")
-            set(APPIMAGE_ARCH i686)
+    find_program(LINUXDEPLOY
+        NAMES linuxdeploy "linuxdeploy-${APPIMAGE_ARCH}.AppImage"
+        DOC "Path to linuxdeploy or its official AppImage")
+    if(LINUXDEPLOY)
+        set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
+        set(LINUXDEPLOY_APPDIR_ARGS
+            --appdir "${APPDIR}"
+            --deploy-deps-only "${APPDIR}/usr/${CMAKE_INSTALL_BINDIR}/abuse")
+        if(FLUIDSYNTH_RUNTIME_LIBRARY)
+            list(APPEND LINUXDEPLOY_APPDIR_ARGS --library "${FLUIDSYNTH_RUNTIME_LIBRARY}")
+        else()
+            message(STATUS "FluidSynth was not found; AppImage MIDI playback will use another available SDL_mixer backend")
         endif()
 
+        add_custom_target(appdir
+            COMMAND ${CMAKE_COMMAND} -E remove_directory "${APPDIR}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${APPDIR}"
+            COMMAND ${CMAKE_COMMAND} -E env "DESTDIR=${APPDIR}"
+                ${CMAKE_COMMAND} --install "${CMAKE_BINARY_DIR}" --prefix /usr
+            COMMAND ${CMAKE_COMMAND} -E env
+                "APPIMAGE_EXTRACT_AND_RUN=1"
+                "NO_STRIP=1"
+                "${LINUXDEPLOY}" ${LINUXDEPLOY_APPDIR_ARGS}
+            DEPENDS abuse
+            COMMENT "Staging and deploying ${APPDIR} with linuxdeploy"
+            VERBATIM
+        )
+
+        set(APPIMAGE_OUTPUT "${CMAKE_BINARY_DIR}/Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.AppImage")
         add_custom_target(appimage
-            COMMAND ${CMAKE_COMMAND} -E env "ARCH=${APPIMAGE_ARCH}"
-                "${APPIMAGETOOL}" --no-appstream "${APPDIR}"
-                "${CMAKE_BINARY_DIR}/Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.AppImage"
+            COMMAND ${CMAKE_COMMAND} -E env
+                "LDAI_NO_APPSTREAM=1"
+                "LDAI_OUTPUT=${APPIMAGE_OUTPUT}"
+                "LINUXDEPLOY_OUTPUT_VERSION=${PROJECT_VERSION}"
+                "APPIMAGE_EXTRACT_AND_RUN=1"
+                "NO_STRIP=1"
+                "${LINUXDEPLOY}" --appdir "${APPDIR}" --output appimage
             DEPENDS appdir
             WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
             COMMENT "Creating Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.AppImage"
             VERBATIM
         )
     else()
-        message(STATUS "appimagetool was not found; the appdir target is available, but appimage is disabled")
+        message(STATUS "linuxdeploy was not found; the appdir and appimage targets are disabled")
     endif()
 endif()
 

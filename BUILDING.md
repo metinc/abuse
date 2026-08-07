@@ -97,17 +97,23 @@ Under Windows you can use [MSYS2 MinGW 64-bit](https://www.msys2.org/) to run th
 
 # AppImage
 
-The `appdir` target always creates a clean AppDir from the same canonical
-CMake install rules used by normal installs and CPack packages:
+The `appdir` and `appimage` targets use
+[linuxdeploy](https://github.com/linuxdeploy/linuxdeploy) to bundle runtime
+dependencies and create the AppImage. Download the official linuxdeploy
+AppImage for your architecture, make it executable, and either put it in your
+`PATH` as `linuxdeploy` or pass its path when configuring:
+
+```sh
+cmake -B build -DLINUXDEPLOY=/path/to/linuxdeploy-x86_64.AppImage
+```
+
+The `appdir` target creates a clean AppDir from the canonical CMake install
+rules and asks linuxdeploy to bundle the executable's runtime dependencies.
+FluidSynth is passed explicitly because SDL_mixer loads it dynamically:
 
 ```sh
 cmake --build build --target appdir
 ```
-
-If `appimagetool` is installed, CMake also provides an `appimage` target.
-You can download `appimagetool` from the [AppImageKit releases
-page](https://github.com/AppImage/AppImageKit/releases). Make sure it is
-executable and in your `PATH`.
 
 To build the AppImage:
 
@@ -115,6 +121,9 @@ To build the AppImage:
 cmake --build build --target appimage
 ```
 
-This creates `Abuse-<version>-<architecture>.AppImage` in the build directory.
-The AppDir is removed and recreated for each build, so stale libraries and
-assets cannot leak into a new image.
+linuxdeploy's bundled AppImage output plugin creates
+`Abuse-<version>-<architecture>.AppImage` in the build directory. The AppDir is
+removed and recreated for each build, so stale libraries and assets cannot
+leak into a new image. The targets disable linuxdeploy's stripping pass because
+the binutils bundled by some linuxdeploy AppImages cannot process newer ELF
+features used by distributions such as Arch Linux.
