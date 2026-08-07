@@ -39,7 +39,7 @@
 extern SDL_Window *window;
 extern SDL_Surface *surface;
 extern SDL_Renderer *renderer;
-extern bool ar_fullscreen;
+extern bool fullscreen;
 
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
@@ -54,7 +54,7 @@ static ivec2 window_to_game(float window_x, float window_y)
     float game_x;
     float game_y;
 
-    if (ar_fullscreen && settings.mouse_scale == 0)
+    if (fullscreen && settings.mouse_scale == 0)
     {
         int window_w;
         int window_h;
@@ -80,7 +80,7 @@ static ivec2 window_to_game(float window_x, float window_y)
 
 static void game_to_window(ivec2 pos, float &window_x, float &window_y)
 {
-    if (ar_fullscreen && settings.mouse_scale == 0)
+    if (fullscreen && settings.mouse_scale == 0)
     {
         int window_w;
         int window_h;

@@ -51,7 +51,7 @@ extern Settings settings;
 
 SDL_DisplayMode desktop;
 int window_w = 320, window_h = 240;
-bool ar_fullscreen = false;
+bool fullscreen = false;
 
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 
@@ -65,8 +65,7 @@ static int display_height()
     constexpr int vga_display_width = 4;
     constexpr int vga_display_height = 3;
 
-    if (static_cast<int64_t>(xres) * vga_storage_height ==
-        static_cast<int64_t>(yres) * vga_storage_width)
+    if (static_cast<int64_t>(xres) * vga_storage_height == static_cast<int64_t>(yres) * vga_storage_width)
         return xres * vga_display_height / vga_display_width;
 
     return yres;
@@ -137,8 +136,7 @@ void set_mode(int argc, char **argv)
     // Present the original 320x200 framebuffer through a 320x240 logical
     // canvas. SDL uniformly fits that corrected 4:3 image to the window and
     // handles letterboxing, resizing and high-DPI output for us.
-    if (!SDL_SetRenderLogicalPresentation(renderer, xres, display_height(),
-                                          SDL_LOGICAL_PRESENTATION_LETTERBOX))
+    if (!SDL_SetRenderLogicalPresentation(renderer, xres, display_height(), SDL_LOGICAL_PRESENTATION_LETTERBOX))
     {
         show_startup_error("Video: Unable to configure logical presentation: %s", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -198,14 +196,14 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
     if (toggle_fullscreen)
     {
-        ar_fullscreen = !ar_fullscreen;
-        if (ar_fullscreen)
+        fullscreen = !fullscreen;
+        if (fullscreen)
             SDL_SetWindowFullscreen(window, true);
         else
             SDL_SetWindowFullscreen(window, false);
     }
 
-    if (!ar_fullscreen)
+    if (!fullscreen)
     {
         // Scale window
         int new_scale = scale + scale_add;
@@ -246,7 +244,7 @@ void close_graphics()
     if (window)
         SDL_DestroyWindow(window);
 
-    ar_fullscreen = false;
+    fullscreen = false;
 
     delete main_screen;
 }
@@ -388,8 +386,7 @@ void update_window_done()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    const SDL_FRect dest_rect = {
-        0.0f, 0.0f, static_cast<float>(xres), static_cast<float>(display_height())};
+    const SDL_FRect dest_rect = {0.0f, 0.0f, static_cast<float>(xres), static_cast<float>(display_height())};
     SDL_RenderTexture(renderer, game_texture, NULL, &dest_rect);
 
     // Present the renderer
