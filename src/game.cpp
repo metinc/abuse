@@ -435,7 +435,13 @@ void Game::set_state(int new_state)
 
     pal->load(); // restore old palette
 
-    if (playing_state(state) && !(dev & EDIT_MODE))
+    if (demo_man.current_state() == demo_manager::PLAYING)
+    {
+        image *blank = new image(ivec2(2, 2));
+        blank->clear();
+        wm->SetMouseShape(blank, ivec2(0));
+    }
+    else if (playing_state(state) && !(dev & EDIT_MODE))
         wm->SetMouseShape(cache.img(c_target)->copy(), ivec2(8));
     else
         wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));

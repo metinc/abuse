@@ -271,8 +271,7 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/levels)
 
 INSTALL(FILES
-    levels/mac/demo1.spe levels/mac/demo2.spe levels/mac/demo4.spe
-    levels/mac/demo5.spe levels/mac/end.spe levels/mac/flevel12.spe
+    levels/mac/end.spe levels/mac/flevel12.spe
     levels/mac/level00.spe levels/mac/level01.spe levels/mac/level02.spe
     levels/mac/level05.spe levels/mac/level07.spe levels/mac/level08.spe
     levels/mac/level09.spe levels/mac/level12.spe levels/mac/level13.spe
@@ -319,12 +318,10 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/addon/twist/levels)
 
 INSTALL(FILES
-    levels/demo1.dat
+    levels/demo1.dat levels/demo2.dat levels/demo3.dat
+    levels/demo4.dat levels/demo5.dat
+    levels/demo1.spe levels/demo2.spe levels/demo4.spe levels/demo5.spe
 DESTINATION ${ASSETDIR}/levels)
-
-INSTALL(FILES levels/mac/demo1.dat levels/mac/demo2.dat
-    levels/mac/demo3.dat levels/mac/demo4.dat levels/mac/demo5.dat
-DESTINATION ${ASSETDIR}/levels/mac)
 
 INSTALL(FILES
     addon/aliens/aliens.txt

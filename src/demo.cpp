@@ -34,6 +34,15 @@ extern int idle_ticks;
 void get_event(Event &ev)
 {
     wm->get_event(ev);
+    if (demo_man.state == demo_manager::PLAYING &&
+        (ev.type == EV_MOUSE_MOVE || ev.type == EV_MOUSE_BUTTON))
+    {
+        // Demo packets own the pointer position and buttons. Physical mouse
+        // input must not leak into playback between recorded ticks.
+        ev.type = EV_SPURIOUS;
+        return;
+    }
+
     switch (ev.type)
     {
     case EV_KEY: {

@@ -20,6 +20,7 @@
 #include "game_object.h"
 #include "level.h"
 #include "game.h"
+#include "demo.h"
 #include "jrand.h"
 #include "clisp.h"
 #include "ant.h"
@@ -154,7 +155,7 @@ void *top_aim(bool check_local)
 
                 int pointer_x = v->pointer_x;
                 int pointer_y = v->pointer_y;
-                if (v->local_player() && check_local)
+                if (v->local_player() && check_local && demo_man.current_state() != demo_manager::PLAYING)
                 {
                     ivec2 mouse_pos = wm->GetMousePos();
                     mouse_pos = the_game->MouseToGame(mouse_pos);

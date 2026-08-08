@@ -1439,8 +1439,12 @@ void process_packet_commands(uint8_t *pk, int size)
             memcpy(&x, pk, 2);
             pk += 2;
             x = lstl(x);
+
+            // Demo files can outlive changes to the simulation that produced
+            // their sync markers. They cannot resynchronize from the network,
+            // so consume the marker without treating it as a network error.
             if (demo_man.current_state() == demo_manager::PLAYING)
-                sync_uint16 = make_sync();
+                break;
 
             if (sync_uint16 == -1)
                 sync_uint16 = x;
