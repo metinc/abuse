@@ -587,10 +587,10 @@ bool tcpip_protocol::create_responders()
     }
     delete socket;
 
-    // SDL3_net's all-interface broadcast socket also joins the IPv6 ff02::1
-    // multicast group. If IPv6 is unavailable on the LAN, that join can fail
-    // the whole socket even though IPv4 broadcasting is usable. Fall back to
-    // one socket per non-loopback IPv4 interface.
+    // SDL3_net fails to create an all-interface broadcast socket when IPv6 is
+    // disabled, even though IPv4 broadcasting is available. Fall back to one
+    // socket per non-loopback IPv4 interface.
+    // https://github.com/libsdl-org/SDL_net/issues/176
     int address_count = 0;
     NET_Address **addresses = NET_GetLocalAddresses(&address_count);
     for (int i = 0; addresses && i < address_count; ++i)
