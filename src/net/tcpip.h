@@ -180,6 +180,7 @@ class sdl_stream_socket final : public sdl_net_socket
     ~sdl_stream_socket() override;
 
     int ready_to_read() override;
+    int ready_to_write() override;
     int write(void const *buf, int size, net_address *addr = nullptr) override;
     int read(void *buf, int size, net_address **addr = nullptr) override;
 };

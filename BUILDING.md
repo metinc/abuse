@@ -42,12 +42,13 @@ For other distributions, use the equivalent packages from your package manager.
 
 ### macOS
 
-macOS should have many of the necessary tools already. The easiest method for installing CMake, SDL, and SDL_mixer is using [Homebrew](http://brew.sh/):
+macOS should have many of the necessary tools already. The easiest method for installing CMake and the SDL libraries is using [Homebrew](http://brew.sh/):
 
 ```sh
 brew install cmake
 brew install sdl3
 brew install sdl3_mixer
+brew install sdl3_net
 brew install opencv # Only needed for abuse-tool
 ```
 

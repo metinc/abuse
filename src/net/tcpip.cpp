@@ -30,6 +30,7 @@
 namespace
 {
 int next_socket_id = 1;
+constexpr int stream_write_high_water_mark = 64 * 1024;
 
 bool socket_has_input(void *socket)
 {
@@ -150,6 +151,21 @@ int sdl_stream_socket::ready_to_read()
     if (failed)
         return 0;
     return socket_has_input(socket);
+}
+
+int sdl_stream_socket::ready_to_write()
+{
+    if (failed || !socket)
+        return 0;
+
+    const int pending = NET_GetStreamSocketPendingWrites(socket);
+    if (pending < 0)
+    {
+        failed = true;
+        DEBUG_LOG("SDL3_net stream write status failed: %s", SDL_GetError());
+        return 0;
+    }
+    return pending < stream_write_high_water_mark;
 }
 
 int sdl_stream_socket::write(void const *buf, const int size, net_address *addr)

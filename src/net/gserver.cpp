@@ -39,6 +39,8 @@ extern net_socket *comm_sock, *game_sock;
 extern net_protocol *prot;
 extern join_struct *join_array;
 extern void service_net_request();
+extern char lsf[256];
+extern int start_running;
 
 // Game server class implementation
 game_server::game_server()
@@ -47,6 +49,14 @@ game_server::game_server()
     player_list = NULL;
     waiting_server_input = 1;
     reload_state = 0;
+}
+
+void game_server::restart_single_player()
+{
+    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+    start_running = 0;
+    strcpy(lsf, "abuse.lsp");
+    base->input_state = INPUT_PROCESSING;
 }
 
 int game_server::total_players()
@@ -327,6 +337,13 @@ int game_server::process_client_command(player_client *c)
 // Process all network activity for the server
 int game_server::process_net()
 {
+    if (!game_sock || game_sock->error())
+    {
+        DEBUG_LOG("Server game socket error detected");
+        restart_single_player();
+        return 0;
+    }
+
     int ret = 0;
 
     // Handle incoming game data
@@ -424,6 +441,13 @@ int game_server::process_net()
     }
 
     check_collection_complete();
+
+    if (game_sock->error())
+    {
+        DEBUG_LOG("Server game socket failed while processing network data");
+        restart_single_player();
+        return 0;
+    }
 
     return 1;
 }
