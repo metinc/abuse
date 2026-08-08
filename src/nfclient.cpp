@@ -126,17 +126,14 @@ nfs_file::nfs_file(char const *filename, char const *mode)
         }
     }
 
-#if HAVE_NETWORK
     if (local_only)
     {
-#endif
         local = new jFILE(filename, mode);
         if (local->open_failure())
         {
             delete local;
             local = NULL;
         }
-#if HAVE_NETWORK
     }
     else
     {
@@ -154,7 +151,6 @@ nfs_file::nfs_file(char const *filename, char const *mode)
             nfs_fd = -1;
         }
     }
-#endif
 }
 
 int nfs_file::open_failure()
@@ -169,7 +165,6 @@ int nfs_file::unbuffered_read(void *buf, size_t count) // returns number of byte
 {
     if (local)
         return local->read(buf, count);
-#if HAVE_NETWORK
     else if (nfs_fd >= 0)
     {
         long a = NF_read(nfs_fd, buf, count);
@@ -179,7 +174,6 @@ int nfs_file::unbuffered_read(void *buf, size_t count) // returns number of byte
         }
         return a;
     }
-#endif
     else
         return 0;
 }
@@ -188,13 +182,11 @@ int nfs_file::unbuffered_write(void const *buf, size_t count) // returns number 
 {
     if (local)
         return local->write(buf, count);
-#if HAVE_NETWORK
     else
     {
         fprintf(stderr, "write to nfs file not allowed for now!\n");
         exit(EXIT_SUCCESS);
     }
-#endif
     return 0;
 }
 
@@ -202,7 +194,6 @@ int nfs_file::unbuffered_seek(long off, int whence) // whence=SEEK_SET, SEEK_CUR
 {
     if (local)
         return local->seek(off, whence);
-#if HAVE_NETWORK
     else if (nfs_fd >= 0)
     {
         if (whence != SEEK_SET)
@@ -210,7 +201,6 @@ int nfs_file::unbuffered_seek(long off, int whence) // whence=SEEK_SET, SEEK_CUR
         else
             return NF_seek(nfs_fd, off);
     }
-#endif
     return 0;
 }
 
@@ -218,10 +208,8 @@ int nfs_file::unbuffered_tell()
 {
     if (local)
         return local->tell();
-#if HAVE_NETWORK
     else if (nfs_fd >= 0)
         return NF_tell(nfs_fd);
-#endif
     else
         return 0;
 }
@@ -230,10 +218,8 @@ int nfs_file::file_size()
 {
     if (local)
         return local->file_size();
-#if HAVE_NETWORK
     else if (nfs_fd >= 0)
         return NF_filelength(nfs_fd);
-#endif
     else
         return 0;
 }
@@ -243,15 +229,12 @@ nfs_file::~nfs_file()
     flush_writes();
     if (local)
         delete local;
-#if HAVE_NETWORK
     else if (nfs_fd >= 0)
         NF_close(nfs_fd);
-#endif
 }
 
 int set_file_server(net_address *addr)
 {
-#if HAVE_NETWORK
     if (NF_set_file_server(addr))
     {
         if (net_crcs)
@@ -269,7 +252,6 @@ int set_file_server(net_address *addr)
         }
         return 1;
     }
-#endif
     return 0;
 }
 

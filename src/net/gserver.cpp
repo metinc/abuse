@@ -26,7 +26,6 @@
 
 #include "gserver.h"
 #include "netface.h"
-#include "timing.h"
 #include "netcfg.h"
 #include "id.h"
 #include "jwindow.h"
@@ -40,6 +39,8 @@ extern net_socket *comm_sock, *game_sock;
 extern net_protocol *prot;
 extern join_struct *join_array;
 extern void service_net_request();
+extern char lsf[256];
+extern int start_running;
 
 // Game server class implementation
 game_server::game_server()
@@ -48,6 +49,14 @@ game_server::game_server()
     player_list = NULL;
     waiting_server_input = 1;
     reload_state = 0;
+}
+
+void game_server::restart_single_player()
+{
+    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+    start_running = 0;
+    strcpy(lsf, "abuse.lsp");
+    base->input_state = INPUT_PROCESSING;
 }
 
 int game_server::total_players()
@@ -131,7 +140,7 @@ void game_server::check_collection_complete()
     int add_deletes = 0;
 
     // Check for deleted clients and missing input
-    for (c = player_list; c && got_all; c = c->next)
+    for (c = player_list; c; c = c->next)
     {
         if (c->delete_me())
         {
@@ -328,6 +337,13 @@ int game_server::process_client_command(player_client *c)
 // Process all network activity for the server
 int game_server::process_net()
 {
+    if (!game_sock || game_sock->error())
+    {
+        DEBUG_LOG("Server game socket error detected");
+        restart_single_player();
+        return 0;
+    }
+
     int ret = 0;
 
     // Handle incoming game data
@@ -426,12 +442,33 @@ int game_server::process_net()
 
     check_collection_complete();
 
+    if (game_sock->error())
+    {
+        DEBUG_LOG("Server game socket failed while processing network data");
+        restart_single_player();
+        return 0;
+    }
+
     return 1;
 }
 
 int game_server::input_missing()
 {
-    DEBUG_LOG("Server requesting input resend");
+    // The simulation cannot advance until every joined client contributes its
+    // input for this tick. Ask only the clients still missing, over the reliable
+    // control channel; their actual tick data remains a low-latency datagram.
+    const uint8_t cmd = SRVCMD_REQUEST_RESEND;
+    const uint8_t tick = static_cast<uint8_t>(base->current_tick);
+    for (player_client *client = player_list; client; client = client->next)
+    {
+        if (client->has_joined() && client->wait_input() && !client->delete_me())
+        {
+            DEBUG_LOG("Requesting tick %d resend from client %d", tick, client->client_id);
+            if (client->comm->write(/* server_command */ &cmd, 1) != 1 ||
+                client->comm->write(/* server_resend_request_tick */ &tick, 1) != 1)
+                client->set_delete_me(1);
+        }
+    }
     return 1;
 }
 

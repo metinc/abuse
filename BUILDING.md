@@ -4,6 +4,7 @@
 
 - SDL3
 - SDL3_mixer
+- SDL3_net
 - [CMake 3.21 or later](https://cmake.org/)
 - OpenCV (only when building the optional `abuse-tool` asset extraction utility)
 
@@ -15,18 +16,39 @@ On Arch Linux, install these packages:
 sudo pacman -S sdl3 sdl3_mixer cmake dpkg rpm-tools
 ```
 
+SDL3_net is not currently available in the official Arch repositories or the
+AUR. Do not install `sdl_net` or `sdl2_net`; those packages provide older,
+incompatible APIs. Build and install SDL3_net 3.2.0 from the
+[official release](https://github.com/libsdl-org/SDL_net/releases/tag/release-3.2.0):
+
+```sh
+curl -LO https://github.com/libsdl-org/SDL_net/releases/download/release-3.2.0/SDL3_net-3.2.0.tar.gz
+tar -xf SDL3_net-3.2.0.tar.gz
+
+cmake -S SDL3_net-3.2.0 -B SDL3_net-3.2.0/build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DSDLNET_SAMPLES=OFF
+
+cmake --build SDL3_net-3.2.0/build --parallel
+sudo cmake --install SDL3_net-3.2.0/build
+```
+
+The Abuse build will find SDL3_net under `/usr/local` automatically.
+
 Also install `opencv` if you want to build `abuse-tool`.
 
 For other distributions, use the equivalent packages from your package manager.
 
 ### macOS
 
-macOS should have many of the necessary tools already. The easiest method for installing CMake, SDL, and SDL_mixer is using [Homebrew](http://brew.sh/):
+macOS should have many of the necessary tools already. The easiest method for installing CMake and the SDL libraries is using [Homebrew](http://brew.sh/):
 
 ```sh
 brew install cmake
 brew install sdl3
 brew install sdl3_mixer
+brew install sdl3_net
 brew install opencv # Only needed for abuse-tool
 ```
 

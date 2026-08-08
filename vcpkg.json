@@ -1,5 +1,5 @@
 {
   "name": "abuse",
   "version": "1.0.5",
-  "dependencies": ["sdl3", "sdl3-mixer"]
+  "dependencies": ["sdl3", "sdl3-mixer", "sdl3-net"]
 }

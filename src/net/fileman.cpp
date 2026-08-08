@@ -12,8 +12,6 @@
 #include "config.h"
 #endif
 
-#if HAVE_NETWORK
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -650,5 +648,3 @@ int32_t file_manager::rf_file_size(int fd)
     else
         return 0;
 }
-
-#endif // HAVE_NETWORK

@@ -97,6 +97,7 @@ class game_server : public game_handler
     void add_client_input(char *buf, int size, player_client *c);
     void check_collection_complete();
     void check_reload_wait();
+    void restart_single_player();
     int process_client_command(player_client *c);
     int isa_client(int client_id);
 

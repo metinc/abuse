@@ -25,7 +25,10 @@ class game_client : public game_handler
   private:
     net_socket *client_sock; // Socket for reliable TCP communication with server
     int wait_local_input; // Flag indicating if waiting for local player input
+    net_packet last_input; // Last UDP input packet, retained for loss recovery
+    bool has_last_input{false};
     int process_server_command(); // Processes control commands from server
+    void restart_single_player(); // Releases lockstep after a connection failure
     net_address *server_data_port; // Server's address/port for game state data
 
   public:

@@ -101,10 +101,8 @@ extern uint8_t chatting_enabled;
 Settings settings;
 
 // Enable TCP/IP driver
-#if HAVE_NETWORK
 #include "tcpip.h"
 tcpip_protocol tcpip;
-#endif
 #include <map>
 
 void handle_no_space()
@@ -2025,8 +2023,22 @@ void Game::Step()
 
                 int w = (f->m_bb.x - f->m_aa.x + 1);
                 int h = (f->m_bb.y - f->m_aa.y + 1);
-                total_active += current_level->add_actives(f->xoff() - w / 4, f->yoff() - h / 4, f->xoff() + w + w / 4,
-                                                           f->yoff() + h + h / 4);
+
+                // Object activation affects simulation and must not depend on
+                // camera interpolation, which is updated at render frequency.
+                // Cover the full camera dead-zone range from authoritative
+                // player and view state so every peer activates the same set.
+                const int min_xoff =
+                    std::max(0, f->m_focus->x - f->no_xright - w / 2 + f->m_shift.x + f->pan_x);
+                const int max_xoff =
+                    std::max(0, f->m_focus->x + f->no_xleft - w / 2 + f->m_shift.x + f->pan_x);
+                const int min_yoff =
+                    std::max(0, f->m_focus->y - f->no_ybottom - h / 2 - f->m_shift.y + f->pan_y);
+                const int max_yoff =
+                    std::max(0, f->m_focus->y + f->no_ytop - h / 2 - f->m_shift.y + f->pan_y);
+
+                total_active += current_level->add_actives(min_xoff - w / 4, min_yoff - h / 4,
+                                                           max_xoff + w + w / 4, max_yoff + h + h / 4);
             }
         }
     }

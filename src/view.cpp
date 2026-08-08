@@ -203,6 +203,7 @@ void set_login(char const *name)
 view::view(game_object *focus, view *Next, int number)
 {
     m_chat_buf[0] = 0;
+    interpolation_ratio = 1.0f;
 
     draw_solid = -1;
     no_xleft = 0;
@@ -310,20 +311,15 @@ uint16_t make_sync()
     uint16_t checksum = 0;
     if (!current_level)
         return 0;
-    if (current_level)
+    for (view *f = player_list; f; f = f->next)
     {
-        for (view *f = player_list; f; f = f->next)
+        if (f->m_focus)
         {
-            if (f->m_focus)
-            {
-                checksum ^= (f->m_focus->x & 0xffff);
-                checksum ^= (f->m_focus->y & 0xffff);
-            }
+            checksum ^= (f->m_focus->x & 0xffff);
+            checksum ^= (f->m_focus->y & 0xffff);
         }
     }
-    checksum ^= rand_on;
-
-    return checksum;
+    return checksum ^ rand_on;
 }
 
 void view::get_input()

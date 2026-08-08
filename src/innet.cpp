@@ -14,6 +14,8 @@
 
 #include <stdio.h>
 
+#include <SDL3/SDL_timer.h>
+
 #include "common.h"
 
 #include "specs.h"
@@ -23,9 +25,7 @@
 #include "timing.h"
 #include "net/netface.h"
 
-#if HAVE_NETWORK
 #include "fileman.h"
-#endif
 #include "net/sock.h"
 #include "net/ghandler.h"
 #include "net/gserver.h"
@@ -189,10 +189,8 @@ int net_init(int argc, char **argv)
         printf("Server located!  Please wait while data loads....\n");
     }
 
-#if HAVE_NETWORK
     DEBUG_LOG("Initializing file manager");
     fman = new file_manager(argc, argv, prot);
-#endif
     DEBUG_LOG("Creating game handler");
     game_face = new game_handler;
     join_array = (join_struct *)malloc(sizeof(join_struct) * MAX_JOINERS);
@@ -251,11 +249,9 @@ int kill_net()
         comm_sock = NULL;
     }
 
-#if HAVE_NETWORK
     DEBUG_LOG("Cleaning up file manager");
     delete fman;
     fman = NULL;
-#endif
 
     if (net_server)
     {
@@ -280,7 +276,6 @@ void net_uninit()
     kill_net();
 }
 
-#if HAVE_NETWORK
 int NF_set_file_server(net_address *addr)
 {
     DEBUG_LOG("Setting file server address");
@@ -360,11 +355,9 @@ long NF_tell(int fd)
         return fman->rf_tell(fd);
     return 0;
 }
-#endif
 
 void service_net_request()
 {
-#if HAVE_NETWORK
     if (prot)
     {
         if (prot->select(false))
@@ -438,7 +431,6 @@ void service_net_request()
             fman->process_net();
         }
     }
-#endif
 }
 
 int get_remote_lsf(net_address *addr, char *filename)
@@ -785,7 +777,10 @@ int get_inputs_from_server(unsigned char *buf)
         int total_retry = 0;
         Jwindow *abort = NULL;
 
-        constexpr double resend_timeout_sec = 0.05;
+        // One lockstep tick normally costs a round trip. Give it a reasonable
+        // loss-detection window before adding reliable resend traffic.
+        constexpr double resend_timeout_sec = 0.25;
+        constexpr int disconnect_prompt_retries = 20;
         while (base->input_state != INPUT_PROCESSING)
         {
             if (!prot)
@@ -807,7 +802,7 @@ int get_inputs_from_server(unsigned char *buf)
                 start.get_time();
 
                 total_retry++;
-                if (total_retry == 12000)
+                if (total_retry == disconnect_prompt_retries)
                 {
                     DEBUG_LOG("Connection appears dead, showing abort dialog");
                     abort = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1, wm->font()->Size().y * 4),
@@ -837,6 +832,11 @@ int get_inputs_from_server(unsigned char *buf)
                     wm->flush_screen();
                 }
             }
+
+            // SDL3_net readiness checks above are deliberately non-blocking.
+            // Yield here so packet loss cannot turn this lockstep wait into a
+            // full-core busy loop.
+            SDL_Delay(1);
         }
 
         if (abort)
