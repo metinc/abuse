@@ -22,32 +22,96 @@
 #include "config.h"
 #endif
 
-#include <stdio.h>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <unordered_map>
 
 #include <SDL3/SDL.h>
 #include "joy.h"
 
+namespace
+{
+std::unordered_map<SDL_JoystickID, SDL_Gamepad *> gamepads;
+bool shutdown_registered = false;
+
+const char *gamepad_name(SDL_JoystickID id)
+{
+    const char *name = SDL_GetGamepadNameForID(id);
+    return name ? name : "Unknown gamepad";
+}
+
+bool open_gamepad(SDL_JoystickID id)
+{
+    if (gamepads.find(id) != gamepads.end())
+        return true;
+
+    SDL_Gamepad *gamepad = SDL_OpenGamepad(id);
+    if (!gamepad)
+    {
+        std::fprintf(stderr, "Warning: Unable to open gamepad %s: %s\n", gamepad_name(id), SDL_GetError());
+        return false;
+    }
+
+    gamepads.emplace(id, gamepad);
+    const char *name = SDL_GetGamepadName(gamepad);
+    std::printf("Gamepad connected: %d (%s)\n", id, name ? name : "Unknown gamepad");
+    return true;
+}
+}
+
 int joy_init(int argc, char **argv)
 {
-    int joysticks = 0;
-    SDL_JoystickID *joystick_ids = SDL_GetJoysticks(&joysticks);
-    printf("%d joysticks on system\n", joysticks);
-    for (int i = 0; i < joysticks; i++)
+    (void)argc;
+    (void)argv;
+
+    if (!shutdown_registered)
     {
-        const SDL_JoystickID id = joystick_ids[i];
-        if (SDL_IsGamepad(id))
-        {
-            if (SDL_OpenGamepad(id) == NULL)
-            {
-                const char *error = SDL_GetError();
-                printf("Warning : Unable to open game controller %s: %s\n", SDL_GetJoystickNameForID(id), error);
-            }
-        }
-        printf("  - joystick %d (%s) : %s\n", id, SDL_IsGamepad(id) ? "controller" : " joystick ",
-               SDL_GetJoystickNameForID(id));
+        std::atexit(joy_shutdown);
+        shutdown_registered = true;
     }
-    SDL_free(joystick_ids);
-    return joysticks > 0;
+
+    int count = 0;
+    SDL_JoystickID *ids = SDL_GetGamepads(&count);
+    std::printf("%d gamepads on system\n", count);
+    for (int i = 0; i < count; ++i)
+        open_gamepad(ids[i]);
+    SDL_free(ids);
+
+    return joy_gamepad_count() > 0;
+}
+
+int joy_handle_added(SDL_JoystickID id)
+{
+    open_gamepad(id);
+    return joy_gamepad_count() > 0;
+}
+
+int joy_handle_removed(SDL_JoystickID id)
+{
+    auto found = gamepads.find(id);
+    if (found != gamepads.end())
+    {
+        const char *raw_name = SDL_GetGamepadName(found->second);
+        const std::string name = raw_name ? raw_name : "Unknown gamepad";
+        SDL_CloseGamepad(found->second);
+        gamepads.erase(found);
+        std::printf("Gamepad disconnected: %d (%s)\n", id, name.c_str());
+    }
+
+    return joy_gamepad_count() > 0;
+}
+
+int joy_gamepad_count()
+{
+    return static_cast<int>(gamepads.size());
+}
+
+void joy_shutdown()
+{
+    for (const auto &entry : gamepads)
+        SDL_CloseGamepad(entry.second);
+    gamepads.clear();
 }
 
 void joy_status(int &b1, int &b2, int &b3, int &xv, int &yv)

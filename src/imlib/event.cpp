@@ -76,6 +76,7 @@ EventHandler::EventHandler(image *screen, palette *pal)
 //
 EventHandler::~EventHandler()
 {
+    SysUninit();
     if (m_sprite)
         delete m_sprite;
 }

@@ -15,8 +15,8 @@
 #define EV_MOUSE_MOVE 1
 #define EV_MOUSE_BUTTON 2
 #define EV_KEY 4
-/*#define EV_KEY_SPECIAL    8 UNUSED
- #define EV_REDRAW        16 UNUSED */
+#define EV_TEXT_INPUT 8
+/*#define EV_REDRAW        16 UNUSED */
 #define EV_SPURIOUS 32
 /* RESIZE is effectively unused (it can never be generated) */
 #define EV_RESIZE 64
@@ -32,6 +32,8 @@
 
 #include "keys.h"
 #include "sprite.h"
+
+#include <string>
 
 class Jwindow;
 
@@ -71,6 +73,7 @@ class Event : public linked_node
     int type;
     ivec2 mouse_move;
     int mouse_button, key;
+    std::string text;
 
     struct
     {
@@ -98,6 +101,7 @@ class EventHandler
     }
 
     void SysInit();
+    void SysUninit();
     void SysWarpMouse(ivec2 pos);
     void SysEvent(Event &ev);
 

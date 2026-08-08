@@ -495,11 +495,12 @@ void pick_list::handle_inside_event(Event &ev, image *screen, InputManager *inm)
     }
     else if (ev.type == EV_KEY && ev.key == JK_ENTER)
         wm->Push(new Event(id, (char *)this));
-    else if (ev.type == EV_KEY)
+    else if (ev.type == EV_TEXT_INPUT)
     {
         int found = -1;
-        if (key_hist_total < 20)
-            key_hist[(int)(key_hist_total++)] = ev.key;
+        for (unsigned char ch : ev.text)
+            if (ch >= ' ' && ch <= '~' && key_hist_total < 20)
+                key_hist[(int)(key_hist_total++)] = static_cast<char>(ch);
 
         for (int i = 0; i < t && found == -1; i++)
         {

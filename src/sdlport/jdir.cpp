@@ -18,98 +18,101 @@
  *  Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  */
 
-#if defined HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include <SDL3/SDL_filesystem.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <vector>
 
-#include <sys/types.h>
-#ifdef WIN32
-#include <Windows.h>
-#else
-#include <dirent.h>
-#endif
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+#include "jdir.h"
 
-void get_directory(char *path, char **&files, int &tfiles, char **&dirs, int &tdirs)
+namespace
 {
-    struct dirent *de;
-    files = NULL;
-    dirs = NULL;
+struct directory_entries
+{
+    std::vector<std::string> files;
+    std::vector<std::string> dirs = {".", ".."};
+};
+
+SDL_EnumerationResult SDLCALL collect_directory_entry(void *userdata, const char *dirname, const char *filename)
+{
+    auto &entries = *static_cast<directory_entries *>(userdata);
+
+    // SDL normally omits these, and we add them explicitly for the legacy
+    // file picker. Avoid duplicates on a backend that happens to return them.
+    if (std::strcmp(filename, ".") == 0 || std::strcmp(filename, "..") == 0)
+        return SDL_ENUM_CONTINUE;
+
+    try
+    {
+        SDL_PathInfo info;
+        const std::string full_path = std::string(dirname) + filename;
+        if (!SDL_GetPathInfo(full_path.c_str(), &info))
+            return SDL_ENUM_CONTINUE;
+
+        if (info.type == SDL_PATHTYPE_DIRECTORY)
+            entries.dirs.emplace_back(filename);
+        else
+            entries.files.emplace_back(filename);
+    }
+    catch (...)
+    {
+        return SDL_ENUM_FAILURE;
+    }
+
+    return SDL_ENUM_CONTINUE;
+}
+
+bool copy_entries(const std::vector<std::string> &source, char **&destination, int &count)
+{
+    if (source.empty())
+        return true;
+
+    destination = static_cast<char **>(std::calloc(source.size(), sizeof(char *)));
+    if (!destination)
+        return false;
+
+    for (const std::string &entry : source)
+    {
+        destination[count] = static_cast<char *>(std::malloc(entry.size() + 1));
+        if (!destination[count])
+            return false;
+
+        std::memcpy(destination[count], entry.c_str(), entry.size() + 1);
+        ++count;
+    }
+
+    return true;
+}
+
+void free_entries(char **&entries, int &count)
+{
+    for (int i = 0; i < count; ++i)
+        std::free(entries[i]);
+    std::free(entries);
+    entries = nullptr;
+    count = 0;
+}
+}
+
+void get_directory(const char *path, char **&files, int &tfiles, char **&dirs, int &tdirs)
+{
+    files = nullptr;
+    dirs = nullptr;
     tfiles = 0;
     tdirs = 0;
-#ifdef WIN32
-    WIN32_FIND_DATA findData;
-    HANDLE d = FindFirstFile(path, &findData);
-    if (d == INVALID_HANDLE_VALUE)
+
+    if (!path)
         return;
 
-    do
-    {
-        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-        {
-            tdirs++;
-            dirs = (char **)realloc(dirs, sizeof(char *) * tdirs);
-            dirs[tdirs - 1] = strdup(findData.cFileName);
-        }
-        else
-        {
-            tfiles++;
-            files = (char **)realloc(files, sizeof(char *) * tfiles);
-            files[tfiles - 1] = strdup(findData.cFileName);
-        }
-    } while (FindNextFile(d, &findData));
-    FindClose(d);
-
-#else
-    DIR *d = opendir(path);
-
-    if (!d)
+    directory_entries entries;
+    if (!SDL_EnumerateDirectory(path, collect_directory_entry, &entries))
         return;
 
-    char **tlist = NULL;
-    int t = 0;
-    char curdir[200];
-    getcwd(curdir, 200);
-    chdir(path);
-
-    do
+    if (!copy_entries(entries.files, files, tfiles) || !copy_entries(entries.dirs, dirs, tdirs))
     {
-        de = readdir(d);
-        if (de)
-        {
-            t++;
-            tlist = (char **)realloc(tlist, sizeof(char *) * t);
-            tlist[t - 1] = strdup(de->d_name);
-        }
-    } while (de);
-    closedir(d);
-
-    for (int i = 0; i < t; i++)
-    {
-        d = opendir(tlist[i]);
-        if (d)
-        {
-            tdirs++;
-            dirs = (char **)realloc(dirs, sizeof(char *) * tdirs);
-            dirs[tdirs - 1] = strdup(tlist[i]);
-            closedir(d);
-        }
-        else
-        {
-            tfiles++;
-            files = (char **)realloc(files, sizeof(char *) * tfiles);
-            files[tfiles - 1] = strdup(tlist[i]);
-        }
-        free(tlist[i]);
+        free_entries(files, tfiles);
+        free_entries(dirs, tdirs);
     }
-    if (t)
-        free(tlist);
-    chdir(curdir);
-#endif
 }

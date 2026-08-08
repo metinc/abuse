@@ -19,7 +19,7 @@ class Settings
 {
   public:
     //screen
-    int fullscreen; //0 - window, 1 - fullscreen window, 2 - "real" fullscreen
+    int fullscreen; //0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen
     bool borderless; //borderless window
     short xres; //game screen resolution
     short yres;

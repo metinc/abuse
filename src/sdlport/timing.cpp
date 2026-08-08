@@ -18,30 +18,9 @@
  *  Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  */
 
-#if defined HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifdef WIN32
-#include <Windows.h>
-#else
-#include <stdio.h>
-#include <stdlib.h>
-#if defined HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#include <time.h>
-#endif
+#include <SDL3/SDL_timer.h>
 
 #include "timing.h"
-
-#ifdef __APPLE__
-// OSX 10.1 has nanosleep but no header for it!
-extern "C"
-{
-    int nanosleep(const struct timespec *rqtp, struct timespec *rmtp);
-}
-#endif
 
 // Constructor
 //
@@ -56,15 +35,7 @@ time_marker::time_marker()
 //
 void time_marker::get_time()
 {
-#ifdef WIN32
-    // Use GetSystemTimeAsFileTime for this
-    GetSystemTimeAsFileTime(&ticks);
-#else
-    struct timeval tv = {0, 0};
-    gettimeofday(&tv, NULL);
-    seconds = tv.tv_sec;
-    micro_seconds = tv.tv_usec;
-#endif
+    ticks = SDL_GetTicksNS();
 }
 
 //
@@ -73,13 +44,9 @@ void time_marker::get_time()
 //
 double time_marker::diff_time(time_marker *other)
 {
-#if defined WIN32
-    // Convert both sides to __int64
-    __int64 our_ticks = (ticks.dwHighDateTime << 32L) | ticks.dwLowDateTime;
-    __int64 other_ticks = (other->ticks.dwHighDateTime << 32L) | (other->ticks.dwLowDateTime);
-    // Note we're dividing by 10,000,000 here - ticks are in 100ns increments, not microseconds.
-    return (double)(our_ticks - other_ticks) / 10000000.0;
-#else
-    return (double)(seconds - other->seconds) + (double)(micro_seconds - other->micro_seconds) / 1000000;
-#endif
+    constexpr double nanoseconds_per_second = 1000000000.0;
+    if (ticks >= other->ticks)
+        return static_cast<double>(ticks - other->ticks) / nanoseconds_per_second;
+
+    return -static_cast<double>(other->ticks - ticks) / nanoseconds_per_second;
 }

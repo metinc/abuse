@@ -24,20 +24,11 @@
 #include "config.h"
 #endif
 
-#ifdef WIN32
-#include <Windows.h>
-#include <ShlObj.h>
-#include <direct.h>
-#define strcasecmp _stricmp
-#endif
-#ifdef __APPLE__
-#include <CoreFoundation/CoreFoundation.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <cstring>
 #include <string>
 #include <filesystem>
 #include <SDL3/SDL.h>
@@ -59,6 +50,49 @@ extern int sfx_volume, music_volume; //loader.cpp
 unsigned int scale; //AR was static, removed for external
 
 const char *config_filename = "config.txt";
+
+namespace
+{
+std::string append_path(const char *base, const char *relative)
+{
+    std::string result = base ? base : "";
+    if (!relative || !relative[0] || std::strcmp(relative, ".") == 0)
+        return result;
+
+    if (!result.empty() && result.back() != '/' && result.back() != '\\')
+        result += '/';
+    result += relative;
+    return result;
+}
+
+bool is_abuse_data_directory(const std::string &path)
+{
+    const std::string marker = append_path(path.c_str(), "abuse.lsp");
+    SDL_PathInfo info;
+    return SDL_GetPathInfo(marker.c_str(), &info) && info.type == SDL_PATHTYPE_FILE;
+}
+
+std::string find_data_directory()
+{
+    if (const char *override_path = SDL_getenv("ABUSE_PATH"))
+        return override_path;
+
+    if (const char *base_path = SDL_GetBasePath())
+    {
+        std::string relative_path = append_path(base_path, ABUSE_ASSETDIR_FROM_BASE);
+        if (is_abuse_data_directory(relative_path))
+            return relative_path;
+    }
+
+    if (is_abuse_data_directory(ASSETDIR))
+        return ASSETDIR;
+
+    if (is_abuse_data_directory(ABUSE_DEVELOPMENT_ASSETDIR))
+        return ABUSE_DEVELOPMENT_ASSETDIR;
+
+    return ASSETDIR;
+}
+}
 
 bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
 {
@@ -178,7 +212,7 @@ bool Settings::CreateConfigFile()
     //
     out << "; SCREEN SETTINGS" << std::endl;
     out << std::endl;
-    out << ";0 - window, 1 - fullscreen window, 2 - fullscreen" << std::endl;
+    out << ";0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen" << std::endl;
     out << "fullscreen=" << this->fullscreen << std::endl;
     out << "borderless=" << this->borderless << std::endl;
     out << std::endl;
@@ -601,7 +635,7 @@ void showHelp(const char *executableName)
     printf("\n");
     printf("** Abuse-SDL Options **\n");
     printf("  -datadir <arg>    Set the location of the game data to <arg>\n");
-    printf("  -fullscreen       Enable fullscreen mode\n");
+    printf("  -fullscreen       Enable borderless desktop fullscreen mode\n");
     printf("  -antialias        Enable anti-aliasing\n");
     printf("  -h, --help        Display this text\n");
     printf("  -mono             Disable stereo sound\n");
@@ -621,15 +655,15 @@ void parseCommandLine(int argc, char **argv)
 
     for (int i = 1; i < argc; i++)
     {
-        if (!strcasecmp(argv[i], "-remote_save"))
+        if (!SDL_strcasecmp(argv[i], "-remote_save"))
         {
             settings.local_save = false;
         }
-        if (!strcasecmp(argv[i], "-fullscreen"))
+        if (!SDL_strcasecmp(argv[i], "-fullscreen"))
         {
             settings.fullscreen = 1;
         }
-        else if (!strcasecmp(argv[i], "-size"))
+        else if (!SDL_strcasecmp(argv[i], "-size"))
         {
             if (i + 1 < argc && !sscanf(argv[++i], "%d", &xres))
             {
@@ -640,19 +674,19 @@ void parseCommandLine(int argc, char **argv)
                 yres = 200;
             }
         }
-        else if (!strcasecmp(argv[i], "-nosound"))
+        else if (!SDL_strcasecmp(argv[i], "-nosound"))
         {
             settings.no_sound = 1;
         }
-        else if (!strcasecmp(argv[i], "-antialias"))
+        else if (!SDL_strcasecmp(argv[i], "-antialias"))
         {
             settings.linear_filter = 1;
         }
-        else if (!strcasecmp(argv[i], "-mono"))
+        else if (!SDL_strcasecmp(argv[i], "-mono"))
         {
             settings.mono = 1;
         }
-        else if (!strcasecmp(argv[i], "-datadir"))
+        else if (!SDL_strcasecmp(argv[i], "-datadir"))
         {
             char datadir[255];
             if (i + 1 < argc && sscanf(argv[++i], "%s", datadir))
@@ -660,14 +694,14 @@ void parseCommandLine(int argc, char **argv)
                 set_filename_prefix(datadir);
             }
         }
-        else if (!strcasecmp(argv[i], "-soundfont"))
+        else if (!SDL_strcasecmp(argv[i], "-soundfont"))
         {
             if (i + 1 < argc)
             {
                 settings.soundfont = argv[++i];
             }
         }
-        else if (!strcasecmp(argv[i], "-h") || !strcasecmp(argv[i], "--help"))
+        else if (!SDL_strcasecmp(argv[i], "-h") || !SDL_strcasecmp(argv[i], "--help"))
         {
             showHelp(argv[0]);
             exit(EXIT_SUCCESS);
@@ -689,7 +723,7 @@ void setup(int argc, char **argv)
 
     atexit(SDL_Quit);
 
-    const char *prefPath = SDL_GetPrefPath("abuse", ".");
+    char *prefPath = SDL_GetPrefPath("abuse", ".");
 
     if (prefPath == NULL)
     {
@@ -700,59 +734,17 @@ void setup(int argc, char **argv)
     else
     {
         set_save_filename_prefix(prefPath);
-        SDL_free((void *)prefPath);
+        SDL_free(prefPath);
     }
 
-    printf("Data override %s\n", get_save_filename_prefix());
+    if (const char *save_override = SDL_getenv("ABUSE_SAVE_PATH"))
+        set_save_filename_prefix(save_override);
 
-#ifdef __APPLE__
-    UInt8 buffer[255];
-    CFURLRef bundleurl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
-    CFURLRef url =
-        CFURLCreateCopyAppendingPathComponent(kCFAllocatorDefault, bundleurl, CFSTR("Contents/Resources/data"), true);
+    const std::string data_path = find_data_directory();
+    set_filename_prefix(data_path.c_str());
 
-    if (!CFURLGetFileSystemRepresentation(url, true, buffer, 255))
-    {
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        printf("Data path [%s]\n", buffer);
-        set_filename_prefix((const char *)buffer);
-    }
-#elif defined WIN32
-    char assetDirName[MAX_PATH];
-    GetModuleFileName(NULL, assetDirName, MAX_PATH);
-    size_t cut_at = -1;
-    for (size_t i = 0; assetDirName[i] != '\0'; i++)
-    {
-        if (assetDirName[i] == '\\' || assetDirName[i] == '/')
-        {
-            cut_at = i;
-        }
-    }
-    if (cut_at >= 0)
-        assetDirName[cut_at] = '\0';
-    printf("Data path %s\n", assetDirName);
-    set_filename_prefix(assetDirName);
-#else
-    // APPDIR means we are running from the AppImage
-    if (getenv("APPDIR") != nullptr)
-    {
-        std::string assetPath = std::string(getenv("APPDIR")) + ASSETDIR;
-        set_filename_prefix(assetPath.c_str());
-    }
-    else
-    {
-        set_filename_prefix(ASSETDIR);
-    }
+    printf("Save path %s\n", get_save_filename_prefix());
     printf("Data path %s\n", get_filename_prefix());
-#endif
-
-    if (getenv("ABUSE_PATH"))
-        set_filename_prefix(getenv("ABUSE_PATH"));
-    if (getenv("ABUSE_SAVE_PATH"))
-        set_save_filename_prefix(getenv("ABUSE_SAVE_PATH"));
 
     // Load the user's configuration file from the save directory
     settings.ReadConfigFile();
@@ -771,29 +763,29 @@ void setup(int argc, char **argv)
 
 int get_key_binding(char const *dir, int i)
 {
-    if (strcasecmp(dir, "left") == 0)
+    if (SDL_strcasecmp(dir, "left") == 0)
         return settings.left;
-    else if (strcasecmp(dir, "right") == 0)
+    else if (SDL_strcasecmp(dir, "right") == 0)
         return settings.right;
-    else if (strcasecmp(dir, "up") == 0)
+    else if (SDL_strcasecmp(dir, "up") == 0)
         return settings.up;
-    else if (strcasecmp(dir, "down") == 0)
+    else if (SDL_strcasecmp(dir, "down") == 0)
         return settings.down;
-    else if (strcasecmp(dir, "left2") == 0)
+    else if (SDL_strcasecmp(dir, "left2") == 0)
         return settings.left_2;
-    else if (strcasecmp(dir, "right2") == 0)
+    else if (SDL_strcasecmp(dir, "right2") == 0)
         return settings.right_2;
-    else if (strcasecmp(dir, "up2") == 0)
+    else if (SDL_strcasecmp(dir, "up2") == 0)
         return settings.up_2;
-    else if (strcasecmp(dir, "down2") == 0)
+    else if (SDL_strcasecmp(dir, "down2") == 0)
         return settings.down_2;
-    else if (strcasecmp(dir, "b1") == 0)
+    else if (SDL_strcasecmp(dir, "b1") == 0)
         return settings.b1;
-    else if (strcasecmp(dir, "b2") == 0)
+    else if (SDL_strcasecmp(dir, "b2") == 0)
         return settings.b2;
-    else if (strcasecmp(dir, "b3") == 0)
+    else if (SDL_strcasecmp(dir, "b3") == 0)
         return settings.b3;
-    else if (strcasecmp(dir, "b4") == 0)
+    else if (SDL_strcasecmp(dir, "b4") == 0)
         return settings.b4;
 
     return 0;

@@ -1685,20 +1685,24 @@ void Game::get_input()
                 set_key_down(ev.key, 1);
                 if (playing_state(state))
                 {
-                    if (ev.key < 256)
+                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
+                    if (!printable_chat_key)
                     {
-                        if (chat && chat->chat_event(ev))
-                            base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+                        if (ev.key < 256)
+                        {
+                            if (chat && chat->chat_event(ev))
+                                base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+                            else
+                                base->packet.write_uint8(SCMD_KEYPRESS);
+                        }
                         else
-                            base->packet.write_uint8(SCMD_KEYPRESS);
+                            base->packet.write_uint8(SCMD_EXT_KEYPRESS);
+                        base->packet.write_uint8(client_number());
+                        if (ev.key > 256)
+                            base->packet.write_uint8(ev.key - 256);
+                        else
+                            base->packet.write_uint8(ev.key);
                     }
-                    else
-                        base->packet.write_uint8(SCMD_EXT_KEYPRESS);
-                    base->packet.write_uint8(client_number());
-                    if (ev.key > 256)
-                        base->packet.write_uint8(ev.key - 256);
-                    else
-                        base->packet.write_uint8(ev.key);
                 }
             }
             else if (ev.type == EV_KEYRELEASE)
@@ -1706,18 +1710,32 @@ void Game::get_input()
                 set_key_down(ev.key, 0);
                 if (playing_state(state))
                 {
-                    if (ev.key < 256)
-                        base->packet.write_uint8(SCMD_KEYRELEASE);
-                    else
-                        base->packet.write_uint8(SCMD_EXT_KEYRELEASE);
-                    base->packet.write_uint8(client_number());
-                    if (ev.key > 255)
-                        base->packet.write_uint8(ev.key - 256);
-                    else
-                        base->packet.write_uint8(ev.key);
+                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
+                    if (!printable_chat_key)
+                    {
+                        if (ev.key < 256)
+                            base->packet.write_uint8(SCMD_KEYRELEASE);
+                        else
+                            base->packet.write_uint8(SCMD_EXT_KEYRELEASE);
+                        base->packet.write_uint8(client_number());
+                        if (ev.key > 255)
+                            base->packet.write_uint8(ev.key - 256);
+                        else
+                            base->packet.write_uint8(ev.key);
+                    }
                 }
             }
-
+            else if (ev.type == EV_TEXT_INPUT && playing_state(state) && chat && chat->chat_event(ev))
+            {
+                for (unsigned char ch : ev.text)
+                {
+                    if (ch < ' ' || ch > '~')
+                        continue;
+                    base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+                    base->packet.write_uint8(client_number());
+                    base->packet.write_uint8(ch);
+                }
+            }
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
             {
                 dev_cont->handle_event(ev);
@@ -2250,14 +2268,18 @@ void game_getter(char *st, int max)
                         max++;
                     }
                 }
-                else if (ev.key >= ' ' && ev.key <= '~')
+            }
+            else if (ev.type == EV_TEXT_INPUT)
+            {
+                for (unsigned char ch : ev.text)
                 {
-                    dev_console->print_f("%c", ev.key);
-                    *st = ev.key;
+                    if (ch < ' ' || ch > '~' || max <= 0)
+                        continue;
+                    dev_console->print_f("%c", ch);
+                    *st++ = static_cast<char>(ch);
+                    *st = 0;
                     t++;
                     max--;
-                    st++;
-                    *st = 0;
                 }
             }
             wm->flush_screen();

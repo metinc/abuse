@@ -24,7 +24,6 @@
 #include "config.h"
 #endif
 
-#include <cstring>
 #include <string>
 #include <filesystem>
 #include <algorithm>
@@ -55,35 +54,14 @@ std::string soundfont_path;
 
 MIX_Audio *load_prefixed_audio(const char *filename)
 {
-    FILE *file = prefix_fopen(filename, "rb");
-    if (!file)
+    if (!filename)
         return nullptr;
 
-    if (fseek(file, 0, SEEK_END) != 0)
-    {
-        fclose(file);
-        return nullptr;
-    }
-
-    const long file_size = ftell(file);
-    if (file_size <= 0 || fseek(file, 0, SEEK_SET) != 0)
-    {
-        fclose(file);
-        return nullptr;
-    }
-
-    std::vector<unsigned char> bytes(static_cast<size_t>(file_size));
-    const bool read_ok = fread(bytes.data(), 1, bytes.size(), file) == bytes.size();
-    fclose(file);
-    if (!read_ok)
-        return nullptr;
-
-    SDL_IOStream *io = SDL_IOFromConstMem(bytes.data(), bytes.size());
-    if (!io)
-        return nullptr;
-
-    // Predecoding makes the returned object independent of the temporary buffer.
-    return MIX_LoadAudio_IO(mixer, io, true, true);
+    const std::filesystem::path filename_path(filename);
+    const std::filesystem::path audio_path = filename_path.is_absolute()
+                                                 ? filename_path
+                                                 : std::filesystem::path(get_filename_prefix()) / filename_path;
+    return MIX_LoadAudio(mixer, audio_path.string().c_str(), true);
 }
 }
 
@@ -215,7 +193,7 @@ void sound_uninit()
   * @brief Constructor for sound effect objects
   *
   * Loads a sound effect from a file and prepares it for playback.
-  * Uses SDL_IOStream for memory-based loading to avoid leaving files open.
+  * Uses SDL_mixer's file loader and predecodes the sound for repeated playback.
   *
   * @param filename Path to the sound effect file
   */
@@ -261,7 +239,7 @@ sound_effect::~sound_effect()
   * @brief Plays a sound effect with specified parameters
   *
   * @param volume Volume level (0-127)
-  * @param pitch Pitch adjustment (unused in current implementation)
+  * @param pitch Playback pitch/rate, where 128 is normal speed
   * @param panpot Stereo panning (0=right, 128=center, 255=left)
   */
 void sound_effect::play(int volume, int pitch, int panpot)
@@ -272,6 +250,7 @@ void sound_effect::play(int volume, int pitch, int panpot)
     // Clamp values to valid ranges
     volume = std::clamp(volume, 0, 127);
     panpot = std::clamp(panpot, 0, 255);
+    const float frequency_ratio = std::clamp(static_cast<float>(pitch) / 128.0f, 0.01f, 100.0f);
 
     for (MIX_Track *track : sfx_tracks)
     {
@@ -285,6 +264,7 @@ void sound_effect::play(int volume, int pitch, int panpot)
         MIX_SetTrackAudio(track, m_audio);
         MIX_SetTrackGain(track, static_cast<float>(volume) / 127.0f);
         MIX_SetTrackStereo(track, &gains);
+        MIX_SetTrackFrequencyRatio(track, frequency_ratio);
         if (!MIX_PlayTrack(track, 0))
             printf("Failed to play sound: %s\n", SDL_GetError());
         return;
