@@ -38,7 +38,8 @@ Clone this repository.
 git clone https://github.com/metinc/abuse
 ```
 
-Enter the repository and configure the build:
+Enter the repository and configure the build. All commands below are run from
+the repository root:
 
 ```sh
 cmake -B build
@@ -85,13 +86,11 @@ Under Windows, it will create a [WIX](http://wixtoolset.org/) installer and a .z
 Under Linux, it will create .deb, .rpm, and .tar.gz packages.
 Under macOS, it will create .dmg and .tgz files.
 
-To build them under Linux or macOS, run:
+To build them under Linux or macOS, run from the repository root:
 
 ```sh
-make package
+cmake --build build --target package
 ```
-
-from inside the `build` folder (or `ninja package` if you're using the Ninja generator).
 
 Under Windows you can use [MSYS2 MinGW 64-bit](https://www.msys2.org/) to run the command.
 
