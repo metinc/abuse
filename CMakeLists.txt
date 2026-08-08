@@ -9,15 +9,12 @@ project(abuse
 include(GNUInstallDirs)
 
 # Options
-option(HAVE_NETWORK "Enable networking support" ON)
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
 
 # Dependencies used by the game
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
-if(HAVE_NETWORK)
-    find_package(SDL3_net 3.0.0 REQUIRED)
-endif()
+find_package(SDL3_net 3.0.0 REQUIRED)
 
 # OpenCV is only used by abuse-tool, not by the game.
 if(ABUSE_BUILD_TOOLS)

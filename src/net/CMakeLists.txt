@@ -12,10 +12,6 @@ include_directories(
     ${abuse_SOURCE_DIR}/src/imlib
 )
 
-target_link_libraries(net SDL3::SDL3)
-
-if(HAVE_NETWORK)
-    target_link_libraries(net SDL3_net::SDL3_net)
-endif()
+target_link_libraries(net SDL3::SDL3 SDL3_net::SDL3_net)
 
 add_definitions(-DNO_CHECK)

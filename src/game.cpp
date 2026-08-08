@@ -101,10 +101,8 @@ extern uint8_t chatting_enabled;
 Settings settings;
 
 // Enable TCP/IP driver
-#if HAVE_NETWORK
 #include "tcpip.h"
 tcpip_protocol tcpip;
-#endif
 #include <map>
 
 void handle_no_space()

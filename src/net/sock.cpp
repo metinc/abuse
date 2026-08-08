@@ -19,7 +19,6 @@ const char notify_response[] = "Yes!";
 
 net_protocol *net_protocol::first = nullptr;
 
-#if HAVE_NETWORK
 // connect to an explicitly named address
 // first try to get the address and then try to connect
 // return NULL if either fail.  This method does not need to be implemented
@@ -34,4 +33,3 @@ net_socket *net_protocol::connect_to_server(char const *&server_host, const int 
     delete a;
     return s;
 }
-#endif

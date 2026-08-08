@@ -23,9 +23,7 @@
 #include "timing.h"
 #include "net/netface.h"
 
-#if HAVE_NETWORK
 #include "fileman.h"
-#endif
 #include "net/sock.h"
 #include "net/ghandler.h"
 #include "net/gserver.h"
@@ -189,10 +187,8 @@ int net_init(int argc, char **argv)
         printf("Server located!  Please wait while data loads....\n");
     }
 
-#if HAVE_NETWORK
     DEBUG_LOG("Initializing file manager");
     fman = new file_manager(argc, argv, prot);
-#endif
     DEBUG_LOG("Creating game handler");
     game_face = new game_handler;
     join_array = (join_struct *)malloc(sizeof(join_struct) * MAX_JOINERS);
@@ -251,11 +247,9 @@ int kill_net()
         comm_sock = NULL;
     }
 
-#if HAVE_NETWORK
     DEBUG_LOG("Cleaning up file manager");
     delete fman;
     fman = NULL;
-#endif
 
     if (net_server)
     {
@@ -280,7 +274,6 @@ void net_uninit()
     kill_net();
 }
 
-#if HAVE_NETWORK
 int NF_set_file_server(net_address *addr)
 {
     DEBUG_LOG("Setting file server address");
@@ -360,11 +353,9 @@ long NF_tell(int fd)
         return fman->rf_tell(fd);
     return 0;
 }
-#endif
 
 void service_net_request()
 {
-#if HAVE_NETWORK
     if (prot)
     {
         if (prot->select(false))
@@ -438,7 +429,6 @@ void service_net_request()
             fman->process_net();
         }
     }
-#endif
 }
 
 int get_remote_lsf(net_address *addr, char *filename)

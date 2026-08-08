@@ -14,8 +14,6 @@
 #include "config.h"
 #endif
 
-#if HAVE_NETWORK
-
 #include "common.h"
 #include "tcpip.h"
 
@@ -626,5 +624,3 @@ void tcpip_protocol::reset_find_list()
     servers.erase_all();
     returned.erase_all();
 }
-
-#endif // HAVE_NETWORK

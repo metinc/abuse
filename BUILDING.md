@@ -4,7 +4,7 @@
 
 - SDL3
 - SDL3_mixer
-- SDL3_net (when networking support is enabled, which is the default)
+- SDL3_net
 - [CMake 3.21 or later](https://cmake.org/)
 - OpenCV (only when building the optional `abuse-tool` asset extraction utility)
 
@@ -34,9 +34,7 @@ cmake --build SDL3_net-3.2.0/build --parallel
 sudo cmake --install SDL3_net-3.2.0/build
 ```
 
-The Abuse build will find SDL3_net under `/usr/local` automatically. To build
-without multiplayer support instead, configure Abuse with
-`-DHAVE_NETWORK=OFF`.
+The Abuse build will find SDL3_net under `/usr/local` automatically.
 
 Also install `opencv` if you want to build `abuse-tool`.
 
