@@ -14,6 +14,8 @@
 
 #include <stdio.h>
 
+#include <SDL3/SDL_timer.h>
+
 #include "common.h"
 
 #include "specs.h"
@@ -778,6 +780,7 @@ int get_inputs_from_server(unsigned char *buf)
         // One lockstep tick normally costs a round trip. Give it a reasonable
         // loss-detection window before adding reliable resend traffic.
         constexpr double resend_timeout_sec = 0.25;
+        constexpr int disconnect_prompt_retries = 20;
         while (base->input_state != INPUT_PROCESSING)
         {
             if (!prot)
@@ -799,7 +802,7 @@ int get_inputs_from_server(unsigned char *buf)
                 start.get_time();
 
                 total_retry++;
-                if (total_retry == 12000)
+                if (total_retry == disconnect_prompt_retries)
                 {
                     DEBUG_LOG("Connection appears dead, showing abort dialog");
                     abort = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1, wm->font()->Size().y * 4),
@@ -829,6 +832,11 @@ int get_inputs_from_server(unsigned char *buf)
                     wm->flush_screen();
                 }
             }
+
+            // SDL3_net readiness checks above are deliberately non-blocking.
+            // Yield here so packet loss cannot turn this lockstep wait into a
+            // full-core busy loop.
+            SDL_Delay(1);
         }
 
         if (abort)

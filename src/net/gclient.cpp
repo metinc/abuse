@@ -34,6 +34,15 @@ extern net_protocol *prot;
 extern char lsf[256];
 extern int start_running;
 
+void game_client::restart_single_player()
+{
+    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+    start_running = 0;
+    strcpy(lsf, "abuse.lsp");
+    wait_local_input = 1;
+    base->input_state = INPUT_PROCESSING;
+}
+
 // Handles incoming commands from the server like resend requests
 int game_client::process_server_command()
 {
@@ -68,24 +77,17 @@ int game_client::process_server_command()
             return 0;
         }
 
-        fprintf(stderr, "request for resend tick %d (game cur=%d, pack=%d, last=%d)\n", tick, base->current_tick,
-                base->packet.tick_received(), base->last_packet.tick_received());
-
-        // Only resend if we have the requested tick and haven't sent new input
-        if (tick == base->packet.tick_received() && !wait_local_input)
+        if (has_last_input && tick == last_input.tick_received())
         {
-            DEBUG_LOG("Resending packet %d to server", base->packet.tick_received());
-            net_packet *pack = &base->packet;
-            game_sock->write(/* client_input_data */ pack->data, pack->packet_size() + pack->packet_prefix_size(),
-                             server_data_port);
-        }
-        else if (tick == base->last_packet.tick_received())
-        {
-            DEBUG_LOG("Resending last packet to server");
+            DEBUG_LOG("Resending retained input packet %d to server", tick);
+            if (game_sock->write(/* client_input_data */ last_input.data,
+                                 last_input.packet_size() + last_input.packet_prefix_size(), server_data_port) < 0)
+                return 0;
         }
         else
         {
-            DEBUG_LOG("Skipping resend - tick mismatch or new input pending");
+            DEBUG_LOG("Cannot resend tick %d; retained input is tick %d", tick,
+                      has_last_input ? last_input.tick_received() : -1);
         }
         return 1;
     }
@@ -102,9 +104,10 @@ int game_client::process_server_command()
 // Main networking processing loop for client
 int game_client::process_net()
 {
-    if (client_sock->error())
+    if (client_sock->error() || game_sock->error())
     {
         DEBUG_LOG("Client socket error detected");
+        restart_single_player();
         return 0;
     }
 
@@ -153,12 +156,7 @@ int game_client::process_net()
         if (!process_server_command())
         {
             DEBUG_LOG("Server command processing failed - reverting to single player");
-            main_net_cfg->state = net_configuration::RESTART_SINGLE;
-            start_running = 0;
-            strcpy(lsf, "abuse.lsp");
-
-            wait_local_input = 1;
-            base->input_state = INPUT_PROCESSING;
+            restart_single_player();
             return 0;
         }
     }
@@ -181,10 +179,21 @@ int game_client::input_missing()
     DEBUG_LOG("Handling missing input");
 
     if (prot->debug_level(net_protocol::DB_IMPORTANT_EVENT))
-        fprintf(stderr, "(resending %d)\n", base->packet.tick_received());
+        fprintf(stderr, "(resending %d)\n", base->current_tick);
+
+    // The server may be waiting because our input datagram was lost. Resend it
+    // directly instead of relying solely on a round trip over the control
+    // stream to discover which direction lost a packet.
+    if (!wait_local_input && has_last_input && last_input.tick_received() == base->current_tick &&
+        game_sock->write(/* client_input_data */ last_input.data,
+                         last_input.packet_size() + last_input.packet_prefix_size(), server_data_port) < 0)
+    {
+        DEBUG_LOG("Failed to resend input packet");
+        return 0;
+    }
 
     uint8_t cmd = CLCMD_REQUEST_RESEND;
-    uint8_t tick = base->packet.tick_received();
+    uint8_t tick = static_cast<uint8_t>(base->current_tick);
 
     // Send resend request to server
     if (client_sock->write(/* client_command */ &cmd, 1) != 1 ||
@@ -212,9 +221,12 @@ void game_client::add_engine_input()
     wait_local_input = 0;
     pack->set_tick_received(base->current_tick);
     pack->calc_checksum();
+    last_input = *pack;
+    has_last_input = true;
 
-    game_sock->write(/* client_input_data */ pack->data, pack->packet_size() + pack->packet_prefix_size(),
-                     server_data_port);
+    if (game_sock->write(/* client_input_data */ pack->data, pack->packet_size() + pack->packet_prefix_size(),
+                         server_data_port) < 0)
+        DEBUG_LOG("Failed to send input packet");
 }
 
 // Notify server that level reload is complete

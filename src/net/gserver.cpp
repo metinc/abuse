@@ -130,7 +130,7 @@ void game_server::check_collection_complete()
     int add_deletes = 0;
 
     // Check for deleted clients and missing input
-    for (c = player_list; c && got_all; c = c->next)
+    for (c = player_list; c; c = c->next)
     {
         if (c->delete_me())
         {
