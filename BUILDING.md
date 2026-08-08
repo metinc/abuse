@@ -4,6 +4,7 @@
 
 - SDL3
 - SDL3_mixer
+- SDL3_net (when networking support is enabled, which is the default)
 - [CMake 3.21 or later](https://cmake.org/)
 - OpenCV (only when building the optional `abuse-tool` asset extraction utility)
 
@@ -14,6 +15,28 @@ On Arch Linux, install these packages:
 ```sh
 sudo pacman -S sdl3 sdl3_mixer cmake dpkg rpm-tools
 ```
+
+SDL3_net is not currently available in the official Arch repositories or the
+AUR. Do not install `sdl_net` or `sdl2_net`; those packages provide older,
+incompatible APIs. Build and install SDL3_net 3.2.0 from the
+[official release](https://github.com/libsdl-org/SDL_net/releases/tag/release-3.2.0):
+
+```sh
+curl -LO https://github.com/libsdl-org/SDL_net/releases/download/release-3.2.0/SDL3_net-3.2.0.tar.gz
+tar -xf SDL3_net-3.2.0.tar.gz
+
+cmake -S SDL3_net-3.2.0 -B SDL3_net-3.2.0/build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DSDLNET_SAMPLES=OFF
+
+cmake --build SDL3_net-3.2.0/build --parallel
+sudo cmake --install SDL3_net-3.2.0/build
+```
+
+The Abuse build will find SDL3_net under `/usr/local` automatically. To build
+without multiplayer support instead, configure Abuse with
+`-DHAVE_NETWORK=OFF`.
 
 Also install `opencv` if you want to build `abuse-tool`.
 

@@ -27,7 +27,6 @@
 #include "netcfg.h"
 #include "gclient.h"
 #include "netface.h"
-#include "timing.h"
 
 extern base_memory_struct *base;
 extern net_socket *comm_sock, *game_sock;
@@ -79,13 +78,6 @@ int game_client::process_server_command()
             net_packet *pack = &base->packet;
             game_sock->write(/* client_input_data */ pack->data, pack->packet_size() + pack->packet_prefix_size(),
                              server_data_port);
-
-            // Add artificial delay after resend
-            {
-                time_marker now, start;
-                while (now.diff_time(&start) < 3.0)
-                    now.get_time();
-            }
         }
         else if (tick == base->last_packet.tick_received())
         {

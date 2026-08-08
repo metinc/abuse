@@ -15,6 +15,9 @@ option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
 # Dependencies used by the game
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
+if(HAVE_NETWORK)
+    find_package(SDL3_net 3.0.0 REQUIRED)
+endif()
 
 # OpenCV is only used by abuse-tool, not by the game.
 if(ABUSE_BUILD_TOOLS)
@@ -192,11 +195,11 @@ elseif(APPLE)
 else()
     set(CPACK_GENERATOR "TGZ;DEB;RPM")
     set(CPACK_PACKAGE_CONTACT "Metin Çelik <metincelik88@gmail.com>")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl3-0, libsdl3-mixer0")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl3-0, libsdl3-mixer0, libsdl3-net0")
     set(CPACK_DEBIAN_PACKAGE_SECTION "games")
     set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
     set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
-    set(CPACK_RPM_PACKAGE_REQUIRES "SDL3, SDL3_mixer")
+    set(CPACK_RPM_PACKAGE_REQUIRES "SDL3, SDL3_mixer, SDL3_net")
 endif()
 
 include(CPack)

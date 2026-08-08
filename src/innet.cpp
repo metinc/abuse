@@ -785,7 +785,9 @@ int get_inputs_from_server(unsigned char *buf)
         int total_retry = 0;
         Jwindow *abort = NULL;
 
-        constexpr double resend_timeout_sec = 0.05;
+        // One lockstep tick normally costs a round trip. Give it a reasonable
+        // loss-detection window before adding reliable resend traffic.
+        constexpr double resend_timeout_sec = 0.25;
         while (base->input_state != INPUT_PROCESSING)
         {
             if (!prot)

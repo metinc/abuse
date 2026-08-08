@@ -14,8 +14,8 @@ include_directories(
 
 target_link_libraries(net SDL3::SDL3)
 
-add_definitions(-DNO_CHECK)
-
-if(WIN32)
-    target_link_libraries(net ws2_32 iphlpapi)
+if(HAVE_NETWORK)
+    target_link_libraries(net SDL3_net::SDL3_net)
 endif()
+
+add_definitions(-DNO_CHECK)
