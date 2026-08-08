@@ -55,10 +55,17 @@ class tcpip_protocol final : public net_protocol
     using p_request = isllist<RequestItem *>::iterator;
     isllist<RequestItem *> servers, returned;
 
+    struct DiscoveryResponder
+    {
+        net_socket *socket;
+        ip_address *local_target;
+        bool broadcasts;
+    };
+
     net_socket *notifier{nullptr};
     char notify_data[512]{};
     int notify_len{0};
-    net_socket *responder{nullptr};
+    std::vector<DiscoveryResponder> responders;
 
     bool initialized{false};
     std::vector<sdl_net_socket *> sockets;
@@ -66,6 +73,8 @@ class tcpip_protocol final : public net_protocol
     bool ensure_initialized();
     int handle_notification() const;
     int handle_responder();
+    int handle_responder(net_socket *responder);
+    bool create_responders();
     void add_socket(sdl_net_socket *socket);
     void remove_socket(sdl_net_socket *socket);
 
@@ -213,7 +222,8 @@ class sdl_datagram_socket final : public sdl_net_socket
     }
 
   public:
-    sdl_datagram_socket(uint16_t port, bool allow_broadcast, ip_address *default_peer = nullptr);
+    sdl_datagram_socket(uint16_t port, bool allow_broadcast, ip_address *default_peer = nullptr,
+                        NET_Address *local_address = nullptr);
     ~sdl_datagram_socket() override;
 
     bool valid() const

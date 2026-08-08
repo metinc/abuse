@@ -240,7 +240,8 @@ net_socket *sdl_server_socket::accept(net_address *&from)
     return new sdl_stream_socket(client);
 }
 
-sdl_datagram_socket::sdl_datagram_socket(const uint16_t port, const bool allow_broadcast, ip_address *peer)
+sdl_datagram_socket::sdl_datagram_socket(const uint16_t port, const bool allow_broadcast, ip_address *peer,
+                                         NET_Address *local_address)
     : socket(nullptr), default_peer(peer ? static_cast<ip_address *>(peer->copy()) : nullptr)
 {
     SDL_PropertiesID props = 0;
@@ -256,7 +257,7 @@ sdl_datagram_socket::sdl_datagram_socket(const uint16_t port, const bool allow_b
         }
     }
 
-    socket = NET_CreateDatagramSocket(nullptr, port, props);
+    socket = NET_CreateDatagramSocket(local_address, port, props);
     if (props)
         SDL_DestroyProperties(props);
     failed = socket == nullptr;
@@ -472,8 +473,12 @@ void tcpip_protocol::cleanup()
 {
     end_notify();
     reset_find_list();
-    delete responder;
-    responder = nullptr;
+    for (const DiscoveryResponder &responder : responders)
+    {
+        delete responder.socket;
+        delete responder.local_target;
+    }
+    responders.clear();
 }
 
 net_socket *tcpip_protocol::start_notify(const int port, void *data, const int len)
@@ -515,7 +520,7 @@ int tcpip_protocol::handle_notification() const
     return 1;
 }
 
-int tcpip_protocol::handle_responder()
+int tcpip_protocol::handle_responder(net_socket *responder)
 {
     if (!responder || !responder->ready_to_read())
         return 0;
@@ -557,6 +562,79 @@ int tcpip_protocol::handle_responder()
     return 1;
 }
 
+int tcpip_protocol::handle_responder()
+{
+    int handled = 0;
+    for (const DiscoveryResponder &responder : responders)
+        handled += handle_responder(responder.socket);
+    return handled;
+}
+
+bool tcpip_protocol::create_responders()
+{
+    auto *socket = new sdl_datagram_socket(0, true);
+    if (socket->valid())
+    {
+        NET_Address *loopback = NET_ResolveHostname("127.0.0.1");
+        if (loopback && NET_WaitUntilResolved(loopback, -1) != NET_SUCCESS)
+        {
+            NET_UnrefAddress(loopback);
+            loopback = nullptr;
+        }
+        responders.push_back({socket, loopback ? new ip_address(loopback, 0, false) : nullptr, true});
+        socket->read_selectable();
+        return true;
+    }
+    delete socket;
+
+    // SDL3_net's all-interface broadcast socket also joins the IPv6 ff02::1
+    // multicast group. If IPv6 is unavailable on the LAN, that join can fail
+    // the whole socket even though IPv4 broadcasting is usable. Fall back to
+    // one socket per non-loopback IPv4 interface.
+    int address_count = 0;
+    NET_Address **addresses = NET_GetLocalAddresses(&address_count);
+    for (int i = 0; addresses && i < address_count; ++i)
+    {
+        const char *text = NET_GetAddressString(addresses[i]);
+        if (!text || std::strchr(text, ':') || std::strncmp(text, "127.", 4) == 0)
+            continue;
+
+        socket = new sdl_datagram_socket(0, true, nullptr, addresses[i]);
+        if (!socket->valid())
+        {
+            delete socket;
+            continue;
+        }
+
+        responders.push_back({socket, new ip_address(addresses[i], 0), true});
+        socket->read_selectable();
+    }
+    NET_FreeLocalAddresses(addresses);
+
+    // An offline machine can still discover a server in another local
+    // process. This socket only sends a direct loopback probe.
+    if (responders.empty())
+    {
+        NET_Address *loopback = NET_ResolveHostname("127.0.0.1");
+        if (loopback && NET_WaitUntilResolved(loopback, -1) == NET_SUCCESS)
+        {
+            socket = new sdl_datagram_socket(0, false);
+            if (socket->valid())
+            {
+                responders.push_back({socket, new ip_address(loopback, 0, false), false});
+                loopback = nullptr;
+                socket->read_selectable();
+            }
+            else
+                delete socket;
+        }
+        if (loopback)
+            NET_UnrefAddress(loopback);
+    }
+
+    return !responders.empty();
+}
+
 int tcpip_protocol::select(const bool block)
 {
     do
@@ -581,23 +659,24 @@ int tcpip_protocol::select(const bool block)
 net_address *tcpip_protocol::find_address(const int port, char *name)
 {
     end_notify();
-    if (!responder)
-    {
-        auto *socket = new sdl_datagram_socket(0, true);
-        if (!socket->valid())
-        {
-            delete socket;
-            return nullptr;
-        }
-        responder = socket;
-        responder->read_selectable();
-    }
+    if (responders.empty() && !create_responders())
+        return nullptr;
 
     // Process replies to the previous probe before sending the next one.
     handle_responder();
 
     ip_address broadcast(nullptr, static_cast<uint16_t>(port), false);
-    responder->write(notify_signature, static_cast<int>(std::strlen(notify_signature)), &broadcast);
+    for (DiscoveryResponder &responder : responders)
+    {
+        if (responder.broadcasts)
+            responder.socket->write(notify_signature, static_cast<int>(std::strlen(notify_signature)), &broadcast);
+        if (responder.local_target)
+        {
+            responder.local_target->set_port(port);
+            responder.socket->write(notify_signature, static_cast<int>(std::strlen(notify_signature)),
+                                    responder.local_target);
+        }
+    }
 
     if (servers.empty())
         return nullptr;
