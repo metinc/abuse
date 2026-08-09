@@ -129,7 +129,7 @@ int abuse_tool(int argc, char *argv[])
     if (cmd == CMD_INVALID)
     {
         char buffer[512];
-        sprintf("\nERROR - abuse-tool: unknown command `%s'\n", argv[2]);
+        snprintf(buffer, sizeof(buffer), "\nERROR - abuse-tool: unknown command `%s'\n", argv[2]);
         ar_log.Write(buffer);
 
         return EXIT_FAILURE;
@@ -175,7 +175,7 @@ int abuse_tool(int argc, char *argv[])
     if (argc < minargc)
     {
         char buffer[512];
-        sprintf("\nERROR - abuse-tool: too few arguments for command `%s'\n", argv[2]);
+        snprintf(buffer, sizeof(buffer), "\nERROR - abuse-tool: too few arguments for command `%s'\n", argv[2]);
         ar_log.Write(buffer);
 
         return EXIT_FAILURE;
@@ -192,7 +192,7 @@ int abuse_tool(int argc, char *argv[])
     if (fp.open_failure())
     {
         char buffer[512];
-        sprintf("\nERROR - abuse-tool: could not open %s\n", file);
+        snprintf(buffer, sizeof(buffer), "\nERROR - abuse-tool: could not open %s\n", file);
         ar_log.Write(buffer);
 
         return EXIT_FAILURE;
@@ -389,7 +389,19 @@ int abuse_tool(int argc, char *argv[])
 
         dir.FullyLoad(&fp);
         if (cmd == CMD_RENAME)
-            dir.entries[id]->name = argv[4];
+        {
+            // spec_entry owns its name and frees it in its destructor.  argv
+            // storage is not owned, so assigning argv[4] directly here made
+            // every successful rename end in an invalid free.
+            char *name = strdup(argv[4]);
+            if (!name)
+            {
+                ar_log.Write("\nERROR - abuse-tool: out of memory while renaming entry\n");
+                return EXIT_FAILURE;
+            }
+            free(dir.entries[id]->name);
+            dir.entries[id]->name = name;
+        }
         else
             dir.entries[id]->type = (uint8_t)atoi(argv[4]);
     }
@@ -435,9 +447,11 @@ int abuse_tool(int argc, char *argv[])
         for (int i = dir.total - 1; i-- > id;)
             dir.entries[i + 1] = dir.entries[i];
 
-        char *name = strrchr(argv[5], '/');
-        if (!name)
-            name = argv[5];
+        char const *name = argv[5];
+        char const *slash = strrchr(name, '/');
+        char const *backslash = strrchr(name, '\\');
+        if (slash || backslash)
+            name = std::max(slash ? slash : name, backslash ? backslash : name) + 1;
 
         uint8_t *data;
         size_t len;
@@ -476,7 +490,10 @@ int abuse_tool(int argc, char *argv[])
             uint16_t y = lltl((uint16_t)size.y);
             memcpy(data, &x, sizeof(x));
             memcpy(data + 2, &y, sizeof(y));
-            memcpy(data + 4, im->scan_line(0), size.x * size.y);
+            for (int y = 0; y < size.y; y++)
+                memcpy(data + 4 + y * size.x, im->scan_line(y), size.x);
+            delete im;
+            delete pal;
         }
         dir.entries[id] = new spec_entry(type, name, NULL, len, 0);
         dir.entries[id]->data = data;
@@ -493,6 +510,15 @@ int abuse_tool(int argc, char *argv[])
     dir.write(&fp);
     for (int i = 0; i < dir.total; i++)
         fp.write(dir.entries[i]->data, dir.entries[i]->size);
+
+    // Rewriting a shorter directory or deleting an entry must also remove
+    // the bytes left over from the previous version of the archive.
+    long output_size = fp.tell();
+    if (!fp.set_file_size(output_size))
+    {
+        ar_log.Write("\nERROR - abuse-tool: could not resize the SPEC file\n");
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
