@@ -97,7 +97,7 @@ bool configure_fullscreen_mode()
     const SDL_DisplayMode *desktop_mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
     SDL_DisplayMode mode{};
     if (!desktop_mode || !SDL_GetClosestFullscreenDisplayMode(display, desktop_mode->w, desktop_mode->h,
-                                                               desktop_mode->refresh_rate, true, &mode))
+                                                              desktop_mode->refresh_rate, true, &mode))
     {
         fprintf(stderr, "Video: No exclusive fullscreen mode matching the desktop; using borderless desktop mode: %s\n",
                 SDL_GetError());
@@ -120,17 +120,18 @@ bool configure_fullscreen_mode()
 }
 
 // VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
-// than square. Apply that correction to 8:5 game resolutions while leaving
-// explicitly configured square-pixel resolutions unchanged.
+// than square. Aspect-ratio mode keeps those pixels at the original DPI,
+// while legacy explicit resolutions remain square-pixel unless they use
+// the original 8:5 framebuffer ratio.
 static int display_height()
 {
     constexpr int vga_storage_width = 8;
     constexpr int vga_storage_height = 5;
-    constexpr int vga_display_width = 4;
-    constexpr int vga_display_height = 3;
 
-    if (static_cast<int64_t>(xres) * vga_storage_height == static_cast<int64_t>(yres) * vga_storage_width)
-        return xres * vga_display_height / vga_display_width;
+    const bool aspect_ratio_mode = SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
+    if (aspect_ratio_mode ||
+        static_cast<int64_t>(xres) * vga_storage_height == static_cast<int64_t>(yres) * vga_storage_width)
+        return (yres * 6 + 2) / 5;
 
     return yres;
 }
@@ -351,11 +352,6 @@ void close_graphics()
 void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
 {
     int xe, ye;
-    SDL_Rect srcrect, dstrect;
-    int ii, jj;
-    int srcx, srcy, xstep, ystep;
-    Uint8 *dpixel;
-    Uint16 dinset;
 
     if (y > yres || x > xres)
         return;
@@ -368,7 +364,6 @@ void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
         x1 += -x;
         x = 0;
     }
-    srcrect.x = x1;
     if (x + (x2 - x1) >= xres)
         xe = xres - x + x1 - 1;
     else
@@ -379,44 +374,28 @@ void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
         y1 += -y;
         y = 0;
     }
-    srcrect.y = y1;
     if (y + (y2 - y1) >= yres)
         ye = yres - y + y1 - 1;
     else
         ye = y2;
 
-    if (srcrect.x >= xe || srcrect.y >= ye)
+    if (x1 >= xe || y1 >= ye)
         return;
 
-    // Scale the image onto the surface
-    srcrect.w = xe - srcrect.x;
-    srcrect.h = ye - srcrect.y;
-    dstrect.x = x;
-    dstrect.y = y;
-    dstrect.w = srcrect.w;
-    dstrect.h = srcrect.h;
-
-    xstep = (srcrect.w << 16) / dstrect.w;
-    ystep = (srcrect.h << 16) / dstrect.h;
-
-    srcy = ((srcrect.y) << 16);
-    dinset = ((surface->w - dstrect.w)) * SDL_BYTESPERPIXEL(surface->format);
+    const int copy_width = xe - x1;
+    const int copy_height = ye - y1;
 
     // Lock the surface if necessary
     if (SDL_MUSTLOCK(surface))
         SDL_LockSurface(surface);
 
-    dpixel = (Uint8 *)surface->pixels;
-    dpixel += (dstrect.x + ((dstrect.y) * surface->w)) * SDL_BYTESPERPIXEL(surface->format);
-
-    // Update surface part
-    srcy = srcrect.y;
-    dpixel = ((Uint8 *)surface->pixels) + y * surface->w + x;
-    for (ii = 0; ii < srcrect.h; ii++)
+    // SDL may pad rows for alignment. Advancing by surface->w only works
+    // when the framebuffer width happens to equal its allocated pitch.
+    Uint8 *dpixel = static_cast<Uint8 *>(surface->pixels) + y * surface->pitch + x;
+    for (int row = 0; row < copy_height; row++)
     {
-        memcpy(dpixel, im->scan_line(srcy) + srcrect.x, srcrect.w);
-        dpixel += surface->w;
-        srcy++;
+        memcpy(dpixel, im->scan_line(y1 + row) + x1, copy_width);
+        dpixel += surface->pitch;
     }
 
     // Unlock the surface if we locked it.

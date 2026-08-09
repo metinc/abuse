@@ -90,6 +90,14 @@ int frame_panic = 0, massive_frame_panic = 0;
 int demo_start = 0, idle_ticks = 0;
 int req_end = 0;
 
+// Level scripts were authored around the original 320x200 framebuffer. Keep
+// the simulation's activation envelope at that size even when a larger aspect
+// ratio exposes more of the map. The horizontal view historically ends one
+// pixel before the framebuffer edge; the status bar consumes 32 visible rows.
+constexpr int legacy_activation_view_width = 319;
+constexpr int legacy_activation_view_height = 200;
+constexpr int legacy_status_bar_height = 32;
+
 extern palette *old_pal;
 char **start_argv;
 int start_argc;
@@ -2027,24 +2035,30 @@ void Game::Step()
                 else
                     f->god = 0;
 
-                int w = (f->m_bb.x - f->m_aa.x + 1);
-                int h = (f->m_bb.y - f->m_aa.y + 1);
+                const int rendered_view_width = f->m_bb.x - f->m_aa.x + 1;
+                const int rendered_view_height = f->m_bb.y - f->m_aa.y + 1;
+                const int activation_view_width = std::min(rendered_view_width, legacy_activation_view_width);
+                const int activation_view_height =
+                    std::min(rendered_view_height,
+                             legacy_activation_view_height - (total_weapons ? legacy_status_bar_height : 0));
 
                 // Object activation affects simulation and must not depend on
-                // camera interpolation, which is updated at render frequency.
-                // Cover the full camera dead-zone range from authoritative
-                // player and view state so every peer activates the same set.
+                // camera interpolation or the display aspect ratio. Cover the
+                // full camera dead-zone range from authoritative player and
+                // view state so every peer activates the same set.
                 const int min_xoff =
-                    std::max(0, f->m_focus->x - f->no_xright - w / 2 + f->m_shift.x + f->pan_x);
+                    std::max(0, f->m_focus->x - f->no_xright - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int max_xoff =
-                    std::max(0, f->m_focus->x + f->no_xleft - w / 2 + f->m_shift.x + f->pan_x);
+                    std::max(0, f->m_focus->x + f->no_xleft - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int min_yoff =
-                    std::max(0, f->m_focus->y - f->no_ybottom - h / 2 - f->m_shift.y + f->pan_y);
+                    std::max(0, f->m_focus->y - f->no_ybottom - activation_view_height / 2 - f->m_shift.y + f->pan_y);
                 const int max_yoff =
-                    std::max(0, f->m_focus->y + f->no_ytop - h / 2 - f->m_shift.y + f->pan_y);
+                    std::max(0, f->m_focus->y + f->no_ytop - activation_view_height / 2 - f->m_shift.y + f->pan_y);
 
-                total_active += current_level->add_actives(min_xoff - w / 4, min_yoff - h / 4,
-                                                           max_xoff + w + w / 4, max_yoff + h + h / 4);
+                total_active += current_level->add_actives(
+                    min_xoff - activation_view_width / 4, min_yoff - activation_view_height / 4,
+                    max_xoff + activation_view_width + activation_view_width / 4,
+                    max_yoff + activation_view_height + activation_view_height / 4);
             }
         }
     }

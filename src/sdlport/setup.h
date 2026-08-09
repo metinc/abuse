@@ -23,6 +23,7 @@ class Settings
     bool borderless; //borderless window
     short xres; //game screen resolution
     short yres;
+    std::string aspect_ratio; //optional display aspect ratio; preserves the original gameplay DPI
     short scale; //windows scale
     bool linear_filter; //"antialias"
     int hires; //enable hires screens and icons
@@ -80,6 +81,7 @@ class Settings
 
     Settings();
 
+    bool ApplyAspectRatio();
     bool CreateConfigFile();
 
     bool ControllerButton(std::string c, std::string b);

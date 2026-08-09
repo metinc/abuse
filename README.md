@@ -63,17 +63,16 @@ Configuration is stored in `config.txt` in the user folder. It will be created i
 
 - `fullscreen` - Fullscreen mode (`0` - window, `1` - fullscreen window, `2` - fullscreen)
 - `borderless` - Enable borderless window mode
-- `vsync` - Enable vertical sync
-- `virtual_width` - Internal game resolution width
-- `virtual_height` - Internal game resolution height (calculated from aspect ratio if not specified)
-- `screen_width` - Game window width
-- `screen_height` - Game window height
+- `aspect_ratio` - Display aspect ratio in `width:height` form, such as `16:9`; an empty value matches the desktop, `4:3` selects the original aspect ratio, and `custom` uses the explicit framebuffer size below
+- `screen_width` - Internal game framebuffer width when `aspect_ratio=custom`
+- `screen_height` - Internal game framebuffer height when `aspect_ratio=custom`
+- `scale` - Integer window scale used in windowed mode
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)
 - `big_font` - Enable big font
 - `mouse_scale` - Mouse to game scaling (`0` - match desktop, `1` - match game screen)
 
-The game is designed to be played at an internal resolution of 320×200 (`virtual_width`×`virtual_height`). Using a higher resolution may reveal some hidden areas. However, when using the editor, a higher resolution is recommended for better visibility and usability.
+The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio=16:9` uses a 427×200 framebuffer and `aspect_ratio=1:1` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `screen_width` and `screen_height` remains available as the legacy zoom-out mode and is useful in the editor.
 
 #### Audio Settings
 

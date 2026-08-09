@@ -31,6 +31,7 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <limits>
 #include <SDL3/SDL.h>
 
 #include "file_utils.h"
@@ -118,6 +119,7 @@ Settings::Settings()
     this->borderless = false;
     this->xres = 320; // default window width
     this->yres = 200; // default window height
+    this->aspect_ratio = ""; // empty uses the desktop aspect ratio
     this->scale = 2; // default window scale
     this->linear_filter = false; // don't "anti-alias"
     this->hires = 0;
@@ -216,7 +218,12 @@ bool Settings::CreateConfigFile()
     out << "fullscreen=" << this->fullscreen << std::endl;
     out << "borderless=" << this->borderless << std::endl;
     out << std::endl;
-    out << "; Game screen size (original 320x200)" << std::endl;
+    out << "; Display aspect ratio (for example 16:9). Empty matches the desktop." << std::endl;
+    out << "; The original aspect ratio was 4:3. Use custom to select the explicit" << std::endl;
+    out << "; screen_width/screen_height values below." << std::endl;
+    out << "aspect_ratio=" << this->aspect_ratio << std::endl;
+    out << std::endl;
+    out << "; Explicit game framebuffer size (original 320x200)" << std::endl;
     out << "screen_width=" << this->xres << std::endl;
     out << "screen_height=" << this->yres << std::endl;
     out << std::endl;
@@ -386,6 +393,8 @@ bool Settings::ReadConfigFile()
                 this->fullscreen = std::stoi(value);
             else if (attr == "borderless")
                 this->borderless = (value == "1");
+            else if (attr == "aspect_ratio")
+                this->aspect_ratio = value;
             else if (attr == "screen_width")
                 this->xres = std::stoi(value);
             else if (attr == "screen_height")
@@ -636,6 +645,7 @@ void showHelp(const char *executableName)
     printf("** Abuse-SDL Options **\n");
     printf("  -datadir <arg>    Set the location of the game data to <arg>\n");
     printf("  -fullscreen       Enable borderless desktop fullscreen mode\n");
+    printf("  -aspect <w:h>     Set display aspect ratio without changing gameplay DPI\n");
     printf("  -antialias        Enable anti-aliasing\n");
     printf("  -h, --help        Display this text\n");
     printf("  -mono             Disable stereo sound\n");
@@ -665,14 +675,24 @@ void parseCommandLine(int argc, char **argv)
         }
         else if (!SDL_strcasecmp(argv[i], "-size"))
         {
-            if (i + 1 < argc && !sscanf(argv[++i], "%d", &xres))
+            int width = 320;
+            int height = 200;
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &width))
             {
-                xres = 320;
+                width = 320;
             }
-            if (i + 1 < argc && !sscanf(argv[++i], "%d", &yres))
+            if (i + 1 < argc && !sscanf(argv[++i], "%d", &height))
             {
-                yres = 200;
+                height = 200;
             }
+            settings.xres = width;
+            settings.yres = height;
+            settings.aspect_ratio = "custom";
+        }
+        else if (!SDL_strcasecmp(argv[i], "-aspect"))
+        {
+            if (i + 1 < argc)
+                settings.aspect_ratio = argv[++i];
         }
         else if (!SDL_strcasecmp(argv[i], "-nosound"))
         {
@@ -707,6 +727,80 @@ void parseCommandLine(int argc, char **argv)
             exit(EXIT_SUCCESS);
         }
     }
+}
+
+bool Settings::ApplyAspectRatio()
+{
+    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
+        return true;
+
+    if (aspect_ratio.empty())
+    {
+        const SDL_DisplayID display = SDL_GetPrimaryDisplay();
+        const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
+        if (mode && mode->w > 0 && mode->h > 0)
+            aspect_ratio = std::to_string(mode->w) + ":" + std::to_string(mode->h);
+        else
+        {
+            fprintf(stderr, "Video: Unable to determine desktop aspect ratio; using original 4:3\n");
+            aspect_ratio = "4:3";
+        }
+    }
+
+    const std::size_t separator = aspect_ratio.find(':');
+    if (separator == std::string::npos || separator == 0 || separator + 1 == aspect_ratio.size() ||
+        aspect_ratio.find(':', separator + 1) != std::string::npos)
+        return false;
+
+    int aspect_width;
+    int aspect_height;
+    try
+    {
+        std::size_t width_end;
+        std::size_t height_end;
+        aspect_width = std::stoi(aspect_ratio.substr(0, separator), &width_end);
+        aspect_height = std::stoi(aspect_ratio.substr(separator + 1), &height_end);
+        if (width_end != separator || height_end != aspect_ratio.size() - separator - 1)
+            return false;
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+
+    if (aspect_width <= 0 || aspect_height <= 0)
+        return false;
+
+    constexpr int original_width = 320;
+    constexpr int original_height = 200;
+    constexpr int corrected_original_height = 240;
+
+    // Compare against 4:3 without using floating point. Wider displays grow
+    // the framebuffer horizontally; narrower displays grow it vertically.
+    int64_t framebuffer_width;
+    int64_t framebuffer_height;
+    if (static_cast<int64_t>(aspect_width) * 3 >= static_cast<int64_t>(aspect_height) * 4)
+    {
+        const int64_t width = static_cast<int64_t>(corrected_original_height) * aspect_width;
+        framebuffer_width = (width + aspect_height / 2) / aspect_height;
+        framebuffer_height = original_height;
+    }
+    else
+    {
+        // Original VGA pixels are 5:6, so convert the required displayed
+        // height back to framebuffer pixels after holding the width at 320.
+        const int64_t height = static_cast<int64_t>(original_width) * 5 * aspect_height;
+        framebuffer_width = original_width;
+        framebuffer_height = (height + 3 * aspect_width) / (6 * aspect_width);
+    }
+
+    if (framebuffer_width < original_width || framebuffer_height < original_height ||
+        framebuffer_width > std::numeric_limits<short>::max() || framebuffer_height > std::numeric_limits<short>::max())
+        return false;
+
+    xres = static_cast<short>(framebuffer_width);
+    yres = static_cast<short>(framebuffer_height);
+    return true;
 }
 
 //
@@ -751,6 +845,18 @@ void setup(int argc, char **argv)
 
     // Process any command-line arguments that might override settings
     parseCommandLine(argc, argv);
+
+    if (!settings.ApplyAspectRatio())
+    {
+        show_startup_error("Invalid aspect_ratio '%s'; expected positive values in w:h form",
+                           settings.aspect_ratio.c_str());
+        exit(EXIT_FAILURE);
+    }
+    if (!SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom"))
+        printf("Video: Using custom %dx%d framebuffer\n", settings.xres, settings.yres);
+    else
+        printf("Video: Aspect ratio %s uses a %dx%d framebuffer\n", settings.aspect_ratio.c_str(), settings.xres,
+               settings.yres);
 
     // Initialize audio volumes from settings
     // These variables are defined externally in loader.cpp

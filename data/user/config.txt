@@ -6,7 +6,12 @@
 fullscreen=2
 borderless=0
 
-; Game screen size (original 320x200)
+; Display aspect ratio (for example 16:9). Empty matches the desktop.
+; The original aspect ratio was 4:3. Use custom to select the explicit
+; screen_width/screen_height values below.
+aspect_ratio=
+
+; Explicit game framebuffer size (original 320x200)
 screen_width=320
 screen_height=200
 
