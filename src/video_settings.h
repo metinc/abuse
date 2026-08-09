@@ -8,8 +8,8 @@
  *  Jonathan Clark, or by Sam Hocevar.
  */
 
-#ifndef __GAMMA_HPP_
-#define __GAMMA_HPP_
+#ifndef ABUSE_VIDEO_SETTINGS_H
+#define ABUSE_VIDEO_SETTINGS_H
 
 #include "palette.h"
 void gamma_correct(palette *&pal, int force_menu = 0);

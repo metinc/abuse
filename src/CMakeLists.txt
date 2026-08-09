@@ -68,7 +68,7 @@ add_executable(abuse
     light.cpp light.h
     devsel.cpp devsel.h
     crc.cpp crc.h
-    gamma.cpp gamma.h
+    video_settings.cpp video_settings.h
     id.h isllist.h sbar.h
     nfserver.h
     ui/volumewindow.cpp ui/volumewindow.h

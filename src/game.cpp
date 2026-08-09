@@ -59,7 +59,7 @@
 #include "clisp.h"
 #include "guistat.h"
 #include "menu.h"
-#include "gamma.h"
+#include "video_settings.h"
 #include "lisp_gc.h"
 #include "demo.h"
 #include "sbar.h"

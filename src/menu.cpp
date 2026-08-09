@@ -31,7 +31,7 @@
 #include "gui.h"
 #include "property.h"
 #include "clisp.h"
-#include "gamma.h"
+#include "video_settings.h"
 #include "demo.h"
 #include "loadgame.h"
 #include "scroller.h"

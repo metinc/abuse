@@ -161,7 +161,7 @@ static char const *lang_string(char const *symbol)
     return lstring_value(v->GetValue());
 }
 
-// Gamma correction function
+// Video settings and gamma correction
 void gamma_correct(palette *&pal, int force_menu)
 {
     long darkest_gray = 0, darkest_gray_old = 0;
