@@ -61,7 +61,11 @@ class scroller : public ifield
     }
     void draw_widget(image *screen, int erase);
     int mouse_to_drag(int mx, int my);
-    virtual bool scrollbar_visible()
+    virtual int max_scroll_position() const
+    {
+        return t > 0 ? t - 1 : 0;
+    }
+    virtual bool scrollbar_visible() const
     {
         return true;
     }
@@ -108,14 +112,19 @@ class spicker : public scroller
   protected:
     int r, c, m, last_sel, cur_sel;
     uint8_t *select;
-    bool scrollbar_visible() override
+    int max_scroll_position() const override
     {
-        return t > vis();
+        int maximum = t - vis();
+        return maximum > 0 ? maximum : 0;
+    }
+    bool scrollbar_visible() const override
+    {
+        return max_scroll_position() > 0;
     }
 
   public:
     spicker(int X, int Y, int ID, int Rows, int Cols, int Vert, int MultiSelect, ifield *Next);
-    int vis()
+    int vis() const
     {
         if (vert)
             return r;
@@ -166,9 +175,9 @@ struct pick_list_item
     int number;
 };
 
-class pick_list : public scroller
+class pick_list : public spicker
 {
-    int last_sel, cur_sel, th, wid;
+    int entries, wid;
     pick_list_item *lis;
     char key_hist[20], key_hist_total;
     image *tex;
@@ -176,16 +185,27 @@ class pick_list : public scroller
   public:
     pick_list(int X, int Y, int ID, int height, char **List, int num_entries, int start_yoffset, ifield *Next,
               image *texture = NULL);
-    virtual void handle_inside_event(Event &ev, image *screen, InputManager *inm);
-    virtual void scroll_event(int newx, image *screen);
-    virtual char *read()
+    int total() override
+    {
+        return entries;
+    }
+    int item_width() override
+    {
+        return wid * wm->font()->Size().x;
+    }
+    int item_height() override
+    {
+        return wm->font()->Size().y + 1;
+    }
+    void draw_background(image *screen) override;
+    void draw_item(image *screen, int x, int y, int num, int active) override;
+    void note_selection(image *screen, InputManager *inm, int x) override;
+    void handle_inside_event(Event &ev, image *screen, InputManager *inm) override;
+    char *read() override
     {
         return (char *)this;
     }
-    virtual void area_config();
-    virtual void handle_up(image *screen, InputManager *inm);
-    virtual void handle_down(image *screen, InputManager *inm);
-    virtual int activate_on_mouse_move()
+    int activate_on_mouse_move() override
     {
         return 0;
     }
@@ -193,7 +213,7 @@ class pick_list : public scroller
     {
         return lis[cur_sel].number;
     }
-    ~pick_list()
+    ~pick_list() override
     {
         free(lis);
     }
