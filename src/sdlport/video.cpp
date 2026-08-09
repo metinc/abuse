@@ -35,6 +35,7 @@
 #include "video.h"
 #include "image.h"
 #include "setup.h"
+#include "video_mode.h"
 #include "errorui.h"
 
 SDL_Window *window = NULL;
@@ -52,8 +53,6 @@ extern Settings settings;
 SDL_DisplayMode desktop;
 int window_w = 320, window_h = 240;
 bool fullscreen = false;
-
-void video_change_settings(int scale_add, bool toggle_fullscreen);
 
 namespace
 {
@@ -82,10 +81,10 @@ void remember_windowed_bounds()
                             SDL_GetWindowSize(window, &windowed_bounds.w, &windowed_bounds.h);
 }
 
-bool configure_fullscreen_mode()
+bool configure_fullscreen_mode(int fullscreen_mode)
 {
     // A null mode requests borderless desktop fullscreen.
-    if (settings.fullscreen != 2)
+    if (fullscreen_mode != 2)
     {
         if (SDL_SetWindowFullscreenMode(window, nullptr))
             return true;
@@ -251,41 +250,61 @@ void set_mode(int argc, char **argv)
     SDL_HideCursor();
 
     if (settings.fullscreen != 0)
-        video_change_settings(0, true);
+        video_set_fullscreen_mode(settings.fullscreen);
 
     update_dirty(main_screen);
+}
+
+bool video_set_fullscreen_mode(int mode)
+{
+    if (!window || mode < 0 || mode > 2)
+        return false;
+
+    const bool was_fullscreen = window_is_fullscreen();
+    if (mode == 0)
+    {
+        if (was_fullscreen)
+        {
+            if (!SDL_SetWindowFullscreen(window, false))
+            {
+                fprintf(stderr, "Video: Unable to leave fullscreen mode: %s\n", SDL_GetError());
+                return false;
+            }
+            SDL_SyncWindow(window);
+            if (!window_is_fullscreen() && windowed_bounds.valid)
+            {
+                SDL_SetWindowSize(window, windowed_bounds.w, windowed_bounds.h);
+                SDL_SetWindowPosition(window, windowed_bounds.x, windowed_bounds.y);
+                SDL_SyncWindow(window);
+            }
+        }
+    }
+    else
+    {
+        if (!was_fullscreen)
+            remember_windowed_bounds();
+        if (!configure_fullscreen_mode(mode))
+            return false;
+        if (!SDL_SetWindowFullscreen(window, true))
+        {
+            fprintf(stderr, "Video: Unable to enter fullscreen mode: %s\n", SDL_GetError());
+            return false;
+        }
+        SDL_SyncWindow(window);
+    }
+
+    fullscreen = window_is_fullscreen();
+    SDL_GetWindowSize(window, &window_w, &window_h);
+    return mode == 0 ? !fullscreen : fullscreen;
 }
 
 void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
     if (toggle_fullscreen)
     {
-        const bool enter_fullscreen = !window_is_fullscreen();
-        if (enter_fullscreen)
-        {
-            remember_windowed_bounds();
-            if (!configure_fullscreen_mode())
-                return;
-        }
-
-        if (!SDL_SetWindowFullscreen(window, enter_fullscreen))
-        {
-            fprintf(stderr, "Video: Unable to %s fullscreen mode: %s\n", enter_fullscreen ? "enter" : "leave",
-                    SDL_GetError());
-            return;
-        }
-
-        // Fullscreen requests can be asynchronous. Synchronize before using
-        // the resulting state or restoring the saved windowed bounds.
-        SDL_SyncWindow(window);
-        fullscreen = window_is_fullscreen();
-
-        if (!enter_fullscreen && !fullscreen && windowed_bounds.valid)
-        {
-            SDL_SetWindowSize(window, windowed_bounds.w, windowed_bounds.h);
-            SDL_SetWindowPosition(window, windowed_bounds.x, windowed_bounds.y);
-            SDL_SyncWindow(window);
-        }
+        const int target_mode = window_is_fullscreen() ? 0 : (settings.fullscreen == 2 ? 2 : 1);
+        if (video_set_fullscreen_mode(target_mode))
+            settings.fullscreen = target_mode;
     }
 
     if (scale_add != 0 && !window_is_fullscreen())

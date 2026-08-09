@@ -36,6 +36,7 @@
 #include "game.h"
 #include "joy.h"
 #include "setup.h"
+#include "video_mode.h"
 
 extern SDL_Window *window;
 extern SDL_Surface *surface;
@@ -49,7 +50,6 @@ extern std::string get_ctr_binding(std::string c);
 
 short mouse_buttons[5] = {0, 0, 0, 0, 0};
 // From setup.cpp:
-void video_change_settings(int scale_add, bool toggle_fullscreen);
 
 static ivec2 window_to_game(float window_x, float window_y)
 {

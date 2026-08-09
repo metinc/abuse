@@ -216,7 +216,11 @@
 	 (setq secured " gesichert!")   ; V-A added
 	 (setq loading "Lädt %s")  ; V-A added
 
-         (setq gamma_msg "Klicken Sie die dunkelste Farbe \nauf Ihrem Monitor an, und klicken Sie OK.")
+         (setq gamma_msg "Wählen Sie das dunkelste sichtbare Grau")
+         (setq video_mode_msg "Anzeigemodus")
+         (setq video_windowed "Fenster")
+         (setq video_borderless "Randloses Vollbild")
+         (setq video_exclusive "Exklusives Vollbild")
          (setq telep_msg "Pfeiltaste  (unten) drücken, um zu teleportieren.")
 
          (defun get_train_msg (message_num)
@@ -288,7 +292,7 @@
          (setq ic_return       "Zurück ins Spiel")
          (setq ic_quit         "Abuse abbrechen")
          (setq ic_volume       "Lautstärkeregler")
-         (setq ic_gamma        "Kontrastregler")
+         (setq ic_gamma        "Videoeinstellungen")
          (setq ic_easy         "Schwierigkeitsgrad: Niete")
          (setq ic_medium   "Schwierigkeitsgrad: Leicht")
          (setq ic_hard         "Schwierigkeitsgrad: Normal")
@@ -397,4 +401,3 @@
                             "vorgedrungen. Sie haben den Schalter umgelegt, somit die Wasserversorgung "
 			    "umgeleitet und der Verbreitung von Abuse Einhalt geboten! ")))
 )
-

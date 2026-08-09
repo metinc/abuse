@@ -219,7 +219,11 @@
 	 (setq secured " secured!")   ; V-A added
 	 (setq loading "loading %s")  ; V-A added
 
-         (setq gamma_msg "Select the darkest grey visible on your\nmonitor then click the check mark")
+         (setq gamma_msg "Select the darkest grey visible on your monitor")
+         (setq video_mode_msg "Display mode")
+         (setq video_windowed "Window")
+         (setq video_borderless "Borderless fullscreen")
+         (setq video_exclusive "Exclusive fullscreen")
 	 (setq telep_msg "Press down to teleport")
 
 	 (defun get_train_msg (message_num)
@@ -288,7 +292,7 @@
          (setq ic_return       "Return to Game")        ; ----
          (setq ic_quit         "Quit Abuse")            ;  |
 	 (setq ic_volume       "Volume Control")        ;  |
-	 (setq ic_gamma        "Gamma Correction")      ;  |
+	 (setq ic_gamma        "Video Settings")        ;  |
 	 (setq ic_easy         "Difficulty : Wimp")     ;  |
 	 (setq ic_medium       "Difficulty : Easy")     ;  |
 	 (setq ic_hard         "Difficulty : Normal")   ;  \/

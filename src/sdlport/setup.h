@@ -89,6 +89,7 @@ class Settings
     bool Load();
     bool Save() const;
     void BeginCommandLineOverrides();
+    void SetFullscreenMode(int mode);
 
   private:
     bool ReadTomlFile();

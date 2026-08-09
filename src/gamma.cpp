@@ -14,6 +14,8 @@
 #endif
 
 #include <math.h>
+#include <algorithm>
+#include <cstring>
 
 #include "common.h"
 
@@ -31,6 +33,7 @@ palette *old_pal = nullptr;
 
 //AR
 #include "sdlport/setup.h"
+#include "sdlport/video_mode.h"
 extern Settings settings;
 //
 
@@ -86,6 +89,66 @@ class gray_picker : public spicker
         cur_sel = current;
         reconfigure();
         cur_sel = current;
+    }
+};
+
+class video_mode_picker : public spicker
+{
+    const char *labels[3];
+    int width;
+
+  public:
+    video_mode_picker(int X, int Y, int ID, int current, const char *windowed, const char *borderless,
+                      const char *exclusive, ifield *Next)
+        : spicker(X, Y, ID, 3, 1, 1, 0, Next), labels{windowed, borderless, exclusive}
+    {
+        width = 0;
+        for (const char *label : labels)
+            width = std::max(width, static_cast<int>(strlen(label)) * wm->font()->Size().x + 8);
+        reconfigure();
+        cur_sel = std::max(0, std::min(2, current));
+    }
+
+    void draw_item(image *screen, int x, int y, int num, int active) override
+    {
+        screen->Bar(ivec2(x, y), ivec2(x + item_width() - 1, y + item_height() - 1),
+                    active ? wm->medium_color() : wm->dark_color());
+        wm->font()->PutString(screen, ivec2(x + 4, y + 2), labels[num], wm->bright_color());
+    }
+
+    int total() override
+    {
+        return 3;
+    }
+
+    int item_width() override
+    {
+        return width;
+    }
+
+    int item_height() override
+    {
+        return wm->font()->Size().y + 4;
+    }
+
+    void area(int &x1, int &y1, int &x2, int &y2) override
+    {
+        area_config();
+        x1 = m_pos.x - 1;
+        y1 = m_pos.y - 1;
+        x2 = m_pos.x + l;
+        y2 = m_pos.y + h;
+    }
+
+    void draw_first(image *screen) override
+    {
+        draw(0, screen);
+        scroll_event(sx, screen);
+    }
+
+    int activate_on_mouse_move() override
+    {
+        return 0;
     }
 };
 
@@ -151,27 +214,39 @@ void gamma_correct(palette *&pal, int force_menu)
         wm->set_colors(gray_pal->find_closest(br_r, br_g, br_b), gray_pal->find_closest(md_r, md_g, md_b),
                        gray_pal->find_closest(dr_r, dr_g, dr_b));
 
-        // Set window size
-        int w_w = 254;
-        int w_h = 100;
-        if (settings.big_font)
-        {
-            w_w = 330;
-            w_h = 110;
-        }
+        const char *windowed_label = lang_string("video_windowed");
+        const char *borderless_label = lang_string("video_borderless");
+        const char *exclusive_label = lang_string("video_exclusive");
+
+        int sh = wm->font()->Size().y;
+        int mode_width = std::max({static_cast<int>(strlen(windowed_label)), static_cast<int>(strlen(borderless_label)),
+                                   static_cast<int>(strlen(exclusive_label))}) *
+                             wm->font()->Size().x +
+                         12;
+
+        // Set window size and lay out the gamma and display-mode controls.
+        int w_w = std::max(settings.big_font ? 330 : 270, mode_width + 20);
+        int gamma_y = sh * 4;
+        int mode_label_y = gamma_y + 38;
+        int mode_y = mode_label_y + sh + 3;
+        int ok_y = mode_y + 3 * (sh + 4) + 10;
+        int w_h = ok_y + 28;
 
         // Position for the gray_picker
         int px_gp = w_w / 2 - 244 / 2;
         int px_ok = w_w / 2 - 32 / 2;
 
-        int sh = wm->font()->Size().y;
-
         // OK button
-        button *but = new button(px_ok, sh * 10, ID_GAMMA_OK, cache.img(ok_button),
-                                 new info_field(2, sh, ID_NULL, lang_string("gamma_msg"), 0));
+        button *but = new button(px_ok, ok_y, ID_GAMMA_OK, cache.img(ok_button),
+                                 new info_field(2, mode_label_y, ID_NULL, lang_string("video_mode_msg"),
+                                                new info_field(2, sh, ID_NULL, lang_string("gamma_msg"), 0)));
+
+        video_mode_picker *mode_picker =
+            new video_mode_picker((w_w - mode_width) / 2, mode_y, ID_VIDEO_MODE_PICKER, settings.fullscreen,
+                                  windowed_label, borderless_label, exclusive_label, but);
 
         // Gray picker itself
-        gray_picker *gp = new gray_picker(px_gp, sh * 4, ID_GREEN_PICKER, 0, darkest_gray / 4, but);
+        gray_picker *gp = new gray_picker(px_gp, gamma_y, ID_GREEN_PICKER, 0, darkest_gray / 4, mode_picker);
         gp->set_pos(darkest_gray / 4);
 
         // Create window
@@ -197,6 +272,7 @@ void gamma_correct(palette *&pal, int force_menu)
 
         // Retrieve new darkest_gray from picker
         darkest_gray = static_cast<spicker *>(gw->inm->get(ID_GREEN_PICKER))->first_selected() * 4;
+        int fullscreen_mode = static_cast<spicker *>(gw->inm->get(ID_VIDEO_MODE_PICKER))->first_selected();
 
         // Close the window
         wm->close_window(gw);
@@ -210,8 +286,12 @@ void gamma_correct(palette *&pal, int force_menu)
         if (!abort_menu)
         {
             settings.darkest_gray = darkest_gray;
+            if (video_set_fullscreen_mode(fullscreen_mode))
+                settings.SetFullscreenMode(fullscreen_mode);
+            else
+                std::cerr << "Failed to apply fullscreen mode\n";
             if (!settings.Save())
-                std::cerr << "Failed to save gamma setting\n";
+                std::cerr << "Failed to save video settings\n";
             LSpace *previous_space = LSpace::Current;
             LSpace::Current = &LSpace::Perm;
             LSymbol::FindOrCreate("darkest_gray")->SetNumber(darkest_gray);

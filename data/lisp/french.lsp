@@ -215,7 +215,11 @@ plan \n"
 	 (setq secured " Terminé !")   ; V-A added
 	 (setq loading "En train de charger %s")  ; V-A added
 
-         (setq gamma_msg "Sélectionnez la couleur la plus sombre visible\nsur l'écran, puis cliquez sur la case à cocher")
+         (setq gamma_msg "Sélectionnez le gris visible le plus sombre")
+         (setq video_mode_msg "Mode d'affichage")
+         (setq video_windowed "Fenêtre")
+         (setq video_borderless "Plein écran sans bordure")
+         (setq video_exclusive "Plein écran exclusif")
 
 
 (setq telep_msg "Appuyez sur la flèche bas pour vous téléporter")
@@ -285,7 +289,7 @@ plan \n"
          (setq ic_return       "Retourner au jeu")
          (setq ic_quit         "Sortir du jeu")
          (setq ic_volume       "Contrôle du volume")
-         (setq ic_gamma        "Luminosité")
+         (setq ic_gamma        "Paramètres vidéo")
          (setq ic_easy         "Difficulté : Mauviette")
          (setq ic_medium       "Difficulté : Pas de problème")
          (setq ic_hard         "Difficulté : C'est pas gagné")
@@ -400,6 +404,4 @@ plan \n"
 			    "VOUS L'AVEZ ECHAPPÉ BELLE !"))
 	 )
 )
-
-
 

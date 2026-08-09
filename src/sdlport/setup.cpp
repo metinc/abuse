@@ -623,6 +623,12 @@ void Settings::BeginCommandLineOverrides()
     file_editor = editor;
 }
 
+void Settings::SetFullscreenMode(int mode)
+{
+    fullscreen = mode;
+    file_fullscreen = mode;
+}
+
 bool Settings::Save() const
 {
     toml::table document;
