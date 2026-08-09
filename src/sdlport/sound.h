@@ -11,6 +11,8 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
+#include <string>
+
 #include <SDL3_mixer/SDL_mixer.h>
 
 #include "common.h"
@@ -22,6 +24,7 @@
 
 int sound_init(int argc, char **argv);
 void sound_uninit();
+bool sound_set_soundfont(const std::string &configured_soundfont);
 
 class sound_effect
 {
@@ -43,11 +46,17 @@ class song
     void stop(long fadeout_time = 0); // time in ms
     int playing();
     void set_volume(int volume);
+    bool reload();
     ~song();
 
   private:
+    bool load();
+    bool start_playback(Sint64 start_milliseconds = 0);
+
+    std::string m_filename;
     MIX_Audio *m_audio;
     MIX_Track *m_track;
+    int m_volume;
 };
 
 #endif

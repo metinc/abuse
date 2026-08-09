@@ -58,11 +58,44 @@ MIX_Audio *load_prefixed_audio(const char *filename)
         return nullptr;
 
     const std::filesystem::path filename_path(filename);
-    const std::filesystem::path audio_path = filename_path.is_absolute()
-                                                 ? filename_path
-                                                 : std::filesystem::path(get_filename_prefix()) / filename_path;
+    const std::filesystem::path audio_path =
+        filename_path.is_absolute() ? filename_path : std::filesystem::path(get_filename_prefix()) / filename_path;
     return MIX_LoadAudio(mixer, audio_path.string().c_str(), true);
 }
+
+bool resolve_soundfont(const std::string &configured_soundfont, std::string &resolved_path)
+{
+    resolved_path.clear();
+    if (configured_soundfont.empty())
+        return true;
+
+    std::filesystem::path path = configured_soundfont;
+    if (path.is_relative())
+        path = std::filesystem::path(get_filename_prefix()) / "soundfonts" / path;
+
+    if (!std::filesystem::is_regular_file(path))
+    {
+        printf("Sound: Soundfont not found: %s\n", path.string().c_str());
+        return false;
+    }
+
+    resolved_path = path.string();
+    return true;
+}
+}
+
+bool sound_set_soundfont(const std::string &configured_soundfont)
+{
+    std::string resolved_path;
+    if (!resolve_soundfont(configured_soundfont, resolved_path))
+        return false;
+
+    soundfont_path = std::move(resolved_path);
+    if (soundfont_path.empty())
+        printf("Sound: Using the default SoundFont.\n");
+    else
+        printf("Sound: Using SoundFont: %s\n", soundfont_path.c_str());
+    return true;
 }
 
 /**
@@ -130,28 +163,12 @@ int sound_init(int argc, char **argv)
 
     MIX_GetMixerFormat(mixer, &audio_spec);
 
-    // Load custom soundfont if specified in settings
-    // Soundfonts provide instrument samples for MIDI playback
-    if (!settings.soundfont.empty())
-    {
-        std::filesystem::path configured_soundfont = settings.soundfont;
-        if (configured_soundfont.is_relative())
-            configured_soundfont = datadir / "soundfonts" / configured_soundfont;
-
-        if (!std::filesystem::exists(configured_soundfont))
-        {
-            printf("Sound: Soundfont not found: %s\n", configured_soundfont.string().c_str());
-        }
-        else
-        {
-            soundfont_path = configured_soundfont.string();
-            printf("Sound: Using soundfont: %s\n", soundfont_path.c_str());
-        }
-    }
+    // FluidSynth needs an explicit SoundFont on systems without a configured
+    // system-wide default. Use the bundled general-purpose font when present.
+    if (settings.soundfont.empty() && std::filesystem::is_regular_file(datadir / "soundfonts" / "soundfont.sf2"))
+        sound_set_soundfont("soundfont.sf2");
     else
-    {
-        printf("Sound: No custom soundfont specified, using default.\n");
-    }
+        sound_set_soundfont(settings.soundfont);
     sfx_tracks.reserve(SFX_TRACK_COUNT);
     for (int i = 0; i < SFX_TRACK_COUNT; ++i)
     {
@@ -280,37 +297,42 @@ void sound_effect::play(int volume, float frequency_ratio, int panpot)
   * @param filename Path to the music file
   */
 song::song(char const *filename)
-    : m_audio(nullptr),
-      m_track(nullptr)
+    : m_filename(filename ? filename : ""), m_audio(nullptr), m_track(nullptr), m_volume(127)
 {
-    if (!enabled || !filename)
-        return;
+    load();
+}
+
+bool song::load()
+{
+    if (!enabled || m_filename.empty())
+        return false;
 
     try
     {
         // Load HMI format music file into memory
         uint32_t data_size;
-        unsigned char *data = load_hmi(filename, data_size);
+        unsigned char *data = load_hmi(m_filename.c_str(), data_size);
 
         if (!data)
         {
-            printf("Sound: ERROR - could not load %s\n", filename);
-            return;
+            printf("Sound: ERROR - could not load %s\n", m_filename.c_str());
+            return false;
         }
 
         SDL_IOStream *io = SDL_IOFromConstMem(data, data_size);
         if (!io)
         {
-            printf("Sound: ERROR - could not create IO stream for %s: %s\n", filename, SDL_GetError());
+            printf("Sound: ERROR - could not create IO stream for %s: %s\n", m_filename.c_str(), SDL_GetError());
             free(data);
-            return;
+            return false;
         }
 
         SDL_PropertiesID props = SDL_CreateProperties();
         bool properties_ok = props != 0;
         properties_ok = properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_IOSTREAM_POINTER, io);
         properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_CLOSEIO_BOOLEAN, true);
-        properties_ok = properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_PREFERRED_MIXER_POINTER, mixer);
+        properties_ok =
+            properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_PREFERRED_MIXER_POINTER, mixer);
         if (properties_ok && !soundfont_path.empty())
             properties_ok = SDL_SetStringProperty(props, FLUIDSYNTH_SOUNDFONT_PROPERTY, soundfont_path.c_str());
 
@@ -323,23 +345,25 @@ song::song(char const *filename)
 
         if (!m_audio)
         {
-            printf("Sound: ERROR - %s while loading %s\n", SDL_GetError(), filename);
-            return;
+            printf("Sound: ERROR - %s while loading %s\n", SDL_GetError(), m_filename.c_str());
+            return false;
         }
 
         m_track = MIX_CreateTrack(mixer);
         if (!m_track)
-            printf("Sound: ERROR - could not create music track for %s: %s\n", filename, SDL_GetError());
+            printf("Sound: ERROR - could not create music track for %s: %s\n", m_filename.c_str(), SDL_GetError());
         else if (!MIX_SetTrackAudio(m_track, m_audio))
         {
-            printf("Sound: ERROR - could not configure music track for %s: %s\n", filename, SDL_GetError());
+            printf("Sound: ERROR - could not configure music track for %s: %s\n", m_filename.c_str(), SDL_GetError());
             MIX_DestroyTrack(m_track);
             m_track = nullptr;
         }
+        return m_track != nullptr;
     }
     catch (const std::exception &e)
     {
-        printf("Sound: ERROR - Exception while loading %s: %s\n", filename, e.what());
+        printf("Sound: ERROR - Exception while loading %s: %s\n", m_filename.c_str(), e.what());
+        return false;
     }
 }
 
@@ -372,12 +396,23 @@ void song::play(unsigned char volume)
         return;
 
     set_volume(volume);
+    start_playback();
+}
+
+bool song::start_playback(Sint64 start_milliseconds)
+{
     SDL_PropertiesID options = SDL_CreateProperties();
     if (options)
+    {
         SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, -1);
-    if (!MIX_PlayTrack(m_track, options))
+        if (start_milliseconds > 0)
+            SDL_SetNumberProperty(options, MIX_PROP_PLAY_START_MILLISECOND_NUMBER, start_milliseconds);
+    }
+    const bool started = MIX_PlayTrack(m_track, options);
+    if (!started)
         printf("Sound: ERROR - could not play music: %s\n", SDL_GetError());
     SDL_DestroyProperties(options);
+    return started;
 }
 
 /**
@@ -411,6 +446,46 @@ int song::playing()
   */
 void song::set_volume(int volume)
 {
+    m_volume = std::clamp(volume, 0, 127);
     if (enabled && m_track)
-        MIX_SetTrackGain(m_track, static_cast<float>(std::clamp(volume, 0, 127)) / 127.0f);
+        MIX_SetTrackGain(m_track, static_cast<float>(m_volume) / 127.0f);
+}
+
+bool song::reload()
+{
+    if (!enabled)
+        return false;
+
+    MIX_Audio *old_audio = m_audio;
+    MIX_Track *old_track = m_track;
+    m_track = nullptr;
+    m_audio = nullptr;
+
+    if (!load())
+    {
+        MIX_DestroyTrack(m_track);
+        MIX_DestroyAudio(m_audio);
+        m_audio = old_audio;
+        m_track = old_track;
+        return false;
+    }
+
+    const bool resume = old_track && MIX_TrackPlaying(old_track);
+    Sint64 position_milliseconds = 0;
+    if (resume)
+    {
+        const Sint64 position_frames = MIX_GetTrackPlaybackPosition(old_track);
+        if (position_frames >= 0)
+            position_milliseconds = MIX_TrackFramesToMS(old_track, position_frames);
+        MIX_StopTrack(old_track, 0);
+    }
+    MIX_DestroyTrack(old_track);
+    MIX_DestroyAudio(old_audio);
+
+    if (resume)
+    {
+        set_volume(m_volume);
+        return start_playback(position_milliseconds);
+    }
+    return true;
 }

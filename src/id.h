@@ -131,6 +131,7 @@ enum dev_ids
     ID_SFX_DOWN,
     ID_MUSIC_UP,
     ID_MUSIC_DOWN,
+    ID_SOUNDFONT_PICKER,
     ID_SFX_OFF,
     ID_MUSIC_OFF,
     ID_SFX_CHANNELS,

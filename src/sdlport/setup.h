@@ -90,6 +90,7 @@ class Settings
     bool Save() const;
     void BeginCommandLineOverrides();
     void SetFullscreenMode(int mode);
+    void SetSoundFont(const std::string &path);
 
   private:
     bool ReadTomlFile();
@@ -100,7 +101,6 @@ class Settings
     short file_xres = 320, file_yres = 200;
     std::string file_aspect_ratio;
     bool file_no_sound = false, file_linear_filter = false, file_mono = false;
-    std::string file_soundfont;
     bool file_local_save = false, file_editor = false;
 };
 

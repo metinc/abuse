@@ -41,6 +41,7 @@
 
 //AR
 #include "sdlport/setup.h"
+#include "sdlport/sound.h"
 #include <SDL3/SDL_timer.h>
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
@@ -49,6 +50,31 @@ extern int get_key_binding(char const *dir, int i);
 extern net_protocol *prot;
 
 static VolumeWindow *volume_window;
+
+static bool apply_soundfont(const std::string &selected_soundfont)
+{
+    if (selected_soundfont == settings.soundfont)
+        return true;
+
+    const std::string previous_soundfont = settings.soundfont;
+    bool applied = sound_set_soundfont(selected_soundfont);
+    if (applied && current_song && (sound_avail & MUSIC_INITIALIZED))
+        applied = current_song->reload();
+
+    if (!applied)
+    {
+        fprintf(stderr, "Unable to apply SoundFont '%s'\n", selected_soundfont.c_str());
+        if (sound_set_soundfont(previous_soundfont) && current_song && (sound_avail & MUSIC_INITIALIZED) &&
+            !current_song->reload())
+            fprintf(stderr, "Unable to restore the previous SoundFont\n");
+        return false;
+    }
+
+    settings.SetSoundFont(selected_soundfont);
+    if (!settings.Save())
+        fprintf(stderr, "Unable to save SoundFont setting\n");
+    return true;
+}
 
 static void create_volume_window()
 {
@@ -72,12 +98,6 @@ static void create_volume_window()
         wm->flush_screen();
 
         if (ev.type == EV_CLOSE_WINDOW || (ev.type == EV_KEY && ev.key == JK_ESC))
-        {
-            wm->close_window(volume_window);
-            volume_window = NULL;
-        }
-
-        if (!volume_window)
             break;
 
         if (ev.type == EV_MESSAGE)
@@ -121,15 +141,23 @@ static void create_volume_window()
                 if (current_song)
                     current_song->set_volume(music_volume);
                 break;
+            case ID_SOUNDFONT_PICKER:
+                if (!apply_soundfont(volume_window->selected_soundfont()))
+                    volume_window->select_soundfont(settings.soundfont);
+                break;
             }
         }
     }
 
+    const std::string selected_soundfont = volume_window->selected_soundfont();
     settings.volume_sound = sfx_volume;
     settings.volume_music = music_volume;
+    if (!apply_soundfont(selected_soundfont))
+        volume_window->select_soundfont(settings.soundfont);
     if (!settings.Save())
-        fprintf(stderr, "Unable to save volume settings\n");
+        fprintf(stderr, "Unable to save audio settings\n");
     wm->close_window(volume_window);
+    volume_window = nullptr;
 }
 
 void save_difficulty()

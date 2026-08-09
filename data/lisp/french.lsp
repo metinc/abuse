@@ -288,7 +288,7 @@ plan \n"
 
          (setq ic_return       "Retourner au jeu")
          (setq ic_quit         "Sortir du jeu")
-         (setq ic_volume       "Contrôle du volume")
+         (setq ic_volume       "Paramètres audio")
          (setq ic_gamma        "Paramètres vidéo")
          (setq ic_easy         "Difficulté : Mauviette")
          (setq ic_medium       "Difficulté : Pas de problème")
@@ -301,6 +301,9 @@ plan \n"
          (setq no_file         "Fichier introuvable '%s'")
          (setq SFXv            "Son")
          (setq MUSICv          "Volume")
+         (setq soundfont       "Banque de sons")
+         (setq soundfont_custom "Personnalisée")
+         (setq soundfont_none  "Aucune banque de sons trouvée")
 
          (setq to_be_continued "A suivre.....")
          (setq no_edit         "Cette version du jeu est dépourvue de l'éditeur")
@@ -404,4 +407,3 @@ plan \n"
 			    "VOUS L'AVEZ ECHAPPÉ BELLE !"))
 	 )
 )
-

@@ -81,7 +81,10 @@ The game is designed for a 320×200 framebuffer displayed with the original VGA 
 - `mono` - Use mono audio only
 - `music_enabled` - Enable music
 - `sound_enabled` - Enable sound effects
-- `soundfont` - Path to custom soundfont file. Custom or bundled `AWE64 Gold Presets.sf2` or `Roland SC-55 Presets.sf2`
+- `soundfont` - SoundFont filename from `data/soundfonts`, or an absolute path to a custom `.sf2`/`.sf3` file
+
+The in-game Audio Settings window lists available SoundFonts from `data/soundfonts` and applies a selection without
+restarting the game. Changes apply as soon as a SoundFont is selected while preserving the current music position.
 
 #### Game Settings
 

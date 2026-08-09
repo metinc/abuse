@@ -618,7 +618,6 @@ void Settings::BeginCommandLineOverrides()
     file_no_sound = no_sound;
     file_linear_filter = linear_filter;
     file_mono = mono;
-    file_soundfont = soundfont;
     file_local_save = local_save;
     file_editor = editor;
 }
@@ -627,6 +626,11 @@ void Settings::SetFullscreenMode(int mode)
 {
     fullscreen = mode;
     file_fullscreen = mode;
+}
+
+void Settings::SetSoundFont(const std::string &path)
+{
+    soundfont = path;
 }
 
 bool Settings::Save() const
@@ -657,7 +661,7 @@ bool Settings::Save() const
     audio.insert("sound_volume", volume_sound);
     audio.insert("music_volume", volume_music);
     audio.insert("mono", command_line_overrides ? file_mono : mono);
-    audio.insert("soundfont", command_line_overrides ? file_soundfont : soundfont);
+    audio.insert("soundfont", soundfont);
     document.insert("audio", std::move(audio));
 
     toml::table gameplay;
@@ -769,7 +773,6 @@ void showHelp(const char *executableName)
     printf("  -mono             Disable stereo sound\n");
     printf("  -nosound          Disable sound\n");
     printf("  -scale <arg>      Scale to <arg>\n");
-    printf("  -soundfont <arg>  Use soundfont file <arg> for MIDI playback\n");
     // printf( "  -x <arg>          Set the width to <arg>\n" );
     // printf( "  -y <arg>          Set the height to <arg>\n" );
 }
@@ -831,13 +834,6 @@ void parseCommandLine(int argc, char **argv)
             if (i + 1 < argc && sscanf(argv[++i], "%s", datadir))
             {
                 set_filename_prefix(datadir);
-            }
-        }
-        else if (!SDL_strcasecmp(argv[i], "-soundfont"))
-        {
-            if (i + 1 < argc)
-            {
-                settings.soundfont = argv[++i];
             }
         }
         else if (!SDL_strcasecmp(argv[i], "-h") || !SDL_strcasecmp(argv[i], "--help"))

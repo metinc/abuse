@@ -291,7 +291,7 @@
 
          (setq ic_return       "Zurück ins Spiel")
          (setq ic_quit         "Abuse abbrechen")
-         (setq ic_volume       "Lautstärkeregler")
+         (setq ic_volume       "Audioeinstellungen")
          (setq ic_gamma        "Videoeinstellungen")
          (setq ic_easy         "Schwierigkeitsgrad: Niete")
          (setq ic_medium   "Schwierigkeitsgrad: Leicht")
@@ -304,6 +304,9 @@
          (setq no_file         "Datei '%s' nicht auffindbar")
          (setq SFXv            "SFX")
          (setq MUSICv          "Musik")
+         (setq soundfont       "SoundFont")
+         (setq soundfont_custom "Benutzerdefiniert")
+         (setq soundfont_none  "Keine SoundFonts gefunden")
 
          (setq to_be_continued "Fortsetzung folgt.....")
          (setq no_edit         "Diese Abuse-Version hat keine Edit-Funktionen")
