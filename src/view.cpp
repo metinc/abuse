@@ -145,7 +145,9 @@ int32_t view::yoff()
     if (!m_focus)
         return pan_y_interpolated;
 
-    return std::max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y_interpolated);
+    const int rendered_height = m_bb.y - m_aa.y + 1;
+    const int camera_height = sbar.camera_view_height(rendered_height, m_aa.y);
+    return std::max(0, m_lastpos.y - camera_height / 2 - m_shift.y + pan_y_interpolated);
 }
 
 // updates the camera position to follow the player
@@ -768,7 +770,7 @@ void recalc_local_view_space()
                     f->suggest.cx2 = Xres - 2;
 
                 f->suggest.cy1 = y;
-                f->suggest.cy2 = h - (total_weapons ? 33 : 0);
+                f->suggest.cy2 = sbar.overlays_view() ? h - 1 : h - (total_weapons ? 33 : 0);
 
                 f->suggest.shift = f->m_shift;
                 f->suggest.pan_x = f->pan_x;

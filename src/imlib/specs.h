@@ -159,6 +159,7 @@ class jFILE : public bFILE // this file type will use virtual opens inside of a 
     {
         return file_length;
     }
+    int set_file_size(long size);
     virtual ~jFILE();
 };
 

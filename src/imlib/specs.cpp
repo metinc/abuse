@@ -428,6 +428,24 @@ jFILE::~jFILE()
     }
 }
 
+int jFILE::set_file_size(long size)
+{
+    if (wbuf_end && flush_writes() <= 0)
+        return 0;
+
+#ifdef WIN32
+    int result = _chsize_s(fd, start_offset + size);
+#else
+    int result = ftruncate(fd, start_offset + size);
+#endif
+    if (result == 0)
+    {
+        file_length = size;
+        return 1;
+    }
+    return 0;
+}
+
 int jFILE::unbuffered_tell()
 {
     //    int ret = ::lseek(fd,0,SEEK_CUR) - start_offset;

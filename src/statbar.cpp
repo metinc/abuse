@@ -133,7 +133,7 @@ void status_bar::redraw(image *screen)
         int sel_h = small_render ? cache.img(sbar_select)->Size().y * 2 : cache.img(sbar_select)->Size().y;
 
         int sel_off = small_render ? 8 : 4;
-        scale_put(sb, screen, sx, sy, sb_w, sb_h);
+        scale_put_trans(sb, screen, sx, sy, sb_w, sb_h);
 
         if (v->m_focus)
             draw_num(screen, sx + (small_render ? 17 * 2 : 17), sy + (small_render ? 11 * 2 : 11), v->m_focus->hp(),
@@ -205,6 +205,21 @@ void status_bar::area(int &x1, int &y1, int &x2, int &y2)
     y2 = yres;
 }
 
+bool status_bar::overlays_view()
+{
+    return sbar > 0 && total_weapons;
+}
+
+int status_bar::camera_view_height(int rendered_height, int view_top)
+{
+    if (!overlays_view())
+        return rendered_height;
+
+    int x1, y1, x2, y2;
+    area(x1, y1, x2, y2);
+    return std::min(rendered_height, std::max(1, y1 - view_top));
+}
+
 void status_bar::draw_health(image *screen, int amount)
 {
     if (total_weapons)
@@ -272,7 +287,8 @@ void status_bar::draw_update()
             changed_cursor = 0;
         }
 
-        if (need_rf)
+        // The map is rendered behind the transparent status bar
+        if (need_rf || overlays_view())
             redraw(main_screen);
     }
 }
@@ -284,22 +300,12 @@ void status_bar::step()
     if (!DEFINEDP(symbol_value(l_mouse_can_switch)) || !symbol_value(l_mouse_can_switch))
         return;
 
-    int sb_w, sb_h;
-    if (sbar > 0 && total_weapons)
-    {
-        image *sb = cache.img(sbar);
-
-        // status bar width & height
-        sb_w = sb->Size().x;
-        sb_h = sb->Size().y;
-    }
-
     // see if the mouse is in the sbar region (demo_x already corrected for small_render)
     int sx1, sy1, sx2, sy2;
     area(sx1, sy1, sx2, sy2);
 
     int view_y2 = small_render ? (v->m_bb.y - v->m_aa.y + 1) * 2 + v->m_aa.y : v->m_bb.y;
-    if (sy1 < view_y2) // tell view to shrink if it is overlapping the status bar
+    if (!overlays_view() && sy1 < view_y2) // shrink only when the HUD spans the complete view width
     {
         v->suggest.send_view = 1;
         v->suggest.cx1 = v->m_aa.x;
