@@ -165,7 +165,7 @@ void AR_HiresTitleScreen()
 }*/
 //
 
-void Game::play_sound(int id, int vol, int32_t x, int32_t y)
+void Game::play_sound(int id, int vol, int32_t x, int32_t y, float frequency_ratio)
 {
     if (!(sound_avail & SFX_INITIALIZED))
         return;
@@ -210,7 +210,7 @@ void Game::play_sound(int id, int vol, int32_t x, int32_t y)
 
     int v = (400 - mindist) * sfx_volume / 400 - (127 - vol);
     if (v > 0)
-        cache.sfx(id)->play(v, 128, p);
+        cache.sfx(id)->play(v, frequency_ratio, p);
 }
 
 int get_option(char const *name)

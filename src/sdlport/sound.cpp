@@ -239,10 +239,10 @@ sound_effect::~sound_effect()
   * @brief Plays a sound effect with specified parameters
   *
   * @param volume Volume level (0-127)
-  * @param pitch Playback pitch/rate, where 128 is normal speed
+  * @param frequency_ratio Playback pitch/rate, where 1.0 is normal speed
   * @param panpot Stereo panning (0=right, 128=center, 255=left)
   */
-void sound_effect::play(int volume, int pitch, int panpot)
+void sound_effect::play(int volume, float frequency_ratio, int panpot)
 {
     if (!enabled || settings.no_sound || !m_audio)
         return;
@@ -250,7 +250,7 @@ void sound_effect::play(int volume, int pitch, int panpot)
     // Clamp values to valid ranges
     volume = std::clamp(volume, 0, 127);
     panpot = std::clamp(panpot, 0, 255);
-    const float frequency_ratio = std::clamp(static_cast<float>(pitch) / 128.0f, 0.01f, 100.0f);
+    frequency_ratio = std::clamp(frequency_ratio, 0.01f, 100.0f);
 
     for (MIX_Track *track : sfx_tracks)
     {

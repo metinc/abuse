@@ -36,6 +36,16 @@ enum
     ANT_hide_flag
 };
 
+static float random_voice_frequency_ratio(float min_pitch, float max_pitch)
+{
+    return min_pitch + SDL_randf() * (max_pitch - min_pitch);
+}
+
+static void play_voice(game_object *o, int sound, float min_pitch, float max_pitch)
+{
+    the_game->play_sound(sound, 127, o->x, o->y, random_voice_frequency_ratio(min_pitch, max_pitch));
+}
+
 int can_see(game_object *o, int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 {
     int32_t nx2 = x2, ny2 = y2;
@@ -53,7 +63,7 @@ static void scream_check(game_object *o, game_object *b)
     if (can_see(o, o->x, o->y, b->x, b->y))
     {
         if (o->lvars[ANT_no_see_time] == 0 || o->lvars[ANT_no_see_time] > 20)
-            the_game->play_sound(S_ASCREAM_SND, 127, o->x, o->y);
+            play_voice(o, S_ASCREAM_SND, 0.7f, 1.0f);
         o->lvars[ANT_no_see_time] = 1;
     }
     else
@@ -172,7 +182,7 @@ void *ant_ai()
     break;
     case ANT_HIDING: {
         if ((jrand() % 128) == 0)
-            the_game->play_sound(S_SCARE_SND, 127, o->x, o->y);
+            play_voice(o, S_SCARE_SND, 0.2f, 1.0f);
         if (o->otype != S_HIDDEN_ANT)
         {
             o->change_type(S_HIDDEN_ANT); // switch types so noone hurts us.
@@ -207,7 +217,7 @@ void *ant_ai()
     case ANT_HANGING: {
         int fall = 0;
         if ((jrand() % 128) == 0)
-            the_game->play_sound(S_SCARE_SND, 127, o->x, o->y);
+            play_voice(o, S_SCARE_SND, 0.2f, 1.0f);
         if (o->lvars[ANT_hide_flag])
             o->set_aistate(ANT_HIDING);
         else

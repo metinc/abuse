@@ -29,7 +29,7 @@ class sound_effect
     sound_effect(char const *filename);
     ~sound_effect();
 
-    void play(int volume = 127, int pitch = 128, int panpot = 128);
+    void play(int volume = 127, float frequency_ratio = 1.0f, int panpot = 128);
 
   private:
     MIX_Audio *m_audio;
