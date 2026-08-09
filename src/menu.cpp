@@ -125,34 +125,31 @@ static void create_volume_window()
         }
     }
 
+    settings.volume_sound = sfx_volume;
+    settings.volume_music = music_volume;
+    if (!settings.Save())
+        fprintf(stderr, "Unable to save volume settings\n");
     wm->close_window(volume_window);
 }
 
 void save_difficulty()
 {
-    FILE *fp = prefix_fopen("hardness.lsp", "wb");
-
-    if (!fp)
-        printf("Unable to write to file hardness.lsp\n");
-    else
+    if (DEFINEDP(symbol_value(l_difficulty)))
     {
-        fprintf(fp, "(setf difficulty '");
-        if (DEFINEDP(symbol_value(l_difficulty)))
-        {
-            if (symbol_value(l_difficulty) == l_extreme)
-                fprintf(fp, "extreme)\n");
-            else if (symbol_value(l_difficulty) == l_hard)
-                fprintf(fp, "hard)\n");
-            else if (symbol_value(l_difficulty) == l_easy)
-                fprintf(fp, "easy)\n");
-            else
-                fprintf(fp, "medium)\n");
-        }
+        if (symbol_value(l_difficulty) == l_extreme)
+            settings.difficulty = "extreme";
+        else if (symbol_value(l_difficulty) == l_hard)
+            settings.difficulty = "hard";
+        else if (symbol_value(l_difficulty) == l_easy)
+            settings.difficulty = "easy";
         else
-            fprintf(fp, "medium)\n");
-
-        fclose(fp);
+            settings.difficulty = "medium";
     }
+    else
+        settings.difficulty = "medium";
+
+    if (!settings.Save())
+        fprintf(stderr, "Unable to save difficulty setting\n");
 }
 
 void fade_out(int steps);

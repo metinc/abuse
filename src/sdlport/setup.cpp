@@ -28,10 +28,13 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <filesystem>
 #include <limits>
+#include <system_error>
+#include <toml++/toml.hpp>
 #include <SDL3/SDL.h>
 
 #include "file_utils.h"
@@ -50,7 +53,7 @@ extern int xres, yres; //video.cpp
 extern int sfx_volume, music_volume; //loader.cpp
 unsigned int scale; //AR was static, removed for external
 
-const char *config_filename = "config.txt";
+const char *settings_filename = "settings.toml";
 
 namespace
 {
@@ -95,23 +98,6 @@ std::string find_data_directory()
 }
 }
 
-bool AR_GetAttr(std::string line, std::string &attr, std::string &value)
-{
-    attr = value = "";
-
-    std::size_t found = line.find("=");
-
-    // no "=" or no attribute name
-    if (found == std::string::npos || found == 0)
-        return false;
-
-    attr = line.substr(0, found);
-    value = line.substr(found + 1);
-
-    // Empty values are valid for optional string settings such as soundfont.
-    return !attr.empty();
-}
-
 Settings::Settings()
 {
     //screen
@@ -146,6 +132,8 @@ Settings::Settings()
 
     this->cheat_god = false;
     this->skip_intro = false;
+    this->darkest_gray = 16;
+    this->difficulty = "hard";
 
     //player controls
     this->up = key_value("w");
@@ -182,448 +170,572 @@ Settings::Settings()
     this->ctr_lst = "b1";
     this->ctr_rst = "down";
     //
-    this->ctr_lsr = "b2";
-    this->ctr_rsr = "b3";
+    this->ctr_lsr = "b1";
+    this->ctr_rsr = "b2";
     //
     this->ctr_ltg = "b1";
     this->ctr_rtg = "b2";
     //
-    this->ctr_f5 = 0;
-    this->ctr_f9 = 0;
+    this->ctr_f5 = -1;
+    this->ctr_f9 = -1;
 }
 
-//////////
-////////// CREATE DEFAULT "config.txt" FILE
-//////////
-
-bool Settings::CreateConfigFile()
+namespace
 {
-    const std::filesystem::path prefix = get_save_filename_prefix();
-    const std::filesystem::path file_path = prefix / config_filename;
-    std::ofstream out(file_path);
-    if (!out.is_open())
-    {
-        std::string tmp = "ERROR - CreateConfigFile() - Failed to create \"" + file_path.string() + "\"\n";
-        printf(tmp.c_str());
+std::filesystem::path settings_path(const char *filename)
+{
+    const char *prefix = get_save_filename_prefix();
+    return std::filesystem::path(prefix ? prefix : "") / filename;
+}
 
+void invalid_setting(const char *section, const char *key, const char *expected)
+{
+    fprintf(stderr, "Config: Ignoring %s.%s; expected %s\n", section, key, expected);
+}
+
+template <typename T> void read_integer(const toml::table *table, const char *section, const char *key, T &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    if (auto value = (*table)[key].value<int64_t>())
+    {
+        if (*value < static_cast<int64_t>(std::numeric_limits<T>::min()) ||
+            *value > static_cast<int64_t>(std::numeric_limits<T>::max()))
+            invalid_setting(section, key, "an in-range integer");
+        else
+            target = static_cast<T>(*value);
+    }
+    else
+        invalid_setting(section, key, "an integer");
+}
+
+void read_boolean(const toml::table *table, const char *section, const char *key, bool &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    if (auto value = (*table)[key].value<bool>())
+        target = *value;
+    else
+        invalid_setting(section, key, "true or false");
+}
+
+void read_string(const toml::table *table, const char *section, const char *key, std::string &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    if (auto value = (*table)[key].value<std::string>())
+        target = *value;
+    else
+        invalid_setting(section, key, "a string");
+}
+
+bool parse_key(const std::string &name, int &value)
+{
+    if (name.size() == 1)
+    {
+        value = static_cast<unsigned char>(name[0]);
+        return true;
+    }
+
+    static const char *valid_names[] = {
+        "BACKSPACE", "TAB",   "ENTER",   "ESC",     "SPACE", "UP",       "DOWN", "LEFT", "RIGHT",  "CTRL_L", "CTRL_R",
+        "ALT_L",     "ALT_R", "SHIFT_L", "SHIFT_R", "CAPS",  "NUM_LOCK", "HOME", "END",  "DEL",    "F1",     "F2",
+        "F3",        "F4",    "F5",      "F6",      "F7",    "F8",       "F9",   "F10",  "INSERT", "PAGEUP", "PAGEDOWN",
+    };
+    for (const char *valid : valid_names)
+    {
+        if (!SDL_strcasecmp(name.c_str(), valid))
+        {
+            value = key_value(valid);
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string key_string(int key)
+{
+    switch (key)
+    {
+    case JK_BACKSPACE:
+        return "BACKSPACE";
+    case JK_TAB:
+        return "TAB";
+    case JK_ENTER:
+        return "ENTER";
+    case JK_ESC:
+        return "ESC";
+    case JK_SPACE:
+        return "SPACE";
+    case JK_UP:
+        return "UP";
+    case JK_DOWN:
+        return "DOWN";
+    case JK_LEFT:
+        return "LEFT";
+    case JK_RIGHT:
+        return "RIGHT";
+    case JK_CTRL_L:
+        return "CTRL_L";
+    case JK_CTRL_R:
+        return "CTRL_R";
+    case JK_ALT_L:
+        return "ALT_L";
+    case JK_ALT_R:
+        return "ALT_R";
+    case JK_SHIFT_L:
+        return "SHIFT_L";
+    case JK_SHIFT_R:
+        return "SHIFT_R";
+    case JK_CAPS:
+        return "CAPS";
+    case JK_NUM_LOCK:
+        return "NUM_LOCK";
+    case JK_HOME:
+        return "HOME";
+    case JK_END:
+        return "END";
+    case JK_DEL:
+        return "DEL";
+    case JK_F1:
+        return "F1";
+    case JK_F2:
+        return "F2";
+    case JK_F3:
+        return "F3";
+    case JK_F4:
+        return "F4";
+    case JK_F5:
+        return "F5";
+    case JK_F6:
+        return "F6";
+    case JK_F7:
+        return "F7";
+    case JK_F8:
+        return "F8";
+    case JK_F9:
+        return "F9";
+    case JK_F10:
+        return "F10";
+    case JK_INSERT:
+        return "INSERT";
+    case JK_PAGEUP:
+        return "PAGEUP";
+    case JK_PAGEDOWN:
+        return "PAGEDOWN";
+    default:
+        if (key > 0 && key < 256)
+            return std::string(1, static_cast<char>(key));
+        return "";
+    }
+}
+
+void read_keys(const toml::table *table, const char *key, int &primary, int *secondary = nullptr)
+{
+    if (!table || !table->contains(key))
+        return;
+    const toml::array *values = (*table)[key].as_array();
+    if (!values || values->empty() || values->size() > (secondary ? 2u : 1u))
+    {
+        invalid_setting("input.keyboard", key, secondary ? "an array containing one or two keys" : "a one-key array");
+        return;
+    }
+
+    int parsed[2];
+    for (size_t i = 0; i < values->size(); ++i)
+    {
+        auto name = (*values)[i].value<std::string>();
+        if (!name || !parse_key(*name, parsed[i]))
+        {
+            invalid_setting("input.keyboard", key, "valid key names");
+            return;
+        }
+    }
+    primary = parsed[0];
+    if (secondary && values->size() == 2)
+        *secondary = parsed[1];
+}
+
+std::string internal_action(const std::string &action)
+{
+    if (action == "special")
+        return "b1";
+    if (action == "fire")
+        return "b2";
+    if (action == "weapon_prev")
+        return "b3";
+    if (action == "weapon_next")
+        return "b4";
+    if (action == "up" || action == "down")
+        return action;
+    return "";
+}
+
+std::string external_action(const std::string &action)
+{
+    if (action == "b1")
+        return "special";
+    if (action == "b2")
+        return "fire";
+    if (action == "b3")
+        return "weapon_prev";
+    if (action == "b4")
+        return "weapon_next";
+    return action;
+}
+
+void read_gamepad_action(const toml::table *table, const char *key, std::string &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    auto value = (*table)[key].value<std::string>();
+    if (!value || internal_action(*value).empty())
+    {
+        invalid_setting("input.gamepad", key, "a supported action name");
+        return;
+    }
+    target = internal_action(*value);
+}
+
+int gamepad_button(const std::string &name)
+{
+    if (name == "south")
+        return SDL_GAMEPAD_BUTTON_SOUTH;
+    if (name == "east")
+        return SDL_GAMEPAD_BUTTON_EAST;
+    if (name == "west")
+        return SDL_GAMEPAD_BUTTON_WEST;
+    if (name == "north")
+        return SDL_GAMEPAD_BUTTON_NORTH;
+    if (name == "left_stick")
+        return SDL_GAMEPAD_BUTTON_LEFT_STICK;
+    if (name == "right_stick")
+        return SDL_GAMEPAD_BUTTON_RIGHT_STICK;
+    if (name == "left_shoulder")
+        return SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
+    if (name == "right_shoulder")
+        return SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
+    if (name == "none")
+        return -1;
+    return -2;
+}
+
+std::string gamepad_button_name(int button)
+{
+    switch (button)
+    {
+    case SDL_GAMEPAD_BUTTON_SOUTH:
+        return "south";
+    case SDL_GAMEPAD_BUTTON_EAST:
+        return "east";
+    case SDL_GAMEPAD_BUTTON_WEST:
+        return "west";
+    case SDL_GAMEPAD_BUTTON_NORTH:
+        return "north";
+    case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+        return "left_stick";
+    case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+        return "right_stick";
+    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+        return "left_shoulder";
+    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+        return "right_shoulder";
+    default:
+        return "none";
+    }
+}
+
+void read_gamepad_button(const toml::table *table, const char *key, int &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    auto value = (*table)[key].value<std::string>();
+    int button = value ? gamepad_button(*value) : -2;
+    if (button == -2)
+        invalid_setting("input.gamepad", key, "a gamepad button name or 'none'");
+    else
+        target = button;
+}
+
+}
+
+void Settings::Validate()
+{
+    auto clamp = [](auto &value, auto low, auto high, const char *name) {
+        if (value < low || value > high)
+        {
+            value = std::max(low, std::min(value, high));
+            fprintf(stderr, "Config: %s is out of range; using %lld\n", name, static_cast<long long>(value));
+        }
+    };
+    clamp(fullscreen, 0, 2, "video.fullscreen");
+    clamp(xres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_width");
+    clamp(yres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_height");
+    clamp(scale, static_cast<short>(1), static_cast<short>(20), "video.window_scale");
+    clamp(hires, 0, 2, "video.hires");
+    clamp(darkest_gray, 1, 128, "video.gamma_darkest_gray");
+    clamp(volume_sound, 0, 127, "audio.sound_volume");
+    clamp(volume_music, 0, 127, "audio.music_volume");
+    clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
+    clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
+    clamp(mouse_scale, static_cast<short>(0), static_cast<short>(1), "input.mouse_scale");
+    clamp(ctr_rst_dz, 0, 32767, "input.gamepad.aim_dead_zone");
+    clamp(ctr_lst_dzx, 0, 32767, "input.gamepad.move_dead_zone_x");
+    clamp(ctr_lst_dzy, 0, 32767, "input.gamepad.move_dead_zone_y");
+    if (difficulty != "easy" && difficulty != "medium" && difficulty != "hard" && difficulty != "extreme")
+    {
+        fprintf(stderr, "Config: gameplay.difficulty is invalid; using hard\n");
+        difficulty = "hard";
+    }
+}
+
+bool Settings::ReadTomlFile()
+{
+    const std::filesystem::path path = settings_path(settings_filename);
+    try
+    {
+        toml::table document = toml::parse_file(path.string());
+        if (auto version = document["schema_version"].value<int64_t>(); version && *version > 1)
+        {
+            fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
+                    static_cast<long long>(*version));
+            return false;
+        }
+
+        const toml::table *video = document["video"].as_table();
+        if (video && video->contains("fullscreen"))
+        {
+            auto mode = (*video)["fullscreen"].value<std::string>();
+            if (!mode)
+                invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
+            else if (*mode == "window")
+                fullscreen = 0;
+            else if (*mode == "desktop")
+                fullscreen = 1;
+            else if (*mode == "exclusive")
+                fullscreen = 2;
+            else
+                invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
+        }
+        read_boolean(video, "video", "borderless", borderless);
+        read_string(video, "video", "aspect_ratio", aspect_ratio);
+        if (aspect_ratio == "desktop")
+            aspect_ratio.clear();
+        read_integer(video, "video", "framebuffer_width", xres);
+        read_integer(video, "video", "framebuffer_height", yres);
+        read_integer(video, "video", "window_scale", scale);
+        read_boolean(video, "video", "linear_filter", linear_filter);
+        read_integer(video, "video", "hires", hires);
+        read_boolean(video, "video", "big_font", big_font);
+        read_integer(video, "video", "gamma_darkest_gray", darkest_gray);
+
+        const toml::table *audio = document["audio"].as_table();
+        bool enabled = !no_sound;
+        read_boolean(audio, "audio", "sound_enabled", enabled);
+        no_sound = !enabled;
+        enabled = !no_music;
+        read_boolean(audio, "audio", "music_enabled", enabled);
+        no_music = !enabled;
+        read_boolean(audio, "audio", "mono", mono);
+        read_integer(audio, "audio", "sound_volume", volume_sound);
+        read_integer(audio, "audio", "music_volume", volume_music);
+        read_string(audio, "audio", "soundfont", soundfont);
+
+        const toml::table *gameplay = document["gameplay"].as_table();
+        read_string(gameplay, "gameplay", "difficulty", difficulty);
+        read_integer(gameplay, "gameplay", "physics_tick_ms", physics_update);
+        read_integer(gameplay, "gameplay", "max_fps", max_fps);
+        read_boolean(gameplay, "gameplay", "skip_intro", skip_intro);
+
+        const toml::table *general = document["general"].as_table();
+        read_string(general, "general", "language", language);
+        read_boolean(general, "general", "editor", editor);
+        read_boolean(general, "general", "grab_input", grab_input);
+        read_boolean(general, "general", "local_save", local_save);
+
+        const toml::table *input = document["input"].as_table();
+        read_integer(input, "input", "mouse_scale", mouse_scale);
+        const toml::table *keyboard = input ? (*input)["keyboard"].as_table() : nullptr;
+        read_keys(keyboard, "left", left, &left_2);
+        read_keys(keyboard, "right", right, &right_2);
+        read_keys(keyboard, "up", up, &up_2);
+        read_keys(keyboard, "down", down, &down_2);
+        read_keys(keyboard, "special", b1);
+        read_keys(keyboard, "fire", b2);
+        read_keys(keyboard, "weapon_prev", b3);
+        read_keys(keyboard, "weapon_next", b4);
+
+        const toml::table *gamepad = input ? (*input)["gamepad"].as_table() : nullptr;
+        read_integer(gamepad, "input.gamepad", "aim_correction_x", ctr_aim_correctx);
+        read_integer(gamepad, "input.gamepad", "crosshair_distance", ctr_cd);
+        read_integer(gamepad, "input.gamepad", "aim_sensitivity", ctr_rst_s);
+        read_integer(gamepad, "input.gamepad", "aim_dead_zone", ctr_rst_dz);
+        read_integer(gamepad, "input.gamepad", "move_dead_zone_x", ctr_lst_dzx);
+        read_integer(gamepad, "input.gamepad", "move_dead_zone_y", ctr_lst_dzy);
+        read_gamepad_action(gamepad, "south", ctr_a);
+        read_gamepad_action(gamepad, "east", ctr_b);
+        read_gamepad_action(gamepad, "west", ctr_x);
+        read_gamepad_action(gamepad, "north", ctr_y);
+        read_gamepad_action(gamepad, "left_stick", ctr_lst);
+        read_gamepad_action(gamepad, "right_stick", ctr_rst);
+        read_gamepad_action(gamepad, "left_shoulder", ctr_lsr);
+        read_gamepad_action(gamepad, "right_shoulder", ctr_rsr);
+        read_gamepad_action(gamepad, "left_trigger", ctr_ltg);
+        read_gamepad_action(gamepad, "right_trigger", ctr_rtg);
+        read_gamepad_button(gamepad, "quick_save", ctr_f5);
+        read_gamepad_button(gamepad, "quick_load", ctr_f9);
+
+        Validate();
+        return true;
+    }
+    catch (const toml::parse_error &error)
+    {
+        std::cerr << "Config: Unable to parse " << path << ":\n" << error << '\n';
+        return false;
+    }
+}
+
+bool Settings::Load()
+{
+    const std::filesystem::path path = settings_path(settings_filename);
+    if (std::filesystem::exists(path))
+        return ReadTomlFile();
+
+    Validate();
+    if (!Save())
+        return false;
+    printf("Default \"settings.toml\" created\n");
+    return true;
+}
+
+void Settings::BeginCommandLineOverrides()
+{
+    command_line_overrides = true;
+    file_fullscreen = fullscreen;
+    file_xres = xres;
+    file_yres = yres;
+    file_aspect_ratio = aspect_ratio;
+    file_no_sound = no_sound;
+    file_linear_filter = linear_filter;
+    file_mono = mono;
+    file_soundfont = soundfont;
+    file_local_save = local_save;
+    file_editor = editor;
+}
+
+bool Settings::Save() const
+{
+    toml::table document;
+    document.insert("schema_version", 1);
+
+    toml::table video;
+    const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
+    const short saved_xres = command_line_overrides ? file_xres : xres;
+    const short saved_yres = command_line_overrides ? file_yres : yres;
+    const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
+    video.insert("fullscreen", saved_fullscreen == 0 ? "window" : saved_fullscreen == 1 ? "desktop" : "exclusive");
+    video.insert("borderless", borderless);
+    video.insert("aspect_ratio", saved_aspect_ratio.empty() ? "desktop" : saved_aspect_ratio);
+    video.insert("framebuffer_width", saved_xres);
+    video.insert("framebuffer_height", saved_yres);
+    video.insert("window_scale", scale);
+    video.insert("linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
+    video.insert("hires", hires);
+    video.insert("big_font", big_font);
+    video.insert("gamma_darkest_gray", darkest_gray);
+    document.insert("video", std::move(video));
+
+    toml::table audio;
+    audio.insert("sound_enabled", !(command_line_overrides ? file_no_sound : no_sound));
+    audio.insert("music_enabled", !no_music);
+    audio.insert("sound_volume", volume_sound);
+    audio.insert("music_volume", volume_music);
+    audio.insert("mono", command_line_overrides ? file_mono : mono);
+    audio.insert("soundfont", command_line_overrides ? file_soundfont : soundfont);
+    document.insert("audio", std::move(audio));
+
+    toml::table gameplay;
+    gameplay.insert("difficulty", difficulty);
+    gameplay.insert("physics_tick_ms", physics_update);
+    gameplay.insert("max_fps", max_fps);
+    gameplay.insert("skip_intro", skip_intro);
+    document.insert("gameplay", std::move(gameplay));
+
+    toml::table general;
+    general.insert("language", language);
+    general.insert("editor", command_line_overrides ? file_editor : editor);
+    general.insert("grab_input", grab_input);
+    general.insert("local_save", command_line_overrides ? file_local_save : local_save);
+    document.insert("general", std::move(general));
+
+    toml::table keyboard;
+    keyboard.insert("left", toml::array{key_string(left), key_string(left_2)});
+    keyboard.insert("right", toml::array{key_string(right), key_string(right_2)});
+    keyboard.insert("up", toml::array{key_string(up), key_string(up_2)});
+    keyboard.insert("down", toml::array{key_string(down), key_string(down_2)});
+    keyboard.insert("special", toml::array{key_string(b1)});
+    keyboard.insert("fire", toml::array{key_string(b2)});
+    keyboard.insert("weapon_prev", toml::array{key_string(b3)});
+    keyboard.insert("weapon_next", toml::array{key_string(b4)});
+
+    toml::table gamepad;
+    gamepad.insert("aim_correction_x", ctr_aim_correctx);
+    gamepad.insert("crosshair_distance", ctr_cd);
+    gamepad.insert("aim_sensitivity", ctr_rst_s);
+    gamepad.insert("aim_dead_zone", ctr_rst_dz);
+    gamepad.insert("move_dead_zone_x", ctr_lst_dzx);
+    gamepad.insert("move_dead_zone_y", ctr_lst_dzy);
+    gamepad.insert("south", external_action(ctr_a));
+    gamepad.insert("east", external_action(ctr_b));
+    gamepad.insert("west", external_action(ctr_x));
+    gamepad.insert("north", external_action(ctr_y));
+    gamepad.insert("left_stick", external_action(ctr_lst));
+    gamepad.insert("right_stick", external_action(ctr_rst));
+    gamepad.insert("left_shoulder", external_action(ctr_lsr));
+    gamepad.insert("right_shoulder", external_action(ctr_rsr));
+    gamepad.insert("left_trigger", external_action(ctr_ltg));
+    gamepad.insert("right_trigger", external_action(ctr_rtg));
+    gamepad.insert("quick_save", gamepad_button_name(ctr_f5));
+    gamepad.insert("quick_load", gamepad_button_name(ctr_f9));
+
+    toml::table input;
+    input.insert("mouse_scale", mouse_scale);
+    input.insert("keyboard", std::move(keyboard));
+    input.insert("gamepad", std::move(gamepad));
+    document.insert("input", std::move(input));
+
+    const std::filesystem::path path = settings_path(settings_filename);
+    const std::filesystem::path temporary = path.string() + ".tmp";
+    std::error_code error;
+    std::filesystem::create_directories(path.parent_path(), error);
+    std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+    if (!output)
+    {
+        std::cerr << "Config: Unable to write " << temporary << '\n';
+        return false;
+    }
+    output << document << '\n';
+    output.close();
+    if (!output)
+    {
+        std::cerr << "Config: Unable to finish writing " << temporary << '\n';
         return false;
     }
 
-    out << "; Abuse configuration file (v" << PACKAGE_VERSION << ")" << std::endl;
-    out << std::endl;
-    //
-    out << "; SCREEN SETTINGS" << std::endl;
-    out << std::endl;
-    out << ";0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen" << std::endl;
-    out << "fullscreen=" << this->fullscreen << std::endl;
-    out << "borderless=" << this->borderless << std::endl;
-    out << std::endl;
-    out << "; Display aspect ratio (for example 16:9). Empty matches the desktop." << std::endl;
-    out << "; The original aspect ratio was 4:3. Use custom to select the explicit" << std::endl;
-    out << "; screen_width/screen_height values below." << std::endl;
-    out << "aspect_ratio=" << this->aspect_ratio << std::endl;
-    out << std::endl;
-    out << "; Explicit game framebuffer size (original 320x200)" << std::endl;
-    out << "screen_width=" << this->xres << std::endl;
-    out << "screen_height=" << this->yres << std::endl;
-    out << std::endl;
-    out << "; Scale window" << std::endl;
-    out << "scale=" << this->scale << std::endl;
-    out << std::endl;
-    out << "; Enable high resolution screens, buttons and font" << std::endl;
-    out << "hires=" << this->hires << std::endl;
-    out << "big_font=" << this->big_font << std::endl;
-    out << std::endl;
-    out << "; Language selection (english, german, french)\n" << std::endl;
-    out << "language=" << this->language.c_str() << std::endl;
-    out << std::endl;
-    out << "; Use linear texture filter (nearest is default)" << std::endl;
-    out << "linear_filter=" << this->linear_filter << std::endl;
-    out << std::endl;
-    //
-    out << "; SOUND SETTINGS" << std::endl;
-    out << std::endl;
-    out << "; Volume (0-127)" << std::endl;
-    out << "volume_sound=" << this->volume_sound << std::endl;
-    out << "volume_music=" << this->volume_music << std::endl;
-    out << std::endl;
-    out << "; Disable music and sound effects" << std::endl;
-    out << "no_music=" << this->no_music << std::endl;
-    out << "no_sound=" << this->no_sound << std::endl;
-    out << std::endl;
-    out << "; Use mono audio only" << std::endl;
-    out << "mono=" << this->mono << std::endl;
-    out << "; Path to custom soundfont file (optional)\n" << std::endl;
-    out << "soundfont=" << this->soundfont.c_str() << std::endl;
-    out << std::endl;
-    //
-    out << "; MISCELLANEOUS SETTINGS" << std::endl;
-    out << std::endl;
-    out << "; Enable editor mode" << std::endl;
-    out << "editor=" << this->editor << std::endl;
-    out << std::endl;
-    out << "; Grab the mouse and keyboard to the window" << std::endl;
-    out << "grab_input=" << this->grab_input << std::endl;
-    out << std::endl;
-    out << "; Fullscreen mouse scaling (0 - match desktop, 1 - match game screen)" << std::endl;
-    out << "mouse_scale=" << this->mouse_scale << std::endl;
-    out << std::endl;
-    out << "; Physics update time in ms (65ms/15FPS original)" << std::endl;
-    out << "physics_update=" << this->physics_update << std::endl;
-    out << std::endl;
-    out << "; Max frames per second" << std::endl;
-    out << "max_fps=" << this->max_fps << std::endl;
-    out << std::endl;
-    out << "local_save=" << this->local_save << std::endl;
-    out << std::endl;
-    out << "skip_intro=" << this->skip_intro << std::endl;
-    out << std::endl;
-    //
-    out << "; PLAYER CONTROLS" << std::endl;
-    out << std::endl;
-    out << "; Key mappings" << std::endl;
-    out << "left=a" << std::endl;
-    out << "right=d" << std::endl;
-    out << "up=w" << std::endl;
-    out << "down=s" << std::endl;
-    out << "special=SHIFT_L" << std::endl;
-    out << "fire=f" << std::endl;
-    out << "weapon_prev=q" << std::endl;
-    out << "weapon_next=e" << std::endl;
-    out << std::endl;
-    //
-    out << "; Alternative key mappings (only the following controls can have two keyboard bindings)" << std::endl;
-    out << "left_2=LEFT" << std::endl;
-    out << "right_2=RIGHT" << std::endl;
-    out << "up_2=UP" << std::endl;
-    out << "down_2=DOWN" << std::endl;
-    out << std::endl;
-    //
-    out << "; CONTROLLER SETTINGS" << std::endl;
-    out << std::endl;
-    out << "; Correct crosshair position (x)" << std::endl;
-    out << "ctr_aim_x=" << this->ctr_aim_correctx << std::endl;
-    out << std::endl;
-    out << "; Crosshair distance from player" << std::endl;
-    out << "ctr_cd=" << this->ctr_cd << std::endl;
-    out << std::endl;
-    out << "; Right stick/aiming sensitivity" << std::endl;
-    out << "ctr_rst_s=" << this->ctr_rst_s << std::endl;
-    out << std::endl;
-    out << "; Right stick/aiming dead zone" << std::endl;
-    out << "ctr_rst_dz=" << this->ctr_rst_dz << std::endl;
-    out << std::endl;
-    out << "; Left stick/movement dead zones" << std::endl;
-    out << "ctr_lst_dzx=" << this->ctr_lst_dzx << std::endl;
-    out << "ctr_lst_dzy=" << this->ctr_lst_dzy << std::endl;
-    out << std::endl;
-    //
-    out << "; Button mappings (don't use buttons for left/right movement)" << std::endl;
-    out << "up=ctr_a" << std::endl;
-    out << "down=ctr_b" << std::endl;
-    out << "special=ctr_left_shoulder" << std::endl;
-    out << "special=ctr_left_trigger" << std::endl;
-    out << "fire=ctr_right_shoulder" << std::endl;
-    out << "fire=ctr_right_trigger" << std::endl;
-    out << "weapon_prev=ctr_x" << std::endl;
-    out << "weapon_next=ctr_y" << std::endl;
-    out << "quick_save=none" << std::endl;
-    out << "quick_load=none" << std::endl;
-
-    out.close();
-
-    printf("Default \"config.txt\" created\n");
-
-    return true;
-
-    /*
-	#if !((defined __APPLE__) || (defined WIN32))
-	fputs( "; Location of the datafiles\ndatadir=", fd );
-	fputs( ASSETDIR "\n\n", fd );
-	#endif	
-	*/
-}
-
-//////////
-////////// READ CONFIG FILE
-//////////
-
-bool Settings::ReadConfigFile()
-{
-    const std::filesystem::path prefix = get_save_filename_prefix();
-    const std::filesystem::path file_path = prefix / config_filename;
-
-    std::ifstream filein(file_path.c_str());
-    if (!filein.is_open())
+    std::filesystem::rename(temporary, path, error);
+    if (error)
     {
-        std::string tmp = "ERROR - ReadConfigFile() - Failed to open \"" + file_path.string() + "\"\n";
-        printf(tmp.c_str());
-
-        //try to create it
-        return CreateConfigFile();
+        std::error_code remove_error;
+        std::filesystem::remove(path, remove_error);
+        error.clear();
+        std::filesystem::rename(temporary, path, error);
     }
-
-    std::string line;
-    while (std::getline(filein, line))
+    if (error)
     {
-        //stop reading file
-        if (line == "exit")
-        {
-            filein.close();
-            return true;
-        }
-
-        //skip empty line or ";" which marks a comment
-        if (line.empty() || line[0] == ';')
-            continue;
-
-        std::string attr, value;
-
-        //skip if invalid command
-        if (!AR_GetAttr(line, attr, value))
-        {
-            printf("Ignoring invalid command \"%s\" in %s\n", line.c_str(), file_path.c_str());
-            continue;
-        }
-
-        try
-        {
-            //screen
-            if (attr == "fullscreen")
-                this->fullscreen = std::stoi(value);
-            else if (attr == "borderless")
-                this->borderless = (value == "1");
-            else if (attr == "aspect_ratio")
-                this->aspect_ratio = value;
-            else if (attr == "screen_width")
-                this->xres = std::stoi(value);
-            else if (attr == "screen_height")
-                this->yres = std::stoi(value);
-            else if (attr == "scale")
-                this->scale = std::stoi(value);
-            else if (attr == "linear_filter")
-                this->linear_filter = (value == "1");
-            else if (attr == "hires")
-                this->hires = std::stoi(value);
-            else if (attr == "max_fps")
-                this->max_fps = std::stoi(value);
-            //sound
-            else if (attr == "mono")
-                this->mono = (value == "1");
-            else if (attr == "no_sound")
-                this->no_sound = (value == "1");
-            else if (attr == "no_music")
-                this->no_music = (value == "1");
-            else if (attr == "volume_sound")
-                this->volume_sound = std::stoi(value);
-            else if (attr == "volume_music")
-                this->volume_music = std::stoi(value);
-            else if (attr == "soundfont")
-                this->soundfont = value;
-
-            //random
-            else if (attr == "local_save")
-                this->local_save = (value == "1");
-            else if (attr == "grab_input")
-                this->grab_input = (value == "1");
-            else if (attr == "editor")
-                this->editor = (value == "1");
-            else if (attr == "physics_update")
-                this->physics_update = std::stoi(value);
-            else if (attr == "mouse_scale")
-                this->mouse_scale = std::stoi(value);
-            else if (attr == "big_font")
-                this->big_font = (value == "1");
-            else if (attr == "language")
-                this->language = value;
-            else if (attr == "skip_intro")
-                this->skip_intro = (value == "1");
-
-            //player controls
-            else if (attr == "up")
-            {
-                if (!ControllerButton(attr, value))
-                    this->up = key_value(value.c_str());
-            }
-            else if (attr == "down")
-            {
-                if (!ControllerButton(attr, value))
-                    this->down = key_value(value.c_str());
-            }
-            else if (attr == "left")
-            {
-                if (!ControllerButton(attr, value))
-                    this->left = key_value(value.c_str());
-            }
-            else if (attr == "right")
-            {
-                if (!ControllerButton(attr, value))
-                    this->right = key_value(value.c_str());
-            }
-            //
-            else if (attr == "special")
-            {
-                if (!ControllerButton(attr, value))
-                    this->b1 = key_value(value.c_str());
-            }
-            else if (attr == "fire")
-            {
-                if (!ControllerButton(attr, value))
-                    this->b2 = key_value(value.c_str());
-            }
-            else if (attr == "weapon_prev")
-            {
-                if (!ControllerButton(attr, value))
-                    this->b3 = key_value(value.c_str());
-            }
-            else if (attr == "weapon_next")
-            {
-                if (!ControllerButton(attr, value))
-                    this->b4 = key_value(value.c_str());
-            }
-            //
-            else if (attr == "up_2")
-                this->up_2 = key_value(value.c_str());
-            else if (attr == "down_2")
-                this->down_2 = key_value(value.c_str());
-            else if (attr == "left_2")
-                this->left_2 = key_value(value.c_str());
-            else if (attr == "right_2")
-                this->right_2 = key_value(value.c_str());
-
-            //controller settings
-            else if (attr == "ctr_aim_x")
-                this->ctr_aim_correctx = std::stoi(value);
-            else if (attr == "ctr_cd")
-                this->ctr_cd = std::stoi(value);
-            else if (attr == "ctr_rst_s")
-                this->ctr_rst_s = std::stoi(value);
-            else if (attr == "ctr_rst_dz")
-                this->ctr_rst_dz = std::stoi(value);
-            else if (attr == "ctr_lst_dzx")
-                this->ctr_lst_dzx = std::stoi(value);
-            else if (attr == "ctr_lst_dzy")
-                this->ctr_lst_dzy = std::stoi(value);
-            else if (attr == "quick_save" || attr == "quick_load")
-            {
-                int b = 0;
-
-                if (value == "ctr_a")
-                    b = SDL_GAMEPAD_BUTTON_SOUTH;
-                else if (value == "ctr_b")
-                    b = SDL_GAMEPAD_BUTTON_EAST;
-                else if (value == "ctr_x")
-                    b = SDL_GAMEPAD_BUTTON_WEST;
-                else if (value == "ctr_y")
-                    b = SDL_GAMEPAD_BUTTON_NORTH;
-                else if (value == "ctr_left_stick")
-                    b = SDL_GAMEPAD_BUTTON_LEFT_STICK;
-                else if (value == "ctr_right_stick")
-                    b = SDL_GAMEPAD_BUTTON_RIGHT_STICK;
-                else if (value == "ctr_left_shoulder")
-                    b = SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
-                else if (value == "ctr_right_shoulder")
-                    b = SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
-
-                if (attr == "quick_save")
-                    this->ctr_f5 = b;
-                else
-                    this->ctr_f9 = b;
-            }
-            else
-            {
-                printf("Ignoring unknown command \"%s\" in %s\n", line.c_str(), file_path.c_str());
-                continue;
-            }
-        }
-        catch (const std::exception &e)
-        {
-            printf("Ignoring invalid value \"%s\" in %s\n", line.c_str(), file_path.c_str());
-            continue;
-        }
+        std::cerr << "Config: Unable to replace " << path << ": " << error.message() << '\n';
+        return false;
     }
-
-    filein.close();
-
     return true;
-
-    /*
-	if( strcasecmp( result, "datadir" ) == 0 )
-	{
-	result = strtok( NULL, "\n" );
-	set_filename_prefix( result );
-	}
-	*/
-}
-
-bool Settings::ControllerButton(std::string c, std::string b)
-{
-    std::string control = c;
-
-    if (c == "special")
-        control = "b1";
-    else if (c == "fire")
-        control = "b2";
-    else if (c == "weapon_prev")
-        control = "b3";
-    else if (c == "weapon_next")
-        control = "b4";
-
-    if (b == "ctr_a")
-    {
-        this->ctr_a = control;
-        return true;
-    };
-    if (b == "ctr_b")
-    {
-        this->ctr_b = control;
-        return true;
-    };
-    if (b == "ctr_x")
-    {
-        this->ctr_x = control;
-        return true;
-    };
-    if (b == "ctr_y")
-    {
-        this->ctr_y = control;
-        return true;
-    };
-    //
-    if (b == "ctr_left_stick")
-    {
-        this->ctr_lst = control;
-        return true;
-    };
-    if (b == "ctr_right_stick")
-    {
-        this->ctr_rst = control;
-        return true;
-    };
-    //
-    if (b == "ctr_left_shoulder")
-    {
-        this->ctr_lsr = control;
-        return true;
-    };
-    if (b == "ctr_right_shoulder")
-    {
-        this->ctr_rsr = control;
-        return true;
-    };
-    //
-    if (b == "ctr_left_trigger")
-    {
-        this->ctr_ltg = control;
-        return true;
-    };
-    if (b == "ctr_right_trigger")
-    {
-        this->ctr_rtg = control;
-        return true;
-    };
-
-    return false;
 }
 
 //
@@ -662,6 +774,7 @@ void showHelp(const char *executableName)
 void parseCommandLine(int argc, char **argv)
 {
     // Command-line arguments override settings from config file
+    settings.BeginCommandLineOverrides();
 
     for (int i = 1; i < argc; i++)
     {
@@ -841,7 +954,7 @@ void setup(int argc, char **argv)
     printf("Data path %s\n", get_filename_prefix());
 
     // Load the user's configuration file from the save directory
-    settings.ReadConfigFile();
+    settings.Load();
 
     // Process any command-line arguments that might override settings
     parseCommandLine(argc, argv);

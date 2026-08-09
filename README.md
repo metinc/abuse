@@ -55,41 +55,43 @@ Available cheats:
 
 ## Configuration
 
-Configuration is stored in `config.txt` in the user folder. It will be created if it doesn't exist at launch. Lines starting with `;` are comments. Use `1` to enable and `0` to disable options.
+Configuration is stored in `settings.toml` in the user folder. See [`data/user/settings.toml`](data/user/settings.toml) for a complete example.
 
-### Config File Options
+### Settings File Options
 
 #### Display Settings
 
-- `fullscreen` - Fullscreen mode (`0` - window, `1` - fullscreen window, `2` - fullscreen)
+- `fullscreen` - Fullscreen mode (`"window"`, `"desktop"`, or `"exclusive"`)
 - `borderless` - Enable borderless window mode
-- `aspect_ratio` - Display aspect ratio in `width:height` form, such as `16:9`; an empty value matches the desktop, `4:3` selects the original aspect ratio, and `custom` uses the explicit framebuffer size below
-- `screen_width` - Internal game framebuffer width when `aspect_ratio=custom`
-- `screen_height` - Internal game framebuffer height when `aspect_ratio=custom`
-- `scale` - Integer window scale used in windowed mode
+- `aspect_ratio` - Display aspect ratio such as `"16:9"`; `"desktop"` matches the desktop and `"custom"` uses the explicit framebuffer size below
+- `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"`
+- `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"`
+- `window_scale` - Integer window scale used in windowed mode
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)
 - `big_font` - Enable big font
-- `mouse_scale` - Mouse to game scaling (`0` - match desktop, `1` - match game screen)
+- `gamma_darkest_gray` - Darkest visible gray used for gamma correction (`1`-`128`; `16` is neutral)
 
-The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio=16:9` uses a 427×200 framebuffer and `aspect_ratio=1:1` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `screen_width` and `screen_height` remains available as the legacy zoom-out mode and is useful in the editor.
+The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio = "16:9"` uses a 427×200 framebuffer and `aspect_ratio = "1:1"` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `framebuffer_width` and `framebuffer_height` remains available as the legacy zoom-out mode and is useful in the editor.
 
 #### Audio Settings
 
-- `volume_sound` - Sound effects volume (0-127)
-- `volume_music` - Music volume (0-127)
+- `sound_volume` - Sound effects volume (0-127)
+- `music_volume` - Music volume (0-127)
 - `mono` - Use mono audio only
-- `no_music` - Disable music
-- `no_sound` - Disable sound effects
+- `music_enabled` - Enable music
+- `sound_enabled` - Enable sound effects
 - `soundfont` - Path to custom soundfont file. Custom or bundled `AWE64 Gold Presets.sf2` or `Roland SC-55 Presets.sf2`
 
 #### Game Settings
 
-- `local_save` - Save config and files locally
-- `grab_input` - Grab mouse to window
-- `editor` - Enable editor mode
-- `physics_update` - Physics update time in ms (65ms/15FPS original)
-- `language` - Game language (`english`, `german`, `french`)
+- `[gameplay].difficulty` - Difficulty (`"easy"`, `"medium"`, `"hard"`, or `"extreme"`)
+- `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
+- `[gameplay].max_fps` - Frame-rate limit
+- `[general].grab_input` - Grab mouse to window
+- `[general].editor` - Enable editor mode
+- `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
+- `[input].mouse_scale` - Mouse scaling (`0` matches the desktop, `1` matches the game framebuffer)
 
 ### Key Bindings
 
@@ -106,7 +108,7 @@ Default control scheme:
 | Fire        | <kbd>Mouse Left</kbd>                    |
 | Special     | <kbd>Mouse Right</kbd>                   |
 
-Special key codes for config file:
+Keyboard bindings are arrays, allowing two keys for movement, for example `left = ["a", "LEFT"]`. Special key names include:
 
 - `LEFT`, `RIGHT`, `UP`, `DOWN` - Cursor keys and keypad
 - `CTRL_L`, `CTRL_R` - Left and right Ctrl
@@ -142,21 +144,23 @@ Default Controller Bindings:
 
 ### Gamepad Support
 
-Gamepad options:
+Options in `[input.gamepad]` include:
 
-- `ctr_aim` - Enable right stick aiming
-- `ctr_cd` - Crosshair distance from player
-- `ctr_rst_s` - Right stick/aiming sensitivity
-- `ctr_rst_dz` - Right stick/aiming dead zone
-- `ctr_lst_dzx` - Left stick horizontal dead zone
-- `ctr_lst_dzy` - Left stick vertical dead zone
+- `aim_correction_x` - Horizontal crosshair correction
+- `crosshair_distance` - Crosshair distance from player
+- `aim_sensitivity` - Right stick/aiming sensitivity
+- `aim_dead_zone` - Right stick/aiming dead zone
+- `move_dead_zone_x` - Left stick horizontal dead zone
+- `move_dead_zone_y` - Left stick vertical dead zone
 
 Button binding names:
 
-- `ctr_a`, `ctr_b`, `ctr_x`, `ctr_y` - Face buttons
-- `ctr_left_shoulder`, `ctr_right_shoulder` - Shoulder buttons
-- `ctr_left_trigger`, `ctr_right_trigger` - Triggers
-- `ctr_left_stick`, `ctr_right_stick` - Stick clicks
+- `south`, `east`, `west`, `north` - Face buttons
+- `left_shoulder`, `right_shoulder` - Shoulder buttons
+- `left_trigger`, `right_trigger` - Triggers
+- `left_stick`, `right_stick` - Stick clicks
+
+Each physical button maps to `"up"`, `"down"`, `"special"`, `"fire"`, `"weapon_prev"`, or `"weapon_next"`.
 
 ### Command Line Arguments
 

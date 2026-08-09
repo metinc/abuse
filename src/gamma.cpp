@@ -14,7 +14,6 @@
 #endif
 
 #include <math.h>
-#include <fstream>
 
 #include "common.h"
 
@@ -29,36 +28,6 @@
 
 extern int dev_ok;
 palette *old_pal = nullptr;
-
-//AR
-#include "sdlport/setup.h"
-extern Settings settings;
-//
-
-bool write_gamma_lsp(long darkest_gray)
-{
-    // Build output file path
-    std::string gamma_path = std::string(get_save_filename_prefix()) + "gamma.lsp";
-
-    // Attempt to open for binary write
-    std::ofstream outfile(gamma_path, std::ios::binary);
-    if (!outfile)
-    {
-        std::cerr << "Unable to write to file " << gamma_path << std::endl;
-        return false;
-    }
-
-    outfile << "(setq darkest_gray " << darkest_gray << ")\n";
-    outfile.close();
-
-    // Store darkest_gray in LSpace
-    LSpace *previous_space = LSpace::Current;
-    LSpace::Current = &LSpace::Perm;
-    LSymbol::FindOrCreate("darkest_gray")->SetNumber(darkest_gray);
-    LSpace::Current = previous_space;
-
-    return true;
-}
 
 //AR
 #include "sdlport/setup.h"
@@ -135,9 +104,6 @@ void gamma_correct(palette *&pal, int force_menu)
     long darkest_gray = 0, darkest_gray_old = 0;
     bool abort_menu = false;
 
-    // Check if user previously set darkest_gray
-    LSymbol *gs = LSymbol::Find("darkest_gray");
-
     // If there's an old palette, restore it before modifying
     if (old_pal)
     {
@@ -148,27 +114,11 @@ void gamma_correct(palette *&pal, int force_menu)
 
     if (!force_menu)
     {
-        // If darkest_gray is defined and menu wasn't forced, just use it
-        if (gs && DEFINEDP(gs->GetValue()))
-        {
-            darkest_gray = lnumber_value(gs->GetValue());
-        }
-        else
-        {
-            darkest_gray = 16;
-            if (!write_gamma_lsp(darkest_gray))
-            {
-                std::cerr << "Failed to write gamma.lsp\n";
-            }
-        }
+        darkest_gray = settings.darkest_gray;
     }
     else
     {
-        // Remember old darkest_gray
-        if (gs && DEFINEDP(gs->GetValue()))
-        {
-            darkest_gray = darkest_gray_old = lnumber_value(gs->GetValue());
-        }
+        darkest_gray = darkest_gray_old = settings.darkest_gray;
 
         // Create a temporary grayscale palette
         palette *gray_pal = pal->copy();
@@ -256,13 +206,16 @@ void gamma_correct(palette *&pal, int force_menu)
         wm->set_colors(wm_bc, wm_mc, wm_dc);
         delete gray_pal;
 
-        // If the user didn’t abort, write gamma.lsp
+        // If the user didn’t abort, persist the setting and update Lisp.
         if (!abort_menu)
         {
-            if (!write_gamma_lsp(darkest_gray))
-            {
-                std::cerr << "Failed to write gamma.lsp\n";
-            }
+            settings.darkest_gray = darkest_gray;
+            if (!settings.Save())
+                std::cerr << "Failed to save gamma setting\n";
+            LSpace *previous_space = LSpace::Current;
+            LSpace::Current = &LSpace::Perm;
+            LSymbol::FindOrCreate("darkest_gray")->SetNumber(darkest_gray);
+            LSpace::Current = previous_space;
         }
     }
 

@@ -1,0 +1,71 @@
+# Abuse configuration file
+schema_version = 1
+
+[video]
+# window, desktop, or exclusive
+fullscreen = "exclusive"
+borderless = false
+# desktop, custom, or a ratio such as 16:9
+aspect_ratio = "desktop"
+framebuffer_width = 320
+framebuffer_height = 200
+window_scale = 2
+linear_filter = false
+hires = 0
+big_font = false
+# Darkest visible gray (1-128); 16 is neutral gamma.
+gamma_darkest_gray = 16
+
+[audio]
+sound_enabled = true
+music_enabled = true
+sound_volume = 127
+music_volume = 127
+mono = false
+soundfont = ""
+
+[gameplay]
+difficulty = "hard"
+physics_tick_ms = 65
+max_fps = 300
+skip_intro = false
+
+[general]
+language = "english"
+editor = false
+grab_input = false
+local_save = false
+
+[input]
+# 0 matches the desktop; 1 matches the game framebuffer.
+mouse_scale = 0
+
+[input.keyboard]
+left = ["a", "LEFT"]
+right = ["d", "RIGHT"]
+up = ["w", "UP"]
+down = ["s", "DOWN"]
+special = ["SHIFT_L"]
+fire = ["f"]
+weapon_prev = ["q"]
+weapon_next = ["e"]
+
+[input.gamepad]
+aim_correction_x = 0
+crosshair_distance = 90
+aim_sensitivity = 10
+aim_dead_zone = 5000
+move_dead_zone_x = 10000
+move_dead_zone_y = 25000
+south = "up"
+east = "down"
+west = "weapon_prev"
+north = "weapon_next"
+left_stick = "special"
+right_stick = "down"
+left_shoulder = "special"
+right_shoulder = "fire"
+left_trigger = "special"
+right_trigger = "fire"
+quick_save = "none"
+quick_load = "none"

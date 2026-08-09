@@ -51,6 +51,10 @@ class Settings
     bool player_touching_console; //only allow quicksave if player is touching the console
     bool skip_intro;
 
+    //settings shared with the Lisp game layer
+    int darkest_gray;
+    std::string difficulty;
+
     //cheats
     bool cheat_god, cheat_bullettime;
 
@@ -82,10 +86,21 @@ class Settings
     Settings();
 
     bool ApplyAspectRatio();
-    bool CreateConfigFile();
+    bool Load();
+    bool Save() const;
+    void BeginCommandLineOverrides();
 
-    bool ControllerButton(std::string c, std::string b);
-    bool ReadConfigFile();
+  private:
+    bool ReadTomlFile();
+    void Validate();
+
+    bool command_line_overrides = false;
+    int file_fullscreen = 2;
+    short file_xres = 320, file_yres = 200;
+    std::string file_aspect_ratio;
+    bool file_no_sound = false, file_linear_filter = false, file_mono = false;
+    std::string file_soundfont;
+    bool file_local_save = false, file_editor = false;
 };
 
 #endif // _SETUP_H_

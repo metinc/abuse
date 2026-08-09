@@ -7,10 +7,6 @@
 
 (load "demo.lsp")
 
-(local_load "gamma.lsp")              ;; load gamma correction values if they have been saved
-
-(if (not (load "hardness.lsp"))       ;; load hardness, if no file set to hard
-    (setf difficulty        'hard))
 (setq load_warn T)
 
 ; *********** Defaults **************************
@@ -90,5 +86,4 @@
       (if skip_trainer_level
 	  (set_first_level "levels/level01.spe")
 	(set_first_level "levels/level00.spe"))))
-
 

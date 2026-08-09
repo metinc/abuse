@@ -48,11 +48,6 @@
 extern Settings settings;
 //
 
-//AR
-#include "sdlport/setup.h"
-extern Settings settings;
-//
-
 #define ENGINE_MAJOR 1
 #define ENGINE_MINOR 20
 
@@ -135,7 +130,15 @@ void clisp_init()
     l_FIRE = LSymbol::FindOrCreate("FIRE");
     l_fire_object = LSymbol::FindOrCreate("fire_object");
     l_cop_dead_parts = LSymbol::FindOrCreate("cop_dead_parts");
-    l_difficulty->SetValue(l_hard);
+    if (settings.difficulty == "easy")
+        l_difficulty->SetValue(l_easy);
+    else if (settings.difficulty == "medium")
+        l_difficulty->SetValue(l_medium);
+    else if (settings.difficulty == "extreme")
+        l_difficulty->SetValue(l_extreme);
+    else
+        l_difficulty->SetValue(l_hard);
+    LSymbol::FindOrCreate("darkest_gray")->SetNumber(settings.darkest_gray);
     l_restart_player = LSymbol::FindOrCreate("restart_player");
     l_help_screens = LSymbol::FindOrCreate("help_screens");
     l_save_order = LSymbol::FindOrCreate("save_order");

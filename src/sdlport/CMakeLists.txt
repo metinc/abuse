@@ -18,6 +18,6 @@ include_directories(
     ${abuse_SOURCE_DIR}/src/imlib
 )
 
-target_link_libraries(sdlport SDL3::SDL3 SDL3_mixer::SDL3_mixer)
+target_link_libraries(sdlport SDL3::SDL3 SDL3_mixer::SDL3_mixer tomlplusplus::tomlplusplus)
 #
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK -DASSETDIR=\"$(assetdir)\"

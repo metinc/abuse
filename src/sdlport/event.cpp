@@ -434,9 +434,12 @@ void EventHandler::SysEvent(Event &ev)
             if (ev.type == EV_KEYRELEASE)
             {
                 if (SDL_GetWindowMouseGrab(window))
-                    SDL_SetWindowMouseGrab(window, false);
+                    settings.grab_input = false;
                 else
-                    SDL_SetWindowMouseGrab(window, true);
+                    settings.grab_input = true;
+                SDL_SetWindowMouseGrab(window, settings.grab_input);
+                if (!settings.Save())
+                    fprintf(stderr, "Unable to save input grab setting\n");
             }
             ev.key = JK_F6;
             break;
@@ -448,6 +451,8 @@ void EventHandler::SysEvent(Event &ev)
                     settings.mouse_scale = 1;
                 else
                     settings.mouse_scale = 0;
+                if (!settings.Save())
+                    fprintf(stderr, "Unable to save mouse scale setting\n");
             }
             ev.key = JK_F7;
             break;

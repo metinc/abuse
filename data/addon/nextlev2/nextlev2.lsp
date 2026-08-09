@@ -18,7 +18,7 @@
 ;; if you want, you can set them all to the same.  This example uses a sseperate list for
 ;; easy and extreme
 
-;; You must have hardness.lsp loaded before this addon!  Hardness.lsp is loaded by startup.lsp
+;; The engine initializes the difficulty symbol from settings.toml before loading this addon.
 ;; which is loaded by abuse.lsp so you can do something like the following :
 
 ;; (load "abuse.lsp")
