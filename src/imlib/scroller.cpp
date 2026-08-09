@@ -81,13 +81,13 @@ void scroller::area(int &x1, int &y1, int &x2, int &y2)
     y1 = m_pos.y - 1;
     if (vert)
     {
-        x2 = m_pos.x + l + bw();
+        x2 = m_pos.x + l + (scrollbar_visible() ? bw() : 0);
         y2 = m_pos.y + h;
     }
     else
     {
         x2 = m_pos.x + l;
-        y2 = m_pos.y + h + bh();
+        y2 = m_pos.y + h + (scrollbar_visible() ? bh() : 0);
     }
 }
 
@@ -147,18 +147,21 @@ void scroller::draw_first(image *screen)
     if (sx >= t)
         sx = t - 1;
     draw(0, screen);
-    screen->WidgetBar(ivec2(b1x(), b1y()), ivec2(b1x() + bw() - 1, b1y() + bh() - 1), wm->bright_color(),
-                      wm->medium_color(), wm->dark_color());
-    screen->WidgetBar(ivec2(b2x(), b2y()), ivec2(b2x() + bw() - 1, b2y() + bh() - 1), wm->bright_color(),
-                      wm->medium_color(), wm->dark_color());
-    show_icon(screen, b1x() + 2, b1y() + 2, bw() - 4, bh() - 4, b1());
-    show_icon(screen, b2x() + 2, b2y() + 2, bw() - 4, bh() - 4, b2());
+    if (scrollbar_visible())
+    {
+        screen->WidgetBar(ivec2(b1x(), b1y()), ivec2(b1x() + bw() - 1, b1y() + bh() - 1), wm->bright_color(),
+                          wm->medium_color(), wm->dark_color());
+        screen->WidgetBar(ivec2(b2x(), b2y()), ivec2(b2x() + bw() - 1, b2y() + bh() - 1), wm->bright_color(),
+                          wm->medium_color(), wm->dark_color());
+        show_icon(screen, b1x() + 2, b1y() + 2, bw() - 4, bh() - 4, b1());
+        show_icon(screen, b2x() + 2, b2y() + 2, bw() - 4, bh() - 4, b2());
 
-    int x1, y1, x2, y2;
-    dragger_area(x1, y1, x2, y2);
-    screen->Bar(ivec2(x1, y1), ivec2(x2, y2), wm->black());
-    screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
-    draw_widget(screen, 0);
+        int x1, y1, x2, y2;
+        dragger_area(x1, y1, x2, y2);
+        screen->Bar(ivec2(x1, y1), ivec2(x2, y2), wm->black());
+        screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
+        draw_widget(screen, 0);
+    }
     scroll_event(sx, screen);
 }
 
@@ -211,7 +214,9 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
     case EV_MOUSE_BUTTON: {
         if (ev.mouse_button && drag == -1)
         {
-            if (mx >= b1x() && mx < b1x() + bw() && my >= b1y() - 2 && my < b1y() + bh())
+            if (!scrollbar_visible())
+                handle_inside_event(ev, screen, inm);
+            else if (mx >= b1x() && mx < b1x() + bw() && my >= b1y() - 2 && my < b1y() + bh())
             {
                 if (sx > 0)
                 {
@@ -631,7 +636,9 @@ void spicker::reconfigure()
     select = NULL;
 
     t = total();
-    if (sx > t)
+    if (!scrollbar_visible())
+        sx = 0;
+    else if (sx > t)
         sx = t - 1;
     if (m)
     {
@@ -656,12 +663,14 @@ void spicker::area_config()
 void spicker::set_x(int x, image *screen)
 {
     cur_sel = x;
-    sx = x;
-    scroll_event(x, screen);
+    sx = scrollbar_visible() ? x : 0;
+    scroll_event(sx, screen);
 }
 
 void spicker::scroll_event(int newx, image *screen)
 {
+    if (!scrollbar_visible())
+        newx = sx = 0;
     last_sel = newx;
     int xa, ya, xo, yo;
     xo = m_pos.x + 2;

@@ -131,21 +131,6 @@ class video_mode_picker : public spicker
         return wm->font()->Size().y + 4;
     }
 
-    void area(int &x1, int &y1, int &x2, int &y2) override
-    {
-        area_config();
-        x1 = m_pos.x - 1;
-        y1 = m_pos.y - 1;
-        x2 = m_pos.x + l;
-        y2 = m_pos.y + h;
-    }
-
-    void draw_first(image *screen) override
-    {
-        draw(0, screen);
-        scroll_event(sx, screen);
-    }
-
     int activate_on_mouse_move() override
     {
         return 0;

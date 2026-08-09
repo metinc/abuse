@@ -61,6 +61,10 @@ class scroller : public ifield
     }
     void draw_widget(image *screen, int erase);
     int mouse_to_drag(int mx, int my);
+    virtual bool scrollbar_visible()
+    {
+        return true;
+    }
 
   public:
     int t, sx;
@@ -104,6 +108,10 @@ class spicker : public scroller
   protected:
     int r, c, m, last_sel, cur_sel;
     uint8_t *select;
+    bool scrollbar_visible() override
+    {
+        return t > vis();
+    }
 
   public:
     spicker(int X, int Y, int ID, int Rows, int Cols, int Vert, int MultiSelect, ifield *Next);
