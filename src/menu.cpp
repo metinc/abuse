@@ -19,7 +19,7 @@
 
 #include "dev.h"
 
-#include "ui/volumewindow.h"
+#include "ui/audio_settings.h"
 
 #include "menu.h"
 #include "lisp.h"

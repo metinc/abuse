@@ -71,7 +71,7 @@ add_executable(abuse
     video_settings.cpp video_settings.h
     id.h isllist.h sbar.h
     nfserver.h
-    ui/volumewindow.cpp ui/volumewindow.h
+    ui/audio_settings.cpp ui/audio_settings.h
     ${abuse_RESOURCE_FILES}
 )
 
