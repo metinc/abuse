@@ -76,8 +76,8 @@ The game is designed for a 320×200 framebuffer displayed with the original VGA 
 
 #### Audio Settings
 
-- `sound_volume` - Sound effects volume (0-127)
-- `music_volume` - Music volume (0-127)
+- `sound_volume` - Sound effects gain (`0.0`-`1.0`)
+- `music_volume` - Music gain (`0.0`-`1.0`)
 - `mono` - Use mono audio only
 - `music_enabled` - Enable music
 - `sound_enabled` - Enable sound effects
@@ -208,13 +208,6 @@ Each physical button maps to `"up"`, `"down"`, `"special"`, `"fire"`, `"weapon_p
 | `-ec`           | Empty cache                 |
 | `-t <filename>` | Insert tiles from file      |
 | `-cprint`       | Enable console printing     |
-
-#### Audio Settings
-
-| Argument                 | Description                  |
-| ------------------------ | ---------------------------- |
-| `-sfx_volume <number>`   | Sound effects volume (0-127) |
-| `-music_volume <number>` | Music volume (0-127)         |
 
 ## Resources
 

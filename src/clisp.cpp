@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -80,6 +81,11 @@ void *l_statbar_ammo_x, *l_statbar_ammo_y, *l_statbar_ammo_w, *l_statbar_ammo_h,
 uint8_t chatting_enabled = 0;
 
 extern void show_end();
+
+static float lisp_audio_gain(int volume)
+{
+    return static_cast<float>(std::clamp(volume, 0, 127)) / 127.0f;
+}
 
 static view *lget_view(void *arg, char const *msg)
 {
@@ -1389,7 +1395,7 @@ long c_caller(CFunc number, void *args)
             return 0;
         a = CDR(a);
         if (!a)
-            cache.sfx(id)->play(127);
+            cache.sfx(id)->play(1.0f);
         else
         {
             int vol = lnumber_value(lcar(a));
@@ -1405,10 +1411,10 @@ long c_caller(CFunc number, void *args)
                     exit(EXIT_FAILURE);
                 }
                 int32_t y = lnumber_value(lcar(a));
-                the_game->play_sound(id, vol, x, y);
+                the_game->play_sound(id, lisp_audio_gain(vol), x, y);
             }
             else
-                cache.sfx(id)->play(vol);
+                cache.sfx(id)->play(lisp_audio_gain(vol));
         }
     }
     break;
@@ -2286,7 +2292,7 @@ long c_caller(CFunc number, void *args)
             }
             current_song = new song(fn);
             current_song->play(music_volume);
-            printf("Playing %s at volume %d\n", fn, music_volume);
+            printf("Playing %s at gain %.2f\n", fn, music_volume);
         }
     }
     break;

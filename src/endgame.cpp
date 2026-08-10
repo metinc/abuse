@@ -236,7 +236,7 @@ void show_end2()
         if (new_time.diff_time(&old_time) > 0.1)
         {
             if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             main_screen->clear();
@@ -263,7 +263,7 @@ void show_end2()
                 scale_put_trans(s, main_screen, ex - (i - 38) * 5, ey + cache.img(mask)->Size().y / 2 + t * 4, nw, nh);
                 if (i == 77)
                     if (sound_avail & SFX_INITIALIZED)
-                        cache.sfx(zip_snd)->play(127);
+                        cache.sfx(zip_snd)->play(1.0f);
             }
 
             eoff += 2;
@@ -285,7 +285,7 @@ void show_end2()
         if (new_time.diff_time(&old_time) > 0.1)
         {
             if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             main_screen->clear();
@@ -311,7 +311,7 @@ void show_end2()
                                     ey + jrand() % (cache.img(mask)->Size().y - cache.img(mask)->Size().y / 3), 0, 1,
                                     clist);
                 if (sound_avail & SFX_INITIALIZED)
-                    cache.sfx(explo_snd)->play(127);
+                    cache.sfx(explo_snd)->play(1.0f);
             }
 
             //      clist=new ex_char(ex+jrand()%(cache.img(mask)->Size().x,
@@ -365,7 +365,7 @@ void show_end2()
         if (new_time.diff_time(&old_time) > 0.1)
         {
             if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 256, paddr, p,

@@ -20,6 +20,7 @@ endif()
 
 add_executable(abuse
     common.h
+    audio_volume.h
     file_utils.cpp file_utils.h
     lol/matrix.cpp lol/matrix.h
     specache.cpp specache.h

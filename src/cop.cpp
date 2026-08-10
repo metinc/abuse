@@ -504,12 +504,12 @@ static void do_special_power(game_object *o, int xm, int ym, int but, game_objec
             o->set_yvel(o->yvel() - 3);
         else
             o->set_yvel(o->yvel() - 2);
-        the_game->play_sound(S_FLY_SND, 32, o->x, o->y);
+        the_game->play_sound(S_FLY_SND, 0.25f, o->x, o->y);
     }
     break;
     case FAST_POWER: {
         if ((current_level->tick_counter() % 16) == 0)
-            the_game->play_sound(S_SPEED_SND, 100, o->x, o->y);
+            the_game->play_sound(S_SPEED_SND, 0.79f, o->x, o->y);
 
         o->lvars[used_special_power] = 1;
         o->lvars[last1_x] = o->x;
@@ -705,11 +705,11 @@ void *cop_mover(int xm, int ym, int but)
             else
             {
                 if (o->hp() < 40 && (current_level->tick_counter() % 16) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
                 else if (o->hp() < 15 && (current_level->tick_counter() % 8) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
                 else if (o->hp() < 7 && (current_level->tick_counter() % 4) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
 
                 if (but & 1)
                     do_special_power(o, xm, ym, but, top);
@@ -1052,7 +1052,7 @@ void *sgun_ai()
         int32_t y = o->y + jrand() % 4;
         game_object *n = create(S_EXPLODE5, x, y);
         current_level->add_object(n);
-        the_game->play_sound(S_LPING_SND, 50, x, y);
+        the_game->play_sound(S_LPING_SND, 0.39f, x, y);
     }
     else if (who && figures[who->otype]->get_cflag(CFLAG_HURTABLE))
     {

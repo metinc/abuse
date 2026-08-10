@@ -43,7 +43,7 @@ static float random_voice_frequency_ratio(float min_pitch, float max_pitch)
 
 static void play_voice(game_object *o, int sound, float min_pitch, float max_pitch)
 {
-    the_game->play_sound(sound, 127, o->x, o->y, random_voice_frequency_ratio(min_pitch, max_pitch));
+    the_game->play_sound(sound, 1.0f, o->x, o->y, random_voice_frequency_ratio(min_pitch, max_pitch));
 }
 
 int can_see(game_object *o, int32_t x1, int32_t y1, int32_t x2, int32_t y2)
@@ -261,7 +261,7 @@ void *ant_ai()
         if ((ret & BLOCKED_DOWN) || !can_see(o, o->x, o->y, o->x, o->y + 1))
         {
             o->set_state((character_state)S_landing);
-            the_game->play_sound(S_ALAND_SND, 127, o->x, o->y);
+            the_game->play_sound(S_ALAND_SND, 1.0f, o->x, o->y);
             o->set_aistate(ANT_LANDING);
         }
     }
@@ -364,7 +364,7 @@ void *ant_ai()
             o->set_state((character_state)S_pounce_wait);
             if (o->aistate_time() > alien_wait_time())
             {
-                the_game->play_sound(S_ASLASH_SND, 127, o->x, o->y);
+                the_game->play_sound(S_ASLASH_SND, 1.0f, o->x, o->y);
                 o->set_state(stopped);
                 o->set_aistate(ANT_JUMP);
             }

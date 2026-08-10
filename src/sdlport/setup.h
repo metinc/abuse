@@ -34,8 +34,8 @@ class Settings
     bool mono;
     bool no_sound;
     bool no_music;
-    int volume_sound; //0-127
-    int volume_music; //0-127
+    double volume_sound; //0.0-1.0
+    double volume_music; //0.0-1.0
     std::string soundfont; // SoundFont filename or path
 
     //random

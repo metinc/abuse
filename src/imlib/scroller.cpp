@@ -444,7 +444,7 @@ int lis_sort(void const *a, void const *b)
 }
 
 pick_list::pick_list(int X, int Y, int ID, int height, char **List, int num_entries, int start_yoffset, ifield *Next,
-                     image *texture)
+                     image *texture, bool sort_entries)
     : spicker(X, Y, ID, height, 1, 1, 0, Next), entries(num_entries), wid(0), lis(nullptr), key_hist_total(0),
       tex(texture)
 {
@@ -455,7 +455,8 @@ pick_list::pick_list(int X, int Y, int ID, int height, char **List, int num_entr
         lis[i].name = List[i];
         lis[i].number = i;
     }
-    qsort((void *)lis, num_entries, sizeof(pick_list_item), lis_sort);
+    if (sort_entries)
+        qsort((void *)lis, num_entries, sizeof(pick_list_item), lis_sort);
 
     for (i = 0; i < entries; i++)
         if ((int)strlen(List[i]) > wid)

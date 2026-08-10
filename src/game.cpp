@@ -14,8 +14,11 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
+
 #include "common.h"
 
+#include "audio_volume.h"
 #ifdef WIN32
 #include <WinSock2.h>
 #include <Windows.h>
@@ -171,11 +174,11 @@ void AR_HiresTitleScreen()
 }*/
 //
 
-void Game::play_sound(int id, int vol, int32_t x, int32_t y, float frequency_ratio)
+void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
     if (!(sound_avail & SFX_INITIALIZED))
         return;
-    if (vol < 1)
+    if (source_gain <= 0.0f)
         return;
     if (!player_list)
         return;
@@ -214,9 +217,11 @@ void Game::play_sound(int id, int vol, int32_t x, int32_t y, float frequency_rat
     if (p > 255)
         p = 255;
 
-    int v = (400 - mindist) * sfx_volume / 400 - (127 - vol);
-    if (v > 0)
-        cache.sfx(id)->play(v, frequency_ratio, p);
+    source_gain = std::clamp(source_gain, 0.0f, 1.0f);
+    const float distance_gain = static_cast<float>(400 - mindist) / 400.0f;
+    const float gain = distance_gain * sfx_volume - (1.0f - source_gain);
+    if (gain > 0.0f)
+        cache.sfx(id)->play(gain, frequency_ratio, p);
 }
 
 int get_option(char const *name)
@@ -1399,7 +1404,7 @@ void do_title()
                 wm->get_event(ev);
 
             if ((i % 5) == 0 && DEFINEDP(space_snd) && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(lnumber_value(space_snd))->play(sfx_volume * 90 / 127);
+                cache.sfx(lnumber_value(space_snd))->play(sfx_volume * 0.71f);
 
             SDL_Delay(25);
         }
@@ -1910,31 +1915,25 @@ void Game::get_input()
                         case LOWER_SFX:
                         case RAISE_MUSIC:
                         case LOWER_MUSIC: {
-                            if (ev.message.id == RAISE_SFX && sfx_volume != 127)
-                                sfx_volume = std::min(127, sfx_volume + 16);
-                            if (ev.message.id == LOWER_SFX && sfx_volume != 0)
-                                sfx_volume = std::max(sfx_volume - 16, 0);
-                            if (ev.message.id == RAISE_MUSIC && music_volume != 126)
+                            if (ev.message.id == RAISE_SFX && sfx_volume < 1.0f)
+                                sfx_volume = increase_audio_volume(sfx_volume);
+                            if (ev.message.id == LOWER_SFX && sfx_volume > 0.0f)
+                                sfx_volume = decrease_audio_volume(sfx_volume);
+                            if (ev.message.id == RAISE_MUSIC && music_volume < 1.0f)
                             {
-                                music_volume = std::min(music_volume + 16, 127);
+                                music_volume = increase_audio_volume(music_volume);
                                 if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_volume(music_volume);
+                                    current_song->set_gain(music_volume);
                             }
 
-                            if (ev.message.id == LOWER_MUSIC && music_volume != 0)
+                            if (ev.message.id == LOWER_MUSIC && music_volume > 0.0f)
                             {
-                                music_volume = std::max(music_volume - 16, 0);
+                                music_volume = decrease_audio_volume(music_volume);
                                 if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_volume(music_volume);
+                                    current_song->set_gain(music_volume);
                             }
 
                             ((button *)ev.message.data)->push();
-                            /*                                        volume_window->inm->redraw();
-                                        draw_value(volume_window->m_surf, 2, 43,
-                                                (volume_window->x2()-volume_window->x1()-1), 8, sfx_volume, 127);
-                                        draw_value(volume_window->m_surf, 2, 94,
-                                                (volume_window->x2()-volume_window->x1()-1), 8, music_volume, 127);
-*/
                             break;
                         }
                         }
@@ -2240,24 +2239,6 @@ int external_print = 0;
 
 void start_sound(int argc, char **argv)
 {
-    for (int i = 1; i < argc; i++)
-        if (!strcmp(argv[i], "-sfx_volume"))
-        {
-            i++;
-            if (atoi(argv[i]) >= 0 && atoi(argv[i]) < 127)
-                sfx_volume = atoi(argv[i]);
-            else
-                printf("Bad sound effects volume level, use 0..127\n");
-        }
-        else if (!strcmp(argv[i], "-music_volume"))
-        {
-            i++;
-            if (atoi(argv[i]) >= 0 && atoi(argv[i]) < 127)
-                music_volume = atoi(argv[i]);
-            else
-                printf("Bad music volume level, use 0..127\n");
-        }
-
     sound_avail = sound_init(argc, argv);
 }
 

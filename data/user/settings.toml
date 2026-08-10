@@ -14,13 +14,13 @@ linear_filter = false
 hires = 0
 big_font = false
 # Display gamma (0.5-2.0); 1.0 is neutral.
-gamma = 1.0
+gamma = 1.00
 
 [audio]
 sound_enabled = true
 music_enabled = true
-sound_volume = 127
-music_volume = 127
+sound_volume = 1.00
+music_volume = 1.00
 mono = false
 soundfont = "ChaosBank.sf2"
 

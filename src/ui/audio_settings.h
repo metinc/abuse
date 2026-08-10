@@ -13,23 +13,23 @@
 #include <string>
 #include <vector>
 
-class VolumeWindow : public Jwindow
+class AudioSettingsWindow
 {
   private:
-    int slider, u_u, u_d, u_ua, u_da, d_u, d_d, d_ua, d_da;
-    ivec2 volume_origin;
+    Jwindow *m_window;
     std::vector<std::string> soundfont_values;
     std::vector<std::string> soundfont_labels;
     std::vector<char *> soundfont_label_ptrs;
 
   public:
-    VolumeWindow();
-
-    virtual void redraw();
+    AudioSettingsWindow();
 
     void draw_music_vol();
     void draw_sfx_vol();
-    void draw_vol(int x1, int y1, int x2, int y2, int t, int max, int c1, int c2);
     std::string selected_soundfont();
     void select_soundfont(const std::string &soundfont);
+    Jwindow *window() const
+    {
+        return m_window;
+    }
 };

@@ -32,7 +32,7 @@ class sound_effect
     sound_effect(char const *filename);
     ~sound_effect();
 
-    void play(int volume = 127, float frequency_ratio = 1.0f, int panpot = 128);
+    void play(float gain = 1.0f, float frequency_ratio = 1.0f, int panpot = 128);
 
   private:
     MIX_Audio *m_audio;
@@ -42,10 +42,10 @@ class song
 {
   public:
     song(char const *filename);
-    void play(unsigned char volume = 127);
+    void play(float gain = 1.0f);
     void stop(long fadeout_time = 0); // time in ms
     int playing();
-    void set_volume(int volume);
+    void set_gain(float gain);
     bool reload();
     ~song();
 
@@ -56,7 +56,7 @@ class song
     std::string m_filename;
     MIX_Audio *m_audio;
     MIX_Track *m_track;
-    int m_volume;
+    float m_gain;
 };
 
 #endif

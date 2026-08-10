@@ -256,6 +256,18 @@ class WindowManager : public EventHandler
     {
         return bk;
     }
+    int close_bright_color()
+    {
+        return close_hi;
+    }
+    int close_medium_color()
+    {
+        return close_med;
+    }
+    int close_dark_color()
+    {
+        return close_low;
+    }
     void set_colors(int Hi, int Med, int Low)
     {
         hi = Hi;
@@ -281,6 +293,7 @@ class WindowManager : public EventHandler
   private:
     palette *m_pal;
     image *m_surf;
+    int close_hi, close_med, close_low;
 };
 
 #endif

@@ -423,7 +423,7 @@ void EventHandler::SysEvent(Event &ev)
                 if (current_level->save("save0001.spe", 1) == 1)
                 {
                     the_game->show_help("Station secured!");
-                    cache.sfx(1031)->play(127); //id 1031 should be save05.wav
+                    cache.sfx(1031)->play(1.0f); //id 1031 should be save05.wav
                     settings.quick_load = get_save_path(1);
                 }
             }
@@ -519,7 +519,7 @@ void EventHandler::SysEvent(Event &ev)
                     if (current_level->save("save0001.spe", 1) == 1)
                     {
                         the_game->show_help("Station secured!");
-                        cache.sfx(1031)->play(127); //id 1031 should be save05.wav
+                        cache.sfx(1031)->play(1.0f); //id 1031 should be save05.wav
                         settings.quick_load = get_save_path(1);
                     }
                 }

@@ -44,7 +44,8 @@ property_manager *prop;
 int *backtiles;
 int *foretiles;
 JCFont *big_font, *console_font;
-int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi, total_songs = 0, sfx_volume, music_volume, sound_avail = 0;
+int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi, total_songs = 0, sound_avail = 0;
+float sfx_volume = 1.0f, music_volume = 1.0f;
 song *current_song = NULL;
 
 uint16_t current_start_type, start_position_type, last_start_number;

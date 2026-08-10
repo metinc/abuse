@@ -134,7 +134,7 @@ void ico_button::draw(int hover, image *screen)
 }
 
 extern int32_t S_BUTTON_PRESS_SND;
-extern int sfx_volume;
+extern float sfx_volume;
 
 void ico_button::handle_event(Event &ev, image *screen, InputManager *im)
 {

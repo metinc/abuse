@@ -1196,7 +1196,7 @@ void dev_controll::do_command(char const *command, Event &ev)
                 {
                     current_level->delete_object(selected_object);
                     if (S_DELETE_SND > 0)
-                        cache.sfx(S_DELETE_SND)->play(sfx_volume / 2);
+                        cache.sfx(S_DELETE_SND)->play(sfx_volume * 0.5f);
                     selected_object = NULL;
                 }
             }
@@ -1209,7 +1209,7 @@ void dev_controll::do_command(char const *command, Event &ev)
                 {
                     current_level->remove_light(selected_light);
                     if (S_DELETE_SND > 0)
-                        cache.sfx(S_DELETE_SND)->play(sfx_volume / 2);
+                        cache.sfx(S_DELETE_SND)->play(sfx_volume * 0.5f);
                 }
                 else
                     delete_light(selected_light);
@@ -3000,7 +3000,7 @@ void dev_controll::handle_event(Event &ev)
             {
                 link_object->add_object(selected_object);
                 if (S_LINK_SND > 0)
-                    cache.sfx(S_LINK_SND)->play(sfx_volume / 2);
+                    cache.sfx(S_LINK_SND)->play(sfx_volume * 0.5f);
                 the_game->need_refresh();
             }
 

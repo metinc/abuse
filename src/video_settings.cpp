@@ -46,6 +46,7 @@ class gamma_slider : public scroller
     palette *display_palette;
     const char *darker_label;
     const char *brighter_label;
+    ivec2 value_position;
 
     static int step_for_gamma(double gamma)
     {
@@ -54,9 +55,9 @@ class gamma_slider : public scroller
 
   public:
     gamma_slider(int X, int Y, int ID, int width, double current, palette *pal, const char *darker,
-                 const char *brighter, ifield *Next)
+                 const char *brighter, ivec2 ValuePosition, ifield *Next)
         : scroller(X, Y, ID, width, wm->font()->Size().y + 4, 0, gamma_steps, Next), display_palette(pal),
-          darker_label(darker), brighter_label(brighter)
+          darker_label(darker), brighter_label(brighter), value_position(ValuePosition)
     {
         sx = step_for_gamma(current);
     }
@@ -89,55 +90,33 @@ class gamma_slider : public scroller
         char value_label[16];
         snprintf(value_label, sizeof(value_label), "%.2f", value());
         const int value_width = static_cast<int>(strlen(value_label)) * font_width;
-        wm->font()->PutString(screen, ivec2(m_pos.x + (l - value_width) / 2, text_y), value_label,
-                              wm->bright_color());
+        screen->Bar(value_position, value_position + ivec2(value_width - 1, wm->font()->Size().y - 1),
+                    wm->medium_color());
+        wm->font()->PutString(screen, value_position, value_label, wm->bright_color());
 
         display_palette->load();
     }
 };
 
-class video_mode_picker : public spicker
+class video_mode_picker : public pick_list
 {
-    const char *labels[3];
-    int width;
+    int minimum_item_width;
 
   public:
-    video_mode_picker(int X, int Y, int ID, int current, const char *windowed, const char *borderless,
-                      const char *exclusive, ifield *Next)
-        : spicker(X, Y, ID, 3, 1, 1, 0, Next), labels{windowed, borderless, exclusive}
+    video_mode_picker(int X, int Y, int ID, int current, int minimum_width, char **labels, ifield *Next)
+        : pick_list(X, Y, ID, 3, labels, 3, 0, Next, nullptr, false), minimum_item_width(minimum_width)
     {
-        width = 0;
-        for (const char *label : labels)
-            width = std::max(width, static_cast<int>(strlen(label)) * wm->font()->Size().x + 8);
-        reconfigure();
-        cur_sel = std::max(0, std::min(2, current));
-    }
-
-    void draw_item(image *screen, int x, int y, int num, int active) override
-    {
-        screen->Bar(ivec2(x, y), ivec2(x + item_width() - 1, y + item_height() - 1),
-                    active ? wm->medium_color() : wm->dark_color());
-        wm->font()->PutString(screen, ivec2(x + 4, y + 2), labels[num], wm->bright_color());
-    }
-
-    int total() override
-    {
-        return 3;
+        const int requested = std::clamp(current, 0, 2);
+        for (cur_sel = 0; cur_sel < total() && get_selection() != requested; ++cur_sel)
+            ;
+        if (cur_sel == total())
+            cur_sel = 0;
+        sx = std::min(cur_sel, max_scroll_position());
     }
 
     int item_width() override
     {
-        return width;
-    }
-
-    int item_height() override
-    {
-        return wm->font()->Size().y + 4;
-    }
-
-    int activate_on_mouse_move() override
-    {
-        return 0;
+        return std::max(minimum_item_width, pick_list::item_width());
     }
 };
 
@@ -168,36 +147,48 @@ void show_video_settings(palette *pal)
             font_width +
         12;
 
-    const int window_width = std::max(settings.big_font ? 350 : 300, mode_width + 20);
-    const int gamma_y = font_height * 3;
-    const int default_y = gamma_y + font_height + 20;
-    const int mode_label_y = default_y + font_height + 12;
-    const int mode_y = mode_label_y + font_height + 3;
-    const int ok_y = mode_y + 3 * (font_height + 4) + 10;
-    const int window_height = ok_y + 28;
-    const int slider_x = 10;
-    const int slider_width = window_width - slider_x * 2;
+    const int client_left = Jwindow::left_border();
+    const int client_top = Jwindow::top_border();
+    const int padding = 8;
+    const int section_gap = 10;
+    const int client_width = std::max(settings.big_font ? 260 : 210, mode_width + padding * 2 + 4);
+    const int content_x = client_left + padding - 2;
+    const int gamma_label_y = padding + 3;
+    const int gamma_value_y = client_top + gamma_label_y;
+    const int default_y = gamma_label_y - 4;
+    const int gamma_y = padding + font_height + 10;
+    const int mode_label_y = gamma_y + font_height + 4 + 12 + section_gap;
+    const int mode_y = mode_label_y + font_height + 5;
+    const int ok_y = mode_y + 3 * (font_height + 1) + 12;
+    const int client_bottom = ok_y + cache.img(ok_button)->Size().y + 10 + padding;
+    const int client_height = client_bottom - client_top;
+    const int slider_width = client_width - padding * 2 - 2;
 
     const int default_width = static_cast<int>(strlen(default_label)) * font_width + 7;
     const int ok_width = cache.img(ok_button)->Size().x + 7;
-    const int default_x = (window_width - default_width) / 2;
-    const int ok_x = (window_width - ok_width) / 2;
+    const int default_x = client_left + client_width - padding - default_width - 3;
+    const int gamma_value_x = default_x - padding - 4 * font_width;
+    const int ok_x = client_left + (client_width - ok_width) / 2;
 
     info_field *labels =
-        new info_field(2, mode_label_y, ID_NULL, lang_string("video_mode_msg"),
-                       new info_field(2, font_height, ID_NULL, lang_string("gamma_msg"), nullptr));
+        new info_field(client_left + 2, mode_label_y, ID_NULL, lang_string("video_mode_msg"),
+                       new info_field(client_left + 2, gamma_label_y, ID_NULL, lang_string("gamma_msg"), nullptr));
     button *ok = new button(ok_x, ok_y, ID_GAMMA_OK, cache.img(ok_button), labels);
     button *reset = new button(default_x, default_y, ID_GAMMA_DEFAULT, default_label, ok);
-    video_mode_picker *mode_picker =
-        new video_mode_picker((window_width - mode_width) / 2, mode_y, ID_VIDEO_MODE_PICKER, settings.fullscreen,
-                              windowed_label, borderless_label, exclusive_label, reset);
-    gamma_slider *slider =
-        new gamma_slider(slider_x, gamma_y, ID_GAMMA_SLIDER, slider_width, settings.gamma, pal,
-                         lang_string("gamma_darker"), lang_string("gamma_brighter"), mode_picker);
+    reset->set_momentary();
+    char *mode_labels[] = {const_cast<char *>(windowed_label), const_cast<char *>(borderless_label),
+                           const_cast<char *>(exclusive_label)};
+    video_mode_picker *mode_picker = new video_mode_picker(content_x, mode_y, ID_VIDEO_MODE_PICKER,
+                                                           settings.fullscreen, client_width - padding * 2 - 6,
+                                                           mode_labels, reset);
+    gamma_slider *slider = new gamma_slider(content_x, gamma_y, ID_GAMMA_SLIDER, slider_width, settings.gamma, pal,
+                                            lang_string("gamma_darker"), lang_string("gamma_brighter"),
+                                            ivec2(gamma_value_x, gamma_value_y), mode_picker);
 
-    Jwindow *window =
-        wm->CreateWindow(ivec2(xres / 2 - window_width / 2, yres / 2 - window_height / 2),
-                         ivec2(window_width, window_height), slider);
+    const ivec2 total_size(client_width + Jwindow::left_border() + Jwindow::right_border(),
+                           client_height + Jwindow::top_border() + Jwindow::bottom_border());
+    Jwindow *window = wm->CreateWindow(ivec2((xres - total_size.x) / 2, (yres - total_size.y) / 2),
+                                       ivec2(client_width, client_height), slider, lang_string("ic_gamma"));
 
     Event event;
     wm->flush_screen();
@@ -225,7 +216,7 @@ void show_video_settings(palette *pal)
     }
 
     const double selected_gamma = slider->value();
-    const int fullscreen_mode = mode_picker->first_selected();
+    const int fullscreen_mode = mode_picker->get_selection();
     wm->close_window(window);
 
     if (abort_menu)

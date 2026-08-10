@@ -184,7 +184,7 @@ class pick_list : public spicker
 
   public:
     pick_list(int X, int Y, int ID, int height, char **List, int num_entries, int start_yoffset, ifield *Next,
-              image *texture = NULL);
+              image *texture = NULL, bool sort_entries = true);
     int total() override
     {
         return entries;

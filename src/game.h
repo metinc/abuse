@@ -209,7 +209,7 @@ class Game
     void set_state(int new_state);
     int game_over();
     void grow_views(int amount);
-    void play_sound(int id, int vol, int32_t x, int32_t y, float frequency_ratio = 1.0f);
+    void play_sound(int id, float gain, int32_t x, int32_t y, float frequency_ratio = 1.0f);
     void request_level_load(char *name);
     void request_level_load(std::string name); //AR
     void request_end();

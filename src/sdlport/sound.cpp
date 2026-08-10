@@ -285,17 +285,17 @@ sound_effect::~sound_effect()
 /**
   * @brief Plays a sound effect with specified parameters
   *
-  * @param volume Volume level (0-127)
+  * @param gain Volume gain (0.0-1.0)
   * @param frequency_ratio Playback pitch/rate, where 1.0 is normal speed
   * @param panpot Stereo panning (0=right, 128=center, 255=left)
   */
-void sound_effect::play(int volume, float frequency_ratio, int panpot)
+void sound_effect::play(float gain, float frequency_ratio, int panpot)
 {
     if (!enabled || settings.no_sound || !m_audio)
         return;
 
     // Clamp values to valid ranges
-    volume = std::clamp(volume, 0, 127);
+    gain = std::clamp(gain, 0.0f, 1.0f);
     panpot = std::clamp(panpot, 0, 255);
     frequency_ratio = std::clamp(frequency_ratio, 0.01f, 100.0f);
 
@@ -309,7 +309,7 @@ void sound_effect::play(int volume, float frequency_ratio, int panpot)
             static_cast<float>(255 - panpot) / 255.0f,
         };
         MIX_SetTrackAudio(track, m_audio);
-        MIX_SetTrackGain(track, static_cast<float>(volume) / 127.0f);
+        MIX_SetTrackGain(track, gain);
         MIX_SetTrackStereo(track, &gains);
         MIX_SetTrackFrequencyRatio(track, frequency_ratio);
         if (!MIX_PlayTrack(track, 0))
@@ -327,7 +327,7 @@ void sound_effect::play(int volume, float frequency_ratio, int panpot)
   * @param filename Path to the music file
   */
 song::song(char const *filename)
-    : m_filename(filename ? filename : ""), m_audio(nullptr), m_track(nullptr), m_volume(127)
+    : m_filename(filename ? filename : ""), m_audio(nullptr), m_track(nullptr), m_gain(1.0f)
 {
     load();
 }
@@ -418,14 +418,14 @@ song::~song()
 /**
   * @brief Starts playing the music
   *
-  * @param volume Volume level (0-127)
+  * @param gain Volume gain (0.0-1.0)
   */
-void song::play(unsigned char volume)
+void song::play(float gain)
 {
     if (!enabled || settings.no_music || !m_track)
         return;
 
-    set_volume(volume);
+    set_gain(gain);
     start_playback();
 }
 
@@ -470,15 +470,15 @@ int song::playing()
 }
 
 /**
-  * @brief Sets the music volume
+  * @brief Sets the music gain
   *
-  * @param volume New volume level (0-127)
+  * @param gain New volume gain (0.0-1.0)
   */
-void song::set_volume(int volume)
+void song::set_gain(float gain)
 {
-    m_volume = std::clamp(volume, 0, 127);
+    m_gain = std::clamp(gain, 0.0f, 1.0f);
     if (enabled && m_track)
-        MIX_SetTrackGain(m_track, static_cast<float>(m_volume) / 127.0f);
+        MIX_SetTrackGain(m_track, m_gain);
 }
 
 bool song::reload()
@@ -514,7 +514,7 @@ bool song::reload()
 
     if (resume)
     {
-        set_volume(m_volume);
+        set_gain(m_gain);
         return start_playback(position_milliseconds);
     }
     return true;

@@ -429,6 +429,27 @@ void button::push()
 
 void button::handle_event(Event &ev, image *screen, InputManager *im)
 {
+    if (momentary)
+    {
+        const bool pressed = (ev.type == EV_KEY && ev.key == JK_ENTER) ||
+                             (ev.type == EV_MOUSE_BUTTON && ev.mouse_button != 0);
+        const bool released = (ev.type == EV_KEYRELEASE && ev.key == JK_ENTER) ||
+                              (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
+        if (!pressed && !released)
+            return;
+
+        const int new_up = released ? 1 : 0;
+        if (new_up != up)
+        {
+            up = new_up;
+            draw_first(screen);
+            draw(act, screen);
+        }
+        if (released)
+            wm->Push(new Event(id, (char *)this));
+        return;
+    }
+
     if ((ev.type == EV_KEY && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button))
     {
         int x1, y1, x2, y2;

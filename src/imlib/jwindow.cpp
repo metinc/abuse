@@ -254,6 +254,9 @@ WindowManager::WindowManager(image *screen, palette *pal, int Hi, int Med, int L
     med = Med;
     m_first = NULL;
     m_pal = pal;
+    close_hi = pal->find_closest(179, 11, 0);
+    close_med = pal->find_closest(127, 7, 0);
+    close_low = pal->find_closest(39, 0, 0);
     m_grab = NULL;
     bk = pal->find_closest(0, 0, 0);
     state = inputing;
@@ -469,9 +472,9 @@ void Jwindow::redraw()
                 m_surf->Line(ivec2(left_border() - 1, top_border() - 1), ivec2(right_border() - 1, top_border() - 1),
                              low);
         }
-        m_surf->Rectangle(ivec2(2, 2), ivec2(top_border() - 2, top_border() - 3), wm->black());
-        m_surf->WidgetBar(ivec2(3, 3), ivec2(top_border() - 3, top_border() - 4), hi, med,
-                          low); // draws the 'close' button
+        m_surf->Bar(ivec2(2, 2), ivec2(top_border() - 2, top_border() - 3), wm->black());
+        m_surf->WidgetBar(ivec2(3, 3), ivec2(top_border() - 3, top_border() - 4), wm->close_bright_color(),
+                          wm->close_medium_color(), wm->close_dark_color()); // draws the 'close' button
     }
 
     else
@@ -486,8 +489,9 @@ void Jwindow::redraw()
                 m_surf->Line(ivec2(left_border() - 1, jw_top + 4), ivec2(right_border() - 1, jw_top + 4), low);
         }
         // Draw the 'close' button
-        m_surf->Rectangle(ivec2(1, 1), ivec2(4, 4), wm->black());
-        m_surf->WidgetBar(ivec2(2, 2), ivec2(3, 3), hi, med, low);
+        m_surf->Bar(ivec2(1, 1), ivec2(4, 4), wm->black());
+        m_surf->WidgetBar(ivec2(2, 2), ivec2(3, 3), wm->close_bright_color(), wm->close_medium_color(),
+                          wm->close_dark_color());
     }
     if (_name && _name[0])
     {

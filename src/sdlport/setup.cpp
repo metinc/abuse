@@ -33,7 +33,9 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
+#include <iomanip>
 #include <limits>
+#include <locale>
 #include <system_error>
 #include <toml++/toml.hpp>
 #include <SDL3/SDL.h>
@@ -51,13 +53,28 @@ extern Settings settings;
 //
 
 extern int xres, yres; //video.cpp
-extern int sfx_volume, music_volume; //loader.cpp
+extern float sfx_volume, music_volume; //loader.cpp
 unsigned int scale; //AR was static, removed for external
 
 const char *settings_filename = "settings.toml";
 
 namespace
 {
+void set_fixed_decimal(std::string &document, const char *key, double value)
+{
+    const std::string prefix = std::string(key) + " = ";
+    const size_t value_start = document.find(prefix);
+    if (value_start == std::string::npos)
+        return;
+
+    const size_t number_start = value_start + prefix.size();
+    const size_t number_end = document.find('\n', number_start);
+    std::ostringstream formatted;
+    formatted.imbue(std::locale::classic());
+    formatted << std::fixed << std::setprecision(2) << value;
+    document.replace(number_start, number_end - number_start, formatted.str());
+}
+
 std::string append_path(const char *base, const char *relative)
 {
     std::string result = base ? base : "";
@@ -115,8 +132,8 @@ Settings::Settings()
     this->mono = false; // disable stereo sound
     this->no_sound = false; // disable sound
     this->no_music = false; // disable music
-    this->volume_sound = 127;
-    this->volume_music = 127;
+    this->volume_sound = 1.0;
+    this->volume_music = 1.0;
     this->soundfont = DEFAULT_SOUNDFONT;
 
     //random
@@ -491,8 +508,17 @@ void Settings::Validate()
     }
     else
         clamp(gamma, 0.5, 2.0, "video.gamma");
-    clamp(volume_sound, 0, 127, "audio.sound_volume");
-    clamp(volume_music, 0, 127, "audio.music_volume");
+    auto validate_gain = [&clamp](double &gain, const char *name) {
+        if (!std::isfinite(gain))
+        {
+            gain = 1.0;
+            fprintf(stderr, "Config: %s is not finite; using 1.0\n", name);
+        }
+        else
+            clamp(gain, 0.0, 1.0, name);
+    };
+    validate_gain(volume_sound, "audio.sound_volume");
+    validate_gain(volume_music, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
     clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
     clamp(mouse_scale, static_cast<short>(0), static_cast<short>(1), "input.mouse_scale");
@@ -554,8 +580,8 @@ bool Settings::ReadTomlFile()
         read_boolean(audio, "audio", "music_enabled", enabled);
         no_music = !enabled;
         read_boolean(audio, "audio", "mono", mono);
-        read_integer(audio, "audio", "sound_volume", volume_sound);
-        read_integer(audio, "audio", "music_volume", volume_music);
+        read_number(audio, "audio", "sound_volume", volume_sound);
+        read_number(audio, "audio", "music_volume", volume_music);
         read_string(audio, "audio", "soundfont", soundfont);
 
         const toml::table *gameplay = document["gameplay"].as_table();
@@ -731,6 +757,13 @@ bool Settings::Save() const
     input.insert("gamepad", std::move(gamepad));
     document.insert("input", std::move(input));
 
+    std::ostringstream serialized_stream;
+    serialized_stream << document << '\n';
+    std::string serialized = serialized_stream.str();
+    set_fixed_decimal(serialized, "gamma", gamma);
+    set_fixed_decimal(serialized, "sound_volume", volume_sound);
+    set_fixed_decimal(serialized, "music_volume", volume_music);
+
     const std::filesystem::path path = settings_path(settings_filename);
     const std::filesystem::path temporary = path.string() + ".tmp";
     std::error_code error;
@@ -741,7 +774,7 @@ bool Settings::Save() const
         std::cerr << "Config: Unable to write " << temporary << '\n';
         return false;
     }
-    output << document << '\n';
+    output << serialized;
     output.close();
     if (!output)
     {
@@ -995,8 +1028,8 @@ void setup(int argc, char **argv)
     scale = settings.scale;
     xres = settings.xres;
     yres = settings.yres;
-    sfx_volume = settings.volume_sound;
-    music_volume = settings.volume_music;
+    sfx_volume = static_cast<float>(settings.volume_sound);
+    music_volume = static_cast<float>(settings.volume_music);
 }
 
 int get_key_binding(char const *dir, int i)

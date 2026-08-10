@@ -17,6 +17,7 @@
 
 #include "common.h"
 
+#include "audio_volume.h"
 #include "dev.h"
 
 #include "ui/audio_settings.h"
@@ -49,7 +50,7 @@ extern int get_key_binding(char const *dir, int i);
 
 extern net_protocol *prot;
 
-static VolumeWindow *volume_window;
+static AudioSettingsWindow *audio_settings_window;
 
 static bool apply_soundfont(const std::string &selected_soundfont)
 {
@@ -76,17 +77,18 @@ static bool apply_soundfont(const std::string &selected_soundfont)
     return true;
 }
 
-static void create_volume_window()
+static void create_audio_settings_window()
 {
-    volume_window = new VolumeWindow();
-    volume_window->inm->allow_no_selections();
-    volume_window->inm->clear_current();
-    volume_window->show();
+    audio_settings_window = new AudioSettingsWindow();
+    Jwindow *window = audio_settings_window->window();
+    window->inm->allow_no_selections();
+    window->inm->clear_current();
+    window->show();
 
-    wm->grab_focus(volume_window);
+    wm->grab_focus(window);
     wm->flush_screen();
 
-    while (volume_window)
+    while (audio_settings_window)
     {
         Event ev;
 
@@ -94,8 +96,6 @@ static void create_volume_window()
         {
             wm->get_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
-
-        wm->flush_screen();
 
         if (ev.type == EV_CLOSE_WINDOW || (ev.type == EV_KEY && ev.key == JK_ESC))
             break;
@@ -107,57 +107,52 @@ static void create_volume_window()
             switch (ev.message.id)
             {
             case ID_SFX_UP:
-                sfx_volume += 16;
-                if (sfx_volume > 127)
-                    sfx_volume = 127;
-                volume_window->draw_sfx_vol();
+                sfx_volume = increase_audio_volume(sfx_volume);
+                audio_settings_window->draw_sfx_vol();
                 s = "sfx/ambtech1.wav";
                 if (sound_avail & SFX_INITIALIZED)
                     cache.sfx(cache.reg(s, s, SPEC_EXTERN_SFX, 1))->play(sfx_volume);
                 break;
             case ID_SFX_DOWN:
-                sfx_volume -= 16;
-                if (sfx_volume < 0)
-                    sfx_volume = 0;
-                volume_window->draw_sfx_vol();
+                sfx_volume = decrease_audio_volume(sfx_volume);
+                audio_settings_window->draw_sfx_vol();
                 s = "sfx/ambtech1.wav";
                 if (sound_avail & SFX_INITIALIZED)
                     cache.sfx(cache.reg(s, s, SPEC_EXTERN_SFX, 1))->play(sfx_volume);
                 break;
 
             case ID_MUSIC_UP:
-                music_volume += 16;
-                if (music_volume > 127)
-                    music_volume = 127;
-                volume_window->draw_music_vol();
+                music_volume = increase_audio_volume(music_volume);
+                audio_settings_window->draw_music_vol();
                 if (current_song)
-                    current_song->set_volume(music_volume);
+                    current_song->set_gain(music_volume);
                 break;
             case ID_MUSIC_DOWN:
-                music_volume -= 16;
-                if (music_volume < 0)
-                    music_volume = 0;
-                volume_window->draw_music_vol();
+                music_volume = decrease_audio_volume(music_volume);
+                audio_settings_window->draw_music_vol();
                 if (current_song)
-                    current_song->set_volume(music_volume);
+                    current_song->set_gain(music_volume);
                 break;
             case ID_SOUNDFONT_PICKER:
-                if (!apply_soundfont(volume_window->selected_soundfont()))
-                    volume_window->select_soundfont(settings.soundfont);
+                if (!apply_soundfont(audio_settings_window->selected_soundfont()))
+                    audio_settings_window->select_soundfont(settings.soundfont);
                 break;
             }
         }
+
+        wm->flush_screen();
     }
 
-    const std::string selected_soundfont = volume_window->selected_soundfont();
+    const std::string selected_soundfont = audio_settings_window->selected_soundfont();
     settings.volume_sound = sfx_volume;
     settings.volume_music = music_volume;
     if (!apply_soundfont(selected_soundfont))
-        volume_window->select_soundfont(settings.soundfont);
+        audio_settings_window->select_soundfont(settings.soundfont);
     if (!settings.Save())
         fprintf(stderr, "Unable to save audio settings\n");
-    wm->close_window(volume_window);
-    volume_window = nullptr;
+    wm->close_window(window);
+    delete audio_settings_window;
+    audio_settings_window = nullptr;
 }
 
 void save_difficulty()
@@ -245,19 +240,19 @@ void menu_handler(Event &ev, InputManager *inm)
         switch (ev.message.id)
         {
         case ID_LIGHT_OFF:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 show_video_settings(pal);
             }
             break;
         case ID_RETURN:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 the_game->set_state(RUN_STATE);
             }
             break;
         case ID_START_GAME:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 the_game->load_level(level_file);
                 the_game->set_state(RUN_STATE);
@@ -271,7 +266,7 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_LOAD_PLAYER_GAME:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 int got_level = load_game(0, symbol_str("LOAD"));
                 the_game->reset_keymap();
@@ -289,9 +284,9 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_VOLUME:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
-                create_volume_window();
+                create_audio_settings_window();
             }
             break;
 
@@ -317,7 +312,7 @@ void menu_handler(Event &ev, InputManager *inm)
         break;
 
         case ID_MULTIPLAYER: {
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 net_configuration *cfg = new net_configuration;
                 if (cfg->input())
@@ -335,7 +330,7 @@ void menu_handler(Event &ev, InputManager *inm)
         break;
 
         case ID_SHOW_SELL:
-            if (!volume_window)
+            if (!audio_settings_window)
             {
                 show_sell(1);
                 main_screen->clear();
@@ -354,10 +349,11 @@ void menu_handler(Event &ev, InputManager *inm)
     }
     break;
     case EV_CLOSE_WINDOW: {
-        if (ev.window == volume_window)
+        if (audio_settings_window && ev.window == audio_settings_window->window())
         {
-            wm->close_window(volume_window);
-            volume_window = NULL;
+            wm->close_window(audio_settings_window->window());
+            delete audio_settings_window;
+            audio_settings_window = nullptr;
         }
     }
     break;
@@ -614,7 +610,7 @@ void main_menu()
 
         if (new_time.diff_time(&start) > 10)
         {
-            if (volume_window)
+            if (audio_settings_window)
                 start.get_time();
             else
             {
@@ -633,7 +629,7 @@ void main_menu()
             }
         }
 
-        if (volume_window)
+        if (audio_settings_window)
             stop_menu = 0; // can't exit with volume window open
         else if (main_net_cfg && main_net_cfg->restart_state())
             stop_menu = 1;
