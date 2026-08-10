@@ -265,6 +265,20 @@ void menu_handler(Event &ev, InputManager *inm)
             }
             break;
 
+        case ID_EDITOR:
+            if (!audio_settings_window)
+            {
+                editor_started_from_menu = true;
+                settings.editor = true;
+                start_edit = 1;
+                disable_autolight = 1;
+                the_game->load_level(level_file);
+                if (!(dev & EDIT_MODE))
+                    toggle_edit_mode();
+                the_game->set_state(RUN_STATE);
+            }
+            break;
+
         case ID_LOAD_PLAYER_GAME:
             if (!audio_settings_window)
             {
@@ -551,6 +565,12 @@ void main_menu()
     ico_button *list = make_conditional_buttons(x, y);
     list = make_default_buttons(x, y, list);
 
+    // Keep the editor entry separate from the already full main button column.
+    int editor_y = yres / 2 - button_h / 2;
+    int editor_h;
+    ico_button *editor = load_icon(2, ID_EDITOR, padding_x, editor_y, editor_h, list, "ic_editor");
+    list = editor;
+
     //AR controller ui movement
     int mx, my; //mouse position
     int border_up = yres / 2 - move_up;
@@ -637,7 +657,7 @@ void main_menu()
             stop_menu = 1;
         else if (ev.type == EV_MESSAGE)
         {
-            if (ev.message.id == ID_START_GAME || ev.message.id == ID_RETURN)
+            if (ev.message.id == ID_START_GAME || ev.message.id == ID_RETURN || ev.message.id == ID_EDITOR)
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {
@@ -658,6 +678,17 @@ void main_menu()
             {
                 if (my + button_h < border_down)
                     my += button_h;
+                wm->SetMousePos(ivec2(mx, my));
+            }
+            if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
+            {
+                mx = padding_x + button_w / 2;
+                my = editor_y + button_h / 2;
+                wm->SetMousePos(ivec2(mx, my));
+            }
+            if ((ev.key == get_key_binding("right", 0) || ev.key == get_key_binding("right2", 0)))
+            {
+                mx = x + button_w / 2;
                 wm->SetMousePos(ivec2(mx, my));
             }
         }

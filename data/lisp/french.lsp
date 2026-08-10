@@ -301,6 +301,7 @@ plan \n"
          (setq ic_start        "Démarrer nouveau jeu")
          (setq ic_sell         "Générique")
          (setq ic_multiplayer  "Multijoueur")
+	 (setq ic_editor       "Éditeur de niveaux")
          (setq no_file         "Fichier introuvable '%s'")
          (setq SFXv            "Son")
          (setq MUSICv          "Volume")

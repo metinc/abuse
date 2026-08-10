@@ -579,6 +579,17 @@ int Game::done()
 
 void Game::end_session()
 {
+    if (editor_started_from_menu)
+    {
+        editor_started_from_menu = false;
+        settings.editor = false;
+        start_edit = 0;
+        if (dev & EDIT_MODE)
+            toggle_edit_mode();
+        set_state(MENU_STATE);
+        return;
+    }
+
     finished = true;
     if (main_net_cfg)
     {
@@ -1791,7 +1802,7 @@ void Game::get_input()
                 }
                 break;
                 case DEV_QUIT: {
-                    finished = true;
+                    end_session();
                 }
                 break;
                 }
@@ -2615,13 +2626,6 @@ int main(int argc, char *argv[])
     }
 
     while (main_net_cfg && main_net_cfg->restart_state());
-
-    delete stat_man;
-    delete main_net_cfg;
-    main_net_cfg = NULL;
-
-    set_filename_prefix(NULL); // dealloc this mem if there was any
-    set_save_filename_prefix(NULL);
 
     delete stat_man;
     delete main_net_cfg;

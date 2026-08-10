@@ -147,6 +147,7 @@ enum dev_ids
     ID_RETURN,
     ID_SHOW_SELL,
     ID_MULTIPLAYER,
+    ID_EDITOR,
 
     ID_MESS_STR1,
     ID_MESS_STR2,

@@ -307,6 +307,7 @@
 	 ;(setq ic_mackeys      "Setup Keys")
 	 ;(setq ic_macconf      "Screen Options")
 	 (setq ic_multiplayer   "Multiplayer")            ; ----
+	 (setq ic_editor        "Level Editor")
 
 
 	 (setq no_file         "Could not find file '%s'")

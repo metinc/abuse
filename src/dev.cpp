@@ -852,6 +852,7 @@ void dev_controll::toggle_search_window()
 }
 
 int open_owin = 0, open_fwin = 0, open_bwin = 0, start_edit = 0, start_nodelay = 0, start_doubled = 0;
+bool editor_started_from_menu = false;
 
 int get_option(char const *name);
 
@@ -2394,7 +2395,8 @@ void dev_controll::handle_event(Event &ev)
         case ID_QUIT: {
             if (confirm_quit())
                 do_command("quit", ev);
-        };
+        }
+        break;
         case ID_TOGGLE_MAP: {
             if (dev & MAP_MODE)
                 dev -= MAP_MODE;
@@ -2848,6 +2850,7 @@ void dev_controll::handle_event(Event &ev)
         break;
         case DEV_QUIT:
             the_game->end_session();
+            ev.type = EV_SPURIOUS;
             break;
         case DEV_EDIT_FG:
             dev = 1;

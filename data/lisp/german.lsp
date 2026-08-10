@@ -304,6 +304,7 @@
          (setq ic_start        "Neues Spiel")
          (setq ic_sell         "Beteiligte")
 	 (setq ic_multiplayer    "Mehrspieler")
+	 (setq ic_editor         "Level-Editor")
          (setq no_file         "Datei '%s' nicht auffindbar")
          (setq SFXv            "SFX")
          (setq MUSICv          "Musik")

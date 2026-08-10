@@ -20,6 +20,8 @@
 extern int confirm_quit();
 
 extern int scale_mult, scale_div;
+extern int start_edit;
+extern bool editor_started_from_menu;
 extern char level_file[100];
 extern image *small_render;
 
