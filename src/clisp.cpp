@@ -2548,10 +2548,6 @@ long c_caller(CFunc number, void *args)
         chatting_enabled = 1;
     }
     break;
-    case CFunc::DemoBreakEnable: {
-        demo_start = 1;
-    }
-    break;
     case CFunc::AmAClient: {
         if (main_net_cfg && main_net_cfg->state == net_configuration::CLIENT)
             return 1;

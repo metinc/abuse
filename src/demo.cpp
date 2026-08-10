@@ -29,7 +29,6 @@ demo_manager demo_man;
 ivec2 last_demo_mpos;
 int last_demo_mbut;
 extern base_memory_struct *base; // points to shm_addr
-extern int idle_ticks;
 
 void get_event(Event &ev)
 {
@@ -59,7 +58,6 @@ void get_event(Event &ev)
 
     last_demo_mpos = ev.mouse_move;
     last_demo_mbut = ev.mouse_button;
-    idle_ticks = 0;
 }
 
 int event_waiting()
@@ -241,6 +239,9 @@ int demo_manager::set_state(demo_state new_state, char *filename)
     case PLAYING: {
         delete record_file;
         l_difficulty = initial_difficulty;
+        // Playback has ended before we return to the menu.  Game::set_state()
+        // uses this state to choose the cursor, and PLAYING selects a blank one.
+        state = NORMAL;
         the_game->set_state(MENU_STATE);
         wm->Push(new Event(ID_NULL, NULL));
 

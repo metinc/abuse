@@ -354,7 +354,6 @@ void initCFuncs()
     add_c_bool_fun("get_option", 1, 1, CFunc::GetOption);
     add_c_bool_fun("set_delay_on", 1, 1, CFunc::SetDelayOn);
     add_c_bool_fun("enable_chatting", 0, 0, CFunc::EnableChatting);
-    add_c_bool_fun("demo_break_enable", 0, 0, CFunc::DemoBreakEnable);
     add_c_bool_fun("am_a_client", 0, 0, CFunc::AmAClient);
     add_c_bool_fun("time_for_next_level", 0, 0, CFunc::TimeForNextLevel);
     add_c_bool_fun("reset_kills", 0, 0, CFunc::ResetKills);

@@ -612,7 +612,7 @@ void main_menu()
         {
             if (audio_settings_window)
                 start.get_time();
-            else
+            else if (settings.menu_demos)
             {
                 if (!current_demo)
                 {

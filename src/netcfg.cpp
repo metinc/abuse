@@ -301,7 +301,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
     return 1;
 }
 
-extern int start_running, demo_start, start_edit;
+extern int start_running, start_edit;
 
 void net_configuration::error(char const *message)
 {

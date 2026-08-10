@@ -89,7 +89,6 @@ int total_active = 0;
 int32_t map_xoff = 0, map_yoff = 0;
 int32_t current_vxadd, current_vyadd;
 int frame_panic = 0, massive_frame_panic = 0;
-int demo_start = 0, idle_ticks = 0;
 int req_end = 0;
 
 // Level scripts were authored around the original 320x200 framebuffer. Keep
@@ -1679,8 +1678,6 @@ extern int start_edit;
 
 void Game::get_input()
 {
-    idle_ticks++;
-
     Event ev;
     while (event_waiting())
     {
@@ -2062,16 +2059,7 @@ void Game::Step()
 
     if (state == RUN_STATE)
     {
-        if ((dev & EDIT_MODE) || (main_net_cfg && (main_net_cfg->state == net_configuration::CLIENT ||
-                                                   main_net_cfg->state == net_configuration::SERVER)))
-            idle_ticks = 0;
-
-        if (demo_man.current_state() == demo_manager::NORMAL && idle_ticks > 420 && demo_start)
-        {
-            idle_ticks = 0;
-            set_state(MENU_STATE);
-        }
-        else if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
+        if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
         {
             //AR active play state
             if (key_down(JK_ESC))

@@ -898,8 +898,6 @@ void dev_init(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "-2"))
             start_doubled = 1;
-        else if (!strcmp(argv[i], "-demo"))
-            demo_start = 1;
     }
 
     if (get_option("-no_autolight"))

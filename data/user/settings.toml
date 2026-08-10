@@ -29,6 +29,8 @@ difficulty = "hard"
 physics_tick_ms = 65
 max_fps = 300
 skip_intro = false
+# Play recorded demos after the main menu has been idle.
+menu_demos = false
 
 [general]
 language = "english"

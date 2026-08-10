@@ -150,6 +150,7 @@ Settings::Settings()
 
     this->cheat_god = false;
     this->skip_intro = false;
+    this->menu_demos = false;
     this->gamma = 1.0;
     this->difficulty = "hard";
 
@@ -589,6 +590,7 @@ bool Settings::ReadTomlFile()
         read_integer(gameplay, "gameplay", "physics_tick_ms", physics_update);
         read_integer(gameplay, "gameplay", "max_fps", max_fps);
         read_boolean(gameplay, "gameplay", "skip_intro", skip_intro);
+        read_boolean(gameplay, "gameplay", "menu_demos", menu_demos);
 
         const toml::table *general = document["general"].as_table();
         read_string(general, "general", "language", language);
@@ -712,6 +714,7 @@ bool Settings::Save() const
     gameplay.insert("physics_tick_ms", physics_update);
     gameplay.insert("max_fps", max_fps);
     gameplay.insert("skip_intro", skip_intro);
+    gameplay.insert("menu_demos", menu_demos);
     document.insert("gameplay", std::move(gameplay));
 
     toml::table general;

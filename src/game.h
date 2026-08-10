@@ -55,7 +55,6 @@ extern char **start_argv;
 extern int start_argc;
 extern int32_t current_vxadd, current_vyadd;
 extern int frame_panic, massive_frame_panic;
-extern int demo_start, idle_ticks;
 
 class Game
 {

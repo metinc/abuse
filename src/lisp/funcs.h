@@ -355,7 +355,6 @@ enum class CFunc
     GetOption,
     SetDelayOn, // T or nil
     EnableChatting,
-    DemoBreakEnable,
     AmAClient,
     TimeForNextLevel,
     ResetKills,
