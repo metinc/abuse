@@ -15,6 +15,8 @@
 
 #include <string>
 
+inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf2";
+
 class Settings
 {
   public:
@@ -34,7 +36,7 @@ class Settings
     bool no_music;
     int volume_sound; //0-127
     int volume_music; //0-127
-    std::string soundfont; // Path to custom soundfont file
+    std::string soundfont; // SoundFont filename or path
 
     //random
     bool local_save;

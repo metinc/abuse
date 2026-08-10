@@ -310,7 +310,6 @@
 	 (setq SFXv            "Sound")  ; this needs to be <=6 characters!!
 	 (setq MUSICv          "Music")  ; this needs to be <=6 characters!!
 	 (setq soundfont       "SoundFont")
-	 (setq soundfont_custom "Custom")
 	 (setq soundfont_none  "No SoundFonts found")
 
 	 (setq to_be_continued "To be continued.....")

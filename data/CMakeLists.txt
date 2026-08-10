@@ -352,15 +352,13 @@ INSTALL(FILES
     user/defaults.prp
 DESTINATION ${ASSETDIR})
 
-# Check if we have the non-free data
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/soundfonts)
-    message(WARNING "Non-free soundfonts found. Build will include non-free data!")
-    INSTALL(FILES
-        soundfonts/AWE64\ Gold\ Presets.sf2  soundfonts/Roland\ SC-55\ Presets.sf2
-    DESTINATION ${ASSETDIR}/soundfonts)
-else()
-    message(WARNING "Non-free soundfonts not found, sound will not be enabled.")
-endif()
+INSTALL(FILES
+    soundfonts/FluidR3\ GM.sf2
+    soundfonts/MuseScore.sf3
+    soundfonts/TimGM.sf2
+    soundfonts/LICENSES.md
+    ../COPYING.GPL
+DESTINATION ${ASSETDIR}/soundfonts)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/music)
     message(WARNING "Non-free music found. Build will include non-free data!")

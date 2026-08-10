@@ -86,6 +86,9 @@ The game is designed for a 320×200 framebuffer displayed with the original VGA 
 The in-game Audio Settings window lists available SoundFonts from `data/soundfonts` and applies a selection without
 restarting the game. Changes apply as soon as a SoundFont is selected while preserving the current music position.
 
+`data/music` contains Standard MIDI conversions of every HMI song. `soundtrack.mid` concatenates them in soundtrack
+order and can be regenerated with `scripts/merge_midi.py`.
+
 #### Game Settings
 
 - `[gameplay].difficulty` - Difficulty (`"easy"`, `"medium"`, `"hard"`, or `"extreme"`)

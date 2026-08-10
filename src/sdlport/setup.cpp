@@ -116,7 +116,7 @@ Settings::Settings()
     this->no_music = false; // disable music
     this->volume_sound = 127;
     this->volume_music = 127;
-    this->soundfont = ""; // Empty = don't use custom soundfont
+    this->soundfont = DEFAULT_SOUNDFONT;
 
     //random
     this->local_save = false;

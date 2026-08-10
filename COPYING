@@ -35,10 +35,19 @@ data/music/*:
    Copyright (c) 1995 Bobby Prince <bobby@bpmusic.com>
    Bobby gave Debian permission to redistribute these files.
 
-data/soundfonts/*:
-   Copyright unknown
+data/soundfonts/FluidR3 GM.sf2:
+   Copyright (c) 2000-2002, 2008 Frank Wen
+   Licensed under the MIT License; see data/soundfonts/LICENSES.md for details.
+data/soundfonts/MuseScore.sf3:
+   Copyright (c) 2000-2002 Frank Wen
+   Copyright (c) 2014-2017 Michael Cowgill
+   Copyright (c) 2018-2020 S. Christian Collins
+   Licensed under the MIT License; see data/soundfonts/LICENSES.md for details.
+data/soundfonts/TimGM.sf2:
+   Copyright (c) 2004 Tim Brechbill
+   Licensed under the GNU GPL 2; see
+   COPYING.GPL and data/soundfonts/LICENSES.md for details.
 
 data/*:
    Copyright (c) 1995 Crack dot Com
    Copyright (c) 1996-2008 Justin Cassidy <messiah15@dog.com> and others   
-

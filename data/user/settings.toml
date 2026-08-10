@@ -22,7 +22,7 @@ music_enabled = true
 sound_volume = 127
 music_volume = 127
 mono = false
-soundfont = ""
+soundfont = "ChaosBank.sf2"
 
 [gameplay]
 difficulty = "hard"

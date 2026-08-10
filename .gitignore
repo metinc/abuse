@@ -8,3 +8,5 @@
 /build
 /.vscode
 .cache
+__pycache__/
+*.py[cod]

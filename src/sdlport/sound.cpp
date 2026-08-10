@@ -24,9 +24,10 @@
 #include "config.h"
 #endif
 
-#include <string>
-#include <filesystem>
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <string>
 #include <vector>
 
 #include <SDL3/SDL.h>
@@ -81,6 +82,32 @@ bool resolve_soundfont(const std::string &configured_soundfont, std::string &res
 
     resolved_path = path.string();
     return true;
+}
+
+std::string fallback_soundfont(const std::filesystem::path &directory)
+{
+    if (std::filesystem::is_regular_file(directory / DEFAULT_SOUNDFONT))
+        return DEFAULT_SOUNDFONT;
+
+    std::vector<std::string> soundfonts;
+    std::error_code error;
+    for (std::filesystem::directory_iterator it(directory, error), end; !error && it != end; it.increment(error))
+    {
+        if (!it->is_regular_file(error))
+            continue;
+
+        std::string extension = it->path().extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (extension == ".sf2" || extension == ".sf3")
+            soundfonts.push_back(it->path().filename().string());
+    }
+
+    if (soundfonts.empty())
+        return {};
+
+    std::sort(soundfonts.begin(), soundfonts.end());
+    return soundfonts.front();
 }
 }
 
@@ -164,11 +191,14 @@ int sound_init(int argc, char **argv)
     MIX_GetMixerFormat(mixer, &audio_spec);
 
     // FluidSynth needs an explicit SoundFont on systems without a configured
-    // system-wide default. Use the bundled general-purpose font when present.
-    if (settings.soundfont.empty() && std::filesystem::is_regular_file(datadir / "soundfonts" / "soundfont.sf2"))
-        sound_set_soundfont("soundfont.sf2");
-    else
-        sound_set_soundfont(settings.soundfont);
+    // system-wide default. Fall back to the bundled default when the configured
+    // font is unavailable.
+    const std::string fallback = fallback_soundfont(datadir / "soundfonts");
+    if (settings.soundfont.empty() || !sound_set_soundfont(settings.soundfont))
+    {
+        if (sound_set_soundfont(fallback))
+            settings.SetSoundFont(fallback);
+    }
     sfx_tracks.reserve(SFX_TRACK_COUNT);
     for (int i = 0; i < SFX_TRACK_COUNT; ++i)
     {

@@ -302,7 +302,6 @@ plan \n"
          (setq SFXv            "Son")
          (setq MUSICv          "Volume")
          (setq soundfont       "Banque de sons")
-         (setq soundfont_custom "Personnalisée")
          (setq soundfont_none  "Aucune banque de sons trouvée")
 
          (setq to_be_continued "A suivre.....")

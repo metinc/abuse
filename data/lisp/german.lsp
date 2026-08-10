@@ -305,7 +305,6 @@
          (setq SFXv            "SFX")
          (setq MUSICv          "Musik")
          (setq soundfont       "SoundFont")
-         (setq soundfont_custom "Benutzerdefiniert")
          (setq soundfont_none  "Keine SoundFonts gefunden")
 
          (setq to_be_continued "Fortsetzung folgt.....")

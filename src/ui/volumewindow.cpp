@@ -87,16 +87,16 @@ std::vector<soundfont_option> available_soundfonts()
     });
     if (!settings.soundfont.empty() && !configured_is_listed)
     {
-        const std::filesystem::path configured_path = settings.soundfont;
-        std::string filename = configured_path.filename().string();
-        std::string extension = configured_path.extension().string();
-        std::transform(extension.begin(), extension.end(), extension.begin(),
-                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-        if (extension == ".sf2" || extension == ".sf3")
-            filename = configured_path.stem().string();
-        if (filename.empty())
-            filename = settings.soundfont;
-        options.push_back({std::string(symbol_str("soundfont_custom")) + ": " + filename, settings.soundfont});
+        std::filesystem::path configured_path = settings.soundfont;
+        if (configured_path.is_relative())
+            configured_path = directory / configured_path;
+        if (std::filesystem::is_regular_file(configured_path))
+        {
+            const std::filesystem::path label_path = settings.soundfont;
+            const std::string label = label_path.has_extension() ? label_path.stem().string()
+                                                                  : label_path.filename().string();
+            options.push_back({label, settings.soundfont});
+        }
     }
 
     std::sort(options.begin(), options.end(),
@@ -137,20 +137,19 @@ VolumeWindow::VolumeWindow() : Jwindow(symbol_str("ic_volume"))
     std::vector<soundfont_option> options = available_soundfonts();
     soundfont_values.reserve(options.size());
     soundfont_labels.reserve(options.size());
-    int selected_soundfont = 0;
+    int selected_soundfont = -1;
+    int default_soundfont = 0;
     for (const soundfont_option &option : options)
     {
+        if (option.value == DEFAULT_SOUNDFONT)
+            default_soundfont = static_cast<int>(soundfont_values.size());
         if (option.value == settings.soundfont)
             selected_soundfont = static_cast<int>(soundfont_values.size());
         soundfont_values.push_back(option.value);
         soundfont_labels.push_back(option.label);
     }
-    if (settings.soundfont.empty())
-    {
-        const auto default_font = std::find(soundfont_values.begin(), soundfont_values.end(), "soundfont.sf2");
-        if (default_font != soundfont_values.end())
-            selected_soundfont = static_cast<int>(default_font - soundfont_values.begin());
-    }
+    if (selected_soundfont < 0)
+        selected_soundfont = default_soundfont;
     soundfont_label_ptrs.reserve(soundfont_labels.size());
     for (std::string &label : soundfont_labels)
         soundfont_label_ptrs.push_back(label.data());
@@ -204,7 +203,7 @@ std::string VolumeWindow::selected_soundfont()
     pick_list *picker = static_cast<pick_list *>(inm->get(ID_SOUNDFONT_PICKER));
     const int selection = picker ? picker->get_selection() : -1;
     if (selection < 0 || selection >= static_cast<int>(soundfont_values.size()))
-        return settings.soundfont;
+        return {};
     return soundfont_values[selection];
 }
 
