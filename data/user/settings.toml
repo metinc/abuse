@@ -1,5 +1,5 @@
 # Abuse configuration file
-schema_version = 1
+schema_version = 2
 
 [video]
 # window, desktop, or exclusive
@@ -13,8 +13,8 @@ window_scale = 2
 linear_filter = false
 hires = 0
 big_font = false
-# Darkest visible gray (1-128); 16 is neutral gamma.
-gamma_darkest_gray = 16
+# Display gamma (0.5-2.0); 1.0 is neutral.
+gamma = 1.0
 
 [audio]
 sound_enabled = true

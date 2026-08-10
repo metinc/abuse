@@ -59,7 +59,6 @@
 #include "clisp.h"
 #include "guistat.h"
 #include "menu.h"
-#include "video_settings.h"
 #include "lisp_gc.h"
 #include "demo.h"
 #include "sbar.h"
@@ -98,7 +97,6 @@ constexpr int legacy_activation_view_width = 319;
 constexpr int legacy_activation_view_height = 200;
 constexpr int legacy_status_bar_height = 32;
 
-extern palette *old_pal;
 char **start_argv;
 int start_argc;
 int has_joystick = 0;
@@ -1564,7 +1562,7 @@ Game::Game(int argc, char **argv)
 
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
 
-    gamma_correct(pal);
+    pal->load();
 
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
@@ -2622,9 +2620,6 @@ int main(int argc, char *argv[])
         dev_menu = NULL;
         delete g;
         g = NULL;
-        delete old_pal;
-        old_pal = NULL;
-
         compiled_uninit();
         delete_all_lights();
         free(white_light_initial);

@@ -219,7 +219,10 @@
 	 (setq secured " secured!")   ; V-A added
 	 (setq loading "loading %s")  ; V-A added
 
-         (setq gamma_msg "Select the darkest grey visible on your monitor")
+         (setq gamma_msg "Brightness")
+         (setq gamma_darker "Darker")
+         (setq gamma_default "Default")
+         (setq gamma_brighter "Brighter")
          (setq video_mode_msg "Display mode")
          (setq video_windowed "Window")
          (setq video_borderless "Borderless fullscreen")

@@ -27,6 +27,9 @@
 #include <windows.h>
 #endif
 
+#include <algorithm>
+#include <cmath>
+
 #include <SDL3/SDL.h>
 
 #include "common.h"
@@ -443,11 +446,16 @@ void palette::load()
 #else
     SDL_Color colors[ncolors];
 #endif
+    const double inverse_gamma = 1.0 / std::clamp(settings.gamma, 0.5, 2.0);
+    auto apply_gamma = [inverse_gamma](unsigned int channel) {
+        return static_cast<Uint8>(std::lround(std::pow(channel / 255.0, inverse_gamma) * 255.0));
+    };
+
     for (int ii = 0; ii < ncolors; ii++)
     {
-        colors[ii].r = red(ii);
-        colors[ii].g = green(ii);
-        colors[ii].b = blue(ii);
+        colors[ii].r = apply_gamma(red(ii));
+        colors[ii].g = apply_gamma(green(ii));
+        colors[ii].b = apply_gamma(blue(ii));
         colors[ii].a = 255;
     }
     SDL_Palette *palette = SDL_CreateSurfacePalette(surface);

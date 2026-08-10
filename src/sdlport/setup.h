@@ -53,8 +53,9 @@ class Settings
     bool player_touching_console; //only allow quicksave if player is touching the console
     bool skip_intro;
 
+    double gamma;
+
     //settings shared with the Lisp game layer
-    int darkest_gray;
     std::string difficulty;
 
     //cheats

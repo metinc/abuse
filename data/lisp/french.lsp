@@ -215,7 +215,10 @@ plan \n"
 	 (setq secured " Terminé !")   ; V-A added
 	 (setq loading "En train de charger %s")  ; V-A added
 
-         (setq gamma_msg "Sélectionnez le gris visible le plus sombre")
+         (setq gamma_msg "Luminosité")
+         (setq gamma_darker "Plus sombre")
+         (setq gamma_default "Par défaut")
+         (setq gamma_brighter "Plus clair")
          (setq video_mode_msg "Mode d'affichage")
          (setq video_windowed "Fenêtre")
          (setq video_borderless "Plein écran sans bordure")

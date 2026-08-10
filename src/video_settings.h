@@ -12,6 +12,6 @@
 #define ABUSE_VIDEO_SETTINGS_H
 
 #include "palette.h"
-void gamma_correct(palette *&pal, int force_menu = 0);
+void show_video_settings(palette *pal);
 
 #endif

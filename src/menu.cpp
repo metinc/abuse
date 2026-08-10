@@ -247,7 +247,7 @@ void menu_handler(Event &ev, InputManager *inm)
         case ID_LIGHT_OFF:
             if (!volume_window)
             {
-                gamma_correct(pal, 1);
+                show_video_settings(pal);
             }
             break;
         case ID_RETURN:

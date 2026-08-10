@@ -138,7 +138,6 @@ void clisp_init()
         l_difficulty->SetValue(l_extreme);
     else
         l_difficulty->SetValue(l_hard);
-    LSymbol::FindOrCreate("darkest_gray")->SetNumber(settings.darkest_gray);
     l_restart_player = LSymbol::FindOrCreate("restart_player");
     l_help_screens = LSymbol::FindOrCreate("help_screens");
     l_save_order = LSymbol::FindOrCreate("save_order");

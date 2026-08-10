@@ -339,7 +339,7 @@ void scroller::handle_right(image *screen, InputManager *inm)
 
 void scroller::handle_left(image *screen, InputManager *inm)
 {
-    if (!vert && sx > 1)
+    if (!vert && sx > 0)
     {
         draw_widget(screen, 1);
         sx--;
@@ -350,7 +350,7 @@ void scroller::handle_left(image *screen, InputManager *inm)
 
 void scroller::handle_up(image *screen, InputManager *inm)
 {
-    if (vert && sx > 1)
+    if (vert && sx > 0)
     {
         draw_widget(screen, 1);
         sx--;

@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 #include <filesystem>
@@ -132,7 +133,7 @@ Settings::Settings()
 
     this->cheat_god = false;
     this->skip_intro = false;
-    this->darkest_gray = 16;
+    this->gamma = 1.0;
     this->difficulty = "hard";
 
     //player controls
@@ -207,6 +208,16 @@ template <typename T> void read_integer(const toml::table *table, const char *se
     }
     else
         invalid_setting(section, key, "an integer");
+}
+
+void read_number(const toml::table *table, const char *section, const char *key, double &target)
+{
+    if (!table || !table->contains(key))
+        return;
+    if (auto value = (*table)[key].value<double>())
+        target = *value;
+    else
+        invalid_setting(section, key, "a number");
 }
 
 void read_boolean(const toml::table *table, const char *section, const char *key, bool &target)
@@ -473,7 +484,13 @@ void Settings::Validate()
     clamp(yres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_height");
     clamp(scale, static_cast<short>(1), static_cast<short>(20), "video.window_scale");
     clamp(hires, 0, 2, "video.hires");
-    clamp(darkest_gray, 1, 128, "video.gamma_darkest_gray");
+    if (!std::isfinite(gamma))
+    {
+        gamma = 1.0;
+        fprintf(stderr, "Config: video.gamma is not finite; using 1.0\n");
+    }
+    else
+        clamp(gamma, 0.5, 2.0, "video.gamma");
     clamp(volume_sound, 0, 127, "audio.sound_volume");
     clamp(volume_music, 0, 127, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
@@ -495,7 +512,7 @@ bool Settings::ReadTomlFile()
     try
     {
         toml::table document = toml::parse_file(path.string());
-        if (auto version = document["schema_version"].value<int64_t>(); version && *version > 1)
+        if (auto version = document["schema_version"].value<int64_t>(); version && *version > 2)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(*version));
@@ -527,7 +544,7 @@ bool Settings::ReadTomlFile()
         read_boolean(video, "video", "linear_filter", linear_filter);
         read_integer(video, "video", "hires", hires);
         read_boolean(video, "video", "big_font", big_font);
-        read_integer(video, "video", "gamma_darkest_gray", darkest_gray);
+        read_number(video, "video", "gamma", gamma);
 
         const toml::table *audio = document["audio"].as_table();
         bool enabled = !no_sound;
@@ -636,7 +653,7 @@ void Settings::SetSoundFont(const std::string &path)
 bool Settings::Save() const
 {
     toml::table document;
-    document.insert("schema_version", 1);
+    document.insert("schema_version", 2);
 
     toml::table video;
     const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -652,7 +669,7 @@ bool Settings::Save() const
     video.insert("linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
     video.insert("hires", hires);
     video.insert("big_font", big_font);
-    video.insert("gamma_darkest_gray", darkest_gray);
+    video.insert("gamma", gamma);
     document.insert("video", std::move(video));
 
     toml::table audio;

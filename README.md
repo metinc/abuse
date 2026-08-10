@@ -70,7 +70,7 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)
 - `big_font` - Enable big font
-- `gamma_darkest_gray` - Darkest visible gray used for gamma correction (`1`-`128`; `16` is neutral)
+- `gamma` - Display gamma (`0.5`-`2.0`; `1.0` is neutral)
 
 The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio = "16:9"` uses a 427×200 framebuffer and `aspect_ratio = "1:1"` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `framebuffer_width` and `framebuffer_height` remains available as the legacy zoom-out mode and is useful in the editor.
 

@@ -32,8 +32,6 @@
 #include "director.h"
 #include "lisp_gc.h"
 
-extern palette *old_pal;
-
 //AR
 #include "sdlport/setup.h"
 extern Settings settings;
@@ -220,16 +218,8 @@ void show_end2()
         main_screen->PutPixel(ivec2(si[-3], si[-2]), si[-1]);
     }
     int32_t paddr[256];
-    if (old_pal)
-    {
-        for (i = 0; i < 256; i++)
-            paddr[i] = (old_pal->red(i) << 16) | (old_pal->green(i) << 8) | (old_pal->blue(i));
-    }
-    else
-    {
-        for (i = 0; i < 256; i++)
-            paddr[i] = (pal->red(i) << 16) | (pal->green(i) << 8) | (pal->blue(i));
-    }
+    for (i = 0; i < 256; i++)
+        paddr[i] = (pal->red(i) << 16) | (pal->green(i) << 8) | (pal->blue(i));
 
     int dx = (xres + 1) / 2 - 320 / 2, dy = (yres + 1) / 2 - 200 / 2;
 

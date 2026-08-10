@@ -216,7 +216,10 @@
 	 (setq secured " gesichert!")   ; V-A added
 	 (setq loading "Lädt %s")  ; V-A added
 
-         (setq gamma_msg "Wählen Sie das dunkelste sichtbare Grau")
+         (setq gamma_msg "Helligkeit")
+         (setq gamma_darker "Dunkler")
+         (setq gamma_default "Standard")
+         (setq gamma_brighter "Heller")
          (setq video_mode_msg "Anzeigemodus")
          (setq video_windowed "Fenster")
          (setq video_borderless "Randloses Vollbild")
