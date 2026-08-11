@@ -127,7 +127,6 @@ Settings::Settings()
     this->editor = false; // disable editor mode
     this->physics_update = 65; // original 65ms/15 FPS
     this->max_fps = 300;
-    this->mouse_scale = 0; // match desktop
     this->big_font = false;
     this->language = "english";
     //
@@ -607,7 +606,6 @@ void Settings::Validate()
     validate_gain(volume_music, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
     clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
-    clamp(mouse_scale, static_cast<short>(0), static_cast<short>(1), "input.mouse_scale");
     clamp(ctr_rst_dz, 0, 32767, "input.gamepad.aim_dead_zone");
     clamp(ctr_lst_dzx, 0, 32767, "input.gamepad.move_dead_zone_x");
     clamp(ctr_lst_dzy, 0, 32767, "input.gamepad.move_dead_zone_y");
@@ -625,7 +623,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 3)
+        if (version && version->is_integer() && version->as_integer() > 4)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -674,7 +672,6 @@ bool Settings::ReadTomlFile()
         read_boolean(general, "general", "local_save", local_save);
 
         const settings_document *input = find_table(document, "input");
-        read_integer(input, "input", "mouse_scale", mouse_scale);
         const settings_document *keyboard = input ? find_table(*input, "keyboard") : nullptr;
         read_keys(keyboard, "left", left, &left_2);
         read_keys(keyboard, "right", right, &right_2);
@@ -762,7 +759,7 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 3);
+        set_value(document, "schema_version", 4);
 
         settings_document &video = ensure_table(document, "video");
         const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -806,7 +803,7 @@ bool Settings::Save() const
         set_value(general, "local_save", command_line_overrides ? file_local_save : local_save);
 
         settings_document &input = ensure_table(document, "input");
-        set_value(input, "mouse_scale", mouse_scale);
+        input.as_table().erase("mouse_scale");
         settings_document &keyboard = ensure_table(input, "keyboard");
         set_value(keyboard, "left", toml::ordered_array{key_string(left), key_string(left_2)});
         set_value(keyboard, "right", toml::ordered_array{key_string(right), key_string(right_2)});

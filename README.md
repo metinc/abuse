@@ -101,7 +101,6 @@ order and can be regenerated with `scripts/merge_midi.py`.
 - `[general].grab_input` - Grab mouse to window
 - `[general].editor` - Enable editor mode
 - `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
-- `[input].mouse_scale` - Mouse scaling (`0` matches the desktop, `1` matches the game framebuffer)
 
 ### Key Bindings
 
@@ -139,7 +138,6 @@ Hardcoded Keys:
 - <kbd>F1</kbd> - Show help/controls screen
 - <kbd>F5</kbd> - Quick save on save consoles (slot 1/"save0001.spe")
 - <kbd>F6</kbd> - Toggle window input grab
-- <kbd>F7</kbd> - Toggle mouse scale type
 - <kbd>F8</kbd> - Toggle gamepad use
 - <kbd>F9</kbd> - Quick load
 - <kbd>F10</kbd> - Toggle window/fullscreen mode

@@ -46,7 +46,6 @@ class Settings
     bool editor; //enable editor mode
     short physics_update; //custom pysics update time in miliseconds
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
-    short mouse_scale; //mouse scaling in fullscreen, 0 - match desktop, 1 - match game screen
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     std::string language;
     //

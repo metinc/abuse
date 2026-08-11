@@ -55,25 +55,13 @@ static ivec2 window_to_game(float window_x, float window_y)
 {
     float game_x;
     float game_y;
-
-    if (fullscreen && settings.mouse_scale == 0)
-    {
-        int window_w;
-        int window_h;
-        SDL_GetWindowSize(window, &window_w, &window_h);
-        game_x = window_x * main_screen->Size().x / window_w;
-        game_y = window_y * main_screen->Size().y / window_h;
-    }
-    else
-    {
-        int logical_w;
-        int logical_h;
-        SDL_RendererLogicalPresentation mode;
-        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-        SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &game_x, &game_y);
-        game_x *= static_cast<float>(main_screen->Size().x) / logical_w;
-        game_y *= static_cast<float>(main_screen->Size().y) / logical_h;
-    }
+    int logical_w;
+    int logical_h;
+    SDL_RendererLogicalPresentation mode;
+    SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
+    SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &game_x, &game_y);
+    game_x *= static_cast<float>(main_screen->Size().x) / logical_w;
+    game_y *= static_cast<float>(main_screen->Size().y) / logical_h;
 
     const int x = std::max(0, std::min(static_cast<int>(std::round(game_x)), main_screen->Size().x - 1));
     const int y = std::max(0, std::min(static_cast<int>(std::round(game_y)), main_screen->Size().y - 1));
@@ -82,24 +70,13 @@ static ivec2 window_to_game(float window_x, float window_y)
 
 static void game_to_window(ivec2 pos, float &window_x, float &window_y)
 {
-    if (fullscreen && settings.mouse_scale == 0)
-    {
-        int window_w;
-        int window_h;
-        SDL_GetWindowSize(window, &window_w, &window_h);
-        window_x = static_cast<float>(pos.x) * window_w / main_screen->Size().x;
-        window_y = static_cast<float>(pos.y) * window_h / main_screen->Size().y;
-    }
-    else
-    {
-        int logical_w;
-        int logical_h;
-        SDL_RendererLogicalPresentation mode;
-        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-        const float logical_x = static_cast<float>(pos.x) * logical_w / main_screen->Size().x;
-        const float logical_y = static_cast<float>(pos.y) * logical_h / main_screen->Size().y;
-        SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y);
-    }
+    int logical_w;
+    int logical_h;
+    SDL_RendererLogicalPresentation mode;
+    SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
+    const float logical_x = static_cast<float>(pos.x) * logical_w / main_screen->Size().x;
+    const float logical_y = static_cast<float>(pos.y) * logical_h / main_screen->Size().y;
+    SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y);
 }
 
 //AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
@@ -442,16 +419,7 @@ void EventHandler::SysEvent(Event &ev)
             ev.key = JK_F6;
             break;
 
-        case SDLK_F7: //AR toggle mouse scale
-            if (ev.type == EV_KEYRELEASE)
-            {
-                if (settings.mouse_scale == 0)
-                    settings.mouse_scale = 1;
-                else
-                    settings.mouse_scale = 0;
-                if (!settings.Save())
-                    fprintf(stderr, "Unable to save mouse scale setting\n");
-            }
+        case SDLK_F7:
             ev.key = JK_F7;
             break;
 

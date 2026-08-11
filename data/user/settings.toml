@@ -1,5 +1,5 @@
 # Abuse configuration file
-schema_version = 3
+schema_version = 4
 
 [video]
 # Borderless desktop fullscreen
@@ -40,10 +40,6 @@ language = "english"
 editor = false
 grab_input = false
 local_save = false
-
-[input]
-# 0 matches the desktop; 1 matches the game framebuffer.
-mouse_scale = 0
 
 [input.keyboard]
 left = ["a", "LEFT"]
