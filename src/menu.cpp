@@ -268,14 +268,8 @@ void menu_handler(Event &ev, InputManager *inm)
         case ID_EDITOR:
             if (!audio_settings_window)
             {
-                editor_started_from_menu = true;
-                settings.editor = true;
-                start_edit = 1;
-                disable_autolight = 1;
-                the_game->load_level(level_file);
-                if (!(dev & EDIT_MODE))
-                    toggle_edit_mode();
-                the_game->set_state(RUN_STATE);
+                if (the_game->set_editor_mode(true))
+                    editor_started_from_menu = true;
             }
             break;
 

@@ -66,6 +66,8 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 - `aspect_ratio` - Display aspect ratio such as `"16:9"`; `"desktop"` matches the desktop and `"custom"` uses the explicit framebuffer size below
 - `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"`
 - `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"`
+- `editor_framebuffer_width` - Editor framebuffer width (default `640`)
+- `editor_framebuffer_height` - Editor framebuffer height (default `400`)
 - `window_scale` - Integer window scale used in windowed mode
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)
@@ -73,6 +75,8 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 - `gamma` - Display gamma (`0.5`-`2.0`; `1.0` is neutral)
 
 The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio = "16:9"` uses a 427×200 framebuffer and `aspect_ratio = "1:1"` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `framebuffer_width` and `framebuffer_height` remains available as the legacy zoom-out mode and is useful in the editor.
+
+The editor always uses `editor_framebuffer_width` and `editor_framebuffer_height`, independently of the gameplay aspect-ratio setting. Entering or leaving the editor resizes the existing display in place.
 
 #### Audio Settings
 

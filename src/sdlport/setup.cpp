@@ -123,6 +123,8 @@ Settings::Settings()
     this->borderless = false;
     this->xres = 320; // default window width
     this->yres = 200; // default window height
+    this->editor_xres = 640;
+    this->editor_yres = 400;
     this->aspect_ratio = ""; // empty uses the desktop aspect ratio
     this->scale = 2; // default window scale
     this->linear_filter = false; // don't "anti-alias"
@@ -500,6 +502,10 @@ void Settings::Validate()
     clamp(fullscreen, 0, 2, "video.fullscreen");
     clamp(xres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_width");
     clamp(yres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_height");
+    clamp(editor_xres, static_cast<short>(1), std::numeric_limits<short>::max(),
+          "video.editor_framebuffer_width");
+    clamp(editor_yres, static_cast<short>(1), std::numeric_limits<short>::max(),
+          "video.editor_framebuffer_height");
     clamp(scale, static_cast<short>(1), static_cast<short>(20), "video.window_scale");
     clamp(hires, 0, 2, "video.hires");
     if (!std::isfinite(gamma))
@@ -567,6 +573,8 @@ bool Settings::ReadTomlFile()
             aspect_ratio.clear();
         read_integer(video, "video", "framebuffer_width", xres);
         read_integer(video, "video", "framebuffer_height", yres);
+        read_integer(video, "video", "editor_framebuffer_width", editor_xres);
+        read_integer(video, "video", "editor_framebuffer_height", editor_yres);
         read_integer(video, "video", "window_scale", scale);
         read_boolean(video, "video", "linear_filter", linear_filter);
         read_integer(video, "video", "hires", hires);
@@ -659,6 +667,8 @@ void Settings::BeginCommandLineOverrides()
     file_fullscreen = fullscreen;
     file_xres = xres;
     file_yres = yres;
+    file_editor_xres = editor_xres;
+    file_editor_yres = editor_yres;
     file_aspect_ratio = aspect_ratio;
     file_no_sound = no_sound;
     file_linear_filter = linear_filter;
@@ -687,12 +697,16 @@ bool Settings::Save() const
     const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
     const short saved_xres = command_line_overrides ? file_xres : xres;
     const short saved_yres = command_line_overrides ? file_yres : yres;
+    const short saved_editor_xres = command_line_overrides ? file_editor_xres : editor_xres;
+    const short saved_editor_yres = command_line_overrides ? file_editor_yres : editor_yres;
     const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
     video.insert("fullscreen", saved_fullscreen == 0 ? "window" : saved_fullscreen == 1 ? "desktop" : "exclusive");
     video.insert("borderless", borderless);
     video.insert("aspect_ratio", saved_aspect_ratio.empty() ? "desktop" : saved_aspect_ratio);
     video.insert("framebuffer_width", saved_xres);
     video.insert("framebuffer_height", saved_yres);
+    video.insert("editor_framebuffer_width", saved_editor_xres);
+    video.insert("editor_framebuffer_height", saved_editor_yres);
     video.insert("window_scale", scale);
     video.insert("linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
     video.insert("hires", hires);
@@ -862,6 +876,8 @@ void parseCommandLine(int argc, char **argv)
             }
             settings.xres = width;
             settings.yres = height;
+            settings.editor_xres = width;
+            settings.editor_yres = height;
             settings.aspect_ratio = "custom";
         }
         else if (!SDL_strcasecmp(argv[i], "-aspect"))

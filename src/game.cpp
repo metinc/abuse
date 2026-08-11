@@ -436,7 +436,10 @@ void Game::set_state(int new_state)
     // switching to / from scene mode cause the screen size to change and the border to change
     // so we need to redraw.
     if (window_state(new_state) && !window_state(state))
-        wm->show_windows();
+    {
+        if (dev & EDIT_MODE)
+            wm->show_windows();
+    }
     else if (!window_state(new_state) && window_state(state))
         wm->hide_windows();
 
@@ -581,12 +584,8 @@ void Game::end_session()
 {
     if (editor_started_from_menu)
     {
-        editor_started_from_menu = false;
-        settings.editor = false;
-        start_edit = 0;
-        if (dev & EDIT_MODE)
-            toggle_edit_mode();
-        set_state(MENU_STATE);
+        if (set_editor_mode(false))
+            editor_started_from_menu = false;
         return;
     }
 
@@ -596,6 +595,49 @@ void Game::end_session()
         delete main_net_cfg;
         main_net_cfg = NULL;
     }
+}
+
+bool Game::set_editor_mode(bool enabled)
+{
+    if (enabled == ((dev & EDIT_MODE) != 0))
+        return true;
+
+    const bool old_editor_setting = settings.editor;
+    settings.editor = enabled;
+    const int width = enabled ? settings.editor_xres : settings.xres;
+    const int height = enabled ? settings.editor_yres : settings.yres;
+    if (!resize_framebuffer(width, height))
+    {
+        settings.editor = old_editor_setting;
+        return false;
+    }
+
+    wm->SetMousePos(wm->GetMousePos());
+    pal->load();
+
+    if (enabled)
+    {
+        start_edit = 1;
+        disable_autolight = 1;
+        set_frame_size(0);
+        load_level(level_file);
+        toggle_edit_mode();
+        dev_cont->load_stuff();
+        recalc_local_view_space();
+        set_state(RUN_STATE);
+    }
+    else
+    {
+        toggle_edit_mode();
+        start_edit = 0;
+        disable_autolight = 0;
+        set_frame_size(3);
+        recalc_local_view_space();
+        set_state(MENU_STATE);
+    }
+
+    main_screen->AddDirty(ivec2(0), main_screen->Size());
+    return true;
 }
 
 int need_delay = 1;
@@ -2195,7 +2237,7 @@ Game::~Game()
     if (total_help_screens)
         free(help_screens);
 
-    close_graphics();
+    close_framebuffer();
     image_uninit();
 }
 
@@ -2474,6 +2516,11 @@ int main(int argc, char *argv[])
         else
             dev_init(argc, argv);
 
+        xres = settings.editor ? settings.editor_xres : settings.xres;
+        yres = settings.editor ? settings.editor_yres : settings.yres;
+        if (settings.editor)
+            printf("Video: Using editor %dx%d framebuffer\n", xres, yres);
+
         //AR the intro loop is in the constructor itself
         Game *g = new Game(argc, argv);
 
@@ -2633,6 +2680,7 @@ int main(int argc, char *argv[])
     set_filename_prefix(NULL); // dealloc this mem if there was any
     set_save_filename_prefix(NULL);
 
+    close_graphics();
     sound_uninit();
 
     return 0;

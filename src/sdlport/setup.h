@@ -25,6 +25,8 @@ class Settings
     bool borderless; //borderless window
     short xres; //game screen resolution
     short yres;
+    short editor_xres; //editor framebuffer resolution
+    short editor_yres;
     std::string aspect_ratio; //optional display aspect ratio; preserves the original gameplay DPI
     short scale; //windows scale
     bool linear_filter; //"antialias"
@@ -103,6 +105,7 @@ class Settings
     bool command_line_overrides = false;
     int file_fullscreen = 2;
     short file_xres = 320, file_yres = 200;
+    short file_editor_xres = 640, file_editor_yres = 400;
     std::string file_aspect_ratio;
     bool file_no_sound = false, file_linear_filter = false, file_mono = false;
     bool file_local_save = false, file_editor = false;

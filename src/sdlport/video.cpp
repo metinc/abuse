@@ -125,17 +125,23 @@ bool configure_fullscreen_mode(int fullscreen_mode)
 // than square. Aspect-ratio mode keeps those pixels at the original DPI,
 // while legacy explicit resolutions remain square-pixel unless they use
 // the original 8:5 framebuffer ratio.
-static int display_height()
+static int display_height_for(int framebuffer_width, int framebuffer_height)
 {
     constexpr int vga_storage_width = 8;
     constexpr int vga_storage_height = 5;
 
-    const bool aspect_ratio_mode = SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
+    const bool aspect_ratio_mode = !settings.editor && SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
     if (aspect_ratio_mode ||
-        static_cast<int64_t>(xres) * vga_storage_height == static_cast<int64_t>(yres) * vga_storage_width)
-        return (yres * 6 + 2) / 5;
+        static_cast<int64_t>(framebuffer_width) * vga_storage_height ==
+            static_cast<int64_t>(framebuffer_height) * vga_storage_width)
+        return (framebuffer_height * 6 + 2) / 5;
 
-    return yres;
+    return framebuffer_height;
+}
+
+static int display_height()
+{
+    return display_height_for(xres, yres);
 }
 
 //
@@ -158,42 +164,66 @@ void set_mode(int argc, char **argv)
         printf("Failed to get desktop display mode: %s\n", SDL_GetError());
     }
 
-    // Scale window
-    window_w = xres * scale;
-    window_h = display_height() * scale;
+    const bool create_window = window == NULL;
+    const int requested_window_w = xres * scale;
+    const int requested_window_h = display_height() * scale;
 
-    SDL_WindowFlags window_flags = 0;
-
-    if (settings.borderless)
-        window_flags |= SDL_WINDOW_BORDERLESS;
-
-    window = SDL_CreateWindow("Abuse", window_w, window_h, window_flags);
-
-    if (!window)
+    if (create_window)
     {
-        show_startup_error("Video: Unable to create window : %s", SDL_GetError());
-        exit(EXIT_FAILURE);
+        window_w = requested_window_w;
+        window_h = requested_window_h;
+        SDL_WindowFlags window_flags = 0;
+
+        if (settings.borderless)
+            window_flags |= SDL_WINDOW_BORDERLESS;
+
+        window = SDL_CreateWindow("Abuse", window_w, window_h, window_flags);
+
+        if (!window)
+        {
+            show_startup_error("Video: Unable to create window : %s", SDL_GetError());
+            exit(EXIT_FAILURE);
+        }
+
+        // Set this after creation so SDL preserves the exact configured initial
+        // size instead of constraining it to the compositor's recommended size.
+        if (!SDL_SetWindowResizable(window, true))
+            fprintf(stderr, "Video: Unable to make the window resizable: %s\n", SDL_GetError());
+
+        // Load the window icon
+        std::string tmp_name = std::string(get_filename_prefix()) + "icon.bmp";
+
+        if (SDL_Surface *icon = SDL_LoadBMP(tmp_name.c_str()); icon != nullptr)
+        {
+            SDL_SetWindowIcon(window, icon);
+            SDL_DestroySurface(icon);
+        }
+    }
+    else if (!window_is_fullscreen())
+    {
+        int old_x, old_y, old_w, old_h;
+        SDL_GetWindowPosition(window, &old_x, &old_y);
+        SDL_GetWindowSize(window, &old_w, &old_h);
+        SDL_SetWindowSize(window, requested_window_w, requested_window_h);
+        SDL_SetWindowPosition(window, old_x + (old_w - requested_window_w) / 2,
+                              old_y + (old_h - requested_window_h) / 2);
+        SDL_SyncWindow(window);
+        window_w = requested_window_w;
+        window_h = requested_window_h;
+        remember_windowed_bounds();
     }
 
-    // Set this after creation so SDL preserves the exact configured initial
-    // size instead of constraining it to the compositor's recommended size.
-    if (!SDL_SetWindowResizable(window, true))
-        fprintf(stderr, "Video: Unable to make the window resizable: %s\n", SDL_GetError());
-
-    // Load the window icon
-    std::string tmp_name = std::string(get_filename_prefix()) + "icon.bmp";
-
-    if (SDL_Surface *icon = SDL_LoadBMP(tmp_name.c_str()); icon != nullptr)
-    {
-        SDL_SetWindowIcon(window, icon);
-        SDL_DestroySurface(icon);
-    }
-
-    renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer)
     {
-        show_startup_error("Video: Unable to create renderer : %s", SDL_GetError());
-        exit(EXIT_FAILURE);
+        renderer = SDL_CreateRenderer(window, NULL);
+        if (!renderer)
+        {
+            show_startup_error("Video: Unable to create renderer : %s", SDL_GetError());
+            exit(EXIT_FAILURE);
+        }
+
+        const char *rendererName = SDL_GetRendererName(renderer);
+        printf("Renderer: %s\n", rendererName);
     }
 
     // Set renderer flags
@@ -207,9 +237,6 @@ void set_mode(int argc, char **argv)
         show_startup_error("Video: Unable to configure logical presentation: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-
-    const char *rendererName = SDL_GetRendererName(renderer);
-    printf("Renderer: %s\n", rendererName);
 
     // Create our 32-bit surface for texture conversion
     screen = SDL_CreateSurface(xres, yres, SDL_PIXELFORMAT_RGBA32);
@@ -252,7 +279,7 @@ void set_mode(int argc, char **argv)
         SDL_SetWindowMouseGrab(window, true);
     SDL_HideCursor();
 
-    if (settings.fullscreen != 0)
+    if (settings.fullscreen != 0 && create_window)
         video_set_fullscreen_mode(settings.fullscreen);
 
     update_dirty(main_screen);
@@ -340,32 +367,106 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
     SDL_GetWindowSize(window, &window_w, &window_h);
 }
 
+bool resize_framebuffer(int width, int height)
+{
+    if (!window || !renderer || !main_screen || width <= 0 || height <= 0)
+        return false;
+    if (width == xres && height == yres)
+        return true;
+
+    SDL_Surface *new_screen = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
+    SDL_Surface *new_surface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_INDEX8);
+    SDL_Texture *new_texture =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, width, height);
+    if (!new_screen || !new_surface || !new_texture)
+    {
+        fprintf(stderr, "Video: Unable to resize framebuffer to %dx%d: %s\n", width, height, SDL_GetError());
+        if (new_texture)
+            SDL_DestroyTexture(new_texture);
+        if (new_surface)
+            SDL_DestroySurface(new_surface);
+        if (new_screen)
+            SDL_DestroySurface(new_screen);
+        return false;
+    }
+
+    SDL_SetTextureScaleMode(new_texture, settings.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+    const int new_display_height = display_height_for(width, height);
+    if (!SDL_SetRenderLogicalPresentation(renderer, width, new_display_height, SDL_LOGICAL_PRESENTATION_LETTERBOX))
+    {
+        fprintf(stderr, "Video: Unable to resize logical presentation to %dx%d: %s\n", width, new_display_height,
+                SDL_GetError());
+        SDL_DestroyTexture(new_texture);
+        SDL_DestroySurface(new_surface);
+        SDL_DestroySurface(new_screen);
+        return false;
+    }
+
+    SDL_DestroyTexture(game_texture);
+    SDL_DestroySurface(surface);
+    SDL_DestroySurface(screen);
+    game_texture = new_texture;
+    surface = new_surface;
+    screen = new_screen;
+    xres = width;
+    yres = height;
+    main_screen->SetSize(ivec2(width, height));
+    main_screen->clear();
+
+    if (!window_is_fullscreen())
+    {
+        int old_x, old_y, old_w, old_h;
+        SDL_GetWindowPosition(window, &old_x, &old_y);
+        SDL_GetWindowSize(window, &old_w, &old_h);
+        const int new_w = width * scale;
+        const int new_h = new_display_height * scale;
+        SDL_SetWindowSize(window, new_w, new_h);
+        SDL_SetWindowPosition(window, old_x + (old_w - new_w) / 2, old_y + (old_h - new_h) / 2);
+        SDL_SyncWindow(window);
+        remember_windowed_bounds();
+    }
+
+    SDL_GetWindowSize(window, &window_w, &window_h);
+    return true;
+}
+
 //
 // close_graphics()
 // Shutdown the video mode
 //
-void close_graphics()
+void close_framebuffer()
 {
-    if (lastl)
-        delete lastl;
-    lastl = NULL;
-
-    // Free our surfaces, texture and renderer
     if (surface)
         SDL_DestroySurface(surface);
     if (screen)
         SDL_DestroySurface(screen);
     if (game_texture)
         SDL_DestroyTexture(game_texture);
+    surface = NULL;
+    screen = NULL;
+    game_texture = NULL;
+
+    delete main_screen;
+    main_screen = NULL;
+}
+
+void close_graphics()
+{
+    if (lastl)
+        delete lastl;
+    lastl = NULL;
+
+    close_framebuffer();
+
     if (renderer)
         SDL_DestroyRenderer(renderer);
     if (window)
         SDL_DestroyWindow(window);
+    renderer = NULL;
+    window = NULL;
 
     fullscreen = false;
     windowed_bounds = {};
-
-    delete main_screen;
 }
 
 // put_part_image()

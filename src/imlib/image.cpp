@@ -36,6 +36,11 @@ void image::SetSize(ivec2 new_size, uint8_t *page)
     DeletePage();
     m_size = new_size;
     MakePage(new_size, page);
+    if (m_special)
+    {
+        m_special->ClearDirties();
+        m_special->Resize(new_size);
+    }
 }
 
 void image::MakePage(ivec2 size, uint8_t *page_buffer)

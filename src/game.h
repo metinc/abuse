@@ -191,6 +191,7 @@ class Game
         return current_level->GetFg(pos);
     }
     void end_session();
+    bool set_editor_mode(bool enabled);
     void need_refresh()
     {
         refresh = 1;

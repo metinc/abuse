@@ -861,6 +861,9 @@ void dev_init(int argc, char **argv)
     scale_mult = 1;
     scale_div = 1;
     dev = 0;
+    start_edit = 0;
+    start_running = 0;
+    disable_autolight = 0;
     int i;
     prop = new property_manager;
 
@@ -925,6 +928,7 @@ void AR_dev_init()
     scale_mult = 1;
     scale_div = 1;
     dev = 0;
+    start_running = 0;
     prop = new property_manager;
 
     prop->load("defaults.prp");

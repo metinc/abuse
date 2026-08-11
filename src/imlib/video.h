@@ -27,6 +27,8 @@ extern int xoff, yoff;
 extern image *main_screen;
 
 void set_mode(int argc = 0, char **argv = NULL);
+bool resize_framebuffer(int width, int height);
+void close_framebuffer();
 void close_graphics();
 void update_window_done();
 
