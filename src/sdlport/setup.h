@@ -92,6 +92,7 @@ class Settings
     Settings();
 
     bool ApplyAspectRatio();
+    bool GetEditorFramebufferSize(short &width, short &height) const;
     bool Load();
     bool Save() const;
     void BeginCommandLineOverrides();

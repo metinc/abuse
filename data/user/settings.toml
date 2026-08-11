@@ -9,7 +9,7 @@ borderless = false
 aspect_ratio = "desktop"
 framebuffer_width = 320
 framebuffer_height = 200
-# The editor uses a larger framebuffer to show more of the level.
+# The editor uses this larger zoom baseline and expands it to aspect_ratio.
 editor_framebuffer_width = 640
 editor_framebuffer_height = 400
 window_scale = 2

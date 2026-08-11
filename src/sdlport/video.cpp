@@ -130,7 +130,7 @@ static int display_height_for(int framebuffer_width, int framebuffer_height)
     constexpr int vga_storage_width = 8;
     constexpr int vga_storage_height = 5;
 
-    const bool aspect_ratio_mode = !settings.editor && SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
+    const bool aspect_ratio_mode = SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
     if (aspect_ratio_mode ||
         static_cast<int64_t>(framebuffer_width) * vga_storage_height ==
             static_cast<int64_t>(framebuffer_height) * vga_storage_width)

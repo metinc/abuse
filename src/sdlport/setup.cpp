@@ -913,24 +913,11 @@ void parseCommandLine(int argc, char **argv)
     }
 }
 
-bool Settings::ApplyAspectRatio()
+namespace
 {
-    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
-        return true;
-
-    if (aspect_ratio.empty())
-    {
-        const SDL_DisplayID display = SDL_GetPrimaryDisplay();
-        const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
-        if (mode && mode->w > 0 && mode->h > 0)
-            aspect_ratio = std::to_string(mode->w) + ":" + std::to_string(mode->h);
-        else
-        {
-            fprintf(stderr, "Video: Unable to determine desktop aspect ratio; using original 4:3\n");
-            aspect_ratio = "4:3";
-        }
-    }
-
+bool calculate_aspect_framebuffer(const std::string &aspect_ratio, short base_width, short base_height, short &width,
+                                  short &height)
+{
     const std::size_t separator = aspect_ratio.find(':');
     if (separator == std::string::npos || separator == 0 || separator + 1 == aspect_ratio.size() ||
         aspect_ratio.find(':', separator + 1) != std::string::npos)
@@ -955,36 +942,65 @@ bool Settings::ApplyAspectRatio()
     if (aspect_width <= 0 || aspect_height <= 0)
         return false;
 
-    constexpr int original_width = 320;
-    constexpr int original_height = 200;
-    constexpr int corrected_original_height = 240;
-
-    // Compare against 4:3 without using floating point. Wider displays grow
-    // the framebuffer horizontally; narrower displays grow it vertically.
+    // VGA pixels are 5:6. Grow one framebuffer dimension to reach the
+    // requested display aspect ratio without changing the baseline zoom.
     int64_t framebuffer_width;
     int64_t framebuffer_height;
-    if (static_cast<int64_t>(aspect_width) * 3 >= static_cast<int64_t>(aspect_height) * 4)
+    if (static_cast<int64_t>(aspect_width) * 6 * base_height >=
+        static_cast<int64_t>(aspect_height) * 5 * base_width)
     {
-        const int64_t width = static_cast<int64_t>(corrected_original_height) * aspect_width;
-        framebuffer_width = (width + aspect_height / 2) / aspect_height;
-        framebuffer_height = original_height;
+        const int64_t scaled_width = static_cast<int64_t>(base_height) * 6 * aspect_width;
+        const int64_t divisor = static_cast<int64_t>(5) * aspect_height;
+        framebuffer_width = (scaled_width + divisor / 2) / divisor;
+        framebuffer_height = base_height;
     }
     else
     {
-        // Original VGA pixels are 5:6, so convert the required displayed
-        // height back to framebuffer pixels after holding the width at 320.
-        const int64_t height = static_cast<int64_t>(original_width) * 5 * aspect_height;
-        framebuffer_width = original_width;
-        framebuffer_height = (height + 3 * aspect_width) / (6 * aspect_width);
+        const int64_t scaled_height = static_cast<int64_t>(base_width) * 5 * aspect_height;
+        const int64_t divisor = static_cast<int64_t>(6) * aspect_width;
+        framebuffer_width = base_width;
+        framebuffer_height = (scaled_height + divisor / 2) / divisor;
     }
 
-    if (framebuffer_width < original_width || framebuffer_height < original_height ||
-        framebuffer_width > std::numeric_limits<short>::max() || framebuffer_height > std::numeric_limits<short>::max())
+    if (framebuffer_width < base_width || framebuffer_height < base_height ||
+        framebuffer_width > std::numeric_limits<short>::max() ||
+        framebuffer_height > std::numeric_limits<short>::max())
         return false;
 
-    xres = static_cast<short>(framebuffer_width);
-    yres = static_cast<short>(framebuffer_height);
+    width = static_cast<short>(framebuffer_width);
+    height = static_cast<short>(framebuffer_height);
     return true;
+}
+}
+
+bool Settings::ApplyAspectRatio()
+{
+    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
+        return true;
+
+    if (aspect_ratio.empty())
+    {
+        const SDL_DisplayID display = SDL_GetPrimaryDisplay();
+        const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
+        if (mode && mode->w > 0 && mode->h > 0)
+            aspect_ratio = std::to_string(mode->w) + ":" + std::to_string(mode->h);
+        else
+        {
+            fprintf(stderr, "Video: Unable to determine desktop aspect ratio; using original 4:3\n");
+            aspect_ratio = "4:3";
+        }
+    }
+
+    return calculate_aspect_framebuffer(aspect_ratio, 320, 200, xres, yres);
+}
+
+bool Settings::GetEditorFramebufferSize(short &width, short &height) const
+{
+    width = editor_xres;
+    height = editor_yres;
+    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
+        return true;
+    return calculate_aspect_framebuffer(aspect_ratio, editor_xres, editor_yres, width, height);
 }
 
 //

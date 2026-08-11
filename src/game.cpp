@@ -602,10 +602,13 @@ bool Game::set_editor_mode(bool enabled)
     if (enabled == ((dev & EDIT_MODE) != 0))
         return true;
 
+    short width = settings.xres;
+    short height = settings.yres;
+    if (enabled && !settings.GetEditorFramebufferSize(width, height))
+        return false;
+
     const bool old_editor_setting = settings.editor;
     settings.editor = enabled;
-    const int width = enabled ? settings.editor_xres : settings.xres;
-    const int height = enabled ? settings.editor_yres : settings.yres;
     if (!resize_framebuffer(width, height))
     {
         settings.editor = old_editor_setting;
@@ -2516,8 +2519,16 @@ int main(int argc, char *argv[])
         else
             dev_init(argc, argv);
 
-        xres = settings.editor ? settings.editor_xres : settings.xres;
-        yres = settings.editor ? settings.editor_yres : settings.yres;
+        short target_xres = settings.xres;
+        short target_yres = settings.yres;
+        if (settings.editor && !settings.GetEditorFramebufferSize(target_xres, target_yres))
+        {
+            fprintf(stderr, "Video: Editor framebuffer is too large for aspect ratio %s\n",
+                    settings.aspect_ratio.c_str());
+            exit(EXIT_FAILURE);
+        }
+        xres = target_xres;
+        yres = target_yres;
         if (settings.editor)
             printf("Video: Using editor %dx%d framebuffer\n", xres, yres);
 
