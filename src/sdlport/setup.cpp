@@ -33,11 +33,10 @@
 #include <cstring>
 #include <string>
 #include <filesystem>
-#include <iomanip>
 #include <limits>
-#include <locale>
 #include <system_error>
-#include <toml++/toml.hpp>
+#include <utility>
+#include <toml.hpp>
 #include <SDL3/SDL.h>
 
 #include "file_utils.h"
@@ -48,7 +47,6 @@
 
 //AR
 #include <fstream>
-#include <sstream>
 extern Settings settings;
 //
 
@@ -60,21 +58,6 @@ const char *settings_filename = "settings.toml";
 
 namespace
 {
-void set_fixed_decimal(std::string &document, const char *key, double value)
-{
-    const std::string prefix = std::string(key) + " = ";
-    const size_t value_start = document.find(prefix);
-    if (value_start == std::string::npos)
-        return;
-
-    const size_t number_start = value_start + prefix.size();
-    const size_t number_end = document.find('\n', number_start);
-    std::ostringstream formatted;
-    formatted.imbue(std::locale::classic());
-    formatted << std::fixed << std::setprecision(2) << value;
-    document.replace(number_start, number_end - number_start, formatted.str());
-}
-
 std::string append_path(const char *base, const char *relative)
 {
     std::string result = base ? base : "";
@@ -203,10 +186,31 @@ Settings::Settings()
 
 namespace
 {
+using settings_document = toml::ordered_value;
+
 std::filesystem::path settings_path(const char *filename)
 {
     const char *prefix = get_save_filename_prefix();
     return std::filesystem::path(prefix ? prefix : "") / filename;
+}
+
+std::filesystem::path settings_template_path()
+{
+    const char *prefix = get_filename_prefix();
+    return std::filesystem::path(prefix ? prefix : "") / "user" / settings_filename;
+}
+
+const settings_document *find_table(const settings_document &parent, const char *key)
+{
+    if (!parent.is_table() || !parent.contains(key))
+        return nullptr;
+    const settings_document &value = parent.at(key);
+    return value.is_table() ? &value : nullptr;
+}
+
+const settings_document *find_value(const settings_document *table, const char *key)
+{
+    return table && table->is_table() && table->contains(key) ? &table->at(key) : nullptr;
 }
 
 void invalid_setting(const char *section, const char *key, const char *expected)
@@ -214,48 +218,56 @@ void invalid_setting(const char *section, const char *key, const char *expected)
     fprintf(stderr, "Config: Ignoring %s.%s; expected %s\n", section, key, expected);
 }
 
-template <typename T> void read_integer(const toml::table *table, const char *section, const char *key, T &target)
+template <typename T>
+void read_integer(const settings_document *table, const char *section, const char *key, T &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    if (auto value = (*table)[key].value<int64_t>())
+    if (node->is_integer())
     {
-        if (*value < static_cast<int64_t>(std::numeric_limits<T>::min()) ||
-            *value > static_cast<int64_t>(std::numeric_limits<T>::max()))
+        const int64_t value = node->as_integer();
+        if (value < static_cast<int64_t>(std::numeric_limits<T>::min()) ||
+            value > static_cast<int64_t>(std::numeric_limits<T>::max()))
             invalid_setting(section, key, "an in-range integer");
         else
-            target = static_cast<T>(*value);
+            target = static_cast<T>(value);
     }
     else
         invalid_setting(section, key, "an integer");
 }
 
-void read_number(const toml::table *table, const char *section, const char *key, double &target)
+void read_number(const settings_document *table, const char *section, const char *key, double &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    if (auto value = (*table)[key].value<double>())
-        target = *value;
+    if (node->is_floating())
+        target = node->as_floating();
+    else if (node->is_integer())
+        target = static_cast<double>(node->as_integer());
     else
         invalid_setting(section, key, "a number");
 }
 
-void read_boolean(const toml::table *table, const char *section, const char *key, bool &target)
+void read_boolean(const settings_document *table, const char *section, const char *key, bool &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    if (auto value = (*table)[key].value<bool>())
-        target = *value;
+    if (node->is_boolean())
+        target = node->as_boolean();
     else
         invalid_setting(section, key, "true or false");
 }
 
-void read_string(const toml::table *table, const char *section, const char *key, std::string &target)
+void read_string(const settings_document *table, const char *section, const char *key, std::string &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    if (auto value = (*table)[key].value<std::string>())
-        target = *value;
+    if (node->is_string())
+        target = node->as_string();
     else
         invalid_setting(section, key, "a string");
 }
@@ -361,29 +373,34 @@ std::string key_string(int key)
     }
 }
 
-void read_keys(const toml::table *table, const char *key, int &primary, int *secondary = nullptr)
+void read_keys(const settings_document *table, const char *key, int &primary, int *secondary = nullptr)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node || !node->is_array())
+    {
+        if (node)
+            invalid_setting("input.keyboard", key,
+                            secondary ? "an array containing one or two keys" : "a one-key array");
         return;
-    const toml::array *values = (*table)[key].as_array();
-    if (!values || values->empty() || values->size() > (secondary ? 2u : 1u))
+    }
+    const auto &values = node->as_array();
+    if (values.empty() || values.size() > (secondary ? 2u : 1u))
     {
         invalid_setting("input.keyboard", key, secondary ? "an array containing one or two keys" : "a one-key array");
         return;
     }
 
     int parsed[2];
-    for (size_t i = 0; i < values->size(); ++i)
+    for (size_t i = 0; i < values.size(); ++i)
     {
-        auto name = (*values)[i].value<std::string>();
-        if (!name || !parse_key(*name, parsed[i]))
+        if (!values[i].is_string() || !parse_key(values[i].as_string(), parsed[i]))
         {
             invalid_setting("input.keyboard", key, "valid key names");
             return;
         }
     }
     primary = parsed[0];
-    if (secondary && values->size() == 2)
+    if (secondary && values.size() == 2)
         *secondary = parsed[1];
 }
 
@@ -415,17 +432,17 @@ std::string external_action(const std::string &action)
     return action;
 }
 
-void read_gamepad_action(const toml::table *table, const char *key, std::string &target)
+void read_gamepad_action(const settings_document *table, const char *key, std::string &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    auto value = (*table)[key].value<std::string>();
-    if (!value || internal_action(*value).empty())
+    if (!node->is_string() || internal_action(node->as_string()).empty())
     {
         invalid_setting("input.gamepad", key, "a supported action name");
         return;
     }
-    target = internal_action(*value);
+    target = internal_action(node->as_string());
 }
 
 int gamepad_button(const std::string &name)
@@ -476,16 +493,79 @@ std::string gamepad_button_name(int button)
     }
 }
 
-void read_gamepad_button(const toml::table *table, const char *key, int &target)
+void read_gamepad_button(const settings_document *table, const char *key, int &target)
 {
-    if (!table || !table->contains(key))
+    const settings_document *node = find_value(table, key);
+    if (!node)
         return;
-    auto value = (*table)[key].value<std::string>();
-    int button = value ? gamepad_button(*value) : -2;
+    const int button = node->is_string() ? gamepad_button(node->as_string()) : -2;
     if (button == -2)
         invalid_setting("input.gamepad", key, "a gamepad button name or 'none'");
     else
         target = button;
+}
+
+void merge_comments_and_unknown_values(settings_document &canonical, const settings_document &user)
+{
+    for (const std::string &comment : user.comments())
+    {
+        const auto existing = std::find(canonical.comments().begin(), canonical.comments().end(), comment);
+        if (existing == canonical.comments().end())
+            canonical.comments().push_back(comment);
+    }
+
+    if (!canonical.is_table() || !user.is_table())
+        return;
+
+    for (const auto &entry : user.as_table())
+    {
+        if (canonical.contains(entry.first))
+            merge_comments_and_unknown_values(canonical.at(entry.first), entry.second);
+        else
+            canonical.as_table().emplace_back(entry.first, entry.second);
+    }
+}
+
+settings_document document_for_save(const std::filesystem::path &user_path)
+{
+    settings_document document(toml::ordered_table{});
+    const std::filesystem::path template_path = settings_template_path();
+    const bool has_template = std::filesystem::exists(template_path);
+    const bool has_user_document = std::filesystem::exists(user_path);
+
+    if (has_template)
+        document = toml::parse<toml::ordered_type_config>(template_path);
+    else if (has_user_document)
+        document = toml::parse<toml::ordered_type_config>(user_path);
+
+    if (has_template && has_user_document)
+    {
+        const settings_document user = toml::parse<toml::ordered_type_config>(user_path);
+        merge_comments_and_unknown_values(document, user);
+    }
+    return document;
+}
+
+settings_document &ensure_table(settings_document &parent, const char *key)
+{
+    if (!parent.is_table())
+        parent = toml::ordered_table{};
+    if (!parent.contains(key) || !parent.at(key).is_table())
+        parent[key] = toml::ordered_table{};
+    return parent.at(key);
+}
+
+template <typename T> void set_value(settings_document &table, const char *key, T value)
+{
+    table[key] = std::move(value);
+}
+
+void set_fixed_number(settings_document &table, const char *key, double value)
+{
+    table[key] = value;
+    toml::floating_format_info &format = table.at(key).as_floating_fmt();
+    format.fmt = toml::floating_format::fixed;
+    format.prec = 2;
 }
 
 }
@@ -544,25 +624,26 @@ bool Settings::ReadTomlFile()
     const std::filesystem::path path = settings_path(settings_filename);
     try
     {
-        toml::table document = toml::parse_file(path.string());
-        if (auto version = document["schema_version"].value<int64_t>(); version && *version > 2)
+        const settings_document document = toml::parse<toml::ordered_type_config>(path);
+        const settings_document *version = find_value(&document, "schema_version");
+        if (version && version->is_integer() && version->as_integer() > 2)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
-                    static_cast<long long>(*version));
+                    static_cast<long long>(version->as_integer()));
             return false;
         }
 
-        const toml::table *video = document["video"].as_table();
+        const settings_document *video = find_table(document, "video");
         if (video && video->contains("fullscreen"))
         {
-            auto mode = (*video)["fullscreen"].value<std::string>();
-            if (!mode)
+            const settings_document &mode = video->at("fullscreen");
+            if (!mode.is_string())
                 invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
-            else if (*mode == "window")
+            else if (mode.as_string() == "window")
                 fullscreen = 0;
-            else if (*mode == "desktop")
+            else if (mode.as_string() == "desktop")
                 fullscreen = 1;
-            else if (*mode == "exclusive")
+            else if (mode.as_string() == "exclusive")
                 fullscreen = 2;
             else
                 invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
@@ -581,7 +662,7 @@ bool Settings::ReadTomlFile()
         read_boolean(video, "video", "big_font", big_font);
         read_number(video, "video", "gamma", gamma);
 
-        const toml::table *audio = document["audio"].as_table();
+        const settings_document *audio = find_table(document, "audio");
         bool enabled = !no_sound;
         read_boolean(audio, "audio", "sound_enabled", enabled);
         no_sound = !enabled;
@@ -593,22 +674,22 @@ bool Settings::ReadTomlFile()
         read_number(audio, "audio", "music_volume", volume_music);
         read_string(audio, "audio", "soundfont", soundfont);
 
-        const toml::table *gameplay = document["gameplay"].as_table();
+        const settings_document *gameplay = find_table(document, "gameplay");
         read_string(gameplay, "gameplay", "difficulty", difficulty);
         read_integer(gameplay, "gameplay", "physics_tick_ms", physics_update);
         read_integer(gameplay, "gameplay", "max_fps", max_fps);
         read_boolean(gameplay, "gameplay", "skip_intro", skip_intro);
         read_boolean(gameplay, "gameplay", "menu_demos", menu_demos);
 
-        const toml::table *general = document["general"].as_table();
+        const settings_document *general = find_table(document, "general");
         read_string(general, "general", "language", language);
         read_boolean(general, "general", "editor", editor);
         read_boolean(general, "general", "grab_input", grab_input);
         read_boolean(general, "general", "local_save", local_save);
 
-        const toml::table *input = document["input"].as_table();
+        const settings_document *input = find_table(document, "input");
         read_integer(input, "input", "mouse_scale", mouse_scale);
-        const toml::table *keyboard = input ? (*input)["keyboard"].as_table() : nullptr;
+        const settings_document *keyboard = input ? find_table(*input, "keyboard") : nullptr;
         read_keys(keyboard, "left", left, &left_2);
         read_keys(keyboard, "right", right, &right_2);
         read_keys(keyboard, "up", up, &up_2);
@@ -618,7 +699,7 @@ bool Settings::ReadTomlFile()
         read_keys(keyboard, "weapon_prev", b3);
         read_keys(keyboard, "weapon_next", b4);
 
-        const toml::table *gamepad = input ? (*input)["gamepad"].as_table() : nullptr;
+        const settings_document *gamepad = input ? find_table(*input, "gamepad") : nullptr;
         read_integer(gamepad, "input.gamepad", "aim_correction_x", ctr_aim_correctx);
         read_integer(gamepad, "input.gamepad", "crosshair_distance", ctr_cd);
         read_integer(gamepad, "input.gamepad", "aim_sensitivity", ctr_rst_s);
@@ -641,9 +722,9 @@ bool Settings::ReadTomlFile()
         Validate();
         return true;
     }
-    catch (const toml::parse_error &error)
+    catch (const std::exception &error)
     {
-        std::cerr << "Config: Unable to parse " << path << ":\n" << error << '\n';
+        std::cerr << "Config: Unable to parse " << path << ":\n" << error.what() << '\n';
         return false;
     }
 }
@@ -690,98 +771,98 @@ void Settings::SetSoundFont(const std::string &path)
 
 bool Settings::Save() const
 {
-    toml::table document;
-    document.insert("schema_version", 2);
-
-    toml::table video;
-    const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
-    const short saved_xres = command_line_overrides ? file_xres : xres;
-    const short saved_yres = command_line_overrides ? file_yres : yres;
-    const short saved_editor_xres = command_line_overrides ? file_editor_xres : editor_xres;
-    const short saved_editor_yres = command_line_overrides ? file_editor_yres : editor_yres;
-    const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
-    video.insert("fullscreen", saved_fullscreen == 0 ? "window" : saved_fullscreen == 1 ? "desktop" : "exclusive");
-    video.insert("borderless", borderless);
-    video.insert("aspect_ratio", saved_aspect_ratio.empty() ? "desktop" : saved_aspect_ratio);
-    video.insert("framebuffer_width", saved_xres);
-    video.insert("framebuffer_height", saved_yres);
-    video.insert("editor_framebuffer_width", saved_editor_xres);
-    video.insert("editor_framebuffer_height", saved_editor_yres);
-    video.insert("window_scale", scale);
-    video.insert("linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
-    video.insert("hires", hires);
-    video.insert("big_font", big_font);
-    video.insert("gamma", gamma);
-    document.insert("video", std::move(video));
-
-    toml::table audio;
-    audio.insert("sound_enabled", !(command_line_overrides ? file_no_sound : no_sound));
-    audio.insert("music_enabled", !no_music);
-    audio.insert("sound_volume", volume_sound);
-    audio.insert("music_volume", volume_music);
-    audio.insert("mono", command_line_overrides ? file_mono : mono);
-    audio.insert("soundfont", soundfont);
-    document.insert("audio", std::move(audio));
-
-    toml::table gameplay;
-    gameplay.insert("difficulty", difficulty);
-    gameplay.insert("physics_tick_ms", physics_update);
-    gameplay.insert("max_fps", max_fps);
-    gameplay.insert("skip_intro", skip_intro);
-    gameplay.insert("menu_demos", menu_demos);
-    document.insert("gameplay", std::move(gameplay));
-
-    toml::table general;
-    general.insert("language", language);
-    general.insert("editor", command_line_overrides ? file_editor : editor);
-    general.insert("grab_input", grab_input);
-    general.insert("local_save", command_line_overrides ? file_local_save : local_save);
-    document.insert("general", std::move(general));
-
-    toml::table keyboard;
-    keyboard.insert("left", toml::array{key_string(left), key_string(left_2)});
-    keyboard.insert("right", toml::array{key_string(right), key_string(right_2)});
-    keyboard.insert("up", toml::array{key_string(up), key_string(up_2)});
-    keyboard.insert("down", toml::array{key_string(down), key_string(down_2)});
-    keyboard.insert("special", toml::array{key_string(b1)});
-    keyboard.insert("fire", toml::array{key_string(b2)});
-    keyboard.insert("weapon_prev", toml::array{key_string(b3)});
-    keyboard.insert("weapon_next", toml::array{key_string(b4)});
-
-    toml::table gamepad;
-    gamepad.insert("aim_correction_x", ctr_aim_correctx);
-    gamepad.insert("crosshair_distance", ctr_cd);
-    gamepad.insert("aim_sensitivity", ctr_rst_s);
-    gamepad.insert("aim_dead_zone", ctr_rst_dz);
-    gamepad.insert("move_dead_zone_x", ctr_lst_dzx);
-    gamepad.insert("move_dead_zone_y", ctr_lst_dzy);
-    gamepad.insert("south", external_action(ctr_a));
-    gamepad.insert("east", external_action(ctr_b));
-    gamepad.insert("west", external_action(ctr_x));
-    gamepad.insert("north", external_action(ctr_y));
-    gamepad.insert("left_stick", external_action(ctr_lst));
-    gamepad.insert("right_stick", external_action(ctr_rst));
-    gamepad.insert("left_shoulder", external_action(ctr_lsr));
-    gamepad.insert("right_shoulder", external_action(ctr_rsr));
-    gamepad.insert("left_trigger", external_action(ctr_ltg));
-    gamepad.insert("right_trigger", external_action(ctr_rtg));
-    gamepad.insert("quick_save", gamepad_button_name(ctr_f5));
-    gamepad.insert("quick_load", gamepad_button_name(ctr_f9));
-
-    toml::table input;
-    input.insert("mouse_scale", mouse_scale);
-    input.insert("keyboard", std::move(keyboard));
-    input.insert("gamepad", std::move(gamepad));
-    document.insert("input", std::move(input));
-
-    std::ostringstream serialized_stream;
-    serialized_stream << document << '\n';
-    std::string serialized = serialized_stream.str();
-    set_fixed_decimal(serialized, "gamma", gamma);
-    set_fixed_decimal(serialized, "sound_volume", volume_sound);
-    set_fixed_decimal(serialized, "music_volume", volume_music);
-
     const std::filesystem::path path = settings_path(settings_filename);
+    std::string serialized;
+    try
+    {
+        settings_document document = document_for_save(path);
+        set_value(document, "schema_version", 2);
+
+        settings_document &video = ensure_table(document, "video");
+        const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
+        const short saved_xres = command_line_overrides ? file_xres : xres;
+        const short saved_yres = command_line_overrides ? file_yres : yres;
+        const short saved_editor_xres = command_line_overrides ? file_editor_xres : editor_xres;
+        const short saved_editor_yres = command_line_overrides ? file_editor_yres : editor_yres;
+        const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
+        set_value(video, "fullscreen",
+                  std::string(saved_fullscreen == 0 ? "window" : saved_fullscreen == 1 ? "desktop" : "exclusive"));
+        set_value(video, "borderless", borderless);
+        set_value(video, "aspect_ratio", saved_aspect_ratio.empty() ? std::string("desktop") : saved_aspect_ratio);
+        set_value(video, "framebuffer_width", saved_xres);
+        set_value(video, "framebuffer_height", saved_yres);
+        set_value(video, "editor_framebuffer_width", saved_editor_xres);
+        set_value(video, "editor_framebuffer_height", saved_editor_yres);
+        set_value(video, "window_scale", scale);
+        set_value(video, "linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
+        set_value(video, "hires", hires);
+        set_value(video, "big_font", big_font);
+        set_fixed_number(video, "gamma", gamma);
+
+        settings_document &audio = ensure_table(document, "audio");
+        set_value(audio, "sound_enabled", !(command_line_overrides ? file_no_sound : no_sound));
+        set_value(audio, "music_enabled", !no_music);
+        set_fixed_number(audio, "sound_volume", volume_sound);
+        set_fixed_number(audio, "music_volume", volume_music);
+        set_value(audio, "mono", command_line_overrides ? file_mono : mono);
+        set_value(audio, "soundfont", soundfont);
+
+        settings_document &gameplay = ensure_table(document, "gameplay");
+        set_value(gameplay, "difficulty", difficulty);
+        set_value(gameplay, "physics_tick_ms", physics_update);
+        set_value(gameplay, "max_fps", max_fps);
+        set_value(gameplay, "skip_intro", skip_intro);
+        set_value(gameplay, "menu_demos", menu_demos);
+
+        settings_document &general = ensure_table(document, "general");
+        set_value(general, "language", language);
+        set_value(general, "editor", command_line_overrides ? file_editor : editor);
+        set_value(general, "grab_input", grab_input);
+        set_value(general, "local_save", command_line_overrides ? file_local_save : local_save);
+
+        settings_document &input = ensure_table(document, "input");
+        set_value(input, "mouse_scale", mouse_scale);
+        settings_document &keyboard = ensure_table(input, "keyboard");
+        set_value(keyboard, "left", toml::ordered_array{key_string(left), key_string(left_2)});
+        set_value(keyboard, "right", toml::ordered_array{key_string(right), key_string(right_2)});
+        set_value(keyboard, "up", toml::ordered_array{key_string(up), key_string(up_2)});
+        set_value(keyboard, "down", toml::ordered_array{key_string(down), key_string(down_2)});
+        set_value(keyboard, "special", toml::ordered_array{key_string(b1)});
+        set_value(keyboard, "fire", toml::ordered_array{key_string(b2)});
+        set_value(keyboard, "weapon_prev", toml::ordered_array{key_string(b3)});
+        set_value(keyboard, "weapon_next", toml::ordered_array{key_string(b4)});
+
+        settings_document &gamepad = ensure_table(input, "gamepad");
+        set_value(gamepad, "aim_correction_x", ctr_aim_correctx);
+        set_value(gamepad, "crosshair_distance", ctr_cd);
+        set_value(gamepad, "aim_sensitivity", ctr_rst_s);
+        set_value(gamepad, "aim_dead_zone", ctr_rst_dz);
+        set_value(gamepad, "move_dead_zone_x", ctr_lst_dzx);
+        set_value(gamepad, "move_dead_zone_y", ctr_lst_dzy);
+        set_value(gamepad, "south", external_action(ctr_a));
+        set_value(gamepad, "east", external_action(ctr_b));
+        set_value(gamepad, "west", external_action(ctr_x));
+        set_value(gamepad, "north", external_action(ctr_y));
+        set_value(gamepad, "left_stick", external_action(ctr_lst));
+        set_value(gamepad, "right_stick", external_action(ctr_rst));
+        set_value(gamepad, "left_shoulder", external_action(ctr_lsr));
+        set_value(gamepad, "right_shoulder", external_action(ctr_rsr));
+        set_value(gamepad, "left_trigger", external_action(ctr_ltg));
+        set_value(gamepad, "right_trigger", external_action(ctr_rtg));
+        set_value(gamepad, "quick_save", gamepad_button_name(ctr_f5));
+        set_value(gamepad, "quick_load", gamepad_button_name(ctr_f9));
+
+        serialized = toml::format(document);
+        while (!serialized.empty() && (serialized.back() == '\n' || serialized.back() == '\r'))
+            serialized.pop_back();
+        serialized += '\n';
+    }
+    catch (const std::exception &error)
+    {
+        std::cerr << "Config: Unable to prepare " << path << ":\n" << error.what() << '\n';
+        return false;
+    }
+
     const std::filesystem::path temporary = path.string() + ".tmp";
     std::error_code error;
     std::filesystem::create_directories(path.parent_path(), error);

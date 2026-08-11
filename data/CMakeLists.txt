@@ -353,6 +353,10 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR})
 
 INSTALL(FILES
+    user/settings.toml
+DESTINATION ${ASSETDIR}/user)
+
+INSTALL(FILES
     soundfonts/FluidR3\ GM.sf2
     soundfonts/MuseScore.sf3
     soundfonts/TimGM.sf2

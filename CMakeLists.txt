@@ -20,16 +20,16 @@ find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
 find_package(SDL3_net 3.0.0 REQUIRED)
 
-find_package(tomlplusplus 3.4 CONFIG QUIET)
-if(NOT TARGET tomlplusplus::tomlplusplus)
+find_package(toml11 4.4 CONFIG QUIET)
+if(NOT TARGET toml11::toml11)
     include(FetchContent)
     FetchContent_Declare(
-        tomlplusplus
-        GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-        GIT_TAG v3.4.0
+        toml11
+        GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
+        GIT_TAG v4.4.0
         GIT_SHALLOW TRUE
     )
-    FetchContent_MakeAvailable(tomlplusplus)
+    FetchContent_MakeAvailable(toml11)
 endif()
 
 # OpenCV is only used by abuse-tool, not by the game.
@@ -105,12 +105,12 @@ if(WIN32)
             POST_EXCLUDE_REGEXES ".*[Ww]indows[/\\\\][Ss]ystem32.*"
         RUNTIME DESTINATION .
     )
-    install(FILES COPYING.tomlplusplus DESTINATION .)
+    install(FILES COPYING.toml11 DESTINATION .)
 elseif(APPLE)
     install(TARGETS abuse BUNDLE DESTINATION .)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/macOS/abuse.icns"
         DESTINATION "abuse.app/Contents/Resources")
-    install(FILES COPYING.tomlplusplus DESTINATION "abuse.app/Contents/Resources")
+    install(FILES COPYING.toml11 DESTINATION "abuse.app/Contents/Resources")
 else()
     install(TARGETS abuse
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -125,7 +125,7 @@ else()
     install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
-    install(FILES COPYING.tomlplusplus DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/abuse")
+    install(FILES COPYING.toml11 DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/abuse")
 
     # SDL_mixer loads FluidSynth at runtime, so it is not visible in abuse's
     # normal link dependency graph. Pass it to linuxdeploy explicitly so that
