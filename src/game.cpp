@@ -1281,7 +1281,7 @@ template <int N> static void Fade(image *im, int steps)
     if (im)
     {
         main_screen->clear();
-        main_screen->PutImage(im, ivec2((xres + 1 - im->Size().x) / 2, (yres + 1 - im->Size().y) / 2));
+        main_screen->PutImage(im, main_screen->Size() / 2 - im->Size() / 2);
     }
 
     Uint64 start_ms = SDL_GetTicks();
