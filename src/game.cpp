@@ -655,10 +655,7 @@ void Game::pan_editor_view(int32_t xs, int32_t ys)
     else
     {
         for (view *v = first_view; v; v = v->next)
-        {
-            v->pan_x += std::max(xs, -v->xoff());
-            v->pan_y += std::max(ys, -v->yoff());
-        }
+            v->pan_editor(xs, ys);
     }
     refresh = 1;
 }

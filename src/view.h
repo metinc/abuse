@@ -100,6 +100,7 @@ class view
     void note_downkey();
     int handle_event(Event &ev);
     void update_scroll(float interpolation_ratio);
+    void pan_editor(int32_t x, int32_t y);
     void draw_hp();
     void draw_ammo();
     void draw_logo();
@@ -136,6 +137,9 @@ class view
     game_object *m_focus; // object we are focusing on (player)
 
   private:
+    int32_t unclamped_xoff(int32_t pan) const;
+    int32_t unclamped_yoff(int32_t pan) const;
+
     uint8_t m_keymap[512 / 8];
     char m_chat_buf[60];
     float interpolation_ratio;

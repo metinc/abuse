@@ -131,10 +131,8 @@ int32_t view::xoff()
     int32_t distance = pan_x - pan_x_last;
     int32_t pan_x_interpolated = pan_x_last + std::round(distance * this->interpolation_ratio);
 
-    if (!m_focus)
-        return pan_x_interpolated;
-
-    return std::max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x_interpolated);
+    const int32_t offset = unclamped_xoff(pan_x_interpolated);
+    return m_focus ? std::max(0, offset) : offset;
 }
 
 int32_t view::yoff()
@@ -142,12 +140,45 @@ int32_t view::yoff()
     int32_t distance = pan_y - pan_y_last;
     int32_t pan_y_interpolated = pan_y_last + std::round(distance * this->interpolation_ratio);
 
+    const int32_t offset = unclamped_yoff(pan_y_interpolated);
+    return m_focus ? std::max(0, offset) : offset;
+}
+
+int32_t view::unclamped_xoff(int32_t pan) const
+{
     if (!m_focus)
-        return pan_y_interpolated;
+        return pan;
+
+    return m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan;
+}
+
+int32_t view::unclamped_yoff(int32_t pan) const
+{
+    if (!m_focus)
+        return pan;
 
     const int rendered_height = m_bb.y - m_aa.y + 1;
     const int camera_height = sbar.camera_view_height(rendered_height, m_aa.y);
-    return std::max(0, m_lastpos.y - camera_height / 2 - m_shift.y + pan_y_interpolated);
+    return m_lastpos.y - camera_height / 2 - m_shift.y + pan;
+}
+
+void view::pan_editor(int32_t x, int32_t y)
+{
+    const int32_t raw_xoff = unclamped_xoff(pan_x);
+    const int32_t raw_yoff = unclamped_yoff(pan_y);
+
+    // The rendered offsets stop at zero, but the camera calculation can still
+    // be negative near the top or left level edge. Base the drag on what is
+    // actually visible so that hidden distance does not consume mouse motion.
+    const int32_t current_xoff = std::max(0, raw_xoff);
+    const int32_t current_yoff = std::max(0, raw_yoff);
+    const int32_t target_xoff = std::max(0, current_xoff + x);
+    const int32_t target_yoff = std::max(0, current_yoff + y);
+
+    pan_x += target_xoff - raw_xoff;
+    pan_y += target_yoff - raw_yoff;
+    pan_x_last = pan_x;
+    pan_y_last = pan_y;
 }
 
 // updates the camera position to follow the player

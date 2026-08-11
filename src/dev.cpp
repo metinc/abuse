@@ -1817,6 +1817,7 @@ void dev_controll::handle_event(Event &ev)
         if (!(ev.mouse_button & MIDDLE_BUTTON))
         {
             mouse_panning = false;
+            wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1, 1));
             ev.type = EV_SPURIOUS;
             return;
         }
@@ -1832,11 +1833,11 @@ void dev_controll::handle_event(Event &ev)
         return;
     }
 
-    if ((dev & EDIT_MODE) && ev.window == NULL && ev.type == EV_MOUSE_BUTTON &&
-        (ev.mouse_button & MIDDLE_BUTTON))
+    if ((dev & EDIT_MODE) && ev.window == NULL && ev.type == EV_MOUSE_BUTTON && (ev.mouse_button & MIDDLE_BUTTON))
     {
         mouse_panning = true;
         mouse_pan_last = last_demo_mpos;
+        wm->SetMouseShape(cache.img(c_target)->copy(), ivec2(4, 4));
         ev.type = EV_SPURIOUS;
         return;
     }
