@@ -22,7 +22,7 @@
 #include "specs.h"
 #include "lisp.h"
 #include "jrand.h"
-#include "menu.h"
+#include "ui/menu.h"
 #include "dev.h"
 #include "director.h"
 
@@ -31,9 +31,9 @@
 #include "particle.h"
 #include "clisp.h"
 #include "compiled.h"
-#include "sbar.h"
-#include "help.h"
-#include "loadgame.h"
+#include "ui/sbar.h"
+#include "ui/help.h"
+#include "ui/loadgame.h"
 #include "nfserver.h"
 #include "specache.h"
 

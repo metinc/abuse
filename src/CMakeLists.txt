@@ -20,25 +20,20 @@ endif()
 
 add_executable(abuse
     common.h
-    audio_volume.h
     file_utils.cpp file_utils.h
     lol/matrix.cpp lol/matrix.h
     specache.cpp specache.h
     netcfg.cpp netcfg.h
     innet.cpp
-    chat.cpp chat.h
     endgame.cpp
-    loadgame.cpp loadgame.h
     profile.cpp profile.h
     cop.cpp cop.h
-    statbar.cpp
     compiled.cpp compiled.h
     ant.cpp ant.h
     sensor.cpp
     demo.cpp demo.h    
     nfclient.cpp nfclient.h
     clisp.cpp clisp.h
-    gui.cpp gui.h
     transp.cpp transp.h
     collide.cpp
     property.cpp property.h
@@ -46,7 +41,6 @@ add_executable(abuse
     particle.cpp particle.h
     game_object.cpp game_object.h
     simple_object.cpp simple_object.h
-    console.cpp console.h
     ability.cpp ability.h
     items.cpp items.h
     dev.cpp dev.h
@@ -54,14 +48,12 @@ add_executable(abuse
     level.cpp level.h
     smallfnt.cpp
     automap.cpp automap.h
-    help.cpp help.h
     intsect.cpp intsect.h
     loader2.cpp loader2.h
     seq.cpp seq.h
     points.cpp points.h
     fnt6x13.cpp
     morpher.cpp morpher.h
-    menu.cpp menu.h
     director.cpp director.h
     view.cpp view.h
     configuration.cpp configuration.h
@@ -69,10 +61,18 @@ add_executable(abuse
     light.cpp light.h
     devsel.cpp devsel.h
     crc.cpp crc.h
-    video_settings.cpp video_settings.h
-    id.h isllist.h sbar.h
+    id.h isllist.h
     nfserver.h
     ui/audio_settings.cpp ui/audio_settings.h
+    ui/audio_volume.h
+    ui/chat.cpp ui/chat.h
+    ui/console.cpp ui/console.h
+    ui/gui.cpp ui/gui.h
+    ui/help.cpp ui/help.h
+    ui/loadgame.cpp ui/loadgame.h
+    ui/menu.cpp ui/menu.h
+    ui/statbar.cpp ui/sbar.h
+    ui/video_settings.cpp ui/video_settings.h
     ${abuse_RESOURCE_FILES}
 )
 

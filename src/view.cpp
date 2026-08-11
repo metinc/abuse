@@ -34,9 +34,9 @@
 #include "jrand.h"
 #include "clisp.h"
 #include "demo.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "nfserver.h"
-#include "chat.h"
+#include "ui/chat.h"
 #include <SDL3/SDL_timer.h>
 #include "netcfg.h"
 

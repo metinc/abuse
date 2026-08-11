@@ -17,14 +17,14 @@
 
 #include "common.h"
 
-#include "menu.h"
+#include "ui/menu.h"
 #include "lisp.h"
 #include "game.h"
 #include "timing.h"
 #include "game.h"
 #include "id.h"
 #include "pmenu.h"
-#include "gui.h"
+#include "ui/gui.h"
 #include "property.h"
 #include "dev.h"
 #include "clisp.h"

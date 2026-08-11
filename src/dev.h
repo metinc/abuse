@@ -13,7 +13,7 @@
 
 #include "game.h"
 #include "light.h"
-#include "console.h"
+#include "ui/console.h"
 #include "timing.h"
 
 /* Cleaned-up externs */

@@ -20,7 +20,7 @@
 #include "audio_volume.h"
 #include "dev.h"
 
-#include "ui/audio_settings.h"
+#include "audio_settings.h"
 
 #include "menu.h"
 #include "lisp.h"

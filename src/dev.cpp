@@ -34,9 +34,9 @@
 #include "lisp_gc.h"
 #include "demo.h"
 #include "profile.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "compiled.h"
-#include "chat.h"
+#include "ui/chat.h"
 
 //AR
 #include "sdlport/setup.h"

@@ -36,7 +36,7 @@
 #include "demo.h"
 #include "pcxread.h"
 #include "profile.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "cop.h"
 #include "nfserver.h"
 #include "lisp_gc.h"

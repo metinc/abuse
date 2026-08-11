@@ -18,7 +18,7 @@
 
 #include "common.h"
 
-#include "audio_volume.h"
+#include "ui/audio_volume.h"
 #ifdef WIN32
 #include <WinSock2.h>
 #include <Windows.h>
@@ -48,7 +48,7 @@
 #include "id.h"
 #include "timing.h"
 #include "automap.h"
-#include "help.h"
+#include "ui/help.h"
 #include "ability.h"
 #include "cache.h"
 #include "lisp.h"
@@ -61,16 +61,16 @@
 #include "transp.h"
 #include "clisp.h"
 #include "guistat.h"
-#include "menu.h"
+#include "ui/menu.h"
 #include "lisp_gc.h"
 #include "demo.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "profile.h"
 #include "compiled.h"
 #include "lisp_gc.h"
 #include "pmenu.h"
 #include "timing.h"
-#include "chat.h"
+#include "ui/chat.h"
 #include "demo.h"
 #include "netcfg.h"
 
