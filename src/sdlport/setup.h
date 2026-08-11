@@ -15,7 +15,7 @@
 
 #include <string>
 
-inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf2";
+inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
 
 class Settings
 {
