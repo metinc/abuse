@@ -88,6 +88,8 @@ class dev_controll
     int area_x1, area_y1, area_x2, area_y2;
     area_controller *current_area;
     time_marker last_area_click;
+    bool mouse_panning;
+    ivec2 mouse_pan_last;
 
   public:
     Jwindow *backw, *forew, *commandw, *modew, *omenu, *oedit, *ledit, *music_window, *pmenu, *show_menu, *lightw, *aiw,

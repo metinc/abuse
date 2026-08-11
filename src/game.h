@@ -115,6 +115,7 @@ class Game
     int state, zoom;
 
     void Step();
+    void pan_editor_view(int32_t x, int32_t y);
     void UpdateViews(float interpolation_ratio);
     void show_help(const std::string &msg);
     void show_help(char const *st);

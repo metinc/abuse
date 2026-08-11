@@ -189,16 +189,14 @@ void EventHandler::SysEvent(Event &ev)
         // pressed
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button |= LEFT_BUTTON;
-        ev.mouse_button |= RIGHT_BUTTON;
+        ev.mouse_button |= MIDDLE_BUTTON;
     }
     else if (!(buttons & SDL_BUTTON_MMASK) && mouse_buttons[2])
     {
         // released
         ev.type = EV_MOUSE_BUTTON;
         mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button &= (0xff - LEFT_BUTTON);
-        ev.mouse_button &= (0xff - RIGHT_BUTTON);
+        ev.mouse_button &= (0xff - MIDDLE_BUTTON);
     }
 
     // Right button

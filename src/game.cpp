@@ -600,6 +600,24 @@ void Game::end_session()
 
 int need_delay = 1;
 
+void Game::pan_editor_view(int32_t xs, int32_t ys)
+{
+    if (dev & MAP_MODE)
+    {
+        map_xoff = std::max(0, map_xoff + xs / 2);
+        map_yoff = std::max(0, map_yoff + ys / 2);
+    }
+    else
+    {
+        for (view *v = first_view; v; v = v->next)
+        {
+            v->pan_x += std::max(xs, -v->xoff());
+            v->pan_y += std::max(ys, -v->yoff());
+        }
+    }
+    refresh = 1;
+}
+
 void Game::dev_scroll()
 {
     need_delay = 0;
@@ -643,26 +661,7 @@ void Game::dev_scroll()
         if (xs || ys)
         {
             need_delay = 1;
-            if (dev & MAP_MODE)
-            {
-                map_xoff += xs / 2;
-                map_yoff += ys / 2;
-                if (map_xoff < 0)
-                    map_xoff = 0;
-                if (map_yoff < 0)
-                    map_yoff = 0;
-            }
-            else
-            {
-                for (view *v = first_view; v; v = v->next)
-                {
-                    if (xs >= 0 || v->xoff() > 0)
-                        v->pan_x += xs;
-                    if (ys >= 0 || v->yoff() > 0)
-                        v->pan_y += ys;
-                }
-            }
-            refresh = 1;
+            pan_editor_view(xs, ys);
         }
     }
 }

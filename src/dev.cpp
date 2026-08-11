@@ -947,6 +947,8 @@ static pmenu *make_menu(int x, int y);
 
 dev_controll::dev_controll()
 {
+    mouse_panning = false;
+    mouse_pan_last = ivec2(0, 0);
     area_win = NULL;
     current_area = NULL;
     fg_w = bg_w = 1;
@@ -1802,6 +1804,37 @@ void dev_controll::handle_event(Event &ev)
         last_link_x = dlast.x;
         last_link_y = dlast.y;
         the_game->need_refresh();
+    }
+
+    // Mouse 3 drags the level beneath the pointer. Consume the gesture before
+    // editor tools can interpret the middle button as a draw or select action.
+    if (mouse_panning)
+    {
+        if (!(ev.mouse_button & MIDDLE_BUTTON))
+        {
+            mouse_panning = false;
+            ev.type = EV_SPURIOUS;
+            return;
+        }
+
+        if (ev.type == EV_MOUSE_MOVE)
+        {
+            ivec2 delta = last_demo_mpos - mouse_pan_last;
+            mouse_pan_last = last_demo_mpos;
+            the_game->pan_editor_view(-delta.x, -delta.y);
+        }
+
+        ev.type = EV_SPURIOUS;
+        return;
+    }
+
+    if ((dev & EDIT_MODE) && ev.window == NULL && ev.type == EV_MOUSE_BUTTON &&
+        (ev.mouse_button & MIDDLE_BUTTON))
+    {
+        mouse_panning = true;
+        mouse_pan_last = last_demo_mpos;
+        ev.type = EV_SPURIOUS;
+        return;
     }
 
     if (dev_menu && dev_menu->handle_event(ev, main_screen))
