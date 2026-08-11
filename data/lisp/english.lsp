@@ -225,8 +225,7 @@
          (setq gamma_brighter "Brighter")
          (setq video_mode_msg "Display mode")
          (setq video_windowed "Window")
-         (setq video_borderless "Borderless fullscreen")
-         (setq video_exclusive "Exclusive fullscreen")
+         (setq video_fullscreen "Fullscreen")
 	 (setq telep_msg "Press down to teleport")
 
 	 (defun get_train_msg (message_num)

@@ -102,7 +102,7 @@ std::string find_data_directory()
 Settings::Settings()
 {
     //screen
-    this->fullscreen = 2;
+    this->fullscreen = true;
     this->borderless = false;
     this->xres = 320; // default window width
     this->yres = 200; // default window height
@@ -579,7 +579,6 @@ void Settings::Validate()
             fprintf(stderr, "Config: %s is out of range; using %lld\n", name, static_cast<long long>(value));
         }
     };
-    clamp(fullscreen, 0, 2, "video.fullscreen");
     clamp(xres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_width");
     clamp(yres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_height");
     clamp(editor_xres, static_cast<short>(1), std::numeric_limits<short>::max(),
@@ -626,7 +625,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 2)
+        if (version && version->is_integer() && version->as_integer() > 3)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -634,20 +633,7 @@ bool Settings::ReadTomlFile()
         }
 
         const settings_document *video = find_table(document, "video");
-        if (video && video->contains("fullscreen"))
-        {
-            const settings_document &mode = video->at("fullscreen");
-            if (!mode.is_string())
-                invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
-            else if (mode.as_string() == "window")
-                fullscreen = 0;
-            else if (mode.as_string() == "desktop")
-                fullscreen = 1;
-            else if (mode.as_string() == "exclusive")
-                fullscreen = 2;
-            else
-                invalid_setting("video", "fullscreen", "window, desktop, or exclusive");
-        }
+        read_boolean(video, "video", "fullscreen", fullscreen);
         read_boolean(video, "video", "borderless", borderless);
         read_string(video, "video", "aspect_ratio", aspect_ratio);
         if (aspect_ratio == "desktop")
@@ -758,10 +744,10 @@ void Settings::BeginCommandLineOverrides()
     file_editor = editor;
 }
 
-void Settings::SetFullscreenMode(int mode)
+void Settings::SetFullscreen(bool enabled)
 {
-    fullscreen = mode;
-    file_fullscreen = mode;
+    fullscreen = enabled;
+    file_fullscreen = enabled;
 }
 
 void Settings::SetSoundFont(const std::string &path)
@@ -776,17 +762,16 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 2);
+        set_value(document, "schema_version", 3);
 
         settings_document &video = ensure_table(document, "video");
-        const int saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
+        const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
         const short saved_xres = command_line_overrides ? file_xres : xres;
         const short saved_yres = command_line_overrides ? file_yres : yres;
         const short saved_editor_xres = command_line_overrides ? file_editor_xres : editor_xres;
         const short saved_editor_yres = command_line_overrides ? file_editor_yres : editor_yres;
         const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
-        set_value(video, "fullscreen",
-                  std::string(saved_fullscreen == 0 ? "window" : saved_fullscreen == 1 ? "desktop" : "exclusive"));
+        set_value(video, "fullscreen", saved_fullscreen);
         set_value(video, "borderless", borderless);
         set_value(video, "aspect_ratio", saved_aspect_ratio.empty() ? std::string("desktop") : saved_aspect_ratio);
         set_value(video, "framebuffer_width", saved_xres);
@@ -941,7 +926,7 @@ void parseCommandLine(int argc, char **argv)
         }
         if (!SDL_strcasecmp(argv[i], "-fullscreen"))
         {
-            settings.fullscreen = 1;
+            settings.fullscreen = true;
         }
         else if (!SDL_strcasecmp(argv[i], "-size"))
         {

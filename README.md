@@ -61,8 +61,8 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 
 #### Display Settings
 
-- `fullscreen` - Fullscreen mode (`"window"`, `"desktop"`, or `"exclusive"`)
-- `borderless` - Enable borderless window mode
+- `fullscreen` - Enable borderless desktop fullscreen
+- `borderless` - Remove window decorations in windowed mode
 - `aspect_ratio` - Display aspect ratio such as `"16:9"`; `"desktop"` matches the desktop and `"custom"` uses the explicit framebuffer size below
 - `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"`
 - `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"`

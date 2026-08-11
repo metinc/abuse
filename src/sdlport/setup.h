@@ -21,8 +21,8 @@ class Settings
 {
   public:
     //screen
-    int fullscreen; //0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen
-    bool borderless; //borderless window
+    bool fullscreen; //borderless desktop fullscreen
+    bool borderless; //remove decorations in windowed mode
     short xres; //game screen resolution
     short yres;
     short editor_xres; //editor framebuffer resolution
@@ -96,7 +96,7 @@ class Settings
     bool Load();
     bool Save() const;
     void BeginCommandLineOverrides();
-    void SetFullscreenMode(int mode);
+    void SetFullscreen(bool enabled);
     void SetSoundFont(const std::string &path);
 
   private:
@@ -104,7 +104,7 @@ class Settings
     void Validate();
 
     bool command_line_overrides = false;
-    int file_fullscreen = 2;
+    bool file_fullscreen = true;
     short file_xres = 320, file_yres = 200;
     short file_editor_xres = 640, file_editor_yres = 400;
     std::string file_aspect_ratio;

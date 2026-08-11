@@ -84,41 +84,6 @@ void remember_windowed_bounds()
                             SDL_GetWindowSize(window, &windowed_bounds.w, &windowed_bounds.h);
 }
 
-bool configure_fullscreen_mode(int fullscreen_mode)
-{
-    // A null mode requests borderless desktop fullscreen.
-    if (fullscreen_mode != 2)
-    {
-        if (SDL_SetWindowFullscreenMode(window, nullptr))
-            return true;
-        fprintf(stderr, "Video: Unable to select borderless desktop fullscreen mode: %s\n", SDL_GetError());
-        return false;
-    }
-
-    const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
-    const SDL_DisplayMode *desktop_mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
-    SDL_DisplayMode mode{};
-    if (!desktop_mode || !SDL_GetClosestFullscreenDisplayMode(display, desktop_mode->w, desktop_mode->h,
-                                                              desktop_mode->refresh_rate, true, &mode))
-    {
-        fprintf(stderr, "Video: No exclusive fullscreen mode matching the desktop; using borderless desktop mode: %s\n",
-                SDL_GetError());
-        if (SDL_SetWindowFullscreenMode(window, nullptr))
-            return true;
-        fprintf(stderr, "Video: Unable to select fallback borderless desktop fullscreen mode: %s\n", SDL_GetError());
-        return false;
-    }
-
-    if (!SDL_SetWindowFullscreenMode(window, &mode))
-    {
-        fprintf(stderr, "Video: Unable to select exclusive fullscreen mode %dx%d: %s\n", mode.w, mode.h,
-                SDL_GetError());
-        return false;
-    }
-
-    printf("Video: Exclusive fullscreen mode %dx%d at %.2f Hz\n", mode.w, mode.h, mode.refresh_rate);
-    return true;
-}
 }
 
 // VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
@@ -279,19 +244,19 @@ void set_mode(int argc, char **argv)
         SDL_SetWindowMouseGrab(window, true);
     SDL_HideCursor();
 
-    if (settings.fullscreen != 0 && create_window)
-        video_set_fullscreen_mode(settings.fullscreen);
+    if (settings.fullscreen && create_window)
+        video_set_fullscreen(true);
 
     update_dirty(main_screen);
 }
 
-bool video_set_fullscreen_mode(int mode)
+bool video_set_fullscreen(bool enabled)
 {
-    if (!window || mode < 0 || mode > 2)
+    if (!window)
         return false;
 
     const bool was_fullscreen = window_is_fullscreen();
-    if (mode == 0)
+    if (!enabled)
     {
         if (was_fullscreen)
         {
@@ -313,8 +278,11 @@ bool video_set_fullscreen_mode(int mode)
     {
         if (!was_fullscreen)
             remember_windowed_bounds();
-        if (!configure_fullscreen_mode(mode))
+        if (!SDL_SetWindowFullscreenMode(window, nullptr))
+        {
+            fprintf(stderr, "Video: Unable to select borderless desktop fullscreen mode: %s\n", SDL_GetError());
             return false;
+        }
         if (!SDL_SetWindowFullscreen(window, true))
         {
             fprintf(stderr, "Video: Unable to enter fullscreen mode: %s\n", SDL_GetError());
@@ -325,16 +293,16 @@ bool video_set_fullscreen_mode(int mode)
 
     fullscreen = window_is_fullscreen();
     SDL_GetWindowSize(window, &window_w, &window_h);
-    return mode == 0 ? !fullscreen : fullscreen;
+    return fullscreen == enabled;
 }
 
 void video_change_settings(int scale_add, bool toggle_fullscreen)
 {
     if (toggle_fullscreen)
     {
-        const int target_mode = window_is_fullscreen() ? 0 : (settings.fullscreen == 2 ? 2 : 1);
-        if (video_set_fullscreen_mode(target_mode))
-            settings.fullscreen = target_mode;
+        const bool target_fullscreen = !window_is_fullscreen();
+        if (video_set_fullscreen(target_fullscreen))
+            settings.fullscreen = target_fullscreen;
     }
 
     if (scale_add != 0 && !window_is_fullscreen())

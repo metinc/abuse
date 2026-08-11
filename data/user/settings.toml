@@ -1,9 +1,9 @@
 # Abuse configuration file
-schema_version = 2
+schema_version = 3
 
 [video]
-# window, desktop, or exclusive
-fullscreen = "exclusive"
+# Borderless desktop fullscreen
+fullscreen = true
 borderless = false
 # desktop, custom, or a ratio such as 16:9
 aspect_ratio = "desktop"

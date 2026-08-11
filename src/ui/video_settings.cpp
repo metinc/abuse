@@ -103,10 +103,10 @@ class video_mode_picker : public pick_list
     int minimum_item_width;
 
   public:
-    video_mode_picker(int X, int Y, int ID, int current, int minimum_width, char **labels, ifield *Next)
-        : pick_list(X, Y, ID, 3, labels, 3, 0, Next, nullptr, false), minimum_item_width(minimum_width)
+    video_mode_picker(int X, int Y, int ID, bool fullscreen, int minimum_width, char **labels, ifield *Next)
+        : pick_list(X, Y, ID, 2, labels, 2, 0, Next, nullptr, false), minimum_item_width(minimum_width)
     {
-        const int requested = std::clamp(current, 0, 2);
+        const int requested = fullscreen ? 1 : 0;
         for (cur_sel = 0; cur_sel < total() && get_selection() != requested; ++cur_sel)
             ;
         if (cur_sel == total())
@@ -135,16 +135,13 @@ void show_video_settings(palette *pal)
     bool abort_menu = false;
 
     const char *windowed_label = lang_string("video_windowed");
-    const char *borderless_label = lang_string("video_borderless");
-    const char *exclusive_label = lang_string("video_exclusive");
+    const char *fullscreen_label = lang_string("video_fullscreen");
     const char *default_label = lang_string("gamma_default");
 
     const int font_width = wm->font()->Size().x;
     const int font_height = wm->font()->Size().y;
     const int mode_width =
-        std::max({static_cast<int>(strlen(windowed_label)), static_cast<int>(strlen(borderless_label)),
-                  static_cast<int>(strlen(exclusive_label))}) *
-            font_width +
+        std::max(static_cast<int>(strlen(windowed_label)), static_cast<int>(strlen(fullscreen_label))) * font_width +
         12;
 
     const int client_left = Jwindow::left_border();
@@ -159,7 +156,7 @@ void show_video_settings(palette *pal)
     const int gamma_y = padding + font_height + 10;
     const int mode_label_y = gamma_y + font_height + 4 + 12 + section_gap;
     const int mode_y = mode_label_y + font_height + 5;
-    const int ok_y = mode_y + 3 * (font_height + 1) + 12;
+    const int ok_y = mode_y + 2 * (font_height + 1) + 12;
     const int client_bottom = ok_y + cache.img(ok_button)->Size().y + 10 + padding;
     const int client_height = client_bottom - client_top;
     const int slider_width = client_width - padding * 2 - 2;
@@ -176,8 +173,7 @@ void show_video_settings(palette *pal)
     button *ok = new button(ok_x, ok_y, ID_GAMMA_OK, cache.img(ok_button), labels);
     button *reset = new button(default_x, default_y, ID_GAMMA_DEFAULT, default_label, ok);
     reset->set_momentary();
-    char *mode_labels[] = {const_cast<char *>(windowed_label), const_cast<char *>(borderless_label),
-                           const_cast<char *>(exclusive_label)};
+    char *mode_labels[] = {const_cast<char *>(windowed_label), const_cast<char *>(fullscreen_label)};
     video_mode_picker *mode_picker = new video_mode_picker(content_x, mode_y, ID_VIDEO_MODE_PICKER,
                                                            settings.fullscreen, client_width - padding * 2 - 6,
                                                            mode_labels, reset);
@@ -216,7 +212,7 @@ void show_video_settings(palette *pal)
     }
 
     const double selected_gamma = slider->value();
-    const int fullscreen_mode = mode_picker->get_selection();
+    const bool fullscreen = mode_picker->get_selection() != 0;
     wm->close_window(window);
 
     if (abort_menu)
@@ -227,8 +223,8 @@ void show_video_settings(palette *pal)
     else
     {
         settings.gamma = selected_gamma;
-        if (video_set_fullscreen_mode(fullscreen_mode))
-            settings.SetFullscreenMode(fullscreen_mode);
+        if (video_set_fullscreen(fullscreen))
+            settings.SetFullscreen(fullscreen);
         else
             std::cerr << "Failed to apply fullscreen mode\n";
         if (!settings.Save())

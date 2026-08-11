@@ -221,8 +221,7 @@ plan \n"
          (setq gamma_brighter "Plus clair")
          (setq video_mode_msg "Mode d'affichage")
          (setq video_windowed "Fenêtre")
-         (setq video_borderless "Plein écran sans bordure")
-         (setq video_exclusive "Plein écran exclusif")
+         (setq video_fullscreen "Plein écran")
 
 
 (setq telep_msg "Appuyez sur la flèche bas pour vous téléporter")
