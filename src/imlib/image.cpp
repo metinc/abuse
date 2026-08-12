@@ -915,7 +915,7 @@ void image::WidgetBar(ivec2 p1, ivec2 p2, uint8_t light, uint8_t med, uint8_t da
     Line(p1, ivec2(p2.x, p1.y), light);
     Line(p1, ivec2(p1.x, p2.y), light);
     Line(ivec2(p2.x, p1.y + 1), p2, dark);
-    Line(ivec2(p1.x + 1, p2.y), ivec2(p2.x - 1, p2.y - 1), dark);
+    Line(ivec2(p1.x + 1, p2.y), ivec2(p2.x - 1, p2.y), dark);
     Bar(p1 + ivec2(1, 1), p2 - ivec2(1, 1), med);
 }
 

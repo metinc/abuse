@@ -255,8 +255,8 @@ WindowManager::WindowManager(image *screen, palette *pal, int Hi, int Med, int L
     m_first = NULL;
     m_pal = pal;
     close_hi = pal->find_closest(179, 11, 0);
-    close_med = pal->find_closest(127, 7, 0);
-    close_low = pal->find_closest(39, 0, 0);
+    close_med = pal->find_closest(130, 7, 0);
+    close_low = pal->find_closest(110, 0, 0);
     m_grab = NULL;
     bk = pal->find_closest(0, 0, 0);
     state = inputing;
@@ -360,7 +360,7 @@ void WindowManager::flush_screen()
 Jwindow::Jwindow(char const *name)
 {
     _x1 = left_border();
-    _y1 = jw_top + 5;
+    _y1 = top_border();
     _x2 = _y2 = 0;
 
     _hidden = true;
@@ -386,7 +386,7 @@ Jwindow::Jwindow(ivec2 pos, ivec2 size, ifield *f, char const *name)
     _moveable = true;
 
     _x1 = left_border();
-    _y1 = name ? top_border() : jw_top + 5;
+    _y1 = top_border();
 
     m_surf = NULL;
     inm = new InputManager(m_surf, f);
@@ -459,40 +459,21 @@ void Jwindow::redraw()
     int low = wm->dark_color();
     JCFont *fnt = wm->frame_font();
 
-    if (_name)
+    if (right_border() >= 1)
     {
-        if (right_border() >= 1)
-        {
-            m_surf->WidgetBar(ivec2(0, 0), m_size - ivec2(1), hi, med, low);
-            if (right_border() >= 3)
-                m_surf->WidgetBar(ivec2(right_border() - 1, top_border() - 1),
-                                  m_size - ivec2(left_border(), bottom_border()), low, med, hi);
-
-            else
-                m_surf->Line(ivec2(left_border() - 1, top_border() - 1), ivec2(right_border() - 1, top_border() - 1),
-                             low);
-        }
-        m_surf->Bar(ivec2(2, 2), ivec2(top_border() - 2, top_border() - 3), wm->black());
-        m_surf->WidgetBar(ivec2(3, 3), ivec2(top_border() - 3, top_border() - 4), wm->close_bright_color(),
-                          wm->close_medium_color(), wm->close_dark_color()); // draws the 'close' button
+        m_surf->WidgetBar(ivec2(0, 0), m_size - ivec2(1), hi, med, low);
+        if (right_border() >= 3)
+            m_surf->WidgetBar(ivec2(right_border() - 1, top_border() - 1),
+                              m_size - ivec2(left_border(), bottom_border()), low, med, hi);
+        else
+            m_surf->Line(ivec2(left_border() - 1, top_border() - 1), ivec2(right_border() - 1, top_border() - 1), low);
     }
 
-    else
-    {
-        if (right_border() >= 1)
-        {
-            m_surf->WidgetBar(ivec2(0, 0), m_size - ivec2(1), hi, med, low);
-            if (right_border() >= 3)
-                m_surf->WidgetBar(ivec2(right_border() - 1, jw_top + 4), m_size - ivec2(left_border(), bottom_border()),
-                                  low, med, hi);
-            else
-                m_surf->Line(ivec2(left_border() - 1, jw_top + 4), ivec2(right_border() - 1, jw_top + 4), low);
-        }
-        // Draw the 'close' button
-        m_surf->Bar(ivec2(1, 1), ivec2(4, 4), wm->black());
-        m_surf->WidgetBar(ivec2(2, 2), ivec2(3, 3), wm->close_bright_color(), wm->close_medium_color(),
-                          wm->close_dark_color());
-    }
+    // Draw the close button
+    m_surf->Bar(ivec2(2, 2), ivec2(top_border() - 2, top_border() - 3), wm->black());
+    m_surf->WidgetBar(ivec2(3, 3), ivec2(top_border() - 3, top_border() - 4), wm->close_bright_color(),
+                      wm->close_medium_color(), wm->close_dark_color());
+
     if (_name && _name[0])
     {
         m_surf->Bar(ivec2(top_border(), 1), ivec2(top_border() + fnt->Size().x * strlen(_name) + 1, top_border() - 2),
