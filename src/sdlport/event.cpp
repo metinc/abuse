@@ -202,12 +202,18 @@ void EventHandler::SysEvent(Event &ev)
         exit(EXIT_SUCCESS);
         break;
     case SDL_EVENT_WINDOW_RESIZED:
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        video_update_mouse_confinement();
         break;
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
         fullscreen = true;
+        video_update_mouse_confinement();
         break;
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
         fullscreen = false;
+        video_update_mouse_confinement();
         break;
     case SDL_EVENT_WINDOW_MAXIMIZED:
     case SDL_EVENT_WINDOW_RESTORED:
@@ -408,11 +414,8 @@ void EventHandler::SysEvent(Event &ev)
         case SDLK_F6: //AR toggle window input grab
             if (ev.type == EV_KEYRELEASE)
             {
-                if (SDL_GetWindowMouseGrab(window))
-                    settings.grab_input = false;
-                else
-                    settings.grab_input = true;
-                SDL_SetWindowMouseGrab(window, settings.grab_input);
+                settings.grab_input = !settings.grab_input;
+                video_update_mouse_confinement();
                 if (!settings.Save())
                     fprintf(stderr, "Unable to save input grab setting\n");
             }

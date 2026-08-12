@@ -98,7 +98,7 @@ order and can be regenerated with `scripts/merge_midi.py`.
 - `[gameplay].difficulty` - Difficulty (`"easy"`, `"medium"`, `"hard"`, or `"extreme"`)
 - `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
 - `[gameplay].max_fps` - Frame-rate limit
-- `[general].grab_input` - Grab mouse to window
+- `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
 - `[general].editor` - Enable editor mode
 - `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
 

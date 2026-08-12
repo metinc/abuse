@@ -240,14 +240,51 @@ void set_mode(int argc, char **argv)
     main_screen->clear();
 
     // Hide the mouse cursor and set up the mouse
-    if (settings.grab_input)
-        SDL_SetWindowMouseGrab(window, true);
     SDL_HideCursor();
 
     if (settings.fullscreen && create_window)
         video_set_fullscreen(true);
 
+    video_update_mouse_confinement();
     update_dirty(main_screen);
+}
+
+void video_update_mouse_confinement()
+{
+    if (!window)
+        return;
+
+    if (!SDL_SetWindowMouseGrab(window, settings.grab_input))
+        fprintf(stderr, "Video: Unable to change mouse grab: %s\n", SDL_GetError());
+
+    if (!renderer || (!settings.grab_input && !window_is_fullscreen()))
+    {
+        if (!SDL_SetWindowMouseRect(window, nullptr))
+            fprintf(stderr, "Video: Unable to remove mouse confinement: %s\n", SDL_GetError());
+        return;
+    }
+
+    int logical_width;
+    int logical_height;
+    SDL_RendererLogicalPresentation mode;
+    float left, top, right, bottom;
+    if (!SDL_GetRenderLogicalPresentation(renderer, &logical_width, &logical_height, &mode) || logical_width <= 0 ||
+        logical_height <= 0 || !SDL_RenderCoordinatesToWindow(renderer, 0.0f, 0.0f, &left, &top) ||
+        !SDL_RenderCoordinatesToWindow(renderer, static_cast<float>(logical_width), static_cast<float>(logical_height),
+                                       &right, &bottom))
+    {
+        fprintf(stderr, "Video: Unable to calculate mouse confinement: %s\n", SDL_GetError());
+        SDL_SetWindowMouseRect(window, nullptr);
+        return;
+    }
+
+    SDL_Rect rect;
+    rect.x = static_cast<int>(std::ceil(left));
+    rect.y = static_cast<int>(std::ceil(top));
+    rect.w = std::max(1, static_cast<int>(std::floor(right)) - rect.x);
+    rect.h = std::max(1, static_cast<int>(std::floor(bottom)) - rect.y);
+    if (!SDL_SetWindowMouseRect(window, &rect))
+        fprintf(stderr, "Video: Unable to confine mouse to game area: %s\n", SDL_GetError());
 }
 
 bool video_set_fullscreen(bool enabled)
@@ -293,6 +330,7 @@ bool video_set_fullscreen(bool enabled)
 
     fullscreen = window_is_fullscreen();
     SDL_GetWindowSize(window, &window_w, &window_h);
+    video_update_mouse_confinement();
     return fullscreen == enabled;
 }
 
@@ -333,6 +371,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 
     // Cache the actual size accepted by the window system.
     SDL_GetWindowSize(window, &window_w, &window_h);
+    video_update_mouse_confinement();
 }
 
 bool resize_framebuffer(int width, int height)
@@ -395,6 +434,7 @@ bool resize_framebuffer(int width, int height)
     }
 
     SDL_GetWindowSize(window, &window_w, &window_h);
+    video_update_mouse_confinement();
     return true;
 }
 

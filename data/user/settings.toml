@@ -5,7 +5,7 @@ schema_version = 4
 # Borderless desktop fullscreen
 fullscreen = true
 borderless = false
-# desktop, custom, or a ratio such as 16:9
+# desktop, custom, or a ratio such as 16:9; 4:3 is the original display ratio
 aspect_ratio = "desktop"
 framebuffer_width = 320
 framebuffer_height = 200
@@ -38,6 +38,7 @@ menu_demos = false
 [general]
 language = "english"
 editor = false
+# Confine the mouse to the rendered game area in windowed mode
 grab_input = false
 local_save = false
 

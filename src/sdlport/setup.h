@@ -42,7 +42,7 @@ class Settings
 
     //random
     bool local_save;
-    bool grab_input; //lock the input to the window
+    bool grab_input; //confine the mouse to the rendered game area in windowed mode
     bool editor; //enable editor mode
     short physics_update; //custom pysics update time in miliseconds
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
