@@ -49,6 +49,67 @@ int last_save_game_number = 0;
 
 int save_buts[MAX_SAVE_GAMES * 3];
 
+namespace
+{
+struct SlotButtons
+{
+    ico_button *first = nullptr;
+    int width = 0;
+    int height = 0;
+    int button_width = 0;
+    int button_height = 0;
+};
+
+SlotButtons create_slot_buttons(int total_saved, int rows, image **thumbnails)
+{
+    SlotButtons result;
+    result.button_width = cache.img(save_buts[0])->Size().x;
+    result.button_height = cache.img(save_buts[0])->Size().y;
+
+    ico_button *last = nullptr;
+    int slot = 0;
+    for (int index = 0; index < total_saved; index++)
+    {
+        while (thumbnails && slot < MAX_SAVE_GAMES && !thumbnails[slot])
+            slot++;
+
+        const int x = index / rows * result.button_width;
+        const int y = index % rows * result.button_height;
+        ico_button *button =
+            new ico_button(x, y, ID_LOAD_GAME_NUMBER + slot, save_buts[slot * 3 + 0], save_buts[slot * 3 + 0],
+                           save_buts[slot * 3 + 1], save_buts[slot * 3 + 2], nullptr);
+        button->set_act_id(ID_LOAD_GAME_PREVIEW + slot);
+
+        if (last)
+            last->next = button;
+        else
+            result.first = button;
+        last = button;
+        slot++;
+    }
+
+    result.width = (total_saved + rows - 1) / rows * result.button_width;
+    result.height = std::min(total_saved, rows) * result.button_height;
+    return result;
+}
+
+ivec2 centered_window_position(ivec2 client_size)
+{
+    const ivec2 total_size = client_size + ivec2(Jwindow::left_border() + Jwindow::right_border(),
+                                                 Jwindow::top_border() + Jwindow::bottom_border());
+    return ivec2(std::max(0, (xres - total_size.x) / 2), std::max(0, (yres - total_size.y) / 2));
+}
+
+void draw_preview(Jwindow *window, image *thumbnail, ivec2 position, ivec2 size)
+{
+    window->m_surf->Bar(position, position + size - ivec2(1), wm->dark_color());
+    const ivec2 content_position = position + ivec2(1);
+    const ivec2 content_size = size - ivec2(2);
+    window->m_surf->Bar(content_position, content_position + content_size - ivec2(1), window->backg);
+    window->m_surf->PutImage(thumbnail, content_position + (content_size - thumbnail->Size()) / 2);
+}
+}
+
 void load_number_icons()
 {
     for (int i = 0; i < MAX_SAVE_GAMES * 3; i++)
@@ -73,43 +134,6 @@ void last_savegame_name(char *buf)
             (last_save_game_number + MAX_SAVE_GAMES - 1) % MAX_SAVE_GAMES + 1);
 }
 
-Jwindow *create_num_window(int mx, int total_saved, int lines, image **thumbnails)
-{
-    ico_button *buts[MAX_SAVE_GAMES];
-    int y = 0, x = 0, i;
-    int iw = cache.img(save_buts[0])->Size().x;
-    int ih = cache.img(save_buts[0])->Size().y;
-    int maxih = ih, maxiw = iw;
-    int n = 0;
-    for (i = 0; i < total_saved; i++, y += ih)
-    {
-        maxih = std::max(ih, maxih);
-        maxiw = std::max(iw, maxiw);
-        if (y >= lines * ih)
-        {
-            y = 0;
-            x += iw;
-        }
-        if (thumbnails)
-        {
-            while (!thumbnails[n])
-                n++;
-        }
-        buts[i] = new ico_button(x, y, ID_LOAD_GAME_NUMBER + n, save_buts[n * 3 + 0], save_buts[n * 3 + 0],
-                                 save_buts[n * 3 + 1], save_buts[n * 3 + 2], NULL);
-        buts[i]->set_act_id(ID_LOAD_GAME_PREVIEW + n);
-        n++;
-    }
-
-    for (i = 0; i < total_saved - 1; i++)
-        buts[i]->next = buts[i + 1];
-
-    Jwindow *l_win =
-        wm->CreateWindow(ivec2(mx, yres / 2 - (Jwindow::top_border() + maxih * 5) / 2), ivec2(-1), buts[0]);
-
-    return l_win;
-}
-
 int get_save_spot()
 {
     int last_free = 0;
@@ -130,14 +154,10 @@ int get_save_spot()
     if (last_free)
         return last_free; // if there are any slots not created yet...
 
-    int w = cache.img(save_buts[0])->Size().x;
-    int mx = last_demo_mpos.x - w / 2;
-    if (mx + w + 10 > xres)
-        mx = xres - w - 10;
-    if (mx < 0)
-        mx = 0;
-
-    Jwindow *l_win = create_num_window(mx, MAX_SAVE_GAMES, MAX_SAVE_LINES, NULL);
+    const SlotButtons slots = create_slot_buttons(MAX_SAVE_GAMES, MAX_SAVE_LINES, nullptr);
+    const ivec2 client_size(slots.width, slots.height);
+    Jwindow *l_win =
+        wm->CreateWindow(centered_window_position(client_size), client_size, slots.first, symbol_str("SAVE"));
     Event ev;
     int got_level = 0;
     int quit = 0;
@@ -246,40 +266,22 @@ int load_game(int show_all,
     if (total_saved > MAX_SAVE_GAMES)
         total_saved = MAX_SAVE_GAMES;
 
-    int i;
-    /*  int ih=cache.img(save_buts[0])->Size().y;
-  ico_button *buts[MAX_SAVE_GAMES];
-  int y=0;
+    constexpr int preview_gap = 5;
+    const SlotButtons slots = create_slot_buttons(total_saved, MAX_SAVE_LINES, thumbnails);
+    const ivec2 preview_size(max_w + 2, max_h + 2);
+    const ivec2 client_size(slots.width + preview_gap + preview_size.x, std::max(slots.height, preview_size.y));
+    Jwindow *window = wm->CreateWindow(centered_window_position(client_size), client_size, slots.first, title);
+    const ivec2 preview_position(window->x1() + slots.width + preview_gap,
+                                 window->y1() + (client_size.y - preview_size.y) / 2);
+    draw_preview(window, first, preview_position, preview_size);
 
-
-  for (i=0; i<total_saved; i++,y+=ih)
-  {
-    buts[i]=new ico_button(0,y,ID_LOAD_GAME_NUMBER+i,
-               save_buts[i*3+1],save_buts[i*3+1],save_buts[i*3+0],save_buts[i*3+2],NULL);
-    buts[i]->set_act_id(ID_LOAD_GAME_PREVIEW+i);
-  }
-
-  for (i=0; i<total_saved-1; i++)
-    buts[i]->next=buts[i+1];
-*/
-
-    // Create thumbnail window 5 pixels to the right of the list window
-    Jwindow *l_win = create_num_window(0, total_saved, MAX_SAVE_LINES, thumbnails);
-    Jwindow *preview = wm->CreateWindow(l_win->m_pos + ivec2(l_win->m_size.x + 5, 0), ivec2(max_w, max_h), NULL, title);
-
-    preview->m_surf->PutImage(first, ivec2(preview->x1(), preview->y1()));
-
-    //AR controller ui movement, number icon size 30x25
-    static int button_w = 30;
-    static int button_h = 25;
+    // AR controller UI movement
     int mx, my; //mouse position
-
-    int old_mx = wm->GetMousePos().x;
-    int old_my = wm->GetMousePos().y;
+    const ivec2 button_origin = window->m_pos + ivec2(window->x1(), window->y1());
 
     //AR initial position of the mouse in the window for controller use
-    mx = l_win->m_pos.x + button_w / 2;
-    my = l_win->m_pos.y + button_h / 2;
+    mx = button_origin.x + slots.button_width / 2;
+    my = button_origin.y + slots.button_height / 2;
     //
 
     Event ev;
@@ -301,11 +303,10 @@ int load_game(int show_all,
                     ev.message.id < ID_LOAD_PLAYER_GAME)
                 {
                     int draw_num = ev.message.id - ID_LOAD_GAME_PREVIEW;
-                    preview->clear();
-                    preview->m_surf->PutImage(thumbnails[draw_num], ivec2(preview->x1(), preview->y1()));
+                    draw_preview(window, thumbnails[draw_num], preview_position, preview_size);
                 }
 
-                if ((ev.type == EV_CLOSE_WINDOW) || (ev.type == EV_KEY && ev.key == JK_ESC))
+                if ((ev.type == EV_CLOSE_WINDOW && ev.window == window) || (ev.type == EV_KEY && ev.key == JK_ESC))
                     quit = 1;
 
                 //AR move cursor over icons
@@ -313,26 +314,26 @@ int load_game(int show_all,
                 {
                     if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
                     {
-                        if (mx - button_w > l_win->m_pos.x)
-                            mx -= button_w;
+                        if (mx - slots.button_width > button_origin.x)
+                            mx -= slots.button_width;
                         wm->SetMousePos(ivec2(mx, my));
                     }
                     if ((ev.key == get_key_binding("right", 0) || ev.key == get_key_binding("right2", 0)))
                     {
-                        if (mx + button_w < l_win->m_pos.x + l_win->m_size.x)
-                            mx += button_w;
+                        if (mx + slots.button_width < button_origin.x + slots.width)
+                            mx += slots.button_width;
                         wm->SetMousePos(ivec2(mx, my));
                     }
                     if ((ev.key == get_key_binding("up", 0) || ev.key == get_key_binding("up2", 0)))
                     {
-                        if (my - button_h > l_win->m_pos.y)
-                            my -= button_h;
+                        if (my - slots.button_height > button_origin.y)
+                            my -= slots.button_height;
                         wm->SetMousePos(ivec2(mx, my));
                     }
                     if ((ev.key == get_key_binding("down", 0) || ev.key == get_key_binding("down2", 0)))
                     {
-                        if (my + button_h < l_win->m_pos.y + l_win->m_size.y)
-                            my += button_h;
+                        if (my + slots.button_height < button_origin.y + slots.height)
+                            my += slots.button_height;
                         wm->SetMousePos(ivec2(mx, my));
                     }
                 }
@@ -346,11 +347,10 @@ int load_game(int show_all,
         }
     } while (!got_level && !quit);
 
-    wm->close_window(l_win);
-    wm->close_window(preview);
+    wm->close_window(window);
 
-    for (i = 0; i < total_saved; i++)
-        delete thumbnails[i];
+    for (image *thumbnail : thumbnails)
+        delete thumbnail;
 
     return got_level;
 }

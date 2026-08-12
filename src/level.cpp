@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <time.h>
 #include <errno.h>
+#include <string>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -1548,22 +1549,67 @@ bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, o
 
 void scale_put(image *im, image *screen, int x, int y, short new_width, short new_height);
 
+namespace
+{
+std::string level_display_name(const char *path)
+{
+    if (!path)
+        return {};
+
+    std::string name(path);
+    const std::size_t separator = name.find_last_of("/\\");
+    if (separator != std::string::npos)
+        name.erase(0, separator + 1);
+
+    const std::size_t extension = name.find_last_of('.');
+    if (extension != std::string::npos)
+        name.erase(extension);
+    return name;
+}
+
+void scale_center_crop(image *source, image *destination, ivec2 position, ivec2 size)
+{
+    const ivec2 source_size = source->Size();
+    ivec2 crop_size = source_size;
+    if (static_cast<int64_t>(source_size.x) * size.y > static_cast<int64_t>(source_size.y) * size.x)
+        crop_size.x = std::max(1, source_size.y * size.x / size.y);
+    else
+        crop_size.y = std::max(1, source_size.x * size.y / size.x);
+
+    const ivec2 crop_position = (source_size - crop_size) / 2;
+    image cropped(crop_size);
+    cropped.PutPart(source, ivec2(0), crop_position, crop_position + crop_size);
+    scale_put(&cropped, destination, position.x, position.y, size.x, size.y);
+}
+}
+
 void level::write_thumb_nail(bFILE *fp, image *im)
 {
     image *i = new image(ivec2(160, 100 + the_game->save_game_font->Size().y * 2));
     i->clear();
-    scale_put(im, i, 0, 0, 160, 100);
-    if (first_name)
-        the_game->save_game_font->PutString(
-            i, ivec2(80 - strlen(first_name) * the_game->save_game_font->Size().x / 2, 100), first_name);
+    scale_center_crop(im, i, ivec2(0), ivec2(160, 100));
 
-    time_t t;
-    t = time(NULL);
-    char buf[80];
+    const time_t timestamp = time(nullptr);
+    const tm *local_time = localtime(&timestamp);
+    char time_text[16] = {};
+    char date_text[80] = {};
+    if (local_time)
+    {
+        strftime(time_text, sizeof(time_text), "%H:%M:%S", local_time);
+        strftime(date_text, sizeof(date_text), "%A %B %d %Y", local_time);
+    }
 
-    strftime(buf, 80, "%H:%M:%S %A %B %d", localtime(&t));
-    the_game->save_game_font->PutString(
-        i, ivec2(80, 100) + ivec2(-strlen(buf), 2) * the_game->save_game_font->Size() / ivec2(2), buf);
+    std::string level_and_time = level_display_name(first_name);
+    if (!level_and_time.empty() && time_text[0])
+        level_and_time += ' ';
+    level_and_time += time_text;
+
+    const ivec2 font_size = the_game->save_game_font->Size();
+    auto draw_centered = [&](const char *text, int y) {
+        the_game->save_game_font->PutString(i, ivec2(80 - static_cast<int>(strlen(text)) * font_size.x / 2, y), text);
+    };
+    draw_centered(level_and_time.c_str(), 100);
+    draw_centered(date_text, 100 + font_size.y);
 
     fp->write_uint16(i->Size().x);
     fp->write_uint16(i->Size().y);
