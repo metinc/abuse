@@ -578,12 +578,10 @@ void Settings::Validate()
             fprintf(stderr, "Config: %s is out of range; using %lld\n", name, static_cast<long long>(value));
         }
     };
-    clamp(xres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_width");
-    clamp(yres, static_cast<short>(1), std::numeric_limits<short>::max(), "video.framebuffer_height");
-    clamp(editor_xres, static_cast<short>(1), std::numeric_limits<short>::max(),
-          "video.editor_framebuffer_width");
-    clamp(editor_yres, static_cast<short>(1), std::numeric_limits<short>::max(),
-          "video.editor_framebuffer_height");
+    clamp(xres, static_cast<short>(320), std::numeric_limits<short>::max(), "video.framebuffer_width");
+    clamp(yres, static_cast<short>(200), std::numeric_limits<short>::max(), "video.framebuffer_height");
+    clamp(editor_xres, static_cast<short>(320), std::numeric_limits<short>::max(), "video.editor_framebuffer_width");
+    clamp(editor_yres, static_cast<short>(200), std::numeric_limits<short>::max(), "video.editor_framebuffer_height");
     clamp(scale, static_cast<short>(1), static_cast<short>(20), "video.window_scale");
     clamp(hires, 0, 2, "video.hires");
     if (!std::isfinite(gamma))
@@ -1038,6 +1036,9 @@ bool calculate_aspect_framebuffer(const std::string &aspect_ratio, short base_wi
 
 bool Settings::ApplyAspectRatio()
 {
+    // Command-line overrides are applied after Load(), so validate again here.
+    Validate();
+
     if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
         return true;
 

@@ -64,10 +64,10 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 - `fullscreen` - Enable borderless desktop fullscreen
 - `borderless` - Remove window decorations in windowed mode
 - `aspect_ratio` - Display aspect ratio such as `"16:9"`; `"desktop"` matches the desktop and `"custom"` uses the explicit framebuffer size below
-- `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"`
-- `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"`
-- `editor_framebuffer_width` - Editor baseline framebuffer width (default `640`)
-- `editor_framebuffer_height` - Editor baseline framebuffer height (default `400`)
+- `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"` (minimum `320`)
+- `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"` (minimum `200`)
+- `editor_framebuffer_width` - Editor baseline framebuffer width (default `640`, minimum `320`)
+- `editor_framebuffer_height` - Editor baseline framebuffer height (default `400`, minimum `200`)
 - `window_scale` - Integer window scale used in windowed mode
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)

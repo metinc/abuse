@@ -376,8 +376,13 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 
 bool resize_framebuffer(int width, int height)
 {
-    if (!window || !renderer || !main_screen || width <= 0 || height <= 0)
+    if (!window || !renderer || !main_screen)
         return false;
+    if (width < 320 || height < 200)
+    {
+        fprintf(stderr, "Video: Framebuffer must be at least 320x200 (requested %dx%d)\n", width, height);
+        return false;
+    }
     if (width == xres && height == yres)
         return true;
 

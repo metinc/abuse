@@ -48,6 +48,7 @@ class ico_switch_button : public ifield
 
   public:
     ico_switch_button(int X, int Y, int ID, int start_on, ifield *butts, ifield *Next);
+    virtual void Move(ivec2 pos);
     virtual void area(int &x1, int &y1, int &x2, int &y2);
     virtual void draw_first(image *screen)
     {

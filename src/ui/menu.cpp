@@ -529,68 +529,84 @@ void main_menu()
 {
     //AR enabled button selection with a controller, enabled highres button images
 
-    //default button size 32x25, hires size 50x39
-    int button_w = 32;
-    int button_h = 25;
-    int padding_x = 1;
-    int move_up = 6; //6 menu buttons buttons by default
+    // Build the list first so its actual artwork dimensions can drive the layout.
+    int y = 0;
+    ico_button *list = make_conditional_buttons(0, y);
+    list = make_default_buttons(0, y, list);
 
-    if (current_level)
-        move_up++;
-    if (show_load_icon())
-        move_up++;
-    //if(prot) move_up++;//multiplayer button
-
-    if (settings.hires)
-    {
-        button_w = 50;
-        button_h = 39;
-        padding_x = 2;
-        move_up *= 39;
-    }
-    else
-        move_up *= 25;
-
-    move_up /= 2;
-
-    int y = yres / 2 - move_up;
-    int x = xres - button_w - padding_x;
-
-    ico_button *list = make_conditional_buttons(x, y);
-    list = make_default_buttons(x, y, list);
-
-    // Keep the editor entry separate from the already full main button column.
-    int editor_y = yres / 2 - button_h / 2;
     int editor_h;
-    ico_button *editor = load_icon(2, ID_EDITOR, padding_x, editor_y, editor_h, list, "ic_editor");
+    ico_button *editor = load_icon(2, ID_EDITOR, 0, 0, editor_h, list, "ic_editor");
     list = editor;
 
+    int icon_x1, icon_y1, icon_x2, icon_y2;
+    list->area(icon_x1, icon_y1, icon_x2, icon_y2);
+    const int button_w = icon_x2 - icon_x1 + 1;
+    const int button_h = icon_y2 - icon_y1 + 1;
+    const int padding_x = settings.hires ? 2 : 1;
+
+    auto icon_column = [](const ifield *button) {
+        switch (button->id)
+        {
+        case ID_LIGHT_OFF:
+        case ID_VOLUME:
+        case ID_MULTIPLAYER:
+        case ID_EDITOR:
+            return 0;
+        default:
+            return 1;
+        }
+    };
+
+    auto icon_order = [](const ifield *button) {
+        switch (button->id)
+        {
+        case ID_RETURN:
+        case ID_LIGHT_OFF:
+            return 0;
+        case ID_NULL: // Difficulty selector
+        case ID_VOLUME:
+            return 1;
+        case ID_START_GAME:
+        case ID_MULTIPLAYER:
+            return 2;
+        case ID_LOAD_PLAYER_GAME:
+        case ID_EDITOR:
+            return 3;
+        case ID_QUIT:
+            return 4;
+        default:
+            return 5;
+        }
+    };
+
+    int column_counts[2] = {0, 0};
+    for (ifield *button = list; button; button = button->next)
+        column_counts[icon_column(button)]++;
+
+    // Split entries between two compact columns in the requested order.
+    const int column_x[2] = {padding_x, xres - button_w - padding_x};
+    const int column_y[2] = {(yres - column_counts[0] * button_h) / 2, (yres - column_counts[1] * button_h) / 2};
+
+    for (ifield *button = list; button; button = button->next)
+    {
+        const int column = icon_column(button);
+        int row = 0;
+        for (ifield *candidate = list; candidate; candidate = candidate->next)
+        {
+            if (icon_column(candidate) == column && icon_order(candidate) < icon_order(button))
+                row++;
+        }
+        button->Move(ivec2(column_x[column], column_y[column] + row * button_h));
+    }
+
     //AR controller ui movement
-    int mx, my; //mouse position
-    int border_up = yres / 2 - move_up;
-    int border_down = y;
-
-    int old_mx = wm->GetMousePos().x;
-    int old_my = wm->GetMousePos().y;
-
-    //AR initial position of the mouse in the menu for controller use
-    mx = x + button_w / 2;
-    my = border_up + button_h / 2;
-    //
+    int selected_column = 1;
+    int selected_row = 0;
+    wm->SetMousePos(ivec2(column_x[selected_column] + button_w / 2, column_y[selected_column] + button_h / 2));
 
     InputManager *inm = new InputManager(main_screen, list);
     inm->allow_no_selections();
     inm->clear_current();
-
-    // Calculate total number of buttons
-    int total_buttons = 5; // Start, Difficulty, Gamma, Volume, Quit
-
-    // Remove difficulty button if we're in multiplayer server/client mode
-    if (main_net_cfg &&
-        (main_net_cfg->state == net_configuration::SERVER || main_net_cfg->state == net_configuration::CLIENT))
-    {
-        total_buttons--;
-    }
 
     Event ev;
 
@@ -662,29 +678,33 @@ void main_menu()
         //AR move cursor over icons
         if (ev.type == EV_KEY)
         {
+            bool navigation_key = true;
             if ((ev.key == get_key_binding("up", 0) || ev.key == get_key_binding("up2", 0)))
             {
-                if (my - button_h > border_up)
-                    my -= button_h;
-                wm->SetMousePos(ivec2(mx, my));
+                if (selected_row > 0)
+                    selected_row--;
             }
-            if ((ev.key == get_key_binding("down", 0) || ev.key == get_key_binding("down2", 0)))
+            else if ((ev.key == get_key_binding("down", 0) || ev.key == get_key_binding("down2", 0)))
             {
-                if (my + button_h < border_down)
-                    my += button_h;
-                wm->SetMousePos(ivec2(mx, my));
+                if (selected_row + 1 < column_counts[selected_column])
+                    selected_row++;
             }
-            if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
+            else if ((ev.key == get_key_binding("left", 0) || ev.key == get_key_binding("left2", 0)))
             {
-                mx = padding_x + button_w / 2;
-                my = editor_y + button_h / 2;
-                wm->SetMousePos(ivec2(mx, my));
+                selected_column = 0;
+                selected_row = std::min(selected_row, column_counts[selected_column] - 1);
             }
-            if ((ev.key == get_key_binding("right", 0) || ev.key == get_key_binding("right2", 0)))
+            else if ((ev.key == get_key_binding("right", 0) || ev.key == get_key_binding("right2", 0)))
             {
-                mx = x + button_w / 2;
-                wm->SetMousePos(ivec2(mx, my));
+                selected_column = 1;
+                selected_row = std::min(selected_row, column_counts[selected_column] - 1);
             }
+            else
+                navigation_key = false;
+
+            if (navigation_key)
+                wm->SetMousePos(ivec2(column_x[selected_column] + button_w / 2,
+                                      column_y[selected_column] + selected_row * button_h + button_h / 2));
         }
         //
 

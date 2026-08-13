@@ -39,6 +39,13 @@ ico_switch_button::ico_switch_button(int X, int Y, int ID, int start_on, ifield 
         cur_but = blist;
 }
 
+void ico_switch_button::Move(ivec2 pos)
+{
+    m_pos = pos;
+    for (ifield *button = blist; button; button = button->next)
+        button->Move(pos);
+}
+
 void ico_switch_button::area(int &x1, int &y1, int &x2, int &y2)
 {
     x1 = 10000;
