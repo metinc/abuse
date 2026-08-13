@@ -27,7 +27,7 @@ class Settings
     short yres;
     short editor_xres; //editor framebuffer resolution
     short editor_yres;
-    std::string aspect_ratio; //optional display aspect ratio; preserves the original gameplay DPI
+    bool widescreen_support; //expand the framebuffer to the desktop aspect ratio
     short scale; //windows scale
     bool linear_filter; //"antialias"
     int hires; //enable hires screens and icons
@@ -90,7 +90,7 @@ class Settings
 
     Settings();
 
-    bool ApplyAspectRatio();
+    bool ApplyWidescreen();
     bool GetEditorFramebufferSize(short &width, short &height) const;
     bool Load();
     bool Save() const;
@@ -106,7 +106,7 @@ class Settings
     bool file_fullscreen = true;
     short file_xres = 320, file_yres = 200;
     short file_editor_xres = 640, file_editor_yres = 400;
-    std::string file_aspect_ratio;
+    bool file_widescreen_support = true;
     bool file_no_sound = false, file_linear_filter = false, file_mono = false;
     bool file_local_save = false, file_editor = false;
 };

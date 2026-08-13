@@ -2520,8 +2520,7 @@ int main(int argc, char *argv[])
         short target_yres = settings.yres;
         if (settings.editor && !settings.GetEditorFramebufferSize(target_xres, target_yres))
         {
-            fprintf(stderr, "Video: Editor framebuffer is too large for aspect ratio %s\n",
-                    settings.aspect_ratio.c_str());
+            fprintf(stderr, "Video: Editor framebuffer is too large for the desktop aspect ratio\n");
             exit(EXIT_FAILURE);
         }
         xres = target_xres;

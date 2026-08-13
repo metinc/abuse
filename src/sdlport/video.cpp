@@ -87,7 +87,7 @@ void remember_windowed_bounds()
 }
 
 // VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
-// than square. Aspect-ratio mode keeps those pixels at the original DPI,
+// than square. Widescreen mode keeps those pixels at the original DPI,
 // while legacy explicit resolutions remain square-pixel unless they use
 // the original 8:5 framebuffer ratio.
 static int display_height_for(int framebuffer_width, int framebuffer_height)
@@ -95,10 +95,8 @@ static int display_height_for(int framebuffer_width, int framebuffer_height)
     constexpr int vga_storage_width = 8;
     constexpr int vga_storage_height = 5;
 
-    const bool aspect_ratio_mode = SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom") != 0;
-    if (aspect_ratio_mode ||
-        static_cast<int64_t>(framebuffer_width) * vga_storage_height ==
-            static_cast<int64_t>(framebuffer_height) * vga_storage_width)
+    if (settings.widescreen_support || static_cast<int64_t>(framebuffer_width) * vga_storage_height ==
+                                           static_cast<int64_t>(framebuffer_height) * vga_storage_width)
         return (framebuffer_height * 6 + 2) / 5;
 
     return framebuffer_height;

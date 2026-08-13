@@ -1,19 +1,21 @@
 # Abuse configuration file
-schema_version = 4
+schema_version = 5
 
 [video]
 # Borderless desktop fullscreen
 fullscreen = true
 borderless = false
-# desktop, custom, or a ratio such as 16:9; 4:3 is the original display ratio
-aspect_ratio = "desktop"
+# Expand the framebuffer to match the desktop aspect ratio
+widescreen_support = true
 framebuffer_width = 320
 framebuffer_height = 200
-# The editor uses this larger zoom baseline and expands it to aspect_ratio.
+# The editor uses this larger zoom baseline and expands it when widescreen support is enabled.
 editor_framebuffer_width = 640
 editor_framebuffer_height = 400
+# Integer scale from 1 to 20
 window_scale = 2
 linear_filter = false
+# 0 = original artwork, 1 = high-resolution artwork, 2 = high-resolution artwork and logo
 hires = 0
 big_font = false
 # Display gamma (0.5-2.0); 1.0 is neutral.
@@ -22,13 +24,17 @@ gamma = 1.00
 [audio]
 sound_enabled = true
 music_enabled = true
+# 0.0 = silent, 1.0 = full volume
 sound_volume = 1.00
 music_volume = 1.00
 mono = false
+# Filename from data/soundfonts, or an absolute .sf2/.sf3 path
 soundfont = "MuseScore.sf3"
 
 [gameplay]
+# easy, medium, hard, or extreme
 difficulty = "hard"
+# 65 ms is the original 15 FPS game tick
 physics_tick_ms = 65
 max_fps = 300
 skip_intro = false
@@ -36,6 +42,7 @@ skip_intro = false
 menu_demos = false
 
 [general]
+# english, german, or french
 language = "english"
 editor = false
 # Confine the mouse to the rendered game area in windowed mode
@@ -43,6 +50,7 @@ grab_input = false
 local_save = false
 
 [input.keyboard]
+# Movement accepts one or two key names; other actions accept one
 left = ["a", "LEFT"]
 right = ["d", "RIGHT"]
 up = ["w", "UP"]
@@ -56,9 +64,11 @@ weapon_next = ["e"]
 aim_correction_x = 0
 crosshair_distance = 90
 aim_sensitivity = 10
+# Dead zones range from 0 to 32767
 aim_dead_zone = 5000
 move_dead_zone_x = 10000
 move_dead_zone_y = 25000
+# up, down, special, fire, weapon_prev, or weapon_next
 south = "up"
 east = "down"
 west = "weapon_prev"
@@ -69,5 +79,7 @@ left_shoulder = "special"
 right_shoulder = "fire"
 left_trigger = "special"
 right_trigger = "fire"
+# south, east, west, north, left_stick, right_stick,
+# left_shoulder, right_shoulder, or none
 quick_save = "none"
 quick_load = "none"

@@ -63,9 +63,9 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 
 - `fullscreen` - Enable borderless desktop fullscreen
 - `borderless` - Remove window decorations in windowed mode
-- `aspect_ratio` - Display aspect ratio such as `"16:9"`; `"desktop"` matches the desktop and `"custom"` uses the explicit framebuffer size below
-- `framebuffer_width` - Internal game framebuffer width when `aspect_ratio = "custom"` (minimum `320`)
-- `framebuffer_height` - Internal game framebuffer height when `aspect_ratio = "custom"` (minimum `200`)
+- `widescreen_support` - Expand the framebuffer to match the desktop aspect ratio; when disabled, use the configured framebuffer size exactly
+- `framebuffer_width` - Internal game framebuffer width when widescreen support is disabled (minimum `320`)
+- `framebuffer_height` - Internal game framebuffer height when widescreen support is disabled (minimum `200`)
 - `editor_framebuffer_width` - Editor baseline framebuffer width (default `640`, minimum `320`)
 - `editor_framebuffer_height` - Editor baseline framebuffer height (default `400`, minimum `200`)
 - `window_scale` - Integer window scale used in windowed mode
@@ -74,9 +74,9 @@ Configuration is stored in `settings.toml` in the user folder. See [`data/user/s
 - `big_font` - Enable big font
 - `gamma` - Display gamma (`0.5`-`2.0`; `1.0` is neutral)
 
-The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. For example, `aspect_ratio = "16:9"` uses a 427×200 framebuffer and `aspect_ratio = "1:1"` uses a 320×267 framebuffer. Aspect-ratio mode does not enlarge both dimensions, and level-object activation remains based on the original gameplay view. Explicitly increasing both `framebuffer_width` and `framebuffer_height` remains available as the legacy zoom-out mode and is useful in the editor.
+The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. With widescreen support enabled, one framebuffer dimension expands to match the desktop without changing the baseline gameplay zoom. For example, a 16:9 desktop uses a 427×200 framebuffer. With widescreen support disabled, `framebuffer_width` and `framebuffer_height` are used exactly.
 
-The editor uses `editor_framebuffer_width` and `editor_framebuffer_height` as its independent zoom baseline, then expands one dimension to match `aspect_ratio`. For example, a `640×400` baseline becomes `853×400` at `16:9`. With `aspect_ratio = "custom"`, the editor dimensions are used exactly. Entering or leaving the editor resizes the existing display in place.
+The editor uses `editor_framebuffer_width` and `editor_framebuffer_height` as its independent zoom baseline. With widescreen support enabled, one dimension expands to match the desktop; for example, a `640×400` baseline becomes `853×400` on a 16:9 desktop. With widescreen support disabled, the editor dimensions are used exactly. Entering or leaving the editor resizes the existing display in place.
 
 #### Audio Settings
 

@@ -108,7 +108,7 @@ Settings::Settings()
     this->yres = 200; // default window height
     this->editor_xres = 640;
     this->editor_yres = 400;
-    this->aspect_ratio = ""; // empty uses the desktop aspect ratio
+    this->widescreen_support = true;
     this->scale = 2; // default window scale
     this->linear_filter = false; // don't "anti-alias"
     this->hires = 0;
@@ -621,7 +621,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 4)
+        if (version && version->is_integer() && version->as_integer() > 5)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -631,9 +631,7 @@ bool Settings::ReadTomlFile()
         const settings_document *video = find_table(document, "video");
         read_boolean(video, "video", "fullscreen", fullscreen);
         read_boolean(video, "video", "borderless", borderless);
-        read_string(video, "video", "aspect_ratio", aspect_ratio);
-        if (aspect_ratio == "desktop")
-            aspect_ratio.clear();
+        read_boolean(video, "video", "widescreen_support", widescreen_support);
         read_integer(video, "video", "framebuffer_width", xres);
         read_integer(video, "video", "framebuffer_height", yres);
         read_integer(video, "video", "editor_framebuffer_width", editor_xres);
@@ -731,7 +729,7 @@ void Settings::BeginCommandLineOverrides()
     file_yres = yres;
     file_editor_xres = editor_xres;
     file_editor_yres = editor_yres;
-    file_aspect_ratio = aspect_ratio;
+    file_widescreen_support = widescreen_support;
     file_no_sound = no_sound;
     file_linear_filter = linear_filter;
     file_mono = mono;
@@ -757,7 +755,7 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 4);
+        set_value(document, "schema_version", 5);
 
         settings_document &video = ensure_table(document, "video");
         const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -765,10 +763,10 @@ bool Settings::Save() const
         const short saved_yres = command_line_overrides ? file_yres : yres;
         const short saved_editor_xres = command_line_overrides ? file_editor_xres : editor_xres;
         const short saved_editor_yres = command_line_overrides ? file_editor_yres : editor_yres;
-        const std::string &saved_aspect_ratio = command_line_overrides ? file_aspect_ratio : aspect_ratio;
+        const bool saved_widescreen_support = command_line_overrides ? file_widescreen_support : widescreen_support;
         set_value(video, "fullscreen", saved_fullscreen);
         set_value(video, "borderless", borderless);
-        set_value(video, "aspect_ratio", saved_aspect_ratio.empty() ? std::string("desktop") : saved_aspect_ratio);
+        set_value(video, "widescreen_support", saved_widescreen_support);
         set_value(video, "framebuffer_width", saved_xres);
         set_value(video, "framebuffer_height", saved_yres);
         set_value(video, "editor_framebuffer_width", saved_editor_xres);
@@ -895,7 +893,8 @@ void showHelp(const char *executableName)
     printf("** Abuse-SDL Options **\n");
     printf("  -datadir <arg>    Set the location of the game data to <arg>\n");
     printf("  -fullscreen       Enable borderless desktop fullscreen mode\n");
-    printf("  -aspect <w:h>     Set display aspect ratio without changing gameplay DPI\n");
+    printf("  -widescreen       Expand the framebuffer to the desktop aspect ratio\n");
+    printf("  -no-widescreen    Use the configured framebuffer size exactly\n");
     printf("  -antialias        Enable anti-aliasing\n");
     printf("  -h, --help        Display this text\n");
     printf("  -mono             Disable stereo sound\n");
@@ -939,12 +938,15 @@ void parseCommandLine(int argc, char **argv)
             settings.yres = height;
             settings.editor_xres = width;
             settings.editor_yres = height;
-            settings.aspect_ratio = "custom";
+            settings.widescreen_support = false;
         }
-        else if (!SDL_strcasecmp(argv[i], "-aspect"))
+        else if (!SDL_strcasecmp(argv[i], "-widescreen"))
         {
-            if (i + 1 < argc)
-                settings.aspect_ratio = argv[++i];
+            settings.widescreen_support = true;
+        }
+        else if (!SDL_strcasecmp(argv[i], "-no-widescreen"))
+        {
+            settings.widescreen_support = false;
         }
         else if (!SDL_strcasecmp(argv[i], "-nosound"))
         {
@@ -976,30 +978,9 @@ void parseCommandLine(int argc, char **argv)
 
 namespace
 {
-bool calculate_aspect_framebuffer(const std::string &aspect_ratio, short base_width, short base_height, short &width,
-                                  short &height)
+bool calculate_widescreen_framebuffer(int aspect_width, int aspect_height, short base_width, short base_height,
+                                      short &width, short &height)
 {
-    const std::size_t separator = aspect_ratio.find(':');
-    if (separator == std::string::npos || separator == 0 || separator + 1 == aspect_ratio.size() ||
-        aspect_ratio.find(':', separator + 1) != std::string::npos)
-        return false;
-
-    int aspect_width;
-    int aspect_height;
-    try
-    {
-        std::size_t width_end;
-        std::size_t height_end;
-        aspect_width = std::stoi(aspect_ratio.substr(0, separator), &width_end);
-        aspect_height = std::stoi(aspect_ratio.substr(separator + 1), &height_end);
-        if (width_end != separator || height_end != aspect_ratio.size() - separator - 1)
-            return false;
-    }
-    catch (const std::exception &)
-    {
-        return false;
-    }
-
     if (aspect_width <= 0 || aspect_height <= 0)
         return false;
 
@@ -1007,8 +988,7 @@ bool calculate_aspect_framebuffer(const std::string &aspect_ratio, short base_wi
     // requested display aspect ratio without changing the baseline zoom.
     int64_t framebuffer_width;
     int64_t framebuffer_height;
-    if (static_cast<int64_t>(aspect_width) * 6 * base_height >=
-        static_cast<int64_t>(aspect_height) * 5 * base_width)
+    if (static_cast<int64_t>(aspect_width) * 6 * base_height >= static_cast<int64_t>(aspect_height) * 5 * base_width)
     {
         const int64_t scaled_width = static_cast<int64_t>(base_height) * 6 * aspect_width;
         const int64_t divisor = static_cast<int64_t>(5) * aspect_height;
@@ -1024,47 +1004,54 @@ bool calculate_aspect_framebuffer(const std::string &aspect_ratio, short base_wi
     }
 
     if (framebuffer_width < base_width || framebuffer_height < base_height ||
-        framebuffer_width > std::numeric_limits<short>::max() ||
-        framebuffer_height > std::numeric_limits<short>::max())
+        framebuffer_width > std::numeric_limits<short>::max() || framebuffer_height > std::numeric_limits<short>::max())
         return false;
 
     width = static_cast<short>(framebuffer_width);
     height = static_cast<short>(framebuffer_height);
     return true;
 }
+
+void desktop_aspect(int &width, int &height)
+{
+    const SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
+    if (mode && mode->w > 0 && mode->h > 0)
+    {
+        width = mode->w;
+        height = mode->h;
+    }
+    else
+    {
+        fprintf(stderr, "Video: Unable to determine desktop aspect ratio; using original 4:3\n");
+        width = 4;
+        height = 3;
+    }
+}
 }
 
-bool Settings::ApplyAspectRatio()
+bool Settings::ApplyWidescreen()
 {
     // Command-line overrides are applied after Load(), so validate again here.
     Validate();
 
-    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
+    if (!widescreen_support)
         return true;
 
-    if (aspect_ratio.empty())
-    {
-        const SDL_DisplayID display = SDL_GetPrimaryDisplay();
-        const SDL_DisplayMode *mode = display ? SDL_GetDesktopDisplayMode(display) : nullptr;
-        if (mode && mode->w > 0 && mode->h > 0)
-            aspect_ratio = std::to_string(mode->w) + ":" + std::to_string(mode->h);
-        else
-        {
-            fprintf(stderr, "Video: Unable to determine desktop aspect ratio; using original 4:3\n");
-            aspect_ratio = "4:3";
-        }
-    }
-
-    return calculate_aspect_framebuffer(aspect_ratio, 320, 200, xres, yres);
+    int aspect_width, aspect_height;
+    desktop_aspect(aspect_width, aspect_height);
+    return calculate_widescreen_framebuffer(aspect_width, aspect_height, 320, 200, xres, yres);
 }
 
 bool Settings::GetEditorFramebufferSize(short &width, short &height) const
 {
     width = editor_xres;
     height = editor_yres;
-    if (!SDL_strcasecmp(aspect_ratio.c_str(), "custom"))
+    if (!widescreen_support)
         return true;
-    return calculate_aspect_framebuffer(aspect_ratio, editor_xres, editor_yres, width, height);
+    int aspect_width, aspect_height;
+    desktop_aspect(aspect_width, aspect_height);
+    return calculate_widescreen_framebuffer(aspect_width, aspect_height, editor_xres, editor_yres, width, height);
 }
 
 //
@@ -1110,17 +1097,15 @@ void setup(int argc, char **argv)
     // Process any command-line arguments that might override settings
     parseCommandLine(argc, argv);
 
-    if (!settings.ApplyAspectRatio())
+    if (!settings.ApplyWidescreen())
     {
-        show_startup_error("Invalid aspect_ratio '%s'; expected positive values in w:h form",
-                           settings.aspect_ratio.c_str());
+        show_startup_error("The desktop aspect ratio produces a framebuffer that is too large");
         exit(EXIT_FAILURE);
     }
-    if (!SDL_strcasecmp(settings.aspect_ratio.c_str(), "custom"))
-        printf("Video: Using custom %dx%d framebuffer\n", settings.xres, settings.yres);
+    if (!settings.widescreen_support)
+        printf("Video: Widescreen support disabled; using %dx%d framebuffer\n", settings.xres, settings.yres);
     else
-        printf("Video: Aspect ratio %s uses a %dx%d framebuffer\n", settings.aspect_ratio.c_str(), settings.xres,
-               settings.yres);
+        printf("Video: Widescreen support enabled; using %dx%d framebuffer\n", settings.xres, settings.yres);
 
     // Initialize audio volumes from settings
     // These variables are defined externally in loader.cpp
