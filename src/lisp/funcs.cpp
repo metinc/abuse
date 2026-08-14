@@ -414,7 +414,6 @@ void initLispFuncs()
     add_lisp_function("last_savegame_name", 0, 0, LispFunc::LastSavegameName);
     add_lisp_function("next_savegame_name", 0, 0, LispFunc::NextSavegameName);
     add_lisp_function("argv", 1, 1, LispFunc::Argv);
-    add_lisp_function("joy_stat", 0, 0, LispFunc::JoyStat);
     add_lisp_function("mouse_stat", 0, 0, LispFunc::MouseStat);
     add_lisp_function("mouse_to_game", 2, 2, LispFunc::MouseToGame);
     add_lisp_function("game_to_mouse", 2, 2, LispFunc::GameToMouse);

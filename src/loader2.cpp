@@ -50,7 +50,6 @@ song *current_song = NULL;
 
 uint16_t current_start_type, start_position_type, last_start_number;
 int light_buttons[13];
-int joy_picts[2 * 9];
 palette *pal;
 
 int big_font_pict = -1, small_font_pict = -1, console_font_pict = -1, cdc_logo;

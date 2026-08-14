@@ -415,7 +415,6 @@ enum class LispFunc
     LastSavegameName,
     NextSavegameName,
     Argv,
-    JoyStat, // xm ym b1 b2 b3
     MouseStat, // mx my b1 b2 b3
     MouseToGame, // pass in x,y -> x,y
     GameToMouse, // pass in x,y -> x,y

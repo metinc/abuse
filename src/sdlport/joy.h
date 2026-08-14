@@ -13,12 +13,9 @@
 
 #include <SDL3/SDL_gamepad.h>
 
-int joy_init(int argc, char **argv); // returns 0 if no joystick is available
-int joy_handle_added(SDL_JoystickID id);
-int joy_handle_removed(SDL_JoystickID id);
-int joy_gamepad_count();
+bool joy_init();
+void joy_handle_added(SDL_JoystickID id);
+void joy_handle_removed(SDL_JoystickID id);
 void joy_shutdown();
-void joy_status(int &b1, int &b2, int &b3, int &xv, int &yv);
-void joy_calibrate();
 
 #endif

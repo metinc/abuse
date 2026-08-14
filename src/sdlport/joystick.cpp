@@ -60,11 +60,8 @@ bool open_gamepad(SDL_JoystickID id)
 }
 }
 
-int joy_init(int argc, char **argv)
+bool joy_init()
 {
-    (void)argc;
-    (void)argv;
-
     if (!shutdown_registered)
     {
         std::atexit(joy_shutdown);
@@ -78,16 +75,15 @@ int joy_init(int argc, char **argv)
         open_gamepad(ids[i]);
     SDL_free(ids);
 
-    return joy_gamepad_count() > 0;
+    return !gamepads.empty();
 }
 
-int joy_handle_added(SDL_JoystickID id)
+void joy_handle_added(SDL_JoystickID id)
 {
     open_gamepad(id);
-    return joy_gamepad_count() > 0;
 }
 
-int joy_handle_removed(SDL_JoystickID id)
+void joy_handle_removed(SDL_JoystickID id)
 {
     auto found = gamepads.find(id);
     if (found != gamepads.end())
@@ -98,13 +94,6 @@ int joy_handle_removed(SDL_JoystickID id)
         gamepads.erase(found);
         std::printf("Gamepad disconnected: %d (%s)\n", id, name.c_str());
     }
-
-    return joy_gamepad_count() > 0;
-}
-
-int joy_gamepad_count()
-{
-    return static_cast<int>(gamepads.size());
 }
 
 void joy_shutdown()
@@ -112,14 +101,4 @@ void joy_shutdown()
     for (const auto &entry : gamepads)
         SDL_CloseGamepad(entry.second);
     gamepads.clear();
-}
-
-void joy_status(int &b1, int &b2, int &b3, int &xv, int &yv)
-{
-    /* Do Nothing */
-}
-
-void joy_calibrate()
-{
-    /* Do Nothing */
 }

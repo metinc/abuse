@@ -36,7 +36,6 @@
 #define HELP_STATE 2
 #define INTRO_START_STATE 3
 #define INTRO_MORPH_STATE 4
-#define JOY_CALB_STATE 5
 #define MENU_STATE 6
 #define SCENE_STATE 7
 #define START_STATE 8
@@ -84,7 +83,7 @@ class Game
 
     int no_delay;
 
-    Jwindow *top_menu, *joy_win, *last_input;
+    Jwindow *top_menu, *last_input;
     JCFont *game_font;
     uint8_t keymap[512 / 8];
 
@@ -203,7 +202,6 @@ class Game
 
     void update_screen(uint32_t elapsedMsFixed = 0);
     void get_input();
-    void joy_calb(Event &ev);
     void menu_select(Event &ev2);
     int can_morph_into(int type);
     void morph_into(int type);

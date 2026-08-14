@@ -101,7 +101,6 @@ constexpr int legacy_status_bar_height = 32;
 
 char **start_argv;
 int start_argc;
-int has_joystick = 0;
 char req_name[100];
 
 extern uint8_t chatting_enabled;
@@ -376,7 +375,6 @@ int window_state(int state)
     {
     case RUN_STATE:
     case PAUSE_STATE:
-    case JOY_CALB_STATE:
         return 1;
 
     case INTRO_START_STATE:
@@ -471,42 +469,6 @@ void Game::set_state(int new_state)
         draw(state == SCENE_STATE);
 
     dev_cont->set_state(new_state);
-}
-
-void Game::joy_calb(Event &ev)
-{
-    if (!joy_win) // make sure the joystick calibration window is open
-        return;
-
-    if (ev.type == EV_SPURIOUS) // spurious means we should update our status
-    {
-        int b1, b2, b3 = 0, x, y;
-        joy_status(b1, b2, b2, x, y);
-        int but = b1 | b2 | b3;
-        if (x > 0)
-            x = 1;
-        else if (x < 0)
-            x = -1;
-        if (y > 0)
-            y = 1;
-        else if (y < 0)
-            y = -1;
-        if (but)
-            but = 1;
-        int dx = 20, dy = 5;
-        image *jim = cache.img(joy_picts[but * 9 + (y + 1) * 3 + x + 1]);
-        joy_win->m_surf->Bar(ivec2(dx, dy), ivec2(dx + jim->Size().x + 6, dy + jim->Size().y + 6), wm->black());
-        joy_win->m_surf->PutImage(jim, ivec2(dx + 3, dy + 3));
-
-        if (but)
-            joy_calibrate();
-    }
-    else if (ev.type == EV_MESSAGE && ev.message.id == JOY_OK)
-    {
-        wm->close_window(joy_win);
-        joy_win = NULL;
-        set_state(MENU_STATE);
-    }
 }
 
 void Game::menu_select(Event &ev)
@@ -1498,7 +1460,7 @@ Game::Game(int argc, char **argv)
     current_level = NULL;
     refresh = 1;
     the_game = this;
-    top_menu = joy_win = NULL;
+    top_menu = NULL;
     old_view = first_view = NULL;
     nplayers = 1;
 
@@ -1516,9 +1478,9 @@ Game::Game(int argc, char **argv)
     zoom = 15;
     no_delay = 0;
 
-    has_joystick = joy_init(argc, argv);
+    const bool has_gamepad = joy_init();
     printf("Joystick : ");
-    if (has_joystick)
+    if (has_gamepad)
         printf("detected\n");
     else
         printf("not detected\n");
@@ -1825,19 +1787,6 @@ void Game::get_input()
             {
                 switch (ev.message.id)
                 {
-                case CALB_JOY: {
-                    if (!joy_win)
-                    {
-                        joy_win = wm->CreateWindow(ivec2(80, 50), ivec2(-1),
-                                                   new button(70, 9, JOY_OK, "OK",
-                                                              new info_field(0, 30, DEV_NULL,
-                                                                             " Center joystick and\n"
-                                                                             "press the fire button",
-                                                                             NULL)),
-                                                   "Joystick");
-                        set_state(JOY_CALB_STATE);
-                    }
-                }
                 case TOP_MENU: {
                     menu_select(ev);
                 }
@@ -1856,10 +1805,6 @@ void Game::get_input()
 
             switch (state)
             {
-            case JOY_CALB_STATE: {
-                joy_calb(ev);
-            }
-            break;
             case INTRO_START_STATE: {
                 if (dev & EDIT_MODE)
                     set_state(RUN_STATE);
@@ -2127,11 +2072,6 @@ void Game::Step()
         }
         else
             dev_scroll();
-    }
-    else if (state == JOY_CALB_STATE)
-    {
-        Event ev;
-        joy_calb(ev);
     }
     else if (state == MENU_STATE)
     {

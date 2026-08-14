@@ -44,7 +44,6 @@ extern SDL_Renderer *renderer;
 extern bool fullscreen;
 
 extern Settings settings;
-extern int has_joystick;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
@@ -571,12 +570,12 @@ void EventHandler::SysEvent(Event &ev)
         break;
 
     case SDL_EVENT_GAMEPAD_ADDED:
-        has_joystick = joy_handle_added(sdlev.gdevice.which);
+        joy_handle_added(sdlev.gdevice.which);
         ev.type = EV_SPURIOUS;
         break;
 
     case SDL_EVENT_GAMEPAD_REMOVED: {
-        has_joystick = joy_handle_removed(sdlev.gdevice.which);
+        joy_handle_removed(sdlev.gdevice.which);
         use_left_stick = false;
         settings.ctr_aim_x = 0;
         settings.ctr_aim_y = 0;

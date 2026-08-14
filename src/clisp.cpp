@@ -23,8 +23,6 @@
 
 #include "common.h"
 
-#include "sdlport/joy.h"
-
 #include "ant.h"
 #include "lisp.h"
 #include "game.h"
@@ -51,8 +49,6 @@ extern Settings settings;
 
 #define ENGINE_MAJOR 1
 #define ENGINE_MINOR 20
-
-extern int has_joystick;
 
 // the following are references to lisp symbols
 LSymbol *l_chat_input, *l_post_render;
@@ -576,23 +572,6 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::Argv: {
         return LString::Create(start_argv[lnumber_value(CAR(args)->Eval())]);
-    }
-    break;
-    case LispFunc::JoyStat: {
-        int xv, yv, b1, b2, b3;
-        if (has_joystick)
-            joy_status(b1, b2, b3, xv, yv);
-        else
-            b1 = b2 = b3 = xv = yv = 0;
-
-        void *ret = NULL;
-        PtrRef r1(ret);
-        push_onto_list(LNumber::Create(b3), ret);
-        push_onto_list(LNumber::Create(b2), ret);
-        push_onto_list(LNumber::Create(b1), ret);
-        push_onto_list(LNumber::Create(yv), ret);
-        push_onto_list(LNumber::Create(xv), ret);
-        return ret;
     }
     break;
     case LispFunc::MouseStat: {

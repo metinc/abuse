@@ -21,9 +21,6 @@ extern property_manager *prop;
 /*********************************title screen***********************************/
 extern int title_screen;
 
-/*********************************joystick pictures******************************/
-extern int joy_picts[2 * 9];
-
 /*************************** devleopment mode pictures **************************/
 extern int light_buttons[13];
 
