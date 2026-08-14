@@ -28,6 +28,9 @@ extern image *main_screen;
 
 void set_mode(int argc = 0, char **argv = NULL);
 bool resize_framebuffer(int width, int height);
+bool video_set_fullscreen(bool enabled);
+void video_change_settings(int scale_add, bool toggle_fullscreen);
+void video_update_mouse_confinement();
 void close_framebuffer();
 void close_graphics();
 void update_window_done();

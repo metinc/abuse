@@ -25,18 +25,19 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+
 #include "common.h"
 
 #include "image.h"
 #include "palette.h"
+#include "filter.h"
 #include "video.h"
 #include "event.h"
-#include "timing.h"
 #include "sprite.h"
 #include "game.h"
 #include "joy.h"
 #include "setup.h"
-#include "video_mode.h"
 
 extern SDL_Window *window;
 extern SDL_Surface *surface;
@@ -47,8 +48,7 @@ extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
-short mouse_buttons[5] = {0, 0, 0, 0, 0};
-// From setup.cpp:
+static short mouse_buttons[5] = {0, 0, 0, 0, 0};
 
 static ivec2 window_to_game(float window_x, float window_y)
 {
@@ -80,26 +80,50 @@ static void game_to_window(ivec2 pos, float &window_x, float &window_y)
 
 //AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
 //so I disable it if the user uses a D-pad, and enable it if the user uses the stick and passes the dead zone
-bool use_left_stick = false;
+static bool use_left_stick = false;
 
-void EventHandler::SysInit()
+EventHandler::EventHandler(image *screen, palette *pal)
 {
+    m_dead_zone = 10000;
+    m_pending = 0;
+    m_ignore_wheel_events = false;
+    m_button = 0;
+    m_center = ivec2(0, 0);
+
+    CHECK(screen && pal);
+    m_screen = screen;
+
+    uint8_t mouse_sprite[] = {0, 2, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1,
+                              1, 2, 0, 0, 0, 2, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2,
+                              0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0};
+
+    Filter f;
+    f.Set(1, pal->brightest(1));
+    f.Set(2, pal->darkest(1));
+    image *im = new image(ivec2(8, 10), mouse_sprite);
+    f.Apply(im);
+
+    m_sprite = new Sprite(screen, im, ivec2(100, 100));
+    m_pos = screen->Size() / 2;
+
     if (!SDL_StartTextInput(window))
         fprintf(stderr, "Warning: Unable to start text input: %s\n", SDL_GetError());
 }
 
-void EventHandler::SysUninit()
+EventHandler::~EventHandler()
 {
     if (window && SDL_TextInputActive(window))
         SDL_StopTextInput(window);
+    delete m_sprite;
 }
 
-void EventHandler::SysWarpMouse(ivec2 pos)
+void EventHandler::SetMousePos(ivec2 pos)
 {
+    m_pos = ivec2(std::clamp(pos.x, 0, m_screen->Size().x - 1), std::clamp(pos.y, 0, m_screen->Size().y - 1));
+
     float window_x;
     float window_y;
-    game_to_window(pos, window_x, window_y);
-    //AR this repositions the system mouse based on in game values, so I turned it off for controller aiming
+    game_to_window(m_pos, window_x, window_y);
     SDL_WarpMouseInWindow(window, window_x, window_y);
 }
 
@@ -114,11 +138,25 @@ int EventHandler::IsPending()
     return m_pending;
 }
 
-//
-// Get and handle waiting events
-//
-void EventHandler::SysEvent(Event &ev)
+void EventHandler::Get(Event &ev)
 {
+    while (!m_pending)
+    {
+        IsPending();
+        if (!m_pending)
+            SDL_Delay(1);
+    }
+
+    Event *queued = static_cast<Event *>(m_events.first());
+    if (queued)
+    {
+        ev = *queued;
+        m_events.unlink(queued);
+        delete queued;
+        m_pending = m_events.first() != nullptr;
+        return;
+    }
+
     // No more events
     m_pending = 0;
 
@@ -705,4 +743,9 @@ void EventHandler::SysEvent(Event &ev)
             break;
         }
     }
+}
+
+void EventHandler::flush_screen()
+{
+    update_dirty(main_screen);
 }

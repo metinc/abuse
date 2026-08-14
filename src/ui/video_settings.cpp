@@ -32,7 +32,6 @@
 
 //AR
 #include "sdlport/setup.h"
-#include "sdlport/video_mode.h"
 extern Settings settings;
 //
 

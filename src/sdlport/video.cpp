@@ -38,7 +38,6 @@
 #include "video.h"
 #include "image.h"
 #include "setup.h"
-#include "video_mode.h"
 #include "errorui.h"
 
 SDL_Window *window = NULL;
@@ -478,6 +477,38 @@ void close_graphics()
 
     fullscreen = false;
     windowed_bounds = {};
+}
+
+void update_dirty(image *im, int xoff, int yoff)
+{
+    CHECK(im->m_special);
+
+    if (im->m_special->keep_dirt == 0)
+    {
+        put_image(im, xoff, yoff);
+    }
+    else
+    {
+        int count = im->m_special->dirties.Count();
+        dirty_rect *dr = static_cast<dirty_rect *>(im->m_special->dirties.first());
+        while (count > 0)
+        {
+            put_part_image(im, xoff + dr->m_aa.x, yoff + dr->m_aa.y, dr->m_aa.x, dr->m_aa.y, dr->m_bb.x + 1,
+                           dr->m_bb.y + 1);
+            dirty_rect *tmp = dr;
+            dr = static_cast<dirty_rect *>(dr->Next());
+            im->m_special->dirties.unlink(tmp);
+            delete tmp;
+            --count;
+        }
+    }
+
+    update_window_done();
+}
+
+void put_image(image *im, int x, int y)
+{
+    put_part_image(im, x, y, 0, 0, im->Size().x - 1, im->Size().y - 1);
 }
 
 // put_part_image()

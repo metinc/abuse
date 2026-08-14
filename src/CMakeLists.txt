@@ -1,10 +1,8 @@
 #
 
-# SUBDIRS = lisp net imlib sdlport
 add_subdirectory(lisp)
 add_subdirectory(net)
 add_subdirectory(imlib)
-add_subdirectory(sdlport)
 
 if (WIN32)
     # FIXME: Where should this logic reside? Whatever, first generate the
@@ -92,7 +90,6 @@ endif()
 
 target_link_libraries(abuse
     lisp
-    sdlport
     imlib
     net
     SDL3::SDL3
