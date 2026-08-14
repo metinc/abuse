@@ -286,13 +286,14 @@ void calc_light_table(palette *pal)
     if (recalc)
     {
         printf("Palette has changed, recalculating light table...\n");
-        stat_man->push("white light", NULL);
+        stack_stat status("white light");
         int color = 0;
         for (; color < 256; color++)
         {
             uint8_t r, g, b;
             pal->get(color, r, g, b);
-            stat_man->update(color * 100 / 256);
+            if (stat_man)
+                stat_man->update(color * 100 / 256);
             for (int intensity = 63; intensity >= 0; intensity--)
             {
                 if (r > 0 || g > 0 || b > 0)
@@ -307,8 +308,6 @@ void calc_light_table(palette *pal)
                     b--;
             }
         }
-        stat_man->pop();
-
         /*    stat_man->push("green light",NULL);
     for (color=0; color<256; color++)
     {

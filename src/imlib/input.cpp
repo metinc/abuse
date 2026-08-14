@@ -28,10 +28,6 @@ void button::remap(Filter *f)
     }
 }
 
-void button_box::press_button(int id) // if button box doesn't contain id, nothing happens
-{
-}
-
 void button_box::remap(Filter *f)
 {
     for (button *b = buttons; b; b = (button *)b->next)

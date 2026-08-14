@@ -41,7 +41,6 @@ endif()
 include(CheckIncludeFiles)
 
 check_include_files(unistd.h HAVE_UNISTD_H)
-check_include_files("sys/time.h" HAVE_SYS_TIME_H)
 
 if(TCPIP_DEBUG)
     add_compile_definitions(TCPIP_DEBUG)
@@ -87,7 +86,6 @@ add_compile_definitions(
     ASSETDIR="${ABUSE_DEFAULT_ASSETDIR}"
     ABUSE_ASSETDIR_FROM_BASE="${ABUSE_ASSETDIR_FROM_BASE}"
     ABUSE_DEVELOPMENT_ASSETDIR="${ABUSE_DEVELOPMENT_ASSETDIR}"
-    PACKAGE_NAME="abuse"
     PACKAGE_VERSION="${PROJECT_VERSION}"
     HAVE_CONFIG_H
 )

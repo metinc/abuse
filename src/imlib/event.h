@@ -46,11 +46,7 @@ class Event : public linked_node
         mouse_move = ivec2(0, 0);
         mouse_button = 0;
         key = 0;
-        key_special.alt = 0;
-        key_special.ctrl = 0;
-        key_special.shift = 0;
         window = NULL;
-        window_position = ivec2(0, 0);
         message.id = 0;
         message.data = NULL;
     }
@@ -61,11 +57,7 @@ class Event : public linked_node
         mouse_move = ivec2(0, 0);
         mouse_button = 0;
         key = 0;
-        key_special.alt = 0;
-        key_special.ctrl = 0;
-        key_special.shift = 0;
         window = NULL;
-        window_position = ivec2(0, 0);
         message.id = id;
         message.data = data;
     }
@@ -75,13 +67,7 @@ class Event : public linked_node
     int mouse_button, key;
     std::string text;
 
-    struct
-    {
-        char alt, ctrl, shift;
-    } key_special;
-
     Jwindow *window; // NULL is root
-    ivec2 window_position;
     struct
     {
         int id;
@@ -129,32 +115,14 @@ class EventHandler
     {
         m_ignore_wheel_events = ignore;
     }
-    void SetRightStickCenter(int x, int y)
-    {
-        m_right_stick_x = x;
-        m_right_stick_y = y;
-    }
-    void SetRightStickMouse()
-    {
-        m_right_stick_x = m_right_stick_y = -1;
-    }
-
   private:
     linked_list m_events;
-    int m_pending, last_key;
+    int m_pending;
     bool m_ignore_wheel_events = false;
     // "Dead zone" before motion of a stick "counts".
     // Maximum stick values are 0x7FFF, currently I've
     // arbitrarily set this to 1/4th.
     int m_dead_zone; //AR (int m_dead_zone = 0x2000;)
-    // Scale amount for the right stick when moving the mouse. The range is
-    // -0x7FFF to 0x7FFF, or -32767 to 32767. The default means it will move
-    // a maximum of 3 pixels per tick.
-    int m_right_stick_scale; //AR (int m_right_stick_scale = 0x2000;)
-    // Scale amount for the right stick when it's player-locked.
-    // 0x400 gives a range of -31 to 31.
-    int m_right_stick_player_scale; //AR (int m_right_stick_player_scale = 0x400;)
-    int m_right_stick_x, m_right_stick_y;
 
     image *m_screen;
 

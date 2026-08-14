@@ -390,9 +390,6 @@ int window_state(int state)
 
 void Game::set_state(int new_state)
 {
-    // If we're no longer in the run state, jump back to virtual mouse state
-    if (new_state != RUN_STATE)
-        wm->SetRightStickMouse();
     int d = 0;
     reset_keymap(); // we think all the keys are up right now
 
@@ -864,9 +861,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         }
     }
 
-    //  if(!(dev & EDIT_MODE))
-    //    server_check();
-
     uint8_t rescan = 0;
 
     int fw, fh;
@@ -1014,9 +1008,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         }
     }
 
-    //  if(!(dev & EDIT_MODE))
-    //    server_check();
-
     if (!(dev & MAP_MODE))
     {
 
@@ -1091,9 +1082,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
                 }
             }
         }
-
-        //    if(!(dev & EDIT_MODE))
-        //      server_check();
 
         if (dev_cont)
             dev_cont->dev_draw(v);
@@ -1571,10 +1559,7 @@ Game::Game(int argc, char **argv)
 
     wm = new WindowManager(main_screen, pal, bright_color, med_color, dark_color, game_font);
 
-    delete stat_man; // move to a graphical status manager
-    gui_status_manager *gstat = new gui_status_manager();
-    gstat->set_window_title("status");
-    stat_man = gstat;
+    stat_man = new gui_status_manager();
 
     chat = new chat_console(console_font, 50, 6);
 
@@ -1942,7 +1927,7 @@ void Game::get_input()
 
 void net_send(int force = 0)
 {
-    // XXX: this was added to avoid crashing on the PS3.
+    // Networking can run before the first local player has been created.
     if (!player_list)
         return;
 
@@ -2430,8 +2415,6 @@ int main(int argc, char *argv[])
 
     start_sound(argc, argv);
 
-    stat_man = new text_status_manager();
-
     jrand_init();
     jrand(); // so compiler doesn't complain
 
@@ -2551,8 +2534,6 @@ int main(int argc, char *argv[])
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
             }
 
-            // server_check();
-
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
                 g->update_screen(
@@ -2590,6 +2571,8 @@ int main(int argc, char *argv[])
         dev_console = NULL;
         delete dev_menu;
         dev_menu = NULL;
+        delete stat_man;
+        stat_man = NULL;
         delete g;
         g = NULL;
         compiled_uninit();
@@ -2602,8 +2585,6 @@ int main(int argc, char *argv[])
         dev_cleanup();
         delete dev_cont;
         dev_cont = NULL;
-        delete stat_man;
-        stat_man = new text_status_manager();
 
         if (!(main_net_cfg && main_net_cfg->restart_state()))
         {
@@ -2619,7 +2600,6 @@ int main(int argc, char *argv[])
 
     while (main_net_cfg && main_net_cfg->restart_state());
 
-    delete stat_man;
     delete main_net_cfg;
     main_net_cfg = NULL;
 

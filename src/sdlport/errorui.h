@@ -12,6 +12,5 @@
 #define __ERRORUI_HPP_
 
 void show_startup_error(const char *format, ...);
-void show_error_message(const char *title, const char *format, ...);
 
 #endif // __ERRORUI_HPP_

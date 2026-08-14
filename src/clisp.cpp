@@ -470,14 +470,14 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Platform: {
-#ifdef __linux__
+#if defined(__linux__)
         return LSymbol::FindOrCreate("LINUX");
-#endif
-#ifdef __sgi
-        return LSymbol::FindOrCreate("IRIX");
-#endif
-#ifdef __WIN32
+#elif defined(_WIN32)
         return LSymbol::FindOrCreate("WIN32");
+#elif defined(__APPLE__)
+        return LSymbol::FindOrCreate("MACOS");
+#else
+        return LSymbol::FindOrCreate("UNKNOWN");
 #endif
     }
     break;
@@ -631,21 +631,14 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GetCwd: {
-#if defined __CELLOS_LV2__
-        /* FIXME: retrieve the PS3 account name */
-        char const *cd = "Player";
-#else
         char cd[150];
         getcwd(cd, 100);
-#endif
         return LString::Create(cd);
     }
     break;
     case LispFunc::System:
-#if !defined __CELLOS_LV2__
         /* FIXME: this looks rather dangerous */
         system(lstring_value(CAR(args)->Eval()));
-#endif
         break;
     case LispFunc::ConvertSlashes: {
         void *fn = CAR(args)->Eval();

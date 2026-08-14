@@ -37,10 +37,8 @@
 #ifndef NOGDI
 #define NOGDI
 #endif
-#define PATH_SEPARATOR "\\"
 #define PATH_SEPARATOR_CHAR '\\'
 #else
-#define PATH_SEPARATOR "/"
 #define PATH_SEPARATOR_CHAR '/'
 #endif
 

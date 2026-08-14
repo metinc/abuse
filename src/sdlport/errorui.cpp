@@ -30,7 +30,7 @@
 
 extern SDL_Window *window;
 
-void show_error_message(const char *title, const char *format, ...)
+static void show_error_message(const char *title, const char *format, ...)
 {
     char buffer[1024];
     va_list args;

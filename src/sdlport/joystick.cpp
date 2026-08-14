@@ -35,6 +35,13 @@ namespace
 std::unordered_map<SDL_JoystickID, SDL_Gamepad *> gamepads;
 bool shutdown_registered = false;
 
+void shutdown_gamepads()
+{
+    for (const auto &entry : gamepads)
+        SDL_CloseGamepad(entry.second);
+    gamepads.clear();
+}
+
 const char *gamepad_name(SDL_JoystickID id)
 {
     const char *name = SDL_GetGamepadNameForID(id);
@@ -64,7 +71,7 @@ bool joy_init()
 {
     if (!shutdown_registered)
     {
-        std::atexit(joy_shutdown);
+        std::atexit(shutdown_gamepads);
         shutdown_registered = true;
     }
 
@@ -94,11 +101,4 @@ void joy_handle_removed(SDL_JoystickID id)
         gamepads.erase(found);
         std::printf("Gamepad disconnected: %d (%s)\n", id, name.c_str());
     }
-}
-
-void joy_shutdown()
-{
-    for (const auto &entry : gamepads)
-        SDL_CloseGamepad(entry.second);
-    gamepads.clear();
 }

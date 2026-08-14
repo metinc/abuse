@@ -19,41 +19,25 @@ class status_manager
     virtual void push(char const *name, visual_object *show) = 0;
     virtual void update(int percentage) = 0;
     virtual void pop() = 0;
-    virtual void force_display()
-    {
-        ;
-    }
-    virtual ~status_manager()
-    {
-    }
-};
-
-class text_status_node;
-
-class text_status_manager : public status_manager
-{
-  public:
-    text_status_node *first;
-    text_status_manager();
-    virtual void push(char const *name, visual_object *show);
-    virtual void update(int percentage);
-    virtual void pop();
+    virtual ~status_manager() = default;
 };
 
 extern status_manager *stat_man;
 
-class stack_stat // something you can declare on the stact that is sure to get cleaned up
+class stack_stat // something you can declare on the stack that is sure to get cleaned up
 {
+    status_manager *manager;
+
   public:
-    stack_stat(char const *st, visual_object *show = NULL)
+    stack_stat(char const *st, visual_object *show = NULL) : manager(stat_man)
     {
-        if (stat_man)
-            stat_man->push(st, show);
+        if (manager)
+            manager->push(st, show);
     }
     ~stack_stat()
     {
-        if (stat_man)
-            stat_man->pop();
+        if (manager)
+            manager->pop();
     }
 };
 

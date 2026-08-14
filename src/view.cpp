@@ -207,10 +207,7 @@ char const *get_login()
     if (cur_user_name[0])
         return cur_user_name;
 
-#if defined __CELLOS_LV2__
-    /* FIXME: retrieve login name */
-    return "Player";
-#elif defined WIN32
+#if defined WIN32
     DWORD bufferSize = 120;
     TCHAR *login;
     login = (TCHAR *)malloc(bufferSize * sizeof(TCHAR));

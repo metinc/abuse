@@ -16,6 +16,5 @@
 bool joy_init();
 void joy_handle_added(SDL_JoystickID id);
 void joy_handle_removed(SDL_JoystickID id);
-void joy_shutdown();
 
 #endif

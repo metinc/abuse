@@ -1221,7 +1221,8 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
         the_game->show_help("Warning foreground map missing");
         no_fg = 1;
     }
-    stat_man->update(5);
+    if (stat_man)
+        stat_man->update(5);
 
     e = sd->find("bgmap");
     if (e)
@@ -1261,7 +1262,8 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
         map_bg = (uint16_t *)malloc(2 * bg_width * bg_height);
         memset(map_bg, 0, 2 * bg_width * bg_height);
     }
-    stat_man->update(10);
+    if (stat_man)
+        stat_man->update(10);
 
     /***************** Check map for non existsant tiles **************************/
     int32_t i, w;
@@ -1284,11 +1286,13 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
     }
 
     load_options(sd, fp);
-    stat_man->update(15);
+    if (stat_man)
+        stat_man->update(15);
 
     //  first=first_active=last=NULL;
     load_objects(sd, fp);
-    stat_man->update(25);
+    if (stat_man)
+        stat_man->update(25);
 
     object_node *players, *objs;
     players = make_player_onodes();

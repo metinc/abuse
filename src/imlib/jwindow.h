@@ -118,7 +118,6 @@ class Jwindow
     Jwindow *next;
     int backg;
     InputManager *inm;
-    void *local_info; // pointer to info block for local system (may support windows)
 
     Jwindow(char const *name = NULL);
     Jwindow(ivec2 pos, ivec2 size, ifield *f, char const *name = NULL);
