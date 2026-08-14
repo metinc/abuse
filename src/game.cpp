@@ -1982,7 +1982,6 @@ void Game::get_input()
                                     current_song->set_gain(music_volume);
                             }
 
-                            ((button *)ev.message.data)->push();
                             break;
                         }
                         }

@@ -664,21 +664,27 @@ void dev_controll::toggle_show_menu()
     button *lnb, *lb, *cb, *bb, *bdb, *fb;
 
     lnb = new button(0, 100, SHOW_LINKS, symbol_str("l_links"), NULL);
+    lnb->set_momentary(false);
     if (dev & DRAW_LINKS)
         lnb->push();
     lb = new button(0, 80, SHOW_LIGHT, symbol_str("l_light"), lnb);
+    lb->set_momentary(false);
     if (dev & DRAW_LIGHTS)
         lb->push();
     cb = new button(0, 60, SHOW_CHARACTERS, symbol_str("l_char"), lb);
+    cb->set_momentary(false);
     if (dev & DRAW_PEOPLE_LAYER)
         cb->push();
     bb = new button(0, 40, SHOW_BACKGROUND, symbol_str("l_back"), cb);
+    bb->set_momentary(false);
     if (dev & DRAW_BG_LAYER)
         bb->push();
     bdb = new button(0, 20, SHOW_FOREGROUND_BOUND, symbol_str("l_bound"), bb);
+    bdb->set_momentary(false);
     if (dev & DRAW_FG_BOUND_LAYER)
         bdb->push();
     fb = new button(0, 0, SHOW_FOREGROUND, symbol_str("l_fore"), bdb);
+    fb->set_momentary(false);
     if (dev & DRAW_FG_LAYER)
         fb->push();
 

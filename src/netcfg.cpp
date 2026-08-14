@@ -530,7 +530,6 @@ int net_configuration::get_options(int server)
                     }
                     else
                     {
-                        ((button *)inm.get(NET_OK))->push();
                         inm.redraw();
                     }
                 }

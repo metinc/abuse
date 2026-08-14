@@ -199,7 +199,11 @@ void WindowManager::get_event(Event &ev)
                 ev.type = EV_SPURIOUS;
             }
             else if (ev.window)
+            {
                 ev.window->inm->handle_event(ev, ev.window);
+                if (ev.type == EV_MOUSE_BUTTON)
+                    flush_screen();
+            }
         }
     }
     else if (state == dragging)
@@ -563,7 +567,7 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
 
     if (!m_grab)
     {
-        if ((ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 1) || ev.type == EV_MOUSE_MOVE)
+        if (ev.type == EV_MOUSE_BUTTON || ev.type == EV_MOUSE_MOVE)
         {
             for (i = m_first; i; i = i->next)
             {
@@ -571,7 +575,12 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
                 if (ev.mouse_move.x >= x1 && ev.mouse_move.y >= y1 && ev.mouse_move.x <= x2 && ev.mouse_move.y <= y2)
                     in_area = i;
             }
-            if (in_area != m_active && (no_selections_allowed || (in_area && in_area->selectable())))
+            const bool leaving_while_pressed =
+                ev.type == EV_MOUSE_MOVE && ev.mouse_button != 0 && (!in_area || !in_area->selectable());
+            if (leaving_while_pressed && in_area && !no_selections_allowed)
+                in_area = NULL;
+            if (in_area != m_active &&
+                (no_selections_allowed || (in_area && in_area->selectable()) || leaving_while_pressed))
             {
                 if (m_active)
                     m_active->draw(0, m_surf);
@@ -580,6 +589,10 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
 
                 if (m_active)
                     m_active->draw(1, m_surf);
+
+                // Present hover and press-cancellation changes immediately,
+                // without redrawing for every mouse-move event.
+                wm->flush_screen();
             }
         }
         if (ev.type == EV_KEY && ev.key == JK_TAB && m_active)

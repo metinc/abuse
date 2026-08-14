@@ -18,7 +18,8 @@ extern WindowManager *wm; /* FIXME: get rid of this if possible */
 class button : public ifield
 {
     int up, act;
-    bool momentary = false;
+    bool momentary = true;
+    bool press_active = false;
     char *text;
     image *visual, *pressed, *act_pict;
     int act_id;

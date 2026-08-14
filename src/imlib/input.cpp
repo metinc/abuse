@@ -55,6 +55,8 @@ button_box::button_box(int X, int Y, int ID, int MaxDown, button *Buttons, ifiel
     next = Next;
     buttons = Buttons;
     maxdown = MaxDown;
+    for (button *b = buttons; b; b = (button *)b->next)
+        b->set_momentary(false);
     if (buttons && maxdown)
         buttons->push(); // the first button is automatically selected!
 }
@@ -168,6 +170,7 @@ void button_box::handle_event(Event &ev, image *screen, InputManager *im)
 
 void button_box::add_button(button *b)
 {
+    b->set_momentary(false);
     b->next = buttons;
     buttons = b;
 }
@@ -429,32 +432,31 @@ void button::push()
 
 void button::handle_event(Event &ev, image *screen, InputManager *im)
 {
-    if (momentary)
-    {
-        const bool pressed = (ev.type == EV_KEY && ev.key == JK_ENTER) ||
-                             (ev.type == EV_MOUSE_BUTTON && ev.mouse_button != 0);
-        const bool released = (ev.type == EV_KEYRELEASE && ev.key == JK_ENTER) ||
-                              (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
-        if (!pressed && !released)
-            return;
+    const bool pressed_event =
+        (ev.type == EV_KEY && ev.key == JK_ENTER) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button != 0);
+    const bool released_event =
+        (ev.type == EV_KEYRELEASE && ev.key == JK_ENTER) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
+    if (!pressed_event && !released_event)
+        return;
 
-        const int new_up = released ? 1 : 0;
-        if (new_up != up)
+    if (pressed_event)
+    {
+        if (!press_active)
         {
-            up = new_up;
+            press_active = true;
             draw_first(screen);
             draw(act, screen);
         }
-        if (released)
-            wm->Push(new Event(id, (char *)this));
         return;
     }
 
-    if ((ev.type == EV_KEY && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button))
+    if (press_active)
     {
-        int x1, y1, x2, y2;
-        area(x1, y1, x2, y2);
-        up = !up;
+        press_active = false;
+        if (momentary)
+            up = 1;
+        else
+            up = !up;
         draw_first(screen);
         draw(act, screen);
         wm->Push(new Event(id, (char *)this));
@@ -468,9 +470,17 @@ void button::draw(int active, image *screen)
     if (active != act && act_id != -1 && active)
         wm->Push(new Event(act_id, NULL));
 
+    // Leaving a button while holding the mouse cancels its temporary press.
+    if (!active && press_active)
+    {
+        press_active = false;
+        draw_first(screen);
+    }
+
+    const bool draw_up = up && !press_active;
     if (pressed)
     {
-        if (up)
+        if (draw_up)
         {
             if (!active)
                 screen->PutImage(visual, m_pos);
@@ -498,7 +508,8 @@ void button::draw_first(image *screen)
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
 
-    if (up)
+    const bool draw_up = up && !press_active;
+    if (draw_up)
     {
         screen->Rectangle(ivec2(x1, y1), ivec2(x2, y2), wm->black());
         //      screen->widget_bar(,wm->bright_color(),wm->medium_color(),wm->dark_color());
@@ -514,12 +525,12 @@ void button::draw_first(image *screen)
         screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
     }
 
-    if ((up && text) || (!up && !visual))
+    if ((draw_up && text) || (!draw_up && !visual))
     {
         wm->font()->PutString(screen, m_pos + ivec2(4, 5), text, wm->black());
         wm->font()->PutString(screen, m_pos + ivec2(3, 4), text);
     }
-    else if (up)
+    else if (draw_up)
         screen->PutImage(visual, m_pos + ivec2(3, 3), 1);
     else
         screen->PutImage(visual, ivec2(x1 + 3, y1 + 3), 1);
