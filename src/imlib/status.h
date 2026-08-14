@@ -33,7 +33,6 @@ class text_status_node;
 class text_status_manager : public status_manager
 {
   public:
-    int level;
     text_status_node *first;
     text_status_manager();
     virtual void push(char const *name, visual_object *show);
