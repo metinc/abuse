@@ -18,7 +18,6 @@
 
 #include "common.h"
 
-#include "ui/audio_volume.h"
 #ifdef WIN32
 #include <WinSock2.h>
 #include <Windows.h>
@@ -174,7 +173,7 @@ void AR_HiresTitleScreen()
 
 void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
-    if (!(sound_avail & SFX_INITIALIZED))
+    if (!sound_is_initialized())
         return;
     if (source_gain <= 0.0f)
         return;
@@ -1287,20 +1286,20 @@ void do_title()
     if (cdc_logo == -1)
         return;
 
-    if (sound_avail & MUSIC_INITIALIZED)
+    if (sound_is_initialized())
     {
         if (current_song)
         {
             current_song->stop();
-            delete current_song;
+            current_song.reset();
         }
-        current_song = new song("music/intro.hmi");
+        current_song = std::make_unique<song>("music/intro.hmi");
         current_song->play(music_volume);
     }
 
     void *logo_snd = LSymbol::FindOrCreate("LOGO_SND")->GetValue();
 
-    if (DEFINEDP(logo_snd) && (sound_avail & SFX_INITIALIZED))
+    if (DEFINEDP(logo_snd) && sound_is_initialized())
         cache.sfx(lnumber_value(logo_snd))->play(sfx_volume);
 
     // This must be a dynamic allocated image because if it
@@ -1404,7 +1403,7 @@ void do_title()
             while (wm->IsPending() && ev.type != EV_KEY)
                 wm->get_event(ev);
 
-            if ((i % 5) == 0 && DEFINEDP(space_snd) && (sound_avail & SFX_INITIALIZED))
+            if ((i % 5) == 0 && DEFINEDP(space_snd) && sound_is_initialized())
                 cache.sfx(lnumber_value(space_snd))->play(sfx_volume * 0.71f);
 
             SDL_Delay(25);
@@ -1828,10 +1827,6 @@ void Game::get_input()
                             need_refresh();
                         }
                         break;
-                        case 'v': {
-                            wm->PushMessage(DO_VOLUME);
-                        }
-                        break;
                         case 'p': {
                             if (!(dev & EDIT_MODE) &&
                                 (!main_net_cfg || (main_net_cfg->state != net_configuration::SERVER &&
@@ -1865,35 +1860,6 @@ void Game::get_input()
                         }
                     }
                     break;
-                    case EV_MESSAGE: {
-                        switch (ev.message.id)
-                        {
-                        case RAISE_SFX:
-                        case LOWER_SFX:
-                        case RAISE_MUSIC:
-                        case LOWER_MUSIC: {
-                            if (ev.message.id == RAISE_SFX && sfx_volume < 1.0f)
-                                sfx_volume = increase_audio_volume(sfx_volume);
-                            if (ev.message.id == LOWER_SFX && sfx_volume > 0.0f)
-                                sfx_volume = decrease_audio_volume(sfx_volume);
-                            if (ev.message.id == RAISE_MUSIC && music_volume < 1.0f)
-                            {
-                                music_volume = increase_audio_volume(music_volume);
-                                if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_gain(music_volume);
-                            }
-
-                            if (ev.message.id == LOWER_MUSIC && music_volume > 0.0f)
-                            {
-                                music_volume = decrease_audio_volume(music_volume);
-                                if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_gain(music_volume);
-                            }
-
-                            break;
-                        }
-                        }
-                    }
                     }
                 }
             }
@@ -2179,11 +2145,6 @@ void Game::draw(int scene_mode)
 
 int external_print = 0;
 
-void start_sound(int argc, char **argv)
-{
-    sound_avail = sound_init(argc, argv);
-}
-
 void game_printer(char *st)
 {
     if (dev_console && !external_print)
@@ -2318,11 +2279,11 @@ void check_for_lisp(int argc, char **argv)
 
 void music_check()
 {
-    if (sound_avail & MUSIC_INITIALIZED)
+    if (sound_is_initialized())
     {
         if (!current_song)
         {
-            current_song = new song("music/intro.hmi");
+            current_song = std::make_unique<song>("music/intro.hmi");
             current_song->play(music_volume);
 
             /*      if(DEFINEDP(symbol_function(l_next_song)))  // if user function installed, call it to load up next song
@@ -2391,7 +2352,7 @@ int main(int argc, char *argv[])
 
     show_startup();
 
-    start_sound(argc, argv);
+    sound_init();
 
     jrand_init();
     jrand(); // so compiler doesn't complain
@@ -2540,8 +2501,7 @@ int main(int argc, char *argv[])
 
         if (current_song)
             current_song->stop();
-        delete current_song;
-        current_song = NULL;
+        current_song.reset();
 
         cache.empty();
 

@@ -44,9 +44,9 @@ property_manager *prop;
 int *backtiles;
 int *foretiles;
 JCFont *big_font, *console_font;
-int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi, total_songs = 0, sound_avail = 0;
+int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi;
 float sfx_volume = 1.0f, music_volume = 1.0f;
-song *current_song = NULL;
+std::unique_ptr<song> current_song;
 
 uint16_t current_start_type, start_position_type, last_start_number;
 int light_buttons[13];
@@ -58,9 +58,8 @@ int title_screen;
 
 ColorFilter *color_table;
 
-int border_tile, window_texture, raise_volume, lower_volume, record_button, play_button, music_button, sfx_button,
-    window_colors, pause_image, damage_pict, block_pict, vmm_image, earth, earth_mask, clouds, numbers[10], ok_button,
-    cancel_button;
+int border_tile, window_texture, window_colors, pause_image, damage_pict, block_pict, vmm_image, earth, earth_mask,
+    clouds, numbers[10], ok_button, cancel_button;
 
 int start_running = 0;
 
@@ -362,12 +361,6 @@ void load_data(int argc, char **argv)
 
     //  clouds      =      cache.reg(ff,"clouds",SPEC_IMAGE);
 
-    lower_volume = cache.reg(ff, "lower_volume", SPEC_IMAGE);
-    raise_volume = cache.reg(ff, "raise_volume", SPEC_IMAGE);
-    music_button = cache.reg(ff, "music", SPEC_IMAGE);
-    sfx_button = cache.reg(ff, "sound_fx", SPEC_IMAGE);
-    record_button = cache.reg(ff, "record", SPEC_IMAGE);
-    play_button = cache.reg(ff, "play", SPEC_IMAGE);
     window_colors = cache.reg(ff, "window_colors", SPEC_IMAGE);
     pause_image = cache.reg(ff, "pause_image", SPEC_IMAGE);
     vmm_image = cache.reg(ff, "vmm", SPEC_IMAGE);

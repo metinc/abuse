@@ -41,9 +41,6 @@
 // Global settings object (defined setup.cpp)
 extern Settings settings;
 
-int enabled = 0; // Indicates if sound system is operational
-SDL_AudioSpec audio_spec; // Stores current audio specifications
-
 namespace
 {
 constexpr int SFX_TRACK_COUNT = 50;
@@ -111,6 +108,11 @@ std::string fallback_soundfont(const std::filesystem::path &directory)
 }
 }
 
+bool sound_is_initialized()
+{
+    return mixer != nullptr;
+}
+
 bool sound_set_soundfont(const std::string &configured_soundfont)
 {
     std::string resolved_path;
@@ -132,17 +134,14 @@ bool sound_set_soundfont(const std::string &configured_soundfont)
   * 1. Verifies the existence of the sfx directory
   * 2. Initializes SDL_mixer with standard audio parameters
   * 3. Loads custom soundfonts if specified in settings
-  * 4. Allocates mixing channels
-  * 5. Queries and stores the actual audio specifications
+  * 4. Allocates sound-effect tracks
   *
-  * @param argc Command line argument count (unused)
-  * @param argv Command line arguments (unused)
-  * @return int 0 on failure, non-zero on success
+  * @return true when the mixer is ready
   */
-int sound_init(int argc, char **argv)
+bool sound_init()
 {
-    // Sound and music are always enabled, they just never play if disabled in config
-    // or if loading the files failed (enabled == false)
+    if (sound_is_initialized())
+        return true;
 
     // Get the path to the game's data directory and sfx subdirectory
     const std::filesystem::path datadir = get_filename_prefix();
@@ -152,13 +151,13 @@ int sound_init(int argc, char **argv)
     if (!std::filesystem::exists(sfx_path))
     {
         printf("Sound: Disabled (couldn't find the sfx directory %s)\n", sfx_path.string().c_str());
-        return 0;
+        return false;
     }
 
     if (!MIX_Init())
     {
         printf("Sound: Unable to initialize SDL_mixer - %s\nSound: Disabled (error)\n", SDL_GetError());
-        return 0;
+        return false;
     }
 
     const int num_decoders = MIX_GetNumAudioDecoders();
@@ -185,10 +184,8 @@ int sound_init(int argc, char **argv)
     {
         MIX_Quit();
         printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
-        return 0;
+        return false;
     }
-
-    MIX_GetMixerFormat(mixer, &audio_spec);
 
     // FluidSynth needs an explicit SoundFont on systems without a configured
     // system-wide default. Fall back to the bundled default when the configured
@@ -211,10 +208,7 @@ int sound_init(int argc, char **argv)
         sfx_tracks.push_back(track);
     }
 
-    // Enable both SFX and music subsystems
-    enabled = SFX_INITIALIZED | MUSIC_INITIALIZED;
-
-    return enabled;
+    return true;
 }
 
 /**
@@ -225,13 +219,12 @@ int sound_init(int argc, char **argv)
   */
 void sound_uninit()
 {
-    if (!enabled)
+    if (!sound_is_initialized())
         return;
 
-    enabled = 0;
-    sfx_tracks.clear(); // MIX_DestroyMixer owns and destroys these tracks.
     MIX_DestroyMixer(mixer);
     mixer = nullptr;
+    sfx_tracks.clear();
     soundfont_path.clear();
     MIX_Quit();
 }
@@ -246,7 +239,7 @@ void sound_uninit()
   */
 sound_effect::sound_effect(char const *filename) : m_audio(nullptr)
 {
-    if (!enabled)
+    if (!sound_is_initialized())
         return;
 
     m_audio = load_prefixed_audio(filename);
@@ -264,7 +257,7 @@ sound_effect::sound_effect(char const *filename) : m_audio(nullptr)
   */
 sound_effect::~sound_effect()
 {
-    if (!enabled)
+    if (!sound_is_initialized())
         return;
 
     if (m_audio)
@@ -291,7 +284,7 @@ sound_effect::~sound_effect()
   */
 void sound_effect::play(float gain, float frequency_ratio, int panpot)
 {
-    if (!enabled || settings.no_sound || !m_audio)
+    if (!sound_is_initialized() || settings.no_sound || !m_audio)
         return;
 
     // Clamp values to valid ranges
@@ -334,26 +327,24 @@ song::song(char const *filename)
 
 bool song::load()
 {
-    if (!enabled || m_filename.empty())
+    if (!sound_is_initialized() || m_filename.empty())
         return false;
 
     try
     {
         // Load HMI format music file into memory
-        uint32_t data_size;
-        unsigned char *data = load_hmi(m_filename.c_str(), data_size);
+        std::vector<uint8_t> data = load_hmi_as_midi(m_filename.c_str());
 
-        if (!data)
+        if (data.empty())
         {
             printf("Sound: ERROR - could not load %s\n", m_filename.c_str());
             return false;
         }
 
-        SDL_IOStream *io = SDL_IOFromConstMem(data, data_size);
+        SDL_IOStream *io = SDL_IOFromConstMem(data.data(), data.size());
         if (!io)
         {
             printf("Sound: ERROR - could not create IO stream for %s: %s\n", m_filename.c_str(), SDL_GetError());
-            free(data);
             return false;
         }
 
@@ -361,6 +352,7 @@ bool song::load()
         bool properties_ok = props != 0;
         properties_ok = properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_IOSTREAM_POINTER, io);
         properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_CLOSEIO_BOOLEAN, true);
+        properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_PREDECODE_BOOLEAN, true);
         properties_ok =
             properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_PREFERRED_MIXER_POINTER, mixer);
         if (properties_ok && !soundfont_path.empty())
@@ -371,7 +363,6 @@ bool song::load()
         else
             SDL_CloseIO(io);
         SDL_DestroyProperties(props);
-        free(data);
 
         if (!m_audio)
         {
@@ -407,7 +398,7 @@ song::~song()
     if (playing())
         stop();
 
-    if (!enabled)
+    if (!sound_is_initialized())
         return;
     MIX_DestroyTrack(m_track);
     MIX_DestroyAudio(m_audio);
@@ -422,7 +413,7 @@ song::~song()
   */
 void song::play(float gain)
 {
-    if (!enabled || settings.no_music || !m_track)
+    if (!sound_is_initialized() || settings.no_music || !m_track)
         return;
 
     set_gain(gain);
@@ -450,11 +441,11 @@ bool song::start_playback(Sint64 start_milliseconds)
   *
   * @param fadeout_time Fadeout duration in milliseconds (100 ms by default)
   */
-void song::stop(long fadeout_time)
+void song::stop(int fadeout_time)
 {
-    if (enabled && m_track)
+    if (sound_is_initialized() && m_track)
     {
-        const long duration = fadeout_time > 0 ? fadeout_time : 100;
+        const int duration = fadeout_time > 0 ? fadeout_time : 100;
         MIX_StopTrack(m_track, MIX_TrackMSToFrames(m_track, duration));
     }
 }
@@ -462,11 +453,11 @@ void song::stop(long fadeout_time)
 /**
   * @brief Checks if music is currently playing
   *
-  * @return int Non-zero if music is playing, 0 otherwise
+  * @return true if music is playing
   */
-int song::playing()
+bool song::playing() const
 {
-    return enabled && m_track && MIX_TrackPlaying(m_track);
+    return sound_is_initialized() && m_track && MIX_TrackPlaying(m_track);
 }
 
 /**
@@ -477,13 +468,13 @@ int song::playing()
 void song::set_gain(float gain)
 {
     m_gain = std::clamp(gain, 0.0f, 1.0f);
-    if (enabled && m_track)
+    if (sound_is_initialized() && m_track)
         MIX_SetTrackGain(m_track, m_gain);
 }
 
 bool song::reload()
 {
-    if (!enabled)
+    if (!sound_is_initialized())
         return false;
 
     MIX_Audio *old_audio = m_audio;

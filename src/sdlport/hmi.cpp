@@ -16,10 +16,8 @@
 #include <array>
 #include <vector>
 #include <cstring>
-#include <cstdlib>
 #include <cstdio>
 #include <algorithm>
-#include <memory>
 
 #include "file_utils.h"
 #include "common.h"
@@ -245,41 +243,57 @@ static void convert_hmi_track(uint8_t *input, uint32_t input_size, uint8_t *&out
     write_big_endian_number(static_cast<uint32_t>(output - start_of_buffer - 8), &start_of_buffer[4]);
 }
 
-uint8_t *load_hmi(char const *filename, uint32_t &data_size)
+std::vector<uint8_t> load_hmi_as_midi(char const *filename)
 {
     if (!filename)
-        return nullptr;
+        return {};
 
     FILE *hmifile = prefix_fopen(filename, "rb");
     if (hmifile == nullptr)
-        return nullptr;
+        return {};
 
     if (fseek(hmifile, 0, SEEK_END) != 0)
     {
         fclose(hmifile);
-        return nullptr;
+        return {};
     }
-    uint32_t buffer_size = ftell(hmifile);
+    const long file_size = ftell(hmifile);
+    if (file_size <= 0 || static_cast<unsigned long>(file_size) > UINT32_MAX / 10)
+    {
+        fclose(hmifile);
+        return {};
+    }
+    const uint32_t buffer_size = static_cast<uint32_t>(file_size);
     if (fseek(hmifile, 0, SEEK_SET) != 0)
     {
         fclose(hmifile);
-        return nullptr;
+        return {};
     }
 
-    auto input_buffer = std::make_unique<uint8_t[]>(buffer_size);
-    if (fread(input_buffer.get(), 1, buffer_size, hmifile) != buffer_size)
+    std::vector<uint8_t> input_buffer(buffer_size);
+    if (fread(input_buffer.data(), 1, buffer_size, hmifile) != buffer_size)
     {
         fclose(hmifile);
-        return nullptr;
+        return {};
     }
     fclose(hmifile);
 
-    auto output_buffer = std::make_unique<uint8_t[]>(buffer_size * 10);
-    uint8_t *output_buffer_ptr = output_buffer.get();
+    if (buffer_size < HMI_NEXT_CHUNK_POS + sizeof(uint32_t))
+        return {};
 
     uint32_t offset_tracks = get_int_from_buffer(&input_buffer[HMI_TRACK_OFFSET_POS]);
     uint32_t next_offset = get_int_from_buffer(&input_buffer[HMI_NEXT_CHUNK_POS]);
-    uint8_t num_tracks = static_cast<uint8_t>((next_offset - offset_tracks) / sizeof(uint32_t));
+    if (offset_tracks > next_offset || next_offset > buffer_size ||
+        (next_offset - offset_tracks) % sizeof(uint32_t) != 0)
+        return {};
+
+    const uint32_t track_count = (next_offset - offset_tracks) / sizeof(uint32_t);
+    if (track_count == 0 || track_count > UINT8_MAX - 1)
+        return {};
+    const uint8_t num_tracks = static_cast<uint8_t>(track_count);
+
+    std::vector<uint8_t> output_buffer(static_cast<size_t>(buffer_size) * 10);
+    uint8_t *output_buffer_ptr = output_buffer.data();
 
     // Write MIDI header
     const uint8_t midi_header[] = {
@@ -309,17 +323,20 @@ uint8_t *load_hmi(char const *filename, uint32_t &data_size)
     for (int i = 0; i < num_tracks; i++)
     {
         uint32_t track_position = get_int_from_buffer(&input_buffer[offset_tracks + i * sizeof(uint32_t)]);
-        uint32_t track_size =
-            (i == num_tracks - 1)
-                ? buffer_size - track_position
-                : get_int_from_buffer(&input_buffer[offset_tracks + (i + 1) * sizeof(uint32_t)]) - track_position;
+        const uint32_t next_track_position =
+            i == num_tracks - 1 ? buffer_size
+                                : get_int_from_buffer(&input_buffer[offset_tracks + (i + 1) * sizeof(uint32_t)]);
+        if (track_position > next_track_position || next_track_position > buffer_size ||
+            next_track_position - track_position <= HMI_TRACK_DATA_OFFSET)
+            return {};
+
+        const uint32_t track_size = next_track_position - track_position;
+        if (input_buffer[track_position + HMI_TRACK_DATA_OFFSET] >= track_size)
+            return {};
 
         convert_hmi_track(&input_buffer[track_position], track_size, output_buffer_ptr);
     }
 
-    data_size = static_cast<uint32_t>(output_buffer_ptr - output_buffer.get());
-    uint8_t *final_buffer = static_cast<uint8_t *>(malloc(data_size));
-    std::memcpy(final_buffer, output_buffer.get(), data_size);
-
-    return final_buffer;
+    output_buffer.resize(static_cast<size_t>(output_buffer_ptr - output_buffer.data()));
+    return output_buffer;
 }

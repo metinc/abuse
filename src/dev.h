@@ -92,7 +92,7 @@ class dev_controll
     ivec2 mouse_pan_last;
 
   public:
-    Jwindow *backw, *forew, *commandw, *modew, *omenu, *oedit, *ledit, *music_window, *pmenu, *show_menu, *lightw, *aiw,
+    Jwindow *backw, *forew, *commandw, *modew, *omenu, *oedit, *ledit, *pmenu, *show_menu, *lightw, *aiw,
         *ambw, *tbw, *area_win, *search_window;
 
     int fg_w, bg_w, fg_scale, bg_scale, yellow;
@@ -104,7 +104,6 @@ class dev_controll
     void toggle_fgw();
     void toggle_bgw();
     void toggle_omenu();
-    void toggle_music_window();
     void toggle_pmenu();
     void toggle_show_menu();
     void toggle_light_window();

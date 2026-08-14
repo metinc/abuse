@@ -15,6 +15,9 @@
 #include "sdlport/sound.h"
 
 #include "jwindow.h"
+
+#include <memory>
+
 class property_manager;
 extern property_manager *prop;
 
@@ -33,16 +36,12 @@ extern int big_font_pict, small_font_pict, console_font_pict;
 extern int damage_pict, block_pict;
 extern uint16_t current_start_type, start_position_type;
 
-/******************************* SOUND EFFECTS **********************************/
-extern int raise_volume, lower_volume, record_button, play_button, music_button, sfx_button;
-
 extern float sfx_volume, music_volume;
-extern int sound_avail;
-extern song *current_song;
+extern std::unique_ptr<song> current_song;
 
 /******************************** SCREEN FRAME **********************************/
-extern int border_tile, window_texture, record_button, play_button, window_colors, pause_image, vmm_image, earth,
-    earth_mask, clouds, numbers[10], stat_bar, ok_button, cancel_button, cdc_logo;
+extern int border_tile, window_texture, window_colors, pause_image, vmm_image, earth, earth_mask, clouds, numbers[10],
+    stat_bar, ok_button, cancel_button, cdc_logo;
 
 /******************************** TILES *****************************************/
 extern int *backtiles; // array of id's

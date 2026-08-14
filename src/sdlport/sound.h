@@ -17,20 +17,19 @@
 
 #include "common.h"
 
-/* options are passed via command line */
-
-#define SFX_INITIALIZED 1
-#define MUSIC_INITIALIZED 2
-
-int sound_init(int argc, char **argv);
+bool sound_init();
 void sound_uninit();
+bool sound_is_initialized();
 bool sound_set_soundfont(const std::string &configured_soundfont);
 
 class sound_effect
 {
   public:
-    sound_effect(char const *filename);
+    explicit sound_effect(char const *filename);
     ~sound_effect();
+
+    sound_effect(const sound_effect &) = delete;
+    sound_effect &operator=(const sound_effect &) = delete;
 
     void play(float gain = 1.0f, float frequency_ratio = 1.0f, int panpot = 128);
 
@@ -41,13 +40,16 @@ class sound_effect
 class song
 {
   public:
-    song(char const *filename);
+    explicit song(char const *filename);
     void play(float gain = 1.0f);
-    void stop(long fadeout_time = 0); // time in ms
-    int playing();
+    void stop(int fadeout_time = 0); // time in ms
+    bool playing() const;
     void set_gain(float gain);
     bool reload();
     ~song();
+
+    song(const song &) = delete;
+    song &operator=(const song &) = delete;
 
   private:
     bool load();

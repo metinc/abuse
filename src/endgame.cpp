@@ -235,7 +235,7 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
+            if ((i % 10) == 0 && sound_is_initialized())
                 cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
@@ -262,7 +262,7 @@ void show_end2()
 
                 scale_put_trans(s, main_screen, ex - (i - 38) * 5, ey + cache.img(mask)->Size().y / 2 + t * 4, nw, nh);
                 if (i == 77)
-                    if (sound_avail & SFX_INITIALIZED)
+                    if (sound_is_initialized())
                         cache.sfx(zip_snd)->play(1.0f);
             }
 
@@ -284,7 +284,7 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
+            if ((i % 10) == 0 && sound_is_initialized())
                 cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
@@ -310,7 +310,7 @@ void show_end2()
                 clist = new ex_char(ex + jrand() % (cache.img(mask)->Size().x - cache.img(mask)->Size().x / 3),
                                     ey + jrand() % (cache.img(mask)->Size().y - cache.img(mask)->Size().y / 3), 0, 1,
                                     clist);
-                if (sound_avail & SFX_INITIALIZED)
+                if (sound_is_initialized())
                     cache.sfx(explo_snd)->play(1.0f);
             }
 
@@ -364,7 +364,7 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
+            if ((i % 10) == 0 && sound_is_initialized())
                 cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
@@ -513,10 +513,10 @@ void show_end()
         if (current_song)
         {
             current_song->stop();
-            delete current_song;
+            current_song.reset();
         }
 
-        current_song = new song("music/victory.hmi");
+        current_song = std::make_unique<song>("music/victory.hmi");
         current_song->play(music_volume);
 
         delete fp;

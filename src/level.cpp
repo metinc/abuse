@@ -1420,11 +1420,11 @@ void level::level_loaded_notify()
             if (current_song)
             {
                 current_song->stop();
-                delete current_song;
+                current_song.reset();
             }
 
             delete fp;
-            current_song = new song(nm);
+            current_song = std::make_unique<song>(nm);
             current_song->play(music_volume);
 
             return;

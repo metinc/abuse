@@ -793,20 +793,6 @@ void dev_controll::toggle_fgw()
                              symbol_str("l_fg"));
 }
 
-void dev_controll::toggle_music_window()
-{
-    /*  if (!music_window)
-  {
-    music_window=wm->CreateWindow(ivec2(-1, 30), ivec2(0, 0),
-             new pick_list(0,0,DEV_MUSIC_PICKLIST,10,song_list,total_songs,0,NULL));
-    wm->fnt->put_string(music_window->m_surf,0,1,"songs");
-  } else
-  {
-    wm->close_window(music_window);
-    music_window=NULL;
-  }*/
-}
-
 void dev_controll::toggle_bgw()
 {
     if (backw)
@@ -987,7 +973,6 @@ dev_controll::dev_controll()
     lightw = NULL;
     search_window = NULL;
     show_menu = NULL;
-    music_window = NULL;
     ambw = NULL;
     load_dev_icons();
 
@@ -2955,14 +2940,6 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
 
-        case DEV_MUSIC_PICKLIST: {
-            /*        int *val=((int *)((pick_list *)ev.message.data)->read());
-        if (current_song) delete current_song;
-        current_song=new song(song_list[*val]);
-        current_song->play();        */
-        }
-        break;
-
         case DEV_OEDIT_OK: {
             close_oedit_window();
         }
@@ -3137,10 +3114,6 @@ void dev_controll::handle_event(Event &ev)
             case 'f':
                 toggle_fgw();
                 break;
-            case 'M':
-                toggle_music_window();
-                break;
-
             case 'b':
                 toggle_bgw();
                 break;

@@ -59,13 +59,13 @@ static bool apply_soundfont(const std::string &selected_soundfont)
 
     const std::string previous_soundfont = settings.soundfont;
     bool applied = sound_set_soundfont(selected_soundfont);
-    if (applied && current_song && (sound_avail & MUSIC_INITIALIZED))
+    if (applied && current_song && sound_is_initialized())
         applied = current_song->reload();
 
     if (!applied)
     {
         fprintf(stderr, "Unable to apply SoundFont '%s'\n", selected_soundfont.c_str());
-        if (sound_set_soundfont(previous_soundfont) && current_song && (sound_avail & MUSIC_INITIALIZED) &&
+        if (sound_set_soundfont(previous_soundfont) && current_song && sound_is_initialized() &&
             !current_song->reload())
             fprintf(stderr, "Unable to restore the previous SoundFont\n");
         return false;
@@ -110,14 +110,14 @@ static void create_audio_settings_window()
                 sfx_volume = increase_audio_volume(sfx_volume);
                 audio_settings_window->draw_sfx_vol();
                 s = "sfx/ambtech1.wav";
-                if (sound_avail & SFX_INITIALIZED)
+                if (sound_is_initialized())
                     cache.sfx(cache.reg(s, s, SPEC_EXTERN_SFX, 1))->play(sfx_volume);
                 break;
             case ID_SFX_DOWN:
                 sfx_volume = decrease_audio_volume(sfx_volume);
                 audio_settings_window->draw_sfx_vol();
                 s = "sfx/ambtech1.wav";
-                if (sound_avail & SFX_INITIALIZED)
+                if (sound_is_initialized())
                     cache.sfx(cache.reg(s, s, SPEC_EXTERN_SFX, 1))->play(sfx_volume);
                 break;
 

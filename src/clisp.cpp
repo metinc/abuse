@@ -2253,16 +2253,16 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::PlaySong: {
-        if ((sound_avail & MUSIC_INITIALIZED))
+        if (sound_is_initialized())
         {
             char *fn = lstring_value(CAR(args));
             if (current_song)
             {
                 if (current_song->playing())
                     current_song->stop();
-                delete current_song;
+                current_song.reset();
             }
-            current_song = new song(fn);
+            current_song = std::make_unique<song>(fn);
             current_song->play(music_volume);
             printf("Playing %s at gain %.2f\n", fn, music_volume);
         }
@@ -2271,8 +2271,7 @@ long c_caller(CFunc number, void *args)
     case CFunc::StopSong: {
         if (current_song && current_song->playing())
             current_song->stop();
-        delete current_song;
-        current_song = NULL;
+        current_song.reset();
     }
     break;
     case CFunc::Targetable:
