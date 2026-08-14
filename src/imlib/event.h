@@ -11,67 +11,50 @@
 #ifndef __EVENT_HPP_
 #define __EVENT_HPP_
 
-/* Q: Why are these powers of 2? They're never ORed together... */
-#define EV_MOUSE_MOVE 1
-#define EV_MOUSE_BUTTON 2
-#define EV_KEY 4
-#define EV_TEXT_INPUT 8
-/*#define EV_REDRAW        16 UNUSED */
-#define EV_SPURIOUS 32
-/* RESIZE is effectively unused (it can never be generated) */
-#define EV_RESIZE 64
-#define EV_KEYRELEASE 128
-#define EV_CLOSE_WINDOW 256
-/* DRAG_WINDOW is effectively unused (it CAN be generated, but is never processed) */
-#define EV_DRAG_WINDOW 512
-#define EV_MESSAGE 1024
+enum EventType
+{
+    EV_SPURIOUS,
+    EV_MOUSE_MOVE,
+    EV_MOUSE_BUTTON,
+    EV_KEY,
+    EV_KEYRELEASE,
+    EV_TEXT_INPUT,
+    EV_CLOSE_WINDOW,
+    EV_MESSAGE,
+};
 
-#define LEFT_BUTTON 1
-#define RIGHT_BUTTON 2
-#define MIDDLE_BUTTON 4
+constexpr int LEFT_BUTTON = 1;
+constexpr int RIGHT_BUTTON = 2;
+constexpr int MIDDLE_BUTTON = 4;
 
 #include "keys.h"
 #include "sprite.h"
 
+#include <deque>
 #include <string>
+#include <utility>
 
 class Jwindow;
 
-class Event : public linked_node
+class Event
 {
   public:
-    Event()
+    Event() = default;
+    explicit Event(int id, void *data = nullptr) : type(EV_MESSAGE), message{id, data}
     {
-        type = EV_SPURIOUS;
-        mouse_move = ivec2(0, 0);
-        mouse_button = 0;
-        key = 0;
-        window = NULL;
-        message.id = 0;
-        message.data = NULL;
     }
 
-    Event(int id, char *data)
-    {
-        type = EV_MESSAGE;
-        mouse_move = ivec2(0, 0);
-        mouse_button = 0;
-        key = 0;
-        window = NULL;
-        message.id = id;
-        message.data = data;
-    }
-
-    int type;
-    ivec2 mouse_move;
-    int mouse_button, key;
+    EventType type = EV_SPURIOUS;
+    ivec2 mouse_move = ivec2(0, 0);
+    int mouse_button = 0;
+    int key = JK_NONE;
     std::string text;
 
-    Jwindow *window; // NULL is root
+    Jwindow *window = nullptr;
     struct
     {
-        int id;
-        char *data;
+        int id = 0;
+        void *data = nullptr;
     } message;
 };
 
@@ -81,12 +64,16 @@ class EventHandler
     EventHandler(image *screen, palette *pal);
     ~EventHandler();
 
-    void Push(Event *ev)
+    void Push(Event event)
     {
-        m_events.add_end(ev);
+        m_events.push_back(std::move(event));
+    }
+    void PushMessage(int id, void *data = nullptr)
+    {
+        m_events.emplace_back(id, data);
     }
 
-    int IsPending();
+    bool IsPending();
     void Get(Event &ev);
     void flush_screen();
 
@@ -106,8 +93,7 @@ class EventHandler
         m_ignore_wheel_events = ignore;
     }
   private:
-    linked_list m_events;
-    int m_pending;
+    std::deque<Event> m_events;
     bool m_ignore_wheel_events = false;
     // "Dead zone" before motion of a stick "counts".
     // Maximum stick values are 0x7FFF, currently I've

@@ -116,7 +116,7 @@ void ico_button::draw(int hover, image *screen)
 
     // Event is needed to show save game preview on hover
     if (hover && activate_id != -1 && enabled)
-        wm->Push(new Event(activate_id, NULL));
+        wm->PushMessage(activate_id);
 
     if (!hover)
         up = 1;
@@ -160,7 +160,7 @@ void ico_button::handle_event(Event &ev, image *screen, InputManager *im)
     }
     if (up)
     {
-        wm->Push(new Event(id, (char *)this));
+        wm->PushMessage(id, this);
         if (S_BUTTON_PRESS_SND)
             cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
     }

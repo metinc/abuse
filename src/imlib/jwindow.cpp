@@ -119,9 +119,9 @@ void WindowManager::get_event(Event &ev)
 {
     Get(ev);
 
-    if (ev.type == EV_KEY)
+    if (ev.type == EV_KEY && key_is_valid(ev.key))
         key_state[ev.key] = 1;
-    else if (ev.type == EV_KEYRELEASE)
+    else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
         key_state[ev.key] = 0;
 
     if (state == inputing)
@@ -266,7 +266,7 @@ WindowManager::WindowManager(image *screen, palette *pal, int Hi, int Med, int L
     state = inputing;
     fnt = Font;
     wframe_fnt = Font;
-    memset(key_state, 0, sizeof(key_state));
+    key_state.fill(0);
     frame_suppress = 0;
 }
 

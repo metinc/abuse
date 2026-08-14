@@ -2304,7 +2304,7 @@ void dev_controll::handle_event(Event &ev)
             char cmd[100];
             sprintf(cmd, "load %s", mess_win->read(ID_MESS_STR1));
             dev_cont->do_command(cmd, ev);
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
         case ID_GAME_SAVE: {
@@ -2343,8 +2343,8 @@ void dev_controll::handle_event(Event &ev)
             if (current_level)
             {
                 current_level->set_name(mess_win->read(ID_MESS_STR1));
-                wm->Push(new Event(ID_CANCEL, NULL)); // close window after save
-                wm->Push(new Event(ID_LEVEL_SAVE, NULL));
+                wm->PushMessage(ID_CANCEL); // close window after save
+                wm->PushMessage(ID_LEVEL_SAVE);
             }
         }
         break;
@@ -2390,7 +2390,7 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
         case ID_LEVEL_NEW_OK: {
-            wm->Push(new Event(ID_CANCEL, NULL)); // close_window
+            wm->PushMessage(ID_CANCEL); // close_window
             if (current_level)
                 delete current_level;
             current_level = new level(100, 100, "untitled.spe");
@@ -2420,7 +2420,7 @@ void dev_controll::handle_event(Event &ev)
             }
             else
                 the_game->show_help("Create a level first!");
-            wm->Push(new Event(ID_CANCEL, NULL)); // close_window
+            wm->PushMessage(ID_CANCEL); // close_window
         }
         break;
 
@@ -2470,7 +2470,7 @@ void dev_controll::handle_event(Event &ev)
 
         case ID_RECORD_DEMO_OK: {
             demo_man.set_state(demo_manager::RECORDING, mess_win->read(ID_RECORD_DEMO_FILENAME));
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
 
@@ -2535,13 +2535,13 @@ void dev_controll::handle_event(Event &ev)
                 wm->grab_focus(warn_win);
             }
             else
-                wm->Push(new Event(ID_SET_SCROLL_OK, NULL));
+                wm->PushMessage(ID_SET_SCROLL_OK);
         }
         break;
         case ID_WARN_CANCEL: {
             wm->close_window(warn_win);
             warn_win = NULL;
-            wm->Push(new Event(ID_CANCEL, NULL));
+            wm->PushMessage(ID_CANCEL);
         }
         break;
         case ID_SET_SCROLL_OK: {
@@ -2554,7 +2554,7 @@ void dev_controll::handle_event(Event &ev)
             bg_xdiv = atoi(mess_win->read(ID_MESS_STR2));
             bg_ymul = atoi(mess_win->read(ID_MESS_STR3));
             bg_ydiv = atoi(mess_win->read(ID_MESS_STR4));
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
 
@@ -2593,7 +2593,7 @@ void dev_controll::handle_event(Event &ev)
                     atoi(mess_win->read(ID_MESS_STR1)), atoi(mess_win->read(ID_MESS_STR2)));
             char const *s = name;
             LObject::Compile(s)->Eval();
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
         case ID_TOGGLE_DELAY: {
@@ -2940,7 +2940,7 @@ void dev_controll::handle_event(Event &ev)
         break;
 
         case DEV_CREATE: {
-            int val = get_omenu_item(((pick_list *)ev.message.data)->get_selection());
+            int val = get_omenu_item(static_cast<pick_list *>(ev.message.data)->get_selection());
             char cmd[100];
             sprintf(cmd, "create %s", object_names[val]);
             do_command(cmd, ev);
@@ -2950,7 +2950,7 @@ void dev_controll::handle_event(Event &ev)
         break;
 
         case DEV_PALETTE: {
-            int val = ((pick_list *)ev.message.data)->get_selection();
+            int val = static_cast<pick_list *>(ev.message.data)->get_selection();
             pal_wins[val]->open_window();
         }
         break;
@@ -3151,7 +3151,7 @@ void dev_controll::handle_event(Event &ev)
                 if (selected_object)
                 {
                     if (oedit)
-                        wm->Push(new Event(DEV_OEDIT_OK, NULL));
+                        wm->PushMessage(DEV_OEDIT_OK);
                     make_ai_window(selected_object);
                 }
             }
@@ -3235,7 +3235,7 @@ void dev_controll::handle_event(Event &ev)
                 if (selected_object && selected_object->controller() == NULL)
                 {
                     copy_object = selected_object;
-                    wm->Push(new Event(DEV_OEDIT_COPY, NULL));
+                    wm->PushMessage(DEV_OEDIT_COPY);
                 }
                 break;
 

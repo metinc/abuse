@@ -499,14 +499,14 @@ void pick_list::draw_item(image *screen, int x, int y, int num, int active)
 
 void pick_list::note_selection(image *screen, InputManager *inm, int x)
 {
-    wm->Push(new Event(id, (char *)this));
+    wm->PushMessage(id, this);
 }
 
 void pick_list::handle_inside_event(Event &ev, image *screen, InputManager *inm)
 {
     if (ev.type == EV_KEY && ev.key == JK_ENTER)
     {
-        wm->Push(new Event(id, (char *)this));
+        wm->PushMessage(id, this);
     }
     else if (ev.type == EV_TEXT_INPUT)
     {

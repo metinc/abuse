@@ -625,7 +625,7 @@ void main_menu()
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm->handle_event(ev, NULL);
             if (ev.type == EV_KEY && ev.key == JK_ESC && current_level)
-                wm->Push(new Event(ID_RETURN, NULL));
+                wm->PushMessage(ID_RETURN);
 
             menu_handler(ev, inm);
             start.get_time();

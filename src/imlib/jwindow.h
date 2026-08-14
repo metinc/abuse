@@ -24,6 +24,8 @@
 #include "filter.h"
 #include "fonts.h"
 
+#include <array>
+
 class ifield;
 class WindowManager;
 class Jwindow;
@@ -218,7 +220,7 @@ class WindowManager : public EventHandler
     Jwindow *m_first, *m_grab;
     image *mouse_pic, *mouse_save;
     int hi, med, low, bk; // bright, medium, dark and black colors
-    int key_state[512];
+    std::array<uint8_t, JK_KEY_COUNT> key_state{};
     enum
     {
         inputing,
@@ -278,9 +280,9 @@ class WindowManager : public EventHandler
         return fnt;
     }
 
-    int key_pressed(int x)
+    bool key_pressed(int key) const
     {
-        return key_state[x];
+        return key_is_valid(key) && key_state[key] != 0;
     }
     void hide_windows();
     void show_windows();

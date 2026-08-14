@@ -59,7 +59,7 @@ class demo_manager
 extern demo_manager demo_man;
 
 extern void get_event(Event &ev);
-extern int event_waiting();
+extern bool event_waiting();
 
 extern ivec2 last_demo_mpos;
 extern int last_demo_mbut;

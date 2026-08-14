@@ -85,7 +85,7 @@ class Game
 
     Jwindow *top_menu, *last_input;
     JCFont *game_font;
-    uint8_t keymap[512 / 8];
+    uint8_t keymap[JK_KEY_COUNT / 8];
 
   public:
     JCFont *save_game_font; //AR
@@ -94,11 +94,13 @@ class Game
 
     int key_down(int key)
     {
-        return keymap[key / 8] & (1 << (key % 8));
+        return key_is_valid(key) && (keymap[key / 8] & (1 << (key % 8)));
     }
     //AR x=1 -> key pressed, x=0 key released
     void set_key_down(int key, int x)
     {
+        if (!key_is_valid(key))
+            return;
         if (x)
             keymap[key / 8] |= (1 << (key % 8));
         else

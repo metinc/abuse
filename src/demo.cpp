@@ -60,7 +60,7 @@ void get_event(Event &ev)
     last_demo_mbut = ev.mouse_button;
 }
 
-int event_waiting()
+bool event_waiting()
 {
     return wm->IsPending();
 }
@@ -243,7 +243,7 @@ int demo_manager::set_state(demo_state new_state, char *filename)
         // uses this state to choose the cursor, and PLAYING selects a blank one.
         state = NORMAL;
         the_game->set_state(MENU_STATE);
-        wm->Push(new Event(ID_NULL, NULL));
+        wm->PushMessage(ID_NULL);
 
         view *v = player_list;
         for (; v; v = v->next) // reset all the players

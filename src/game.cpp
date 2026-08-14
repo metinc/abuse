@@ -474,7 +474,7 @@ void Game::menu_select(Event &ev)
     if (top_menu)
     {
 #if 0
-        wm->Push(new Event(men_mess[((pick_list *)ev.message.data)->get_selection()], NULL));
+        wm->PushMessage(men_mess[static_cast<pick_list *>(ev.message.data)->get_selection()]);
         wm->close_window(top_menu);
         top_menu = NULL;
 #endif
@@ -1689,9 +1689,9 @@ void Game::get_input()
         // don't process repeated keys in the main window, it will slow down the game to handle such
         // useless events. However in other windows it might be useful, such as in input windows
         // where you want to repeatedly scroll down...
-        if (ev.type != EV_KEY || !key_down(ev.key) || ev.window || (dev & EDIT_MODE))
+        if (ev.type != EV_KEY || !key_is_valid(ev.key) || !key_down(ev.key) || ev.window || (dev & EDIT_MODE))
         {
-            if (ev.type == EV_KEY)
+            if (ev.type == EV_KEY && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 1);
                 if (playing_state(state))
@@ -1716,7 +1716,7 @@ void Game::get_input()
                     }
                 }
             }
-            else if (ev.type == EV_KEYRELEASE)
+            else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 0);
                 if (playing_state(state))
@@ -1829,7 +1829,7 @@ void Game::get_input()
                         }
                         break;
                         case 'v': {
-                            wm->Push(new Event(DO_VOLUME, NULL));
+                            wm->PushMessage(DO_VOLUME);
                         }
                         break;
                         case 'p': {
@@ -1844,7 +1844,7 @@ void Game::get_input()
                         case 'S': {
                             if (start_edit)
                             {
-                                wm->Push(new Event(ID_LEVEL_SAVE, NULL));
+                                wm->PushMessage(ID_LEVEL_SAVE);
                             }
                         }
                         break;
@@ -1863,28 +1863,6 @@ void Game::get_input()
                             need_refresh();
                             break;
                         }
-                    }
-                    break;
-                    case EV_RESIZE: {
-                        view *v;
-                        for (v = first_view; v; v = v->next) // see if any views need to change size
-                        {
-                            if (v->local_player())
-                            {
-                                int w = (xres - 10) / (small_render ? 2 : 1);
-                                int h = (yres - 10) / (small_render ? 2 : 1);
-
-                                v->suggest.send_view = 1;
-                                v->suggest.cx1 = 5;
-                                v->suggest.cx2 = 5 + w;
-                                v->suggest.cy1 = 5;
-                                v->suggest.cy2 = 5 + h;
-                                v->suggest.pan_x = v->pan_x;
-                                v->suggest.pan_y = v->pan_y;
-                                v->suggest.shift = v->m_shift;
-                            }
-                        }
-                        draw();
                     }
                     break;
                     case EV_MESSAGE: {

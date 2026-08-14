@@ -330,7 +330,7 @@ void text_field::handle_event(Event &ev, image *screen, InputManager *im)
                 data[strlen(format) - 1] = ' ';
                 draw_text(screen);
                 draw_cur(wm->bright_color(), screen);
-                wm->Push(new Event(id, (char *)this));
+                wm->PushMessage(id, this);
             }
             break;
         default:
@@ -362,7 +362,7 @@ void text_field::handle_event(Event &ev, image *screen, InputManager *im)
         if (changed)
         {
             draw_text(screen);
-            wm->Push(new Event(id, (char *)this));
+            wm->PushMessage(id, this);
         }
         draw_cur(wm->bright_color(), screen);
     }
@@ -455,7 +455,7 @@ void button::handle_event(Event &ev, image *screen, InputManager *im)
             up = !up;
         draw_first(screen);
         draw(act, screen);
-        wm->Push(new Event(id, (char *)this));
+        wm->PushMessage(id, this);
     }
 }
 
@@ -464,7 +464,7 @@ void button::draw(int active, image *screen)
     int x1, y1, x2, y2, color = (active ? wm->bright_color() : wm->medium_color());
     area(x1, y1, x2, y2);
     if (active != act && act_id != -1 && active)
-        wm->Push(new Event(act_id, NULL));
+        wm->PushMessage(act_id);
 
     // Leaving a button while holding the mouse cancels its temporary press.
     if (!active && press_active)

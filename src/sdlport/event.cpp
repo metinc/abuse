@@ -48,8 +48,6 @@ extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
 
-static short mouse_buttons[5] = {0, 0, 0, 0, 0};
-
 static ivec2 window_to_game(float window_x, float window_y)
 {
     float game_x;
@@ -85,7 +83,6 @@ static bool use_left_stick = false;
 EventHandler::EventHandler(image *screen, palette *pal)
 {
     m_dead_zone = 10000;
-    m_pending = 0;
     m_ignore_wheel_events = false;
     m_button = 0;
     m_center = ivec2(0, 0);
@@ -131,110 +128,40 @@ void EventHandler::SetMousePos(ivec2 pos)
 // IsPending()
 // Are there any events in the queue?
 //
-int EventHandler::IsPending()
+bool EventHandler::IsPending()
 {
-    if (!m_pending)
-        m_pending = m_events.first() != NULL || SDL_PollEvent(NULL);
-    return m_pending;
+    return !m_events.empty() || SDL_PollEvent(nullptr);
 }
 
 void EventHandler::Get(Event &ev)
 {
-    while (!m_pending)
+    if (!m_events.empty())
     {
-        IsPending();
-        if (!m_pending)
-            SDL_Delay(1);
-    }
-
-    Event *queued = static_cast<Event *>(m_events.first());
-    if (queued)
-    {
-        ev = *queued;
-        m_events.unlink(queued);
-        delete queued;
-        m_pending = m_events.first() != nullptr;
+        ev = std::move(m_events.front());
+        m_events.pop_front();
         return;
     }
 
-    // No more events
-    m_pending = 0;
-
-    // NOTE : that the mouse status should be known
-    // even if another event has occurred.
-
-    ev.mouse_move.x = m_pos.x;
-    ev.mouse_move.y = m_pos.y;
+    ev = Event{};
+    ev.mouse_move = m_pos;
     ev.mouse_button = m_button;
 
-    // Gather next event
     SDL_Event sdlev;
-    if (!SDL_PollEvent(&sdlev))
-        return; // This should not happen
+    if (!SDL_WaitEvent(&sdlev))
+        return;
 
-    // Sort the mouse out
     float x_f, y_f;
-    SDL_MouseButtonFlags buttons = SDL_GetMouseState(&x_f, &y_f);
+    SDL_GetMouseState(&x_f, &y_f);
     const ivec2 game_pos = window_to_game(x_f, y_f);
-
-    ev.mouse_move.x = game_pos.x;
-    ev.mouse_move.y = game_pos.y;
-    ev.type = EV_MOUSE_MOVE;
-
-    // Left button
-    if ((buttons & SDL_BUTTON_LMASK) && !mouse_buttons[1])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[1] = !mouse_buttons[1];
-        ev.mouse_button |= LEFT_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_LMASK) && mouse_buttons[1])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[1] = !mouse_buttons[1];
-        ev.mouse_button &= (0xff - LEFT_BUTTON);
-    }
-
-    // Middle button
-    if ((buttons & SDL_BUTTON_MMASK) && !mouse_buttons[2])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button |= MIDDLE_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_MMASK) && mouse_buttons[2])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button &= (0xff - MIDDLE_BUTTON);
-    }
-
-    // Right button
-    if ((buttons & SDL_BUTTON_RMASK) && !mouse_buttons[3])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[3] = !mouse_buttons[3];
-        ev.mouse_button |= RIGHT_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_RMASK) && mouse_buttons[3])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[3] = !mouse_buttons[3];
-        ev.mouse_button &= (0xff - RIGHT_BUTTON);
-    }
-
-    m_pos = ivec2(ev.mouse_move.x, ev.mouse_move.y);
-    m_button = ev.mouse_button;
+    ev.mouse_move = game_pos;
+    m_pos = game_pos;
 
     // Sort out other kinds of events
     switch (sdlev.type)
     {
+    case SDL_EVENT_MOUSE_MOTION:
+        ev.type = EV_MOUSE_MOVE;
+        break;
     case SDL_EVENT_QUIT:
         exit(EXIT_SUCCESS);
         break;
@@ -285,40 +212,47 @@ void EventHandler::Get(Event &ev)
         {
             // We also need to immediately queue a "release" event or this will
             // be stuck down forever.
-            Event *release_event = new Event(ev);
-            release_event->key = ev.key;
-            release_event->type = EV_KEYRELEASE;
-            Push(release_event);
+            Event release_event = ev;
+            release_event.type = EV_KEYRELEASE;
+            Push(std::move(release_event));
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        // These were the old mouse wheel handlers, but honestly, using
-        // B4 and B5 for weapon switching works.
+    case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+        const bool pressed = sdlev.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+        int button = 0;
         switch (sdlev.button.button)
         {
-        case 4: // Mouse wheel goes up...
-            ev.key = get_key_binding("b4", 0);
-            ev.type = EV_KEYRELEASE;
+        case SDL_BUTTON_LEFT:
+            button = LEFT_BUTTON;
             break;
-        case 5: // Mouse wheel goes down...
+        case SDL_BUTTON_MIDDLE:
+            button = MIDDLE_BUTTON;
+            break;
+        case SDL_BUTTON_RIGHT:
+            button = RIGHT_BUTTON;
+            break;
+        case SDL_BUTTON_X1:
+            ev.key = get_key_binding("b4", 0);
+            ev.type = pressed ? EV_KEY : EV_KEYRELEASE;
+            break;
+        case SDL_BUTTON_X2:
             ev.key = get_key_binding("b3", 0);
-            ev.type = EV_KEYRELEASE;
+            ev.type = pressed ? EV_KEY : EV_KEYRELEASE;
             break;
         }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        switch (sdlev.button.button)
+
+        if (button)
         {
-        case 4: // Mouse wheel goes up...
-            ev.key = get_key_binding("b4", 0);
-            ev.type = EV_KEY;
-            break;
-        case 5: // Mouse wheel goes down...
-            ev.key = get_key_binding("b3", 0);
-            ev.type = EV_KEY;
-            break;
+            if (pressed)
+                m_button |= button;
+            else
+                m_button &= ~button;
+            ev.mouse_button = m_button;
+            ev.type = EV_MOUSE_BUTTON;
         }
         break;
+    }
     case SDL_EVENT_TEXT_INPUT:
         ev.type = EV_TEXT_INPUT;
         ev.text = sdlev.text.text ? sdlev.text.text : "";
@@ -326,10 +260,7 @@ void EventHandler::Get(Event &ev)
 
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
-        //AR EV_SPURIOUS has the same value as JK_SPACE, so this is probably all wrong
-
-        // Default to EV_SPURIOUS
-        ev.key = EV_SPURIOUS;
+        ev.key = JK_NONE;
 
         if (sdlev.type == SDL_EVENT_KEY_DOWN)
             ev.type = EV_KEY;
@@ -482,13 +413,13 @@ void EventHandler::Get(Event &ev)
         case SDLK_F11: //AR scale window up
             if (ev.type == EV_KEYRELEASE)
                 video_change_settings(1, false);
-            ev.key = JK_F10; //AR JK_F11 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            ev.key = JK_NONE;
             break;
 
         case SDLK_F12: //AR scale window down
             if (ev.type == EV_KEYRELEASE)
                 video_change_settings(-1, false);
-            ev.key = JK_F10; //AR JK_F12 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            ev.key = JK_NONE;
             break;
 
         case SDLK_PRINTSCREEN: //grab a screenshot
@@ -497,7 +428,7 @@ void EventHandler::Get(Event &ev)
                 SDL_SaveBMP(surface, "screenshot.bmp");
                 the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
             }
-            ev.key = EV_SPURIOUS;
+            ev.key = JK_NONE;
             break;
 
         default:
@@ -505,12 +436,8 @@ void EventHandler::Get(Event &ev)
             if (the_game->state == MENU_STATE)
                 keycode = SDL_GetKeyFromScancode(sdlev.key.scancode, sdlev.key.mod, false);
 
-            //AR this will crash in game.cpp calling key_down() which can go up to 64
-            //so I set it to a random key which shouldn't do anything in the game
-            if (keycode > JK_MAX_KEY)
-                ev.key = JK_MAX_KEY;
-            else
-                ev.key = static_cast<int>(keycode);
+            const int key = static_cast<int>(keycode);
+            ev.key = key_is_valid(key) ? key : JK_NONE;
             break;
         }
         break;
@@ -530,7 +457,7 @@ void EventHandler::Get(Event &ev)
                     }
                 }
             ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = EV_SPURIOUS;
+            ev.key = JK_NONE;
             return;
         }
         else if (settings.ctr_f9 == sdlev.gbutton.button) //AR quick load
@@ -539,7 +466,7 @@ void EventHandler::Get(Event &ev)
                 if (!settings.quick_load.empty())
                     the_game->request_level_load(settings.quick_load);
             ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = EV_SPURIOUS;
+            ev.key = JK_NONE;
             return;
         }
 
@@ -623,18 +550,18 @@ void EventHandler::Get(Event &ev)
         const char *bindings[] = {"up", "down", "left", "right", "b1", "b2", "b3", "b4"};
         for (const char *binding : bindings)
         {
-            Event *release = new Event;
-            release->type = EV_KEYRELEASE;
-            release->key = get_key_binding(binding, 0);
-            Push(release);
+            Event release;
+            release.type = EV_KEYRELEASE;
+            release.key = get_key_binding(binding, 0);
+            Push(std::move(release));
         }
         const int special_keys[] = {JK_ENTER, JK_ESC, JK_F1};
         for (int key : special_keys)
         {
-            Event *release = new Event;
-            release->type = EV_KEYRELEASE;
-            release->key = key;
-            Push(release);
+            Event release;
+            release.type = EV_KEYRELEASE;
+            release.key = key;
+            Push(std::move(release));
         }
         ev.type = EV_SPURIOUS;
         break;

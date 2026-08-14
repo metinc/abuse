@@ -129,7 +129,7 @@ class soundfont_picker : public pick_list
 
     void note_new_current(image *screen, InputManager *inm, int x) override
     {
-        wm->Push(new Event(id, (char *)this));
+        wm->PushMessage(id, this);
     }
 
     void set_x(int x, image *screen) override
@@ -137,7 +137,7 @@ class soundfont_picker : public pick_list
         const int previous = first_selected();
         pick_list::set_x(x, screen);
         if (first_selected() != previous)
-            wm->Push(new Event(id, (char *)this));
+            wm->PushMessage(id, this);
     }
 
     void set_x_silently(int x, image *screen)
