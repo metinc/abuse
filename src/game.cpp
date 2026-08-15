@@ -1470,6 +1470,9 @@ Game::Game(int argc, char **argv)
             exit(EXIT_SUCCESS);
         }
         net_reload();
+        // dev_init() deliberately resets start_running after the network
+        // setup. Enter gameplay only after the client has loaded the level.
+        start_running = current_level != NULL;
         //    load_level(NET_STARTFILE);
     }
 
@@ -2321,9 +2324,7 @@ void game_net_init(int argc, char **argv)
         set_file_opener(open_nfs_file);
         if (main_net_cfg && main_net_cfg->state == net_configuration::CLIENT)
         {
-            if (set_file_server(net_server))
-                start_running = 1;
-            else
+            if (!set_file_server(net_server))
             {
                 printf("Unable to attach to server, quitting\n");
                 exit(EXIT_SUCCESS);
