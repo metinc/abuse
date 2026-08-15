@@ -99,7 +99,9 @@ void button_box::draw_first(image *screen)
 
 void button_box::draw(int active, image *screen)
 {
-    return;
+    if (!active)
+        for (button *b = buttons; b; b = (button *)b->next)
+            b->draw(0, screen);
 }
 
 void button_box::Move(ivec2 pos)
@@ -441,7 +443,6 @@ void button::handle_event(Event &ev, image *screen, InputManager *im)
         {
             press_active = true;
             draw_first(screen);
-            draw(act, screen);
         }
         return;
     }
@@ -497,7 +498,13 @@ void button::draw_first(image *screen)
 {
     if (pressed)
     {
-        draw(0, screen);
+        const bool draw_up = up && !press_active;
+        if (!draw_up)
+            screen->PutImage(act_pict, m_pos);
+        else if (act)
+            screen->PutImage(pressed, m_pos);
+        else
+            screen->PutImage(visual, m_pos);
         return;
     }
 

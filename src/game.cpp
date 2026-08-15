@@ -674,7 +674,7 @@ void controller_aim(view *v)
     const float elapsed = std::min(static_cast<float>(now - last_update) / 1000000000.0f, 0.1f);
     last_update = now;
 
-    if (!settings.gamepad_enabled)
+    if (!settings.gamepad_enabled || (chat && chat->showing()))
         return;
 
     const float input_x = settings.ctr_aim_x;
@@ -1650,9 +1650,71 @@ extern int start_edit;
 void Game::get_input()
 {
     Event ev;
+
+    auto clear_player_input = [this]() {
+        reset_keymap();
+        for (view *v = first_view; v; v = v->next)
+            if (v->local_player())
+                v->reset_keymap();
+        last_demo_mbut = 0;
+    };
+
+    auto send_chat_key = [](int key) {
+        base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+        base->packet.write_uint8(client_number());
+        base->packet.write_uint8(key);
+    };
+
     while (event_waiting())
     {
         get_event(ev);
+
+        if (chat && chat->showing())
+        {
+            // The chat window is modal. WindowManager has already handled
+            // dragging and its close button, but none of this event may reach
+            // the player controls.
+            last_demo_mbut = 0;
+            if ((ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && key_is_valid(ev.key))
+                set_key_down(ev.key, 0);
+
+            if (ev.type == EV_TEXT_INPUT)
+            {
+                const bool activation_text = suppress_chat_activation_text && (ev.text == "t" || ev.text == "T");
+                suppress_chat_activation_text = false;
+                if (!activation_text)
+                    for (unsigned char ch : ev.text)
+                        if (ch >= ' ' && ch <= '~')
+                            send_chat_key(ch);
+            }
+            else if (ev.type == EV_KEY)
+            {
+                if (ev.key == JK_BACKSPACE || ev.key == JK_ENTER)
+                    send_chat_key(ev.key);
+                else if (ev.key == JK_ESC)
+                {
+                    suppress_chat_activation_text = false;
+                    chat->toggle();
+                    clear_player_input();
+                }
+            }
+            else if (ev.type == EV_CLOSE_WINDOW && chat->chat_event(ev))
+            {
+                suppress_chat_activation_text = false;
+                chat->toggle();
+                clear_player_input();
+            }
+            continue;
+        }
+
+        if (state == RUN_STATE && ev.window == nullptr && ev.type == EV_KEY && (ev.key == 't' || ev.key == 'T') &&
+            chatting_enabled && !(dev & EDIT_MODE) && chat)
+        {
+            suppress_chat_activation_text = true;
+            chat->toggle();
+            clear_player_input();
+            continue;
+        }
 
         if (ev.type == EV_MOUSE_MOVE)
         {
@@ -1668,24 +1730,9 @@ void Game::get_input()
                 set_key_down(ev.key, 1);
                 if (playing_state(state))
                 {
-                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
-                    if (!printable_chat_key)
-                    {
-                        if (ev.key < 256)
-                        {
-                            if (chat && chat->chat_event(ev))
-                                base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
-                            else
-                                base->packet.write_uint8(SCMD_KEYPRESS);
-                        }
-                        else
-                            base->packet.write_uint8(SCMD_EXT_KEYPRESS);
-                        base->packet.write_uint8(client_number());
-                        if (ev.key > 256)
-                            base->packet.write_uint8(ev.key - 256);
-                        else
-                            base->packet.write_uint8(ev.key);
-                    }
+                    base->packet.write_uint8(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS);
+                    base->packet.write_uint8(client_number());
+                    base->packet.write_uint8(ev.key > 256 ? ev.key - 256 : ev.key);
                 }
             }
             else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
@@ -1693,30 +1740,9 @@ void Game::get_input()
                 set_key_down(ev.key, 0);
                 if (playing_state(state))
                 {
-                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
-                    if (!printable_chat_key)
-                    {
-                        if (ev.key < 256)
-                            base->packet.write_uint8(SCMD_KEYRELEASE);
-                        else
-                            base->packet.write_uint8(SCMD_EXT_KEYRELEASE);
-                        base->packet.write_uint8(client_number());
-                        if (ev.key > 255)
-                            base->packet.write_uint8(ev.key - 256);
-                        else
-                            base->packet.write_uint8(ev.key);
-                    }
-                }
-            }
-            else if (ev.type == EV_TEXT_INPUT && playing_state(state) && chat && chat->chat_event(ev))
-            {
-                for (unsigned char ch : ev.text)
-                {
-                    if (ch < ' ' || ch > '~')
-                        continue;
-                    base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+                    base->packet.write_uint8(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE);
                     base->packet.write_uint8(client_number());
-                    base->packet.write_uint8(ch);
+                    base->packet.write_uint8(ev.key > 255 ? ev.key - 256 : ev.key);
                 }
             }
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
@@ -1820,11 +1846,6 @@ void Game::get_input()
                             if (start_edit)
                                 toggle_edit_mode();
                             need_refresh();
-                            break;
-                        case 'c':
-                        case 'C':
-                            if (chatting_enabled && (!(dev & EDIT_MODE) && chat))
-                                chat->toggle();
                             break;
                         case '9':
                             dev = dev ^ PERFORMANCE_TEST_MODE;

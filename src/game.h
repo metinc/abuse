@@ -86,6 +86,7 @@ class Game
     Jwindow *top_menu, *last_input;
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
+    bool suppress_chat_activation_text = false;
 
   public:
     JCFont *save_game_font; //AR

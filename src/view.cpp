@@ -354,17 +354,25 @@ uint16_t make_sync()
 
 void view::get_input()
 {
-    int sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4;
+    int sug_x = 0, sug_y = 0, sug_b1 = 0, sug_b2 = 0, sug_b3 = 0, sug_b4 = 0;
     ivec2 sug_p(0, 0);
 
-    get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
-    if (m_focus)
+    if (chat && chat->showing())
     {
-        sug_p = the_game->MouseToGame(last_demo_mpos);
-        if (last_demo_mbut & 1)
-            sug_b2 = 1;
-        if (last_demo_mbut & 2)
-            sug_b1 = 1;
+        // Keep the aim fixed while the pointer is being used by the chat UI.
+        sug_p = ivec2(pointer_x, pointer_y);
+    }
+    else
+    {
+        get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
+        if (m_focus)
+        {
+            sug_p = the_game->MouseToGame(last_demo_mpos);
+            if (last_demo_mbut & 1)
+                sug_b2 = 1;
+            if (last_demo_mbut & 2)
+                sug_b1 = 1;
+        }
     }
 
     if (view_changed())
