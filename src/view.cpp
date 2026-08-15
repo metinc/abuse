@@ -200,7 +200,7 @@ void view::update_scroll(float interpolation_ratio)
         m_lastpos.y = std::min(m_lastpos.y, m_focus->y + no_ytop);
 }
 
-static char cur_user_name[20] = {0};
+static char cur_user_name[100] = {0};
 
 char const *get_login()
 {
@@ -227,7 +227,8 @@ char const *get_login()
 
 void set_login(char const *name)
 {
-    strncpy(cur_user_name, name, 20);
+    strncpy(cur_user_name, name, sizeof(cur_user_name) - 1);
+    cur_user_name[sizeof(cur_user_name) - 1] = '\0';
 }
 
 view::view(game_object *focus, view *Next, int number)

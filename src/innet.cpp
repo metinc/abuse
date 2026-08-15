@@ -166,9 +166,9 @@ int net_init(int argc, char **argv)
     prot = usable;
     prot->set_debug_printing((net_protocol::debug_type)db_level);
 
-    if (main_net_cfg->state == net_configuration::SERVER)
+    if (main_net_cfg->state == net_configuration::SERVER || main_net_cfg->state == net_configuration::CLIENT)
     {
-        DEBUG_LOG("Initializing as server");
+        DEBUG_LOG("Using configured player name: %s", main_net_cfg->name);
         set_login(main_net_cfg->name);
     }
 
