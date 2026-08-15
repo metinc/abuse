@@ -1980,7 +1980,18 @@ void Game::Step()
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 
-    if ((key_down('x') || key_down(JK_F4)) && (key_down(JK_ALT_L) || key_down(JK_ALT_R)))
+    const bool alt_pressed = key_down(JK_ALT_L) || key_down(JK_ALT_R);
+    if (key_down('x') && alt_pressed)
+    {
+        if (dev & EDIT_MODE)
+        {
+            if (confirm_quit())
+                end_session();
+        }
+        else
+            finished = true;
+    }
+    else if (key_down(JK_F4) && alt_pressed)
         finished = true;
 }
 
