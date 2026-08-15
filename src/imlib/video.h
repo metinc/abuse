@@ -33,6 +33,8 @@ bool video_save_screenshot(char const *filename);
 void close_framebuffer();
 void close_graphics();
 
+image *video_present_screen();
 void update_dirty(image *im, int xoff = 0, int yoff = 0);
+void present_framebuffer();
 
 #endif

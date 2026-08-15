@@ -2406,13 +2406,12 @@ int main(int argc, char *argv[])
 
         Uint64 lastFixedUpdate = SDL_GetTicks(); // last fixed 65 ms update
 
-        Uint64 frameStart;
-        float targetFrameTime = 1000.0f / static_cast<float>(settings.max_fps);
+        constexpr Uint64 NANOSECONDS_PER_SECOND = 1000000000;
+        const Uint64 target_frame_time = NANOSECONDS_PER_SECOND / static_cast<Uint64>(settings.max_fps);
+        Uint64 frame_deadline = SDL_GetTicksNS() + target_frame_time;
 
         while (!g->done())
         {
-            frameStart = SDL_GetTicks();
-
             music_check();
 
             if (req_end)
@@ -2462,11 +2461,12 @@ int main(int argc, char *argv[])
                 g->update_screen(
                     static_cast<uint32_t>(SDL_GetTicks() - lastFixedUpdate)); // redraw the screen with any changes
 
-            auto frameTime = static_cast<uint32_t>(SDL_GetTicks() - frameStart);
-            if (static_cast<float>(frameTime) < targetFrameTime)
-            {
-                SDL_Delay(1);
-            }
+            const Uint64 now = SDL_GetTicksNS();
+            if (now < frame_deadline)
+                SDL_DelayPrecise(frame_deadline - now);
+            else
+                frame_deadline = now;
+            frame_deadline += target_frame_time;
         }
 
         net_uninit();

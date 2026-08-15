@@ -53,6 +53,7 @@ SDL_Window *window = nullptr;
 SDL_Surface *surface = nullptr;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *game_texture = nullptr;
+image *presentation_screen = nullptr;
 
 struct WindowedBounds
 {
@@ -95,7 +96,6 @@ bool current_display_size(int &width, int &height)
 
 static void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2);
 static void put_image(image *im, int x, int y);
-static void update_window_done();
 
 // VGA's 320x200 mode filled a 4:3 CRT, so its pixels were 5:6 rather
 // than square. Widescreen mode keeps those pixels at the original DPI,
@@ -185,10 +185,18 @@ void set_mode()
 
         const char *rendererName = SDL_GetRendererName(renderer);
         printf("Renderer: %s\n", rendererName);
-    }
 
-    // Set renderer flags
-    SDL_SetRenderVSync(renderer, true);
+        if (!SDL_SetRenderVSync(renderer, 1))
+            fprintf(stderr, "Video: Unable to enable VSync: %s\n", SDL_GetError());
+
+        int vsync = SDL_RENDERER_VSYNC_DISABLED;
+        if (!SDL_GetRenderVSync(renderer, &vsync))
+            fprintf(stderr, "Video: Unable to query VSync state: %s\n", SDL_GetError());
+        else if (vsync == SDL_RENDERER_VSYNC_DISABLED)
+            fprintf(stderr, "Video: VSync is disabled; using the configured frame-rate limit\n");
+        else
+            printf("Video: VSync enabled (interval %d)\n", vsync);
+    }
 
     // Present the original 320x200 framebuffer through a 320x240 logical
     // canvas. SDL uniformly fits that corrected 4:3 image to the window and
@@ -208,17 +216,19 @@ void set_mode()
     }
     SDL_SetTextureScaleMode(game_texture, settings.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
 
-    // The software renderer draws directly into this 8-bit image. Let SDL
-    // wrap the same pixels for palette conversion instead of maintaining a
-    // second copy of the framebuffer.
+    // Keep the game canvas separate from the composited image shown by SDL.
+    // Window movement relies on the canvas retaining the pixels underneath
+    // windows so their old positions can be restored.
     main_screen = new image(ivec2(xres, yres), nullptr, 2);
-    surface = SDL_CreateSurfaceFrom(xres, yres, SDL_PIXELFORMAT_INDEX8, main_screen->scan_line(0), xres);
+    presentation_screen = new image(ivec2(xres, yres));
+    surface = SDL_CreateSurfaceFrom(xres, yres, SDL_PIXELFORMAT_INDEX8, presentation_screen->scan_line(0), xres);
     if (surface == nullptr)
     {
         show_startup_error("Video: Unable to create 8-bit surface: %s", SDL_GetError());
         exit(EXIT_FAILURE);
     }
     main_screen->clear();
+    presentation_screen->clear();
 
     // Hide the mouse cursor and set up the mouse
     SDL_HideCursor();
@@ -413,7 +423,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 
 bool resize_framebuffer(int width, int height)
 {
-    if (!window || !renderer || !main_screen)
+    if (!window || !renderer || !main_screen || !presentation_screen)
         return false;
     if (width < 320 || height < 200 || width > std::numeric_limits<int16_t>::max() ||
         height > std::numeric_limits<int16_t>::max())
@@ -424,19 +434,23 @@ bool resize_framebuffer(int width, int height)
     if (width == xres && height == yres)
         return true;
 
-    uint8_t *new_pixels = static_cast<uint8_t *>(std::calloc(static_cast<size_t>(width), static_cast<size_t>(height)));
-    SDL_Surface *new_surface =
-        new_pixels ? SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_INDEX8, new_pixels, width) : nullptr;
+    const size_t framebuffer_size = static_cast<size_t>(width) * static_cast<size_t>(height);
+    uint8_t *new_main_pixels = static_cast<uint8_t *>(std::calloc(framebuffer_size, 1));
+    uint8_t *new_presentation_pixels = static_cast<uint8_t *>(std::calloc(framebuffer_size, 1));
+    SDL_Surface *new_surface = new_presentation_pixels ? SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_INDEX8,
+                                                                               new_presentation_pixels, width)
+                                                       : nullptr;
     SDL_Texture *new_texture =
         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, width, height);
-    if (!new_pixels || !new_surface || !new_texture)
+    if (!new_main_pixels || !new_presentation_pixels || !new_surface || !new_texture)
     {
         fprintf(stderr, "Video: Unable to resize framebuffer to %dx%d: %s\n", width, height, SDL_GetError());
         if (new_texture)
             SDL_DestroyTexture(new_texture);
         if (new_surface)
             SDL_DestroySurface(new_surface);
-        std::free(new_pixels);
+        std::free(new_main_pixels);
+        std::free(new_presentation_pixels);
         return false;
     }
 
@@ -448,18 +462,21 @@ bool resize_framebuffer(int width, int height)
                 SDL_GetError());
         SDL_DestroyTexture(new_texture);
         SDL_DestroySurface(new_surface);
-        std::free(new_pixels);
+        std::free(new_main_pixels);
+        std::free(new_presentation_pixels);
         return false;
     }
 
     SDL_DestroyTexture(game_texture);
     SDL_DestroySurface(surface);
-    main_screen->SetSize(ivec2(width, height), new_pixels);
+    main_screen->SetSize(ivec2(width, height), new_main_pixels);
+    presentation_screen->SetSize(ivec2(width, height), new_presentation_pixels);
     game_texture = new_texture;
     surface = new_surface;
     xres = width;
     yres = height;
     main_screen->clear();
+    presentation_screen->clear();
 
     if (!window_is_fullscreen())
     {
@@ -493,6 +510,8 @@ void close_framebuffer()
 
     delete main_screen;
     main_screen = nullptr;
+    delete presentation_screen;
+    presentation_screen = nullptr;
 }
 
 void close_graphics()
@@ -536,8 +555,11 @@ void update_dirty(image *im, int xoff, int yoff)
             --count;
         }
     }
+}
 
-    update_window_done();
+image *video_present_screen()
+{
+    return presentation_screen;
 }
 
 static void put_image(image *im, int x, int y)
@@ -550,7 +572,7 @@ static void put_image(image *im, int x, int y)
 //
 static void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2)
 {
-    if (!im || !main_screen || x >= xres || y >= yres)
+    if (!im || !presentation_screen || x >= xres || y >= yres)
         return;
 
     CHECK(x1 >= 0 && x2 >= x1 && x2 <= im->Size().x && y1 >= 0 && y2 >= y1 && y2 <= im->Size().y);
@@ -570,10 +592,8 @@ static void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int 
     const int copy_height = std::min(y2 - y1, yres - y);
     if (copy_width <= 0 || copy_height <= 0)
         return;
-    if (im == main_screen && x == x1 && y == y1)
-        return;
 
-    uint8_t *destination = main_screen->scan_line(y) + x;
+    uint8_t *destination = presentation_screen->scan_line(y) + x;
     for (int row = 0; row < copy_height; row++)
     {
         std::memmove(destination, im->scan_line(y1 + row) + x1, static_cast<size_t>(copy_width));
@@ -615,9 +635,6 @@ void palette::load()
         fprintf(stderr, "Video: Unable to set palette: %s\n", SDL_GetError());
         return;
     }
-
-    // Now redraw the surface
-    update_window_done();
 }
 
 //
@@ -630,7 +647,7 @@ void palette::load_nice()
 
 // ---- support functions ----
 
-static void update_window_done()
+void present_framebuffer()
 {
     if (!surface || !game_texture || !renderer)
         return;

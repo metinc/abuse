@@ -754,4 +754,5 @@ void EventHandler::Get(Event &ev)
 void EventHandler::flush_screen()
 {
     update_dirty(main_screen);
+    present_framebuffer();
 }

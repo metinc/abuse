@@ -329,36 +329,28 @@ Jwindow *WindowManager::CreateWindow(ivec2 pos, ivec2 size, ifield *fields, char
 
 void WindowManager::flush_screen()
 {
-    ivec2 m1(0, 0);
-
-    m1 = m_pos - m_center;
-    ivec2 m2 = m1 + m_sprite->m_visual->Size();
-
-    m_sprite->m_save->PutPart(m_surf, ivec2(0, 0), m1, m2);
-    m_surf->PutImage(m_sprite->m_visual, m1, 1);
-
     for (Jwindow *p = m_first; p; p = p->next)
         if (!p->is_hidden())
             m_surf->DeleteDirty(p->m_pos, p->m_pos + p->m_size);
     update_dirty(m_surf);
-
-    m_surf->PutImage(m_sprite->m_save, m1);
 
     for (Jwindow *p = m_first; p; p = p->next)
     {
         if (p->is_hidden())
             continue;
 
-        m_sprite->m_save->PutPart(p->m_surf, ivec2(0, 0), m1 - p->m_pos, m1 - p->m_pos + m_sprite->m_visual->Size());
-        p->m_surf->PutImage(m_sprite->m_visual, m1 - p->m_pos, 1);
-
-        //      m_surf->DeleteDirty(p->m_pos, p->m_pos + p->m_size);
         for (Jwindow *q = p->next; q; q = q->next)
             if (!q->is_hidden())
                 p->m_surf->DeleteDirty(q->m_pos - p->m_pos, q->m_pos - p->m_pos + q->m_size);
         update_dirty(p->m_surf, p->m_pos.x, p->m_pos.y);
-        p->m_surf->PutImage(m_sprite->m_save, m1 - p->m_pos, 0);
     }
+
+    image *present_screen = video_present_screen();
+    const ivec2 cursor_position = m_pos - m_center;
+    m_sprite->m_save->PutPart(present_screen, ivec2(0), cursor_position, cursor_position + m_sprite->m_visual->Size());
+    present_screen->PutImage(m_sprite->m_visual, cursor_position, 1);
+    present_framebuffer();
+    present_screen->PutImage(m_sprite->m_save, cursor_position);
 }
 
 Jwindow::Jwindow(char const *name)
