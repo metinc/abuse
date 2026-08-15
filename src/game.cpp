@@ -1662,10 +1662,8 @@ void Game::get_input()
         last_demo_mbut = 0;
     };
 
-    auto send_chat_key = [](int key) {
-        base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
-        base->packet.write_uint8(client_number());
-        base->packet.write_uint8(key);
+    auto send_chat_key = [this](int key) {
+        pending_chat_keys.push_back(static_cast<uint8_t>(key));
     };
 
     while (event_waiting())
@@ -1866,6 +1864,17 @@ void Game::get_input()
     }
 }
 
+void Game::flush_pending_chat_input()
+{
+    for (uint8_t key : pending_chat_keys)
+    {
+        base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+        base->packet.write_uint8(client_number());
+        base->packet.write_uint8(key);
+    }
+    pending_chat_keys.clear();
+}
+
 void net_send(int force = 0)
 {
     // Networking can run before the first local player has been created.
@@ -1886,6 +1895,11 @@ void net_send(int force = 0)
                 printf("Players have not been created\ncall create_players");
                 exit(EXIT_SUCCESS);
             }
+
+            // Client receive replaces base->packet with the authoritative
+            // server packet. Append chat captured by get_input() only after
+            // that receive, while building this tick's outgoing input.
+            the_game->flush_pending_chat_input();
 
             view *p = player_list;
             for (; p; p = p->next)

@@ -26,6 +26,8 @@
 #include "view.h"
 #include "id.h"
 
+#include <vector>
+
 #define MAPFW 100
 #define MAPFH 100
 #define MAPBW 100
@@ -87,6 +89,7 @@ class Game
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
     bool suppress_chat_activation_text = false;
+    std::vector<uint8_t> pending_chat_keys;
 
   public:
     JCFont *save_game_font; //AR
@@ -206,6 +209,7 @@ class Game
 
     void update_screen(uint32_t elapsedMsFixed = 0);
     void get_input();
+    void flush_pending_chat_input();
     void menu_select(Event &ev2);
     int can_morph_into(int type);
     void morph_into(int type);
