@@ -145,8 +145,14 @@ Hardcoded Keys:
 
 Default Controller Bindings:
 
-- D-pad, left stick - Move in all directions (game and menus)
-- Home - Show help/controls screen
+- D-pad, left stick - Move in all directions
+- Right stick - Aim
+- South face button - Jump; confirm in menus
+- East face button - Down/use; cancel in menus
+- West face button - Use the active special ability
+- Left/right shoulder - Previous/next weapon
+- Left/right trigger - Special ability/fire
+- Guide/Home - Show help/controls screen
 - Back - Acts as <kbd>Escape</kbd> key
 - Start - Acts as <kbd>Enter</kbd> key
 
@@ -154,12 +160,18 @@ Default Controller Bindings:
 
 Options in `[input.gamepad]` include:
 
+- `enabled` - Accept gamepad input; <kbd>F8</kbd> toggles and saves this setting
+- `aim_invert_y` - Invert the right stick's vertical aiming axis
 - `aim_correction_x` - Horizontal crosshair correction
 - `crosshair_distance` - Crosshair distance from player
-- `aim_sensitivity` - Right stick/aiming sensitivity
-- `aim_dead_zone` - Right stick/aiming dead zone
+- `aim_sensitivity` - Right stick/aiming sensitivity (1-100)
+- `aim_dead_zone` - Radial right stick/aiming dead zone (1-32766)
 - `move_dead_zone_x` - Left stick horizontal dead zone
 - `move_dead_zone_y` - Left stick vertical dead zone
+- `trigger_threshold` - Trigger activation threshold (1-32767)
+- `trigger_hysteresis` - Required trigger release movement below its activation threshold
+- `menu_confirm`, `menu_cancel` - Buttons used to confirm and cancel in the main menu
+- `quick_save`, `quick_load` - Optional buttons for quick save and quick load
 
 Button binding names:
 
@@ -167,8 +179,12 @@ Button binding names:
 - `left_shoulder`, `right_shoulder` - Shoulder buttons
 - `left_trigger`, `right_trigger` - Triggers
 - `left_stick`, `right_stick` - Stick clicks
+- `dpad_up`, `dpad_down`, `dpad_left`, `dpad_right` - D-pad directions
+- `start`, `back`, `guide` - System/menu buttons
 
-Each physical button maps to `"up"`, `"down"`, `"special"`, `"fire"`, `"weapon_prev"`, or `"weapon_next"`.
+Each configurable button or trigger maps to `"up"`, `"down"`, `"left"`, `"right"`, `"special"`, `"fire"`,
+`"weapon_prev"`, `"weapon_next"`, `"confirm"`, `"cancel"`, `"help"`, or `"none"`.
+The first gamepad used becomes active; other connected gamepads are ignored until the active one disconnects.
 
 ### Command Line Arguments
 

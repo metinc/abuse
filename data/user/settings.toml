@@ -1,5 +1,5 @@
 # Abuse configuration file
-schema_version = 5
+schema_version = 6
 
 [video]
 # Borderless desktop fullscreen
@@ -61,25 +61,42 @@ weapon_prev = ["q"]
 weapon_next = ["e"]
 
 [input.gamepad]
+enabled = true
+aim_invert_y = false
 aim_correction_x = 0
 crosshair_distance = 90
 aim_sensitivity = 10
-# Dead zones range from 0 to 32767
+# Dead zones range from 1 to 32766
 aim_dead_zone = 5000
 move_dead_zone_x = 10000
-move_dead_zone_y = 25000
-# up, down, special, fire, weapon_prev, or weapon_next
+move_dead_zone_y = 10000
+# Trigger threshold ranges from 1 to 32767
+trigger_threshold = 10000
+# Amount the trigger must move back below its threshold before release
+trigger_hysteresis = 1000
+# up, down, left, right, special, fire, weapon_prev, weapon_next,
+# confirm, cancel, help, or none
 south = "up"
 east = "down"
-west = "weapon_prev"
-north = "weapon_next"
-left_stick = "special"
-right_stick = "down"
-left_shoulder = "special"
-right_shoulder = "fire"
+west = "special"
+north = "none"
+left_stick = "none"
+right_stick = "none"
+left_shoulder = "weapon_prev"
+right_shoulder = "weapon_next"
 left_trigger = "special"
 right_trigger = "fire"
-# south, east, west, north, left_stick, right_stick,
-# left_shoulder, right_shoulder, or none
+dpad_up = "up"
+dpad_down = "down"
+dpad_left = "left"
+dpad_right = "right"
+start = "confirm"
+back = "cancel"
+guide = "help"
+# Physical buttons used to confirm and cancel in menus. These override the
+# gameplay action for those buttons while the main menu is active.
+menu_confirm = "south"
+menu_cancel = "east"
+# Any named button above, or none
 quick_save = "none"
 quick_load = "none"

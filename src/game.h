@@ -109,6 +109,7 @@ class Game
     void reset_keymap()
     {
         memset(keymap, 0, sizeof(keymap));
+        reset_input_sources();
     }
 
     int nplayers;

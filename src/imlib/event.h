@@ -36,6 +36,8 @@ constexpr int MIDDLE_BUTTON = 4;
 
 class Jwindow;
 
+void reset_input_sources();
+
 class Event
 {
   public:
@@ -92,14 +94,10 @@ class EventHandler
     {
         m_ignore_wheel_events = ignore;
     }
+
   private:
     std::deque<Event> m_events;
     bool m_ignore_wheel_events = false;
-    // "Dead zone" before motion of a stick "counts".
-    // Maximum stick values are 0x7FFF, currently I've
-    // arbitrarily set this to 1/4th.
-    int m_dead_zone; //AR (int m_dead_zone = 0x2000;)
-
     image *m_screen;
 
   protected:

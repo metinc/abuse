@@ -62,7 +62,7 @@ bool open_gamepad(SDL_JoystickID id)
 
     gamepads.emplace(id, gamepad);
     const char *name = SDL_GetGamepadName(gamepad);
-    std::printf("Gamepad connected: %d (%s)\n", id, name ? name : "Unknown gamepad");
+    std::printf("Gamepad connected: %" SDL_PRIu32 " (%s)\n", id, name ? name : "Unknown gamepad");
     return true;
 }
 }
@@ -77,6 +77,11 @@ bool joy_init()
 
     int count = 0;
     SDL_JoystickID *ids = SDL_GetGamepads(&count);
+    if (!ids)
+    {
+        std::fprintf(stderr, "Warning: Unable to enumerate gamepads: %s\n", SDL_GetError());
+        return false;
+    }
     std::printf("%d gamepads on system\n", count);
     for (int i = 0; i < count; ++i)
         open_gamepad(ids[i]);
@@ -99,6 +104,6 @@ void joy_handle_removed(SDL_JoystickID id)
         const std::string name = raw_name ? raw_name : "Unknown gamepad";
         SDL_CloseGamepad(found->second);
         gamepads.erase(found);
-        std::printf("Gamepad disconnected: %d (%s)\n", id, name.c_str());
+        std::printf("Gamepad disconnected: %" SDL_PRIu32 " (%s)\n", id, name.c_str());
     }
 }

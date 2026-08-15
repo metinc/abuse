@@ -26,6 +26,8 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <unordered_map>
+#include <vector>
 
 #include "common.h"
 
@@ -41,15 +43,179 @@
 
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
-extern std::string get_ctr_binding(std::string c);
 
-//AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
-//so I disable it if the user uses a D-pad, and enable it if the user uses the stick and passes the dead zone
-static bool use_left_stick = false;
+namespace
+{
+constexpr int GAMEPAD_SOURCE_BASE = 10000;
+constexpr int GAMEPAD_AXIS_SOURCE_BASE = GAMEPAD_SOURCE_BASE + SDL_GAMEPAD_BUTTON_COUNT;
+constexpr int LEFT_X_NEGATIVE = GAMEPAD_AXIS_SOURCE_BASE;
+constexpr int LEFT_X_POSITIVE = GAMEPAD_AXIS_SOURCE_BASE + 1;
+constexpr int LEFT_Y_NEGATIVE = GAMEPAD_AXIS_SOURCE_BASE + 2;
+constexpr int LEFT_Y_POSITIVE = GAMEPAD_AXIS_SOURCE_BASE + 3;
+constexpr int LEFT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 4;
+constexpr int RIGHT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 5;
+
+struct CombinedInputState
+{
+    SDL_JoystickID active_gamepad = 0;
+    bool trigger_pressed[2] = {false, false};
+    std::unordered_map<int, int> source_keys;
+    std::unordered_map<int, int> key_counts;
+
+    void emit(EventHandler &handler, Event &primary, EventType type, int key)
+    {
+        Event event;
+        event.type = type;
+        event.key = key;
+        event.mouse_move = primary.mouse_move;
+        event.mouse_button = primary.mouse_button;
+        if (primary.type == EV_SPURIOUS)
+            primary = std::move(event);
+        else
+            handler.Push(std::move(event));
+    }
+
+    void change(EventHandler &handler, Event &primary, int source, bool pressed, int key, bool allow_repeat = false)
+    {
+        auto held = source_keys.find(source);
+        if (pressed)
+        {
+            if (held != source_keys.end())
+            {
+                if (allow_repeat && held->second == key && key_is_valid(key))
+                    emit(handler, primary, EV_KEY, key);
+                return;
+            }
+            if (!key_is_valid(key))
+                return;
+
+            source_keys.emplace(source, key);
+            int &count = key_counts[key];
+            if (count++ == 0)
+                emit(handler, primary, EV_KEY, key);
+            return;
+        }
+
+        if (held == source_keys.end())
+            return;
+        key = held->second;
+        source_keys.erase(held);
+        auto count = key_counts.find(key);
+        if (count != key_counts.end() && --count->second == 0)
+        {
+            key_counts.erase(count);
+            emit(handler, primary, EV_KEYRELEASE, key);
+        }
+    }
+
+    void release_gamepad(EventHandler &handler)
+    {
+        std::vector<int> sources;
+        for (const auto &entry : source_keys)
+            if (entry.first >= GAMEPAD_SOURCE_BASE)
+                sources.push_back(entry.first);
+
+        for (int source : sources)
+        {
+            Event release;
+            change(handler, release, source, false, JK_NONE);
+            if (release.type != EV_SPURIOUS)
+                handler.Push(std::move(release));
+        }
+        trigger_pressed[0] = false;
+        trigger_pressed[1] = false;
+    }
+
+    bool accepts(SDL_JoystickID id, bool activate)
+    {
+        if (!active_gamepad && activate)
+            active_gamepad = id;
+        return active_gamepad == id;
+    }
+};
+
+CombinedInputState combined_input;
+
+int gamepad_action_key(const std::string &action)
+{
+    if (action == "none")
+        return JK_NONE;
+    if (action == "confirm")
+        return JK_ENTER;
+    if (action == "cancel")
+        return JK_ESC;
+    if (action == "help")
+        return JK_F1;
+    return get_key_binding(action.c_str(), 0);
+}
+
+const std::string &gamepad_button_action(int button)
+{
+    switch (button)
+    {
+    case SDL_GAMEPAD_BUTTON_SOUTH:
+        return settings.ctr_a;
+    case SDL_GAMEPAD_BUTTON_EAST:
+        return settings.ctr_b;
+    case SDL_GAMEPAD_BUTTON_WEST:
+        return settings.ctr_x;
+    case SDL_GAMEPAD_BUTTON_NORTH:
+        return settings.ctr_y;
+    case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+        return settings.ctr_lst;
+    case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+        return settings.ctr_rst;
+    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+        return settings.ctr_lsr;
+    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+        return settings.ctr_rsr;
+    case SDL_GAMEPAD_BUTTON_DPAD_UP:
+        return settings.ctr_dpad_up;
+    case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+        return settings.ctr_dpad_down;
+    case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+        return settings.ctr_dpad_left;
+    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+        return settings.ctr_dpad_right;
+    case SDL_GAMEPAD_BUTTON_START:
+        return settings.ctr_start;
+    case SDL_GAMEPAD_BUTTON_BACK:
+        return settings.ctr_back;
+    case SDL_GAMEPAD_BUTTON_GUIDE:
+        return settings.ctr_guide;
+    default:
+        static const std::string none = "none";
+        return none;
+    }
+}
+
+void perform_quick_save()
+{
+    if (current_level && settings.player_touching_console && current_level->save("save0001.spe", 1) == 1)
+    {
+        the_game->show_help("Station secured!");
+        cache.sfx(1031)->play(1.0f);
+        settings.quick_load = get_save_path(1);
+    }
+}
+
+void perform_quick_load()
+{
+    if (!settings.quick_load.empty())
+        the_game->request_level_load(settings.quick_load);
+}
+}
+
+void reset_input_sources()
+{
+    combined_input.source_keys.clear();
+    combined_input.key_counts.clear();
+    combined_input.trigger_pressed[0] = false;
+    combined_input.trigger_pressed[1] = false;
+}
 
 EventHandler::EventHandler(image *screen, palette *pal)
 {
-    m_dead_zone = 10000;
     m_ignore_wheel_events = false;
     m_button = 0;
     m_center = ivec2(0, 0);
@@ -112,6 +278,8 @@ void EventHandler::Get(Event &ev)
     SDL_Event sdlev;
     if (!SDL_WaitEvent(&sdlev))
         return;
+
+    int keyboard_source = -1;
 
     float x_f, y_f;
     SDL_GetMouseState(&x_f, &y_f);
@@ -219,6 +387,7 @@ void EventHandler::Get(Event &ev)
 
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
+        keyboard_source = static_cast<int>(sdlev.key.scancode);
         ev.key = JK_NONE;
 
         if (sdlev.type == SDL_EVENT_KEY_DOWN)
@@ -354,6 +523,20 @@ void EventHandler::Get(Event &ev)
             break;
 
         case SDLK_F8:
+            if (ev.type == EV_KEYRELEASE)
+            {
+                settings.gamepad_enabled = !settings.gamepad_enabled;
+                if (!settings.gamepad_enabled)
+                {
+                    combined_input.release_gamepad(*this);
+                    combined_input.active_gamepad = 0;
+                    settings.ctr_aim_x = 0;
+                    settings.ctr_aim_y = 0;
+                }
+                if (!settings.Save())
+                    fprintf(stderr, "Unable to save gamepad enabled setting\n");
+                the_game->show_help(settings.gamepad_enabled ? "Gamepad enabled" : "Gamepad disabled");
+            }
             ev.key = JK_F8;
             break;
 
@@ -404,96 +587,36 @@ void EventHandler::Get(Event &ev)
         break;
 
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-    case SDL_EVENT_GAMEPAD_BUTTON_UP:
-        if (settings.ctr_f5 == sdlev.gbutton.button) //AR quick save
+    case SDL_EVENT_GAMEPAD_BUTTON_UP: {
+        const bool pressed = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+        if (!settings.gamepad_enabled || !combined_input.accepts(sdlev.gbutton.which, pressed))
+            break;
+
+        if (the_game->state != MENU_STATE && settings.ctr_f5 == sdlev.gbutton.button)
         {
-            if (sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_UP)
-                if (settings.player_touching_console)
-                {
-                    if (current_level->save("save0001.spe", 1) == 1)
-                    {
-                        the_game->show_help("Station secured!");
-                        cache.sfx(1031)->play(1.0f); //id 1031 should be save05.wav
-                        settings.quick_load = get_save_path(1);
-                    }
-                }
-            ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = JK_NONE;
-            return;
+            if (!pressed)
+                perform_quick_save();
+            break;
         }
-        else if (settings.ctr_f9 == sdlev.gbutton.button) //AR quick load
+        if (the_game->state != MENU_STATE && settings.ctr_f9 == sdlev.gbutton.button)
         {
-            if (sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_UP)
-                if (!settings.quick_load.empty())
-                    the_game->request_level_load(settings.quick_load);
-            ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = JK_NONE;
-            return;
+            if (!pressed)
+                perform_quick_load();
+            break;
         }
 
-        switch (sdlev.gbutton.button)
-        {
-            //AR convert to key events
-        case SDL_GAMEPAD_BUTTON_START:
-            ev.key = JK_ENTER;
-            break; //enter
-        case SDL_GAMEPAD_BUTTON_GUIDE:
-            ev.key = JK_F1;
-            break; //help
-        case SDL_GAMEPAD_BUTTON_BACK:
-            ev.key = JK_ESC;
-            break; //go back
-            //
-        case SDL_GAMEPAD_BUTTON_SOUTH:
-            ev.key = get_key_binding(get_ctr_binding("ctr_a").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_EAST:
-            ev.key = get_key_binding(get_ctr_binding("ctr_b").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_WEST:
-            ev.key = get_key_binding(get_ctr_binding("ctr_x").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_NORTH:
-            ev.key = get_key_binding(get_ctr_binding("ctr_y").c_str(), 0);
-            break;
-            //
-        case SDL_GAMEPAD_BUTTON_LEFT_STICK:
-            ev.key = get_key_binding(get_ctr_binding("ctr_lst").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
-            ev.key = get_key_binding(get_ctr_binding("ctr_rst").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
-            ev.key = get_key_binding(get_ctr_binding("ctr_lsr").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
-            ev.key = get_key_binding(get_ctr_binding("ctr_rsh").c_str(), 0);
-            break;
-            //
-        case SDL_GAMEPAD_BUTTON_DPAD_UP:
-            use_left_stick = false;
-            ev.key = get_key_binding("up", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
-            use_left_stick = false;
-            ev.key = get_key_binding("down", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
-            use_left_stick = false;
-            ev.key = get_key_binding("left", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
-            use_left_stick = false;
-            ev.key = get_key_binding("right", 0);
-            break;
-            //
-        default:
-            // Still want to process this as a key press if only to allow the
-            // controller to skip the intro screen.
-            ev.key = -1;
-        }
-        ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
+        int key = JK_NONE;
+        if (the_game->state == MENU_STATE && sdlev.gbutton.button == settings.ctr_menu_confirm)
+            key = JK_ENTER;
+        else if (the_game->state == MENU_STATE && sdlev.gbutton.button == settings.ctr_menu_cancel)
+            key = JK_ESC;
+        else
+            key = gamepad_action_key(gamepad_button_action(sdlev.gbutton.button));
+
+        const int source = GAMEPAD_SOURCE_BASE + sdlev.gbutton.button;
+        combined_input.change(*this, ev, source, pressed, key);
         break;
+    }
 
     case SDL_EVENT_GAMEPAD_ADDED:
         joy_handle_added(sdlev.gdevice.which);
@@ -502,134 +625,129 @@ void EventHandler::Get(Event &ev)
 
     case SDL_EVENT_GAMEPAD_REMOVED: {
         joy_handle_removed(sdlev.gdevice.which);
-        use_left_stick = false;
-        settings.ctr_aim_x = 0;
-        settings.ctr_aim_y = 0;
-
-        // Release every action a disconnected gamepad may have held so the
-        // player cannot remain moving, firing, or navigating a menu.
-        const char *bindings[] = {"up", "down", "left", "right", "b1", "b2", "b3", "b4"};
-        for (const char *binding : bindings)
+        if (combined_input.active_gamepad == sdlev.gdevice.which)
         {
-            Event release;
-            release.type = EV_KEYRELEASE;
-            release.key = get_key_binding(binding, 0);
-            Push(std::move(release));
-        }
-        const int special_keys[] = {JK_ENTER, JK_ESC, JK_F1};
-        for (int key : special_keys)
-        {
-            Event release;
-            release.type = EV_KEYRELEASE;
-            release.key = key;
-            Push(std::move(release));
+            combined_input.release_gamepad(*this);
+            combined_input.active_gamepad = 0;
+            settings.ctr_aim_x = 0;
+            settings.ctr_aim_y = 0;
         }
         ev.type = EV_SPURIOUS;
         break;
     }
 
     case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-        switch (sdlev.gaxis.axis)
+        if (!settings.gamepad_enabled)
+            break;
+
         {
-        case SDL_GAMEPAD_AXIS_LEFTX:
-            if (abs(sdlev.gaxis.value) >= settings.ctr_lst_dzx)
-                use_left_stick = true; //enable the left stick
+            int activation_threshold = settings.ctr_rst_dz;
+            if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX)
+                activation_threshold = settings.ctr_lst_dzx;
+            else if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY)
+                activation_threshold = settings.ctr_lst_dzy;
+            else if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER ||
+                     sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+                activation_threshold = settings.ctr_trigger_threshold;
 
-            if (use_left_stick)
+            const bool activate = std::abs(static_cast<int>(sdlev.gaxis.value)) >= activation_threshold;
+            if (!combined_input.accepts(sdlev.gaxis.which, activate))
+                break;
+
+            switch (sdlev.gaxis.axis)
             {
-                if (sdlev.gaxis.value < 0)
+            case SDL_GAMEPAD_AXIS_LEFTX:
+                if (sdlev.gaxis.value <= -settings.ctr_lst_dzx)
                 {
-                    ev.key = get_key_binding("left", 0);
-                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-                    the_game->set_key_down(get_key_binding("right", 0), 0);
-                    the_game->set_key_down(get_key_binding("right2", 0), 0);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, true, get_key_binding("left", 0));
+                }
+                else if (sdlev.gaxis.value >= settings.ctr_lst_dzx)
+                {
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, true, get_key_binding("right", 0));
                 }
                 else
                 {
-                    ev.key = get_key_binding("right", 0);
-                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-                    the_game->set_key_down(get_key_binding("left", 0), 0);
-                    the_game->set_key_down(get_key_binding("left2", 0), 0);
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, false, JK_NONE);
+                }
+                break;
+
+            case SDL_GAMEPAD_AXIS_LEFTY:
+                if (sdlev.gaxis.value <= -settings.ctr_lst_dzy)
+                {
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, true, get_key_binding("up", 0));
+                }
+                else if (sdlev.gaxis.value >= settings.ctr_lst_dzy)
+                {
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, true, get_key_binding("down", 0));
+                }
+                else
+                {
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, false, JK_NONE);
+                }
+                break;
+
+                //AR just save the values and update aim inside the game loop
+            case SDL_GAMEPAD_AXIS_RIGHTX:
+                settings.ctr_aim_x = sdlev.gaxis.value;
+                ev.type = EV_SPURIOUS;
+                break;
+
+            case SDL_GAMEPAD_AXIS_RIGHTY:
+                settings.ctr_aim_y = sdlev.gaxis.value;
+                ev.type = EV_SPURIOUS;
+                break;
+
+            case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+            case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: {
+                const bool left = sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER;
+                const int source = left ? LEFT_TRIGGER : RIGHT_TRIGGER;
+                const int binding = left ? GAMEPAD_BINDING_LEFT_TRIGGER : GAMEPAD_BINDING_RIGHT_TRIGGER;
+                const int index = left ? 0 : 1;
+                const bool was_pressed = combined_input.trigger_pressed[index];
+                const bool pressed = sdlev.gaxis.value >= settings.ctr_trigger_threshold ||
+                                     (was_pressed && sdlev.gaxis.value > settings.ctr_trigger_threshold -
+                                                                             settings.ctr_trigger_hysteresis);
+                combined_input.trigger_pressed[index] = pressed;
+
+                if (the_game->state != MENU_STATE && (settings.ctr_f5 == binding || settings.ctr_f9 == binding))
+                {
+                    if (was_pressed && !pressed)
+                    {
+                        if (settings.ctr_f5 == binding)
+                            perform_quick_save();
+                        else
+                            perform_quick_load();
+                    }
+                    break;
                 }
 
-                if (abs(sdlev.gaxis.value) < settings.ctr_lst_dzx)
-                {
-                    ev.type = EV_KEYRELEASE;
-                    //AR stop everything
-                    the_game->set_key_down(get_key_binding("left", 0), 0);
-                    the_game->set_key_down(get_key_binding("left2", 0), 0);
-                    the_game->set_key_down(get_key_binding("right", 0), 0);
-                    the_game->set_key_down(get_key_binding("right2", 0), 0);
-                }
+                int key = JK_NONE;
+                if (the_game->state == MENU_STATE && settings.ctr_menu_confirm == binding)
+                    key = JK_ENTER;
+                else if (the_game->state == MENU_STATE && settings.ctr_menu_cancel == binding)
+                    key = JK_ESC;
                 else
-                    ev.type = EV_KEY;
+                    key = gamepad_action_key(left ? settings.ctr_ltg : settings.ctr_rtg);
+                combined_input.change(*this, ev, source, pressed, key);
+                break;
             }
-            break;
-
-        case SDL_GAMEPAD_AXIS_LEFTY:
-            if (abs(sdlev.gaxis.value) >= settings.ctr_lst_dzy)
-                use_left_stick = true; //enable the left stick
-
-            if (use_left_stick)
-            {
-                if (sdlev.gaxis.value < 0)
-                {
-                    ev.key = get_key_binding("up", 0);
-                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-                    the_game->set_key_down(get_key_binding("down", 0), 0);
-                    the_game->set_key_down(get_key_binding("down2", 0), 0);
-                }
-                else
-                {
-                    ev.key = get_key_binding("down", 0);
-                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-                    the_game->set_key_down(get_key_binding("up", 0), 0);
-                    the_game->set_key_down(get_key_binding("up2", 0), 0);
-                }
-
-                if (abs(sdlev.gaxis.value) < settings.ctr_lst_dzy)
-                {
-                    ev.type = EV_KEYRELEASE;
-                    //AR stop everything
-                    the_game->set_key_down(get_key_binding("up", 0), 0);
-                    the_game->set_key_down(get_key_binding("up2", 0), 0);
-                    the_game->set_key_down(get_key_binding("down", 0), 0);
-                    the_game->set_key_down(get_key_binding("down2", 0), 0);
-                }
-                else
-                    ev.type = EV_KEY;
             }
-            break;
-
-            //AR just save the values and update aim inside the game loop
-        case SDL_GAMEPAD_AXIS_RIGHTX:
-            settings.ctr_aim_x = sdlev.gaxis.value;
-            ev.type = EV_SPURIOUS;
-            break;
-
-        case SDL_GAMEPAD_AXIS_RIGHTY:
-            settings.ctr_aim_y = sdlev.gaxis.value;
-            ev.type = EV_SPURIOUS;
-            break;
-
-        case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
-            //AR convert to key events
-            ev.key = get_key_binding(get_ctr_binding("ctr_ltg").c_str(), 0);
-            if (sdlev.gaxis.value > m_dead_zone)
-                ev.type = EV_KEY;
-            else
-                ev.type = EV_KEYRELEASE;
-            break;
-
-        case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
-            //AR convert to key events
-            ev.key = get_key_binding(get_ctr_binding("ctr_rtg").c_str(), 0);
-            if (sdlev.gaxis.value > m_dead_zone)
-                ev.type = EV_KEY;
-            else
-                ev.type = EV_KEYRELEASE;
-            break;
         }
+        break;
+    }
+
+    if (keyboard_source >= 0 && (ev.type == EV_KEY || ev.type == EV_KEYRELEASE))
+    {
+        const bool pressed = ev.type == EV_KEY;
+        const int key = ev.key;
+        ev.type = EV_SPURIOUS;
+        combined_input.change(*this, ev, keyboard_source, pressed, key, true);
     }
 }
 

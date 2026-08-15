@@ -152,12 +152,16 @@ Settings::Settings()
     this->b4 = key_value("e");
 
     //controller settings
+    this->gamepad_enabled = true;
+    this->ctr_aim_invert_y = false;
     this->ctr_aim_correctx = 0;
     this->ctr_cd = 90;
     this->ctr_rst_s = 10;
     this->ctr_rst_dz = 5000; // aiming
     this->ctr_lst_dzx = 10000; // move left right
-    this->ctr_lst_dzy = 25000; // up/jump, down/use
+    this->ctr_lst_dzy = 10000; // up/jump, down/use
+    this->ctr_trigger_threshold = 10000;
+    this->ctr_trigger_hysteresis = 1000;
     this->ctr_aim_x = 0;
     this->ctr_aim_y = 0;
     this->ctr_mouse_x = 0;
@@ -166,18 +170,27 @@ Settings::Settings()
     //controller buttons
     this->ctr_a = "up";
     this->ctr_b = "down";
-    this->ctr_x = "b3";
-    this->ctr_y = "b4";
+    this->ctr_x = "b1";
+    this->ctr_y = "none";
     //
-    this->ctr_lst = "b1";
-    this->ctr_rst = "down";
+    this->ctr_lst = "none";
+    this->ctr_rst = "none";
     //
-    this->ctr_lsr = "b1";
-    this->ctr_rsr = "b2";
+    this->ctr_lsr = "b3";
+    this->ctr_rsr = "b4";
     //
     this->ctr_ltg = "b1";
     this->ctr_rtg = "b2";
     //
+    this->ctr_dpad_up = "up";
+    this->ctr_dpad_down = "down";
+    this->ctr_dpad_left = "left";
+    this->ctr_dpad_right = "right";
+    this->ctr_start = "confirm";
+    this->ctr_back = "cancel";
+    this->ctr_guide = "help";
+    this->ctr_menu_confirm = SDL_GAMEPAD_BUTTON_SOUTH;
+    this->ctr_menu_cancel = SDL_GAMEPAD_BUTTON_EAST;
     this->ctr_f5 = -1;
     this->ctr_f9 = -1;
 }
@@ -216,8 +229,7 @@ void invalid_setting(const char *section, const char *key, const char *expected)
     fprintf(stderr, "Config: Ignoring %s.%s; expected %s\n", section, key, expected);
 }
 
-template <typename T>
-void read_integer(const settings_document *table, const char *section, const char *key, T &target)
+template <typename T> void read_integer(const settings_document *table, const char *section, const char *key, T &target)
 {
     const settings_document *node = find_value(table, key);
     if (!node)
@@ -412,7 +424,8 @@ std::string internal_action(const std::string &action)
         return "b3";
     if (action == "weapon_next")
         return "b4";
-    if (action == "up" || action == "down")
+    if (action == "up" || action == "down" || action == "left" || action == "right" || action == "none" ||
+        action == "confirm" || action == "cancel" || action == "help")
         return action;
     return "";
 }
@@ -461,6 +474,24 @@ int gamepad_button(const std::string &name)
         return SDL_GAMEPAD_BUTTON_LEFT_SHOULDER;
     if (name == "right_shoulder")
         return SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER;
+    if (name == "dpad_up")
+        return SDL_GAMEPAD_BUTTON_DPAD_UP;
+    if (name == "dpad_down")
+        return SDL_GAMEPAD_BUTTON_DPAD_DOWN;
+    if (name == "dpad_left")
+        return SDL_GAMEPAD_BUTTON_DPAD_LEFT;
+    if (name == "dpad_right")
+        return SDL_GAMEPAD_BUTTON_DPAD_RIGHT;
+    if (name == "start")
+        return SDL_GAMEPAD_BUTTON_START;
+    if (name == "back")
+        return SDL_GAMEPAD_BUTTON_BACK;
+    if (name == "guide")
+        return SDL_GAMEPAD_BUTTON_GUIDE;
+    if (name == "left_trigger")
+        return GAMEPAD_BINDING_LEFT_TRIGGER;
+    if (name == "right_trigger")
+        return GAMEPAD_BINDING_RIGHT_TRIGGER;
     if (name == "none")
         return -1;
     return -2;
@@ -486,6 +517,24 @@ std::string gamepad_button_name(int button)
         return "left_shoulder";
     case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
         return "right_shoulder";
+    case SDL_GAMEPAD_BUTTON_DPAD_UP:
+        return "dpad_up";
+    case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+        return "dpad_down";
+    case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+        return "dpad_left";
+    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+        return "dpad_right";
+    case SDL_GAMEPAD_BUTTON_START:
+        return "start";
+    case SDL_GAMEPAD_BUTTON_BACK:
+        return "back";
+    case SDL_GAMEPAD_BUTTON_GUIDE:
+        return "guide";
+    case GAMEPAD_BINDING_LEFT_TRIGGER:
+        return "left_trigger";
+    case GAMEPAD_BINDING_RIGHT_TRIGGER:
+        return "right_trigger";
     default:
         return "none";
     }
@@ -603,9 +652,31 @@ void Settings::Validate()
     validate_gain(volume_music, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
     clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
-    clamp(ctr_rst_dz, 0, 32767, "input.gamepad.aim_dead_zone");
-    clamp(ctr_lst_dzx, 0, 32767, "input.gamepad.move_dead_zone_x");
-    clamp(ctr_lst_dzy, 0, 32767, "input.gamepad.move_dead_zone_y");
+    clamp(ctr_aim_correctx, -1000, 1000, "input.gamepad.aim_correction_x");
+    clamp(ctr_cd, 1, 1000, "input.gamepad.crosshair_distance");
+    clamp(ctr_rst_s, 1, 100, "input.gamepad.aim_sensitivity");
+    clamp(ctr_rst_dz, 1, 32766, "input.gamepad.aim_dead_zone");
+    clamp(ctr_lst_dzx, 1, 32766, "input.gamepad.move_dead_zone_x");
+    clamp(ctr_lst_dzy, 1, 32766, "input.gamepad.move_dead_zone_y");
+    clamp(ctr_trigger_threshold, 1, 32767, "input.gamepad.trigger_threshold");
+    clamp(ctr_trigger_hysteresis, 0, 32766, "input.gamepad.trigger_hysteresis");
+    if (ctr_trigger_hysteresis >= ctr_trigger_threshold)
+    {
+        ctr_trigger_hysteresis = ctr_trigger_threshold - 1;
+        fprintf(stderr, "Config: input.gamepad.trigger_hysteresis must be below trigger_threshold; using %d\n",
+                ctr_trigger_hysteresis);
+    }
+    if (ctr_menu_confirm != -1 && ctr_menu_confirm == ctr_menu_cancel)
+    {
+        ctr_menu_cancel =
+            ctr_menu_confirm == SDL_GAMEPAD_BUTTON_EAST ? SDL_GAMEPAD_BUTTON_SOUTH : SDL_GAMEPAD_BUTTON_EAST;
+        fprintf(stderr, "Config: input.gamepad.menu_confirm and menu_cancel must differ; resetting menu_cancel\n");
+    }
+    if (ctr_f5 != -1 && ctr_f5 == ctr_f9)
+    {
+        ctr_f9 = -1;
+        fprintf(stderr, "Config: input.gamepad.quick_save and quick_load must differ; disabling quick_load\n");
+    }
     if (difficulty != "easy" && difficulty != "medium" && difficulty != "hard" && difficulty != "extreme")
     {
         fprintf(stderr, "Config: gameplay.difficulty is invalid; using hard\n");
@@ -620,7 +691,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 5)
+        if (version && version->is_integer() && version->as_integer() > 6)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -678,12 +749,16 @@ bool Settings::ReadTomlFile()
         read_keys(keyboard, "weapon_next", b4);
 
         const settings_document *gamepad = input ? find_table(*input, "gamepad") : nullptr;
+        read_boolean(gamepad, "input.gamepad", "enabled", gamepad_enabled);
+        read_boolean(gamepad, "input.gamepad", "aim_invert_y", ctr_aim_invert_y);
         read_integer(gamepad, "input.gamepad", "aim_correction_x", ctr_aim_correctx);
         read_integer(gamepad, "input.gamepad", "crosshair_distance", ctr_cd);
         read_integer(gamepad, "input.gamepad", "aim_sensitivity", ctr_rst_s);
         read_integer(gamepad, "input.gamepad", "aim_dead_zone", ctr_rst_dz);
         read_integer(gamepad, "input.gamepad", "move_dead_zone_x", ctr_lst_dzx);
         read_integer(gamepad, "input.gamepad", "move_dead_zone_y", ctr_lst_dzy);
+        read_integer(gamepad, "input.gamepad", "trigger_threshold", ctr_trigger_threshold);
+        read_integer(gamepad, "input.gamepad", "trigger_hysteresis", ctr_trigger_hysteresis);
         read_gamepad_action(gamepad, "south", ctr_a);
         read_gamepad_action(gamepad, "east", ctr_b);
         read_gamepad_action(gamepad, "west", ctr_x);
@@ -694,6 +769,15 @@ bool Settings::ReadTomlFile()
         read_gamepad_action(gamepad, "right_shoulder", ctr_rsr);
         read_gamepad_action(gamepad, "left_trigger", ctr_ltg);
         read_gamepad_action(gamepad, "right_trigger", ctr_rtg);
+        read_gamepad_action(gamepad, "dpad_up", ctr_dpad_up);
+        read_gamepad_action(gamepad, "dpad_down", ctr_dpad_down);
+        read_gamepad_action(gamepad, "dpad_left", ctr_dpad_left);
+        read_gamepad_action(gamepad, "dpad_right", ctr_dpad_right);
+        read_gamepad_action(gamepad, "start", ctr_start);
+        read_gamepad_action(gamepad, "back", ctr_back);
+        read_gamepad_action(gamepad, "guide", ctr_guide);
+        read_gamepad_button(gamepad, "menu_confirm", ctr_menu_confirm);
+        read_gamepad_button(gamepad, "menu_cancel", ctr_menu_cancel);
         read_gamepad_button(gamepad, "quick_save", ctr_f5);
         read_gamepad_button(gamepad, "quick_load", ctr_f9);
 
@@ -754,7 +838,7 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 5);
+        set_value(document, "schema_version", 6);
 
         settings_document &video = ensure_table(document, "video");
         const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -810,12 +894,16 @@ bool Settings::Save() const
         set_value(keyboard, "weapon_next", toml::ordered_array{key_string(b4)});
 
         settings_document &gamepad = ensure_table(input, "gamepad");
+        set_value(gamepad, "enabled", gamepad_enabled);
+        set_value(gamepad, "aim_invert_y", ctr_aim_invert_y);
         set_value(gamepad, "aim_correction_x", ctr_aim_correctx);
         set_value(gamepad, "crosshair_distance", ctr_cd);
         set_value(gamepad, "aim_sensitivity", ctr_rst_s);
         set_value(gamepad, "aim_dead_zone", ctr_rst_dz);
         set_value(gamepad, "move_dead_zone_x", ctr_lst_dzx);
         set_value(gamepad, "move_dead_zone_y", ctr_lst_dzy);
+        set_value(gamepad, "trigger_threshold", ctr_trigger_threshold);
+        set_value(gamepad, "trigger_hysteresis", ctr_trigger_hysteresis);
         set_value(gamepad, "south", external_action(ctr_a));
         set_value(gamepad, "east", external_action(ctr_b));
         set_value(gamepad, "west", external_action(ctr_x));
@@ -826,6 +914,15 @@ bool Settings::Save() const
         set_value(gamepad, "right_shoulder", external_action(ctr_rsr));
         set_value(gamepad, "left_trigger", external_action(ctr_ltg));
         set_value(gamepad, "right_trigger", external_action(ctr_rtg));
+        set_value(gamepad, "dpad_up", external_action(ctr_dpad_up));
+        set_value(gamepad, "dpad_down", external_action(ctr_dpad_down));
+        set_value(gamepad, "dpad_left", external_action(ctr_dpad_left));
+        set_value(gamepad, "dpad_right", external_action(ctr_dpad_right));
+        set_value(gamepad, "start", external_action(ctr_start));
+        set_value(gamepad, "back", external_action(ctr_back));
+        set_value(gamepad, "guide", external_action(ctr_guide));
+        set_value(gamepad, "menu_confirm", gamepad_button_name(ctr_menu_confirm));
+        set_value(gamepad, "menu_cancel", gamepad_button_name(ctr_menu_cancel));
         set_value(gamepad, "quick_save", gamepad_button_name(ctr_f5));
         set_value(gamepad, "quick_load", gamepad_button_name(ctr_f9));
 
@@ -1059,7 +1156,7 @@ bool Settings::GetEditorFramebufferSize(short &width, short &height) const
 void setup(int argc, char **argv)
 {
     // Initialize SDL with video and audio support
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD))
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
     {
         show_startup_error("Unable to initialize SDL: %s", SDL_GetError());
         exit(EXIT_FAILURE);
@@ -1141,34 +1238,4 @@ int get_key_binding(char const *dir, int i)
         return settings.b4;
 
     return 0;
-}
-
-//AR controller
-std::string get_ctr_binding(std::string c)
-{
-    if (c == "ctr_a")
-        return settings.ctr_a;
-    else if (c == "ctr_b")
-        return settings.ctr_b;
-    else if (c == "ctr_x")
-        return settings.ctr_x;
-    else if (c == "ctr_y")
-        return settings.ctr_y;
-    //
-    else if (c == "ctr_lst")
-        return settings.ctr_lst;
-    else if (c == "ctr_rst")
-        return settings.ctr_rst;
-    //
-    else if (c == "ctr_lsr")
-        return settings.ctr_lsr;
-    else if (c == "ctr_rsh")
-        return settings.ctr_rsr;
-    //
-    else if (c == "ctr_ltg")
-        return settings.ctr_ltg;
-    else if (c == "ctr_rtg")
-        return settings.ctr_rtg;
-
-    return "";
 }

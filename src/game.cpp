@@ -668,38 +668,42 @@ static void post_render()
 
 void controller_aim(view *v)
 {
-    // Aim with the controller each update rather than waiting for input events
-    // Convert to percentage above "dead zone". Don't move if value is below "dead zone". Range is [-32767,32767]
-    float fx = 0;
-    float fy = 0;
+    static Uint64 last_update = SDL_GetTicksNS();
+    static float aimx = 0, aimy = 0;
+    const Uint64 now = SDL_GetTicksNS();
+    const float elapsed = std::min(static_cast<float>(now - last_update) / 1000000000.0f, 0.1f);
+    last_update = now;
 
-    if (fabs(settings.ctr_aim_x) > settings.ctr_rst_dz)
+    if (!settings.gamepad_enabled)
+        return;
+
+    const float input_x = settings.ctr_aim_x;
+    const float input_y = settings.ctr_aim_invert_y ? -settings.ctr_aim_y : settings.ctr_aim_y;
+    const float magnitude = std::hypot(input_x, input_y);
+    if (magnitude > settings.ctr_rst_dz)
     {
-        fx = (fabs(settings.ctr_aim_x) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-    }
+        const float usable_range = 32767.0f - settings.ctr_rst_dz;
+        const float strength = (std::min(magnitude, 32767.0f) - settings.ctr_rst_dz) / usable_range;
+        const float distance = settings.ctr_rst_s * strength * elapsed * 60.0f;
+        if (aimx == 0 && aimy == 0)
+        {
+            aimx = input_x / magnitude * 10;
+            aimy = input_y / magnitude * 10;
+        }
+        else
+        {
+            aimx += input_x / magnitude * distance;
+            aimy += input_y / magnitude * distance;
+        }
 
-    if (fabs(settings.ctr_aim_y) > settings.ctr_rst_dz)
-    {
-        fy = (fabs(settings.ctr_aim_y) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-    }
-
-    if (fx != 0 || fy != 0)
-    {
-        // Move virtual crosshair inside a circular area based on right stick state and sensitivity
-        float angle = atan2(settings.ctr_aim_y, settings.ctr_aim_x);
-        static float aimx = 0, aimy = 0;
-        aimx += cos(angle) * (settings.ctr_rst_s * fx);
-        aimy += sin(angle) * (settings.ctr_rst_s * fy);
-
-        // Calculate aim based on the virtual crosshair
-        angle = atan2(aimy, aimx);
+        const float angle = atan2(aimy, aimx);
 
         // Set position of real crosshair (-13 moves center to chest area)
         wm->SetMousePos(ivec2(v->m_focus->x - v->xoff() + cos(angle) * settings.ctr_cd + settings.ctr_aim_correctx,
                               v->m_focus->y - v->yoff() + sin(angle) * settings.ctr_cd - 13));
 
-        // If outside circle, reposition to the edge of circle for the next update
-        // 10 is arbitrary - sensitivity is controlled using settings.ctr_rst_s
+        // Keep the virtual crosshair on a fixed-radius circle. Sensitivity
+        // controls how quickly the input rotates it, independent of frame rate.
         aimx = cos(angle) * 10;
         aimy = sin(angle) * 10;
     }

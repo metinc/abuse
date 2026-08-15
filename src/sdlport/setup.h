@@ -16,6 +16,8 @@
 #include <string>
 
 inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
+inline constexpr int GAMEPAD_BINDING_LEFT_TRIGGER = 1000;
+inline constexpr int GAMEPAD_BINDING_RIGHT_TRIGGER = 1001;
 
 class Settings
 {
@@ -72,10 +74,13 @@ class Settings
     int b4; //weapon next
 
     //controller settings
+    bool gamepad_enabled;
+    bool ctr_aim_invert_y;
     int ctr_aim_correctx; //for some reason game adds black bars on widescreen resolutions and it messes up crosshair position
     int ctr_cd; //crosshair distance from player
     int ctr_rst_s; //right stick sensitivity
-    int ctr_rst_dz, ctr_lst_dzx, ctr_lst_dzy; //dead zones
+    int ctr_rst_dz, ctr_lst_dzx, ctr_lst_dzy; //stick dead zones
+    int ctr_trigger_threshold, ctr_trigger_hysteresis;
     //
     float ctr_aim_x, ctr_aim_y; //state of right stick
     float ctr_mouse_x, ctr_mouse_y; //use left stick to move mouse...gave up
@@ -85,7 +90,10 @@ class Settings
     std::string ctr_lst, ctr_rst; //stick buttons
     std::string ctr_lsr, ctr_rsr; //shoulder buttons
     std::string ctr_ltg, ctr_rtg; //trigger buttons
+    std::string ctr_dpad_up, ctr_dpad_down, ctr_dpad_left, ctr_dpad_right;
+    std::string ctr_start, ctr_back, ctr_guide;
 
+    int ctr_menu_confirm, ctr_menu_cancel;
     int ctr_f5, ctr_f9;
 
     Settings();
