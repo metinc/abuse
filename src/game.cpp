@@ -140,37 +140,6 @@ void handle_no_space()
     exit(EXIT_FAILURE);
 }
 
-//AR gave up because of switching palette problems
-//AR get image and palette
-/*int title_screen_hr = -1;
-image* title_screen_hr_img = NULL;
-palette *title_screen_hr_p = NULL;
-
-void AR_HiresTitleScreen()
-{
-	title_screen_hr = cache.reg("art/title.spe","title_screen_hires",SPEC_IMAGE,1);
-	title_screen_hr_img = cache.img(cache.reg("art/title.spe","title_screen_hires",SPEC_IMAGE,1));
-
-	bFILE *fp = open_file("art/title.spe", "rb");
-	if(!fp->open_failure())
-	{
-		spec_directory sd(fp);	
-
-		for(unsigned int i=0;i<sd.total;i++)
-		{
-			std::string name = sd.entries[i]->name;
-			if(name=="palette_hires")
-			{
-				title_screen_hr_p = new palette(sd.entries[i],fp);
-				break;
-			}
-		}
-	}
-
-	delete fp;
-}*/
-//
-
 void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
     if (!sound_is_initialized())
@@ -1500,7 +1469,7 @@ Game::Game(int argc, char **argv)
         //    load_level(NET_STARTFILE);
     }
 
-    set_mode(argc, argv);
+    set_mode();
     if (get_option("-2") && (xres < 639 || yres < 399))
     {
         close_graphics();

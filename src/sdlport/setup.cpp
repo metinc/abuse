@@ -52,7 +52,6 @@ extern Settings settings;
 
 extern int xres, yres; //video.cpp
 extern float sfx_volume, music_volume; //loader.cpp
-unsigned int scale; //AR was static, removed for external
 
 const char *settings_filename = "settings.toml";
 
@@ -1107,9 +1106,7 @@ void setup(int argc, char **argv)
     else
         printf("Video: Widescreen support enabled; using %dx%d framebuffer\n", settings.xres, settings.yres);
 
-    // Initialize audio volumes from settings
-    // These variables are defined externally in loader.cpp
-    scale = settings.scale;
+    // Initialize runtime display size and audio volumes from settings.
     xres = settings.xres;
     yres = settings.yres;
     sfx_volume = static_cast<float>(settings.volume_sound);

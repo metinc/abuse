@@ -11,35 +11,28 @@
 #ifndef _VIDEO_HPP_
 #define _VIDEO_HPP_
 
-#define TRI_1024x768x256 0x62
-#define TRI_800x600x256 0x5e
-#define TRI_640x480x256 0x5c
-#define VGA_320x200x256 0x13
-#define CGA_640x200x2 6
-#define XWINDOWS_256 256
-#define XWINDOWS_2 2
-
+#include "common.h"
 #include "image.h"
 
+struct SDL_Window;
+
 extern int xres, yres;
-extern unsigned int scale; //AR
-extern int xoff, yoff;
 extern image *main_screen;
 
-void set_mode(int argc = 0, char **argv = NULL);
+SDL_Window *video_window();
+void set_mode();
 bool resize_framebuffer(int width, int height);
 bool video_set_fullscreen(bool enabled);
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 void video_update_mouse_confinement();
+ivec2 video_window_to_game(float window_x, float window_y);
+void video_warp_mouse(ivec2 position);
+bool video_start_text_input();
+void video_stop_text_input();
+bool video_save_screenshot(char const *filename);
 void close_framebuffer();
 void close_graphics();
-void update_window_done();
 
 void update_dirty(image *im, int xoff = 0, int yoff = 0);
-void put_part_image(image *im, int x, int y, int x1, int y1, int x2, int y2);
-void put_image(image *im, int x, int y);
-
-void clear_put_image(image *im, int x, int y);
-int get_vmode();
 
 #endif

@@ -39,42 +39,9 @@
 #include "joy.h"
 #include "setup.h"
 
-extern SDL_Window *window;
-extern SDL_Surface *surface;
-extern SDL_Renderer *renderer;
-extern bool fullscreen;
-
 extern Settings settings;
 extern int get_key_binding(char const *dir, int i);
 extern std::string get_ctr_binding(std::string c);
-
-static ivec2 window_to_game(float window_x, float window_y)
-{
-    float game_x;
-    float game_y;
-    int logical_w;
-    int logical_h;
-    SDL_RendererLogicalPresentation mode;
-    SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-    SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &game_x, &game_y);
-    game_x *= static_cast<float>(main_screen->Size().x) / logical_w;
-    game_y *= static_cast<float>(main_screen->Size().y) / logical_h;
-
-    const int x = std::max(0, std::min(static_cast<int>(std::round(game_x)), main_screen->Size().x - 1));
-    const int y = std::max(0, std::min(static_cast<int>(std::round(game_y)), main_screen->Size().y - 1));
-    return ivec2(x, y);
-}
-
-static void game_to_window(ivec2 pos, float &window_x, float &window_y)
-{
-    int logical_w;
-    int logical_h;
-    SDL_RendererLogicalPresentation mode;
-    SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-    const float logical_x = static_cast<float>(pos.x) * logical_w / main_screen->Size().x;
-    const float logical_y = static_cast<float>(pos.y) * logical_h / main_screen->Size().y;
-    SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y);
-}
 
 //AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
 //so I disable it if the user uses a D-pad, and enable it if the user uses the stick and passes the dead zone
@@ -103,14 +70,13 @@ EventHandler::EventHandler(image *screen, palette *pal)
     m_sprite = new Sprite(screen, im, ivec2(100, 100));
     m_pos = screen->Size() / 2;
 
-    if (!SDL_StartTextInput(window))
+    if (!video_start_text_input())
         fprintf(stderr, "Warning: Unable to start text input: %s\n", SDL_GetError());
 }
 
 EventHandler::~EventHandler()
 {
-    if (window && SDL_TextInputActive(window))
-        SDL_StopTextInput(window);
+    video_stop_text_input();
     delete m_sprite;
 }
 
@@ -118,10 +84,7 @@ void EventHandler::SetMousePos(ivec2 pos)
 {
     m_pos = ivec2(std::clamp(pos.x, 0, m_screen->Size().x - 1), std::clamp(pos.y, 0, m_screen->Size().y - 1));
 
-    float window_x;
-    float window_y;
-    game_to_window(m_pos, window_x, window_y);
-    SDL_WarpMouseInWindow(window, window_x, window_y);
+    video_warp_mouse(m_pos);
 }
 
 //
@@ -152,7 +115,7 @@ void EventHandler::Get(Event &ev)
 
     float x_f, y_f;
     SDL_GetMouseState(&x_f, &y_f);
-    const ivec2 game_pos = window_to_game(x_f, y_f);
+    const ivec2 game_pos = video_window_to_game(x_f, y_f);
     ev.mouse_move = game_pos;
     m_pos = game_pos;
 
@@ -172,11 +135,7 @@ void EventHandler::Get(Event &ev)
         video_update_mouse_confinement();
         break;
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-        fullscreen = true;
-        video_update_mouse_confinement();
-        break;
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-        fullscreen = false;
         video_update_mouse_confinement();
         break;
     case SDL_EVENT_WINDOW_MAXIMIZED:
@@ -425,8 +384,10 @@ void EventHandler::Get(Event &ev)
         case SDLK_PRINTSCREEN: //grab a screenshot
             if (ev.type == EV_KEYRELEASE)
             {
-                SDL_SaveBMP(surface, "screenshot.bmp");
-                the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+                if (video_save_screenshot("screenshot.bmp"))
+                    the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+                else
+                    fprintf(stderr, "Video: Unable to save screenshot: %s\n", SDL_GetError());
             }
             ev.key = JK_NONE;
             break;
