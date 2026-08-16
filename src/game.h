@@ -74,8 +74,17 @@ class Game
     char mapname[100], command[200], help_text[200];
     int refresh, mousex, mousey;
 
-    // Timestamp when show_help() was called.
+    struct pending_input_event
+    {
+        uint8_t command;
+        uint8_t value;
+    };
+
+    // Timestamp when the current transient message was shown.
     uint64_t help_start_time = 0;
+
+    // How long the current transient message remains fully visible.
+    uint32_t help_hold_time = 0;
 
     // Whether or not a help text is currently active
     bool help_active = false;
@@ -89,7 +98,7 @@ class Game
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
     bool suppress_chat_activation_text = false;
-    std::vector<uint8_t> pending_chat_keys;
+    std::vector<pending_input_event> pending_input_events;
 
   public:
     JCFont *save_game_font; //AR
@@ -125,6 +134,8 @@ class Game
     void UpdateViews(float interpolation_ratio);
     void show_help(const std::string &msg);
     void show_help(char const *st);
+    void show_message(char const *st, uint32_t hold_time);
+    float transient_message_visibility() const;
     void draw_value(image *screen, int x, int y, int w, int h, int val, int max);
     unsigned char get_color(int x)
     {
@@ -209,7 +220,7 @@ class Game
 
     void update_screen(uint32_t elapsedMsFixed = 0);
     void get_input();
-    void flush_pending_chat_input();
+    void flush_pending_input();
     void menu_select(Event &ev2);
     int can_morph_into(int type);
     void morph_into(int type);

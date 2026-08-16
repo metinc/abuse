@@ -456,9 +456,29 @@ void Game::show_help(const std::string &msg)
 
 void Game::show_help(const char *msg)
 {
-    strcpy(help_text, msg);
+    show_message(msg, settings.physics_update);
+}
+
+void Game::show_message(const char *msg, uint32_t hold_time)
+{
+    snprintf(help_text, sizeof(help_text), "%s", msg ? msg : "");
+    help_hold_time = hold_time;
     help_start_time = SDL_GetTicks();
     help_active = true;
+}
+
+float Game::transient_message_visibility() const
+{
+    if (!(dev & DRAW_HELP_LAYER) || !help_active)
+        return 1.0f;
+
+    Uint64 elapsed = SDL_GetTicks() - help_start_time;
+    if (elapsed <= help_hold_time)
+        return 0.0f;
+    if (elapsed >= help_hold_time + HELP_FADE_MS)
+        return 1.0f;
+
+    return static_cast<float>(elapsed - help_hold_time) / static_cast<float>(HELP_FADE_MS);
 }
 
 void Game::draw_value(image *screen, int x, int y, int w, int h, int val, int max)
@@ -1058,49 +1078,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         if (dev_cont)
             dev_cont->dev_draw(v);
 
-        if (dev & DRAW_HELP_LAYER)
-        {
-            if (help_active)
-            {
-                Uint64 now = SDL_GetTicks();
-                Uint64 elapsed = now - help_start_time;
-
-                if (elapsed > settings.physics_update + HELP_FADE_MS)
-                {
-                    // Done showing. Turn off until next time show_help() is called.
-                    help_active = false;
-                }
-                else
-                {
-                    // Figure out the alpha (or tint color) based on elapsed time.
-                    int color = 2;
-                    if (elapsed > settings.physics_update)
-                    {
-                        // Start fading
-                        Uint64 fade_elapsed = elapsed - settings.physics_update;
-                        float fade_ratio = (float)fade_elapsed / (float)HELP_FADE_MS;
-                        fade_ratio = (fade_ratio > 1.0f) ? 1.0f : fade_ratio;
-
-                        // Darken color by fading from 2 to 31.
-                        color = 2 + (int)(29.0f * (fade_ratio));
-                    }
-
-                    ivec2 aa = v->m_aa;
-                    ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
-
-                    // Draw a darkened area.
-                    remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
-
-                    // Draw one line above and one below the text.
-                    main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
-                    main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
-
-                    // Draw the text.
-                    wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
-                }
-            }
-        }
-
         //AR this is showing that annoying flashing icon in bottom-left corner, so I disabled it
         //if(cache.in_use()) main_screen->PutImage(cache.img(vmm_image), ivec2(v->m_aa.x, v->m_bb.y - cache.img(vmm_image)->Size().y+1));
 
@@ -1132,6 +1109,48 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 
     rand_on = ro; // restore random start in case in draw funs moved it
     // ... not every machine will draw the same thing
+
+    // Draw transient messages before the post-render HUD. The score renderer
+    // stays hidden while the message is solid and fades back in with it.
+    if ((dev & DRAW_HELP_LAYER) && help_active)
+    {
+        Uint64 now = SDL_GetTicks();
+        Uint64 elapsed = now - help_start_time;
+
+        if (elapsed >= help_hold_time + HELP_FADE_MS)
+        {
+            // Done showing. Turn off until next time show_help() is called.
+            help_active = false;
+        }
+        else
+        {
+            // Figure out the alpha (or tint color) based on elapsed time.
+            int color = 2;
+            if (elapsed > help_hold_time)
+            {
+                // Start fading
+                Uint64 fade_elapsed = elapsed - help_hold_time;
+                float fade_ratio = (float)fade_elapsed / (float)HELP_FADE_MS;
+                fade_ratio = (fade_ratio > 1.0f) ? 1.0f : fade_ratio;
+
+                // Darken color by fading from 2 to 31.
+                color = 2 + (int)(29.0f * (fade_ratio));
+            }
+
+            ivec2 aa = v->m_aa;
+            ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
+
+            // Draw a darkened area.
+            remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
+
+            // Draw one line above and one below the text.
+            main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
+            main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
+
+            // Draw the text.
+            wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
+        }
+    }
 
     post_render();
 
@@ -1663,7 +1682,7 @@ void Game::get_input()
     };
 
     auto send_chat_key = [this](int key) {
-        pending_chat_keys.push_back(static_cast<uint8_t>(key));
+        pending_input_events.push_back({SCMD_CHAT_KEYPRESS, static_cast<uint8_t>(key)});
     };
 
     while (event_waiting())
@@ -1731,9 +1750,9 @@ void Game::get_input()
                 set_key_down(ev.key, 1);
                 if (playing_state(state))
                 {
-                    base->packet.write_uint8(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS);
-                    base->packet.write_uint8(client_number());
-                    base->packet.write_uint8(ev.key > 256 ? ev.key - 256 : ev.key);
+                    pending_input_events.push_back(
+                        {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS),
+                         static_cast<uint8_t>(ev.key >= 256 ? ev.key - 256 : ev.key)});
                 }
             }
             else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
@@ -1741,9 +1760,9 @@ void Game::get_input()
                 set_key_down(ev.key, 0);
                 if (playing_state(state))
                 {
-                    base->packet.write_uint8(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE);
-                    base->packet.write_uint8(client_number());
-                    base->packet.write_uint8(ev.key > 255 ? ev.key - 256 : ev.key);
+                    pending_input_events.push_back(
+                        {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
+                         static_cast<uint8_t>(ev.key > 255 ? ev.key - 256 : ev.key)});
                 }
             }
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
@@ -1864,15 +1883,15 @@ void Game::get_input()
     }
 }
 
-void Game::flush_pending_chat_input()
+void Game::flush_pending_input()
 {
-    for (uint8_t key : pending_chat_keys)
+    for (const pending_input_event &event : pending_input_events)
     {
-        base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
+        base->packet.write_uint8(event.command);
         base->packet.write_uint8(client_number());
-        base->packet.write_uint8(key);
+        base->packet.write_uint8(event.value);
     }
-    pending_chat_keys.clear();
+    pending_input_events.clear();
 }
 
 void net_send(int force = 0)
@@ -1897,9 +1916,9 @@ void net_send(int force = 0)
             }
 
             // Client receive replaces base->packet with the authoritative
-            // server packet. Append chat captured by get_input() only after
-            // that receive, while building this tick's outgoing input.
-            the_game->flush_pending_chat_input();
+            // server packet. Append discrete events captured by get_input()
+            // only after that receive, while building this tick's outgoing input.
+            the_game->flush_pending_input();
 
             view *p = player_list;
             for (; p; p = p->next)

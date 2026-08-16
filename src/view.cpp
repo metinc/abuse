@@ -451,9 +451,21 @@ void view::add_chat_key(int key) // return string if buf is complete
         //AR cheats - tmp console solution
         std::string chat_text = m_chat_buf;
 
-        if (chat_text.empty() || chat_text == "exit" || chat_text == "quit")
+        if (chat_text.empty())
         {
-            chat->toggle();
+            // Enter on an empty input only closes this player's local chat UI.
+            // It is not a chat message and must not affect another peer's window.
+            if (local_player() && chat && chat->showing())
+                chat->toggle();
+            m_chat_buf[0] = 0;
+            if (local_player() && chat)
+                chat->draw_user(m_chat_buf);
+            return;
+        }
+        else if (chat_text == "exit" || chat_text == "quit")
+        {
+            if (local_player() && chat && chat->showing())
+                chat->toggle();
         }
         else if (chat_text == "god")
         {

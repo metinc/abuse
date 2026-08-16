@@ -1132,6 +1132,10 @@ static int compare_players(const void *a, const void *b)
 
 void *score_draw()
 {
+    float visibility = the_game ? the_game->transient_message_visibility() : 1.0f;
+    if (visibility <= 0.0f)
+        return NULL;
+
     view *sorted_players[16], *local = NULL;
     int tp = 0;
     view *f = player_list;
@@ -1156,6 +1160,12 @@ void *score_draw()
         {
             int color = lnumber_value(
                 ((LArray *)((LSymbol *)l_player_text_color)->GetValue())->Get(sorted_players[i]->get_tint()));
+            if (visibility < 1.0f)
+            {
+                color = pal->find_closest(static_cast<uint8_t>(pal->red(color) * visibility),
+                                          static_cast<uint8_t>(pal->green(color) * visibility),
+                                          static_cast<uint8_t>(pal->blue(color) * visibility));
+            }
             sprintf(msg, "%3ld %s", (long)sorted_players[i]->kills, sorted_players[i]->name);
             if (sorted_players[i] == local)
                 strcat(msg, " <<");

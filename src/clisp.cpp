@@ -75,6 +75,7 @@ void *l_statbar_ammo_x, *l_statbar_ammo_y, *l_statbar_ammo_w, *l_statbar_ammo_h,
 
     *l_statbar_logo_x, *l_statbar_logo_y;
 uint8_t chatting_enabled = 0;
+constexpr uint32_t CHAT_MESSAGE_HOLD_MS = 3000;
 
 extern void show_end();
 
@@ -2461,10 +2462,14 @@ long c_caller(CFunc number, void *args)
     case CFunc::FontHeight:
         return ((JCFont *)lpointer_value(CAR(args)))->Size().y;
         break;
-    case CFunc::ChatPrint:
+    case CFunc::ChatPrint: {
+        char *message = lstring_value(CAR(args));
         if (chat)
-            chat->put_all(lstring_value(CAR(args)));
-        break;
+            chat->put_all(message);
+        if (the_game)
+            the_game->show_message(message, CHAT_MESSAGE_HOLD_MS);
+    }
+    break;
     case CFunc::SetPlayerName: {
         view *v = current_object->controller();
         if (!v)
