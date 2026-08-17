@@ -6,6 +6,10 @@
 *~
 
 /build
+/.flatpak-builder
+/flatpak-build
+/flatpak-repo
+/*.flatpak
 /.vscode
 .cache
 __pycache__/

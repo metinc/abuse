@@ -115,13 +115,13 @@ else()
     )
 
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.desktop"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.desktop"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.png"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/160x160/apps")
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.Xenoveritas.abuse.appdata.xml"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
     install(FILES COPYING.toml11 DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/abuse")
 
@@ -182,6 +182,53 @@ else()
         )
     else()
         message(STATUS "linuxdeploy was not found; the appdir and appimage targets are disabled")
+    endif()
+
+    find_program(FLATPAK_EXECUTABLE
+        NAMES flatpak
+        DOC "Path to the flatpak command-line tool")
+    find_program(FLATPAK_BUILDER_EXECUTABLE
+        NAMES flatpak-builder
+        DOC "Path to flatpak-builder")
+    if(FLATPAK_EXECUTABLE)
+        if(FLATPAK_BUILDER_EXECUTABLE)
+            set(FLATPAK_BUILDER_COMMAND "${FLATPAK_BUILDER_EXECUTABLE}")
+        else()
+            set(FLATPAK_BUILDER_COMMAND
+                "${FLATPAK_EXECUTABLE}" run org.flatpak.Builder)
+            message(STATUS "flatpak-builder was not found; the flatpak target will use org.flatpak.Builder")
+        endif()
+
+        set(FLATPAK_APP_ID "com.github.metinc.abuse")
+        set(FLATPAK_MANIFEST
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/flatpak/${FLATPAK_APP_ID}.yaml")
+        set(FLATPAK_STATE_DIR "${CMAKE_BINARY_DIR}/.flatpak-builder")
+        set(FLATPAK_BUILD_DIR "${CMAKE_BINARY_DIR}/flatpak-build")
+        set(FLATPAK_REPOSITORY "${CMAKE_BINARY_DIR}/flatpak-repo")
+        set(FLATPAK_OUTPUT
+            "${CMAKE_BINARY_DIR}/Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.flatpak")
+
+        add_custom_target(flatpak
+            COMMAND ${FLATPAK_BUILDER_COMMAND}
+                --user
+                --install-deps-from=flathub
+                --force-clean
+                "--state-dir=${FLATPAK_STATE_DIR}"
+                "--repo=${FLATPAK_REPOSITORY}"
+                "${FLATPAK_BUILD_DIR}"
+                "${FLATPAK_MANIFEST}"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FLATPAK_OUTPUT}"
+            COMMAND "${FLATPAK_EXECUTABLE}" build-bundle
+                "--arch=${APPIMAGE_ARCH}"
+                "${FLATPAK_REPOSITORY}"
+                "${FLATPAK_OUTPUT}"
+                "${FLATPAK_APP_ID}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Creating Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.flatpak"
+            VERBATIM
+        )
+    else()
+        message(STATUS "flatpak was not found; the flatpak target is disabled")
     endif()
 endif()
 

@@ -2,7 +2,7 @@
 Name=Abuse
 Comment=Dark 2D side-scrolling platform game
 Exec=abuse
-Icon=com.github.Xenoveritas.abuse
+Icon=com.github.metinc.abuse
 Terminal=false
 Type=Application
 Categories=Game;ArcadeGame;ActionGame;

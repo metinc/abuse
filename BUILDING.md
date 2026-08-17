@@ -148,3 +148,11 @@ removed and recreated for each build, so stale libraries and assets cannot
 leak into a new image. The targets disable linuxdeploy's stripping pass because
 the binutils bundled by some linuxdeploy AppImages cannot process newer ELF
 features used by distributions such as Arch Linux.
+
+# Flatpak
+
+Build the Flatpak bundle:
+
+```sh
+cmake --build build --target flatpak
+```

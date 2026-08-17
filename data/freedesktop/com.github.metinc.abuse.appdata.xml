@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.metinc.abuse</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0+</project_license>
+  <name>Abuse</name>
+  <summary>Dark 2D side-scrolling platform game</summary>
+  <description>
+    <p>This is an SDL port of the original game from 1995. It is a run and gun game which features pixel based lighting.</p>
+  </description>
+  <developer id="com.crackdotcom">
+    <name>Crack dot Com</name>
+  </developer>
+  <url type="homepage">https://github.com/metinc/abuse</url>
+  <url type="bugtracker">https://github.com/metinc/abuse/issues</url>
+  <url type="vcs-browser">https://github.com/metinc/abuse</url>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-cartoon">mild</content_attribute>
+    <content_attribute id="violence-bloodshed">moderate</content_attribute>
+  </content_rating>
+  <releases>
+    <release date="2026-02-28" version="1.0.5"/>
+    <release date="2025-11-16" version="1.0.4"/>
+    <release date="2025-11-02" version="1.0.3"/>
+    <release date="2025-03-15" version="1.0.2"/>
+    <release date="2025-03-09" version="1.0.1"/>
+    <release date="2025-03-02" version="1.0.0"/>
+    <release date="2022-10-27" version="0.9.1"/>
+    <release date="2021-08-11" version="0.9.0"/>
+    <release date="2011-05-09" version="0.8"/>
+  </releases>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/flathub/com.github.Xenoveritas.abuse/refs/heads/master/screenshots/1.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/flathub/com.github.Xenoveritas.abuse/refs/heads/master/screenshots/2.png</image>
+    </screenshot>
+  </screenshots>
+  <launchable type="desktop-id">com.github.metinc.abuse.desktop</launchable>
+  <provides>
+    <binary>abuse</binary>
+  </provides>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>gamepad</control>
+  </supports>
+</component>
