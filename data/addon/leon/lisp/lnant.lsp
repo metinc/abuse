@@ -273,8 +273,8 @@
 	    (if (<= (hp) 0)
 		(progn
 		  (if (eq (aitype) 0)
-		      (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y))
-		    (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y)))
+		      (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y) (random_sound_pitch))
+		    (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y) (random_sound_pitch)))
 
 		  (set_state dead)
                   (if (or (eq (aitype) 2) (eq (aitype) 4) ) (set_aitype 0) nil )
@@ -296,6 +296,7 @@
                     (progn
 			      (set_aitype type)
 			      (set_direction d)
+			      (set_fade_dir (random 5))
 )))
 )
 ; No?
@@ -306,6 +307,7 @@
                     (progn
 			      (set_aitype type)
 			      (set_direction d)
+			      (set_fade_dir (random 5))
 )))
 )
 
@@ -342,20 +344,24 @@
                     (progn
 			      (set_aitype type)
 			      (set_direction d)
+			      (set_fade_dir (random 5))
 )))
 		(set_aistate 6)))))))         ;; Continue
 
 
 
 (defun grantbody_ai ()
-  (if (< (hp) 12) (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y)) nil)
-  (if (< (hp) 16) (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y)) nil)
+  (if (< (hp) 12) (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y) (random_sound_pitch)) nil)
+  (if (< (hp) 16) (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y) (random_sound_pitch)) nil)
   (if (< (hp) 9) (create_dead_parts ant_dead_parts (* normal_part 3) (aitype)) nil)
   (if (< (hp) 16 ) (progn (next_picture) (set_hp (+ (hp) 1) ) ) nil )
   (if (eq0 (aistate)) 	  (progn
 	    (try_move 0 10)
 	    (if (eq (second (see_dist (x) (y) (x) (+ (y) 1))) (y))  ; if we are on the floor, don't check falling anymore
-		(set_aistate 1))))
+		(progn
+		  (set_y (+ (y) (fade_dir)))
+		  (set_aistate 1))))
+    (dead_part_render_order))
   T
 )
 
@@ -413,9 +419,10 @@
               (progn
 		(set_aitype type)
 		(set_direction d)
+		(set_fade_dir (random 5))
               )
             )
-            (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y))
+            (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y) (random_sound_pitch))
             (create_dead_parts ant_dead_parts (* normal_part 3) type)
         )
       )

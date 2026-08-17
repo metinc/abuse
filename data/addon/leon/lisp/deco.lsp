@@ -3,7 +3,10 @@
   (if (eq0 (aistate)) 	  (progn
 	    (try_move 0 10)
 	    (if (eq (second (see_dist (x) (y) (x) (+ (y) 1))) (y))  ; if we are on the floor, don't check falling anymore
-		(set_aistate 1))))
+		(progn
+		  (set_y (+ (y) (fade_dir)))
+		  (set_aistate 1))))
+    (dead_part_render_order))
   T
 )
 

@@ -227,11 +227,22 @@
       (set_aitype 0)
     (play_sound (aref AMB_SOUNDS (aitype)))))
 
+(defun random_sound_pitch ()
+  ;; Pitch is expressed as a percentage because Abuse Lisp has no
+  ;; decimal number literals.
+  (+ 60 (random 41)))
+
+(defun amb_sound_pitch ()
+  ;; A_SCREAMS occupy AMB_SOUNDS slots 8-10.
+  (if (and (>= (aitype) 8) (<= (aitype) 10))
+      (random_sound_pitch)
+    100))
+
 (defun amb_sound_ai ()
   (if (activated)
       (if (eq (aistate) 0)
 	  (progn
-	    (play_sound (aref AMB_SOUNDS (aitype)) (yvel) (x) (y))
+	    (play_sound (aref AMB_SOUNDS (aitype)) (yvel) (x) (y) (amb_sound_pitch))
 	    (set_aistate (+ (xvel) (random (+ 1 (xacel)))))
 	    (> (xvel) 0))
 	(progn
@@ -301,6 +312,4 @@
 		("18" (play_song "music/indst5.hmi")))))
   (untrace)
   (break))
-
-
 

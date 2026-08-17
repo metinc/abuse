@@ -1386,7 +1386,11 @@ long c_caller(CFunc number, void *args)
                     exit(EXIT_FAILURE);
                 }
                 int32_t y = lnumber_value(lcar(a));
-                the_game->play_sound(id, lisp_audio_gain(vol), x, y);
+                a = CDR(a);
+                float frequency_ratio = 1.0f;
+                if (a)
+                    frequency_ratio = lnumber_value(lcar(a)) / 100.0f;
+                the_game->play_sound(id, lisp_audio_gain(vol), x, y, frequency_ratio);
             }
             else
                 cache.sfx(id)->play(lisp_audio_gain(vol));

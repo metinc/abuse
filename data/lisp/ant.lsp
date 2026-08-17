@@ -349,31 +349,35 @@
   (let ((dir  (direction))
 	(rand (rand_on)))
     (with_object (add_object (aref array part_num) (x) (y))
-	       (progn (set_aitype type)
-		      (set_xvel (* dir (random 10)))
-		      (set_yvel (- 0 (random 25)))))
+      (progn (set_aitype type)
+	     (set_current_frame (random 4))
+	     (set_fade_dir (random 5))
+	     (set_xvel (* dir (random 10)))
+	     (set_yvel (- 0 (random 25)))))
     (with_object (add_object (aref array (+ part_num 1)) (x) (y))
-	       (progn (set_aitype type)
-		      (set_xvel (* dir (random 10)))
-		      (set_yvel (- 0 (random 25)))))
+      (progn (set_aitype type)
+	     (set_current_frame (random 4))
+	     (set_fade_dir (random 5))
+	     (set_xvel (* dir (random 10)))
+	     (set_yvel (- 0 (random 25)))))
     (with_object (add_object (aref array (+ part_num 2)) (x) (y))
-	       (progn (set_aitype type)
-		      (next_picture)                        ;; unsync the animations
-		      (set_xvel (* dir (random 10)))
-		      (set_yvel (- 0 (random 25)))))
+      (progn (set_aitype type)
+	     (set_current_frame (random 4))
+	     (set_fade_dir (random 5))
+	     (set_xvel (* dir (random 10)))
+	     (set_yvel (- 0 (random 25)))))
     (with_object (add_object (aref array (+ part_num 2)) (x) (y))
-	       (progn (set_aitype type)
-		      (next_picture)
-		      (next_picture)
-		      (set_xvel (* dir (random 10)))
-		      (set_yvel (- 0 (random 25)))))
+      (progn (set_aitype type)
+	     (set_current_frame (random 4))
+	     (set_fade_dir (random 5))
+	     (set_xvel (* dir (random 10)))
+	     (set_yvel (- 0 (random 25)))))
     (with_object (add_object (aref array (+ part_num 2)) (x) (y))
-	       (progn (set_aitype type)
-		      (next_picture)
-		      (next_picture)
-		      (next_picture)
-		      (set_xvel (* dir (random 10)))
-		      (set_yvel (- 0 (random 25)))))
+      (progn (set_aitype type)
+	     (set_current_frame (random 4))
+	     (set_fade_dir (random 5))
+	     (set_xvel (* dir (random 10)))
+	     (set_yvel (- 0 (random 25)))))
     (set_rand_on rand)))   ;; restore random table, in case this didn't get called because of frame panic
 
 
@@ -413,8 +417,8 @@
 	    (if (<= (hp) 0)
 		(progn
 		  (if (eq (aitype) 0)
-		      (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y))
-		    (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y)))
+		      (play_sound (aref ASML_DEATH (random 2)) 127 (x) (y) (random_sound_pitch))
+		    (play_sound (aref ALRG_DEATH (random 3)) 127 (x) (y) (random_sound_pitch)))
 
 		  (set_state dead)
 		  (if (eq (random (select difficulty
@@ -425,7 +429,20 @@
 		      (if (eq (random 4) 0)
 			  (add_object (aitype_to_ammo (+ (aitype) 1)) (x) (y)))
 		    (add_object (aitype_to_ammo (aitype)) (x) (y)))
-		  (create_dead_parts ant_dead_parts (* (get_dead_part from) 3) (aitype)))
+		  (let ((part_type (get_dead_part from))
+			(dir (direction))
+			(type (aitype)))
+		    ;; Keep the Leon/fRaBs death animation, with fragments as
+		    ;; an occasional alternative (more likely for explosions).
+		    (if (if (eq part_type flaming_part)
+			    (eq (random 2) 0)
+			  (eq (random 5) 0))
+			(create_dead_parts ant_dead_parts (* part_type 3) type)
+		      (with_object (add_object ANT_DEAD_BODY (x) (y))
+			(progn
+			  (set_aitype type)
+			  (set_direction dir)
+			  (set_fade_dir (random 5)))))))
 		  )))))
 
 (defun ant_cons ()
@@ -449,6 +466,29 @@
   (if (eq 0 (aitype))
       (draw)
     (draw_tint (aref ant_tints (aitype)))))
+
+(defun ant_dead_body_ai ()
+  (if (< (hp) 16)
+      (progn
+	(next_picture)
+	(set_hp (+ (hp) 1))))
+  (if (eq (aistate) 0)
+      (progn
+	(try_move 0 10)
+	(if (eq (second (see_dist (x) (y) (x) (+ (y) 1))) (y))
+	    (progn
+	      (set_y (+ (y) (fade_dir)))
+	      (set_aistate 1))))
+    (dead_part_render_order))
+  T)
+
+(def_char ANT_DEAD_BODY
+  (funs (ai_fun ant_dead_body_ai)
+	(draw_fun ant_draw))
+  (flags (unlistable T)
+	 (add_front T))
+  (states "art/ant.spe"
+	  (stopped (seq "adib" 1 16))))
 
 (def_char ANT_ROOF
   (vars need_to_dodge
@@ -569,16 +609,58 @@
 	  (stopped (seq "aisw" 2 6))))
 
 
+(defun dead_part_render_order ()
+  (if (> (y) (with_object (bg) (y)))
+      (if (not (eq (yacel) 2))
+	  (progn
+	    (raise)
+	    (set_yacel 2)))
+    (if (not (eq (yacel) 1))
+	(progn
+	  (lower)
+	  (set_yacel 1))))
+  T)
+
 (defun head_ai ()
   (select (aistate)
 	  (0 ;; falling
 	   (next_picture)
 	   (set_yvel (+ (yvel) 3))
-	   (bounce_move T T T '(progn (set_state dieing) (set_aistate 1)) T)
+	   (bounce_move T T T
+			'(if (try_move 0 1)
+			     ;; Diagonal wall impacts can also report BLOCKED_DOWN.
+			     ;; Keep falling unless there really is ground below.
+			     (set_yvel 1)
+			   (let ((rotation (current_frame)))
+			     (set_state dieing)
+			     ;; set_state resets the animation to frame 0.  Restore the
+			     ;; impact rotation and remember it for flaming parts.
+			     (set_current_frame rotation)
+			     (set_xacel rotation)
+			     ;; Apply visual depth only after the real collision is done.
+			     (set_y (+ (y) (fade_dir)))
+			     (set_aistate 1)
+			     (set_xvel 0)
+			     (set_yvel 0)))
+			T)
 	   (or (< (state_time) 15)
 	       (not (frame_panic))))
 	  (1 ;; hit the ground
-	   nil)
+	   (dead_part_render_order)
+	   (let ((normal_type
+		  (select (otype)
+			  (AD_4 AD_10)
+			  (AD_5 AD_11)
+			  (AD_6 AD_12))))
+	     (if normal_type
+		 (if (next_picture)
+		     T
+		   (progn
+		     (set_otype normal_type)
+		     (set_state stopped)
+		     (set_current_frame (xacel))
+		     T))
+	       T)))
 	  ))
 
 (setq ant_dead_parts (make-array (* 3 4) :initial-contents
@@ -590,7 +672,7 @@
 
 (defun ant_cache (type)  ;; cache in the ant (from crack) and the dead body parts and the ant tints
   (list
-   (list ANT_ROOF AD_1 AD_2 AD_3 AD_4 AD_5 AD_6 AD_7 AD_8 AD_9 AD_10 AD_11 AD_12)
+   (list ANT_ROOF ANT_DEAD_BODY AD_1 AD_2 AD_3 AD_4 AD_5 AD_6 AD_7 AD_8 AD_9 AD_10 AD_11 AD_12)
    (list (aref ant_tints 0) (aref ant_tints 1) (aref ant_tints 2) (aref ant_tints 3)
 	 (aref ant_tints 4) (aref ant_tints 5) (aref ant_tints 6) (aref ant_tints 7)
 	 (aref ant_tints 8) (aref ant_tints 9) (aref ant_tints 10))))
@@ -743,4 +825,3 @@
    (stopped "awlk0001.pcx")
    (hiding  "hidden")
    (weapon_fire  (seq "asht" 2 5))))
-

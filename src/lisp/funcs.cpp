@@ -220,7 +220,7 @@ void initCFuncs()
     add_c_bool_fun("trap", 0, 0, CFunc::Trap);
     add_c_bool_fun("platform_push", 2, 2, CFunc::PlatformPush);
     add_c_function("def_sound", 1, 2, CFunc::DefSound);
-    add_c_bool_fun("play_sound", 1, 4, CFunc::PlaySound);
+    add_c_bool_fun("play_sound", 1, 5, CFunc::PlaySound);
     add_c_function("def_particle", 2, 2, CFunc::DefParticle);
     add_c_function("add_panim", 4, 4, CFunc::AddPanim);
     add_c_function("weapon_to_type", 1, 1, CFunc::WeaponToType);
