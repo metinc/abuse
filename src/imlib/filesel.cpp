@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <string>
 
 static bool compare_strings_ignore_case(const char *a, const char *b)
 {
@@ -48,7 +49,7 @@ class file_picker : public spicker
     char cd[300];
 
   public:
-    file_picker(int X, int Y, int ID, int Rows, ifield *Next);
+    file_picker(int X, int Y, int ID, int Rows, char const *start_directory, int minimum_width, ifield *Next);
     virtual int total()
     {
         return tf + td;
@@ -152,12 +153,13 @@ void file_picker::draw_item(image *screen, int x, int y, int num, int active)
     wm->font()->PutString(screen, ivec2(x, y), dest, wm->bright_color());
 }
 
-file_picker::file_picker(int X, int Y, int ID, int Rows, ifield *Next) : spicker(X, Y, 0, Rows, 1, 1, 0, Next)
+file_picker::file_picker(int X, int Y, int ID, int Rows, char const *start_directory, int minimum_width, ifield *Next)
+  : spicker(X, Y, 0, Rows, 1, 1, 0, Next)
 {
 
     sid = ID;
 
-    strcpy(cd, ".");
+    snprintf(cd, sizeof(cd), "%s", start_directory && start_directory[0] ? start_directory : ".");
 
     get_directory(cd, f, tf, d, td);
 
@@ -181,22 +183,26 @@ file_picker::file_picker(int X, int Y, int ID, int Rows, ifield *Next) : spicker
     for (i = 0; i < td; i++)
         if ((int)strlen(d[i]) + 2 > wid)
             wid = strlen(d[i]) + 2;
+    wid = std::max(wid, minimum_width);
     reconfigure();
 }
 
 Jwindow *file_dialog(char const *prompt, char const *def, int ok_id, char const *ok_name, int cancel_id,
-                     char const *cancel_name, char const *FILENAME_str, int filename_id)
+                     char const *cancel_name, char const *FILENAME_str, int filename_id,
+                     char const *start_directory, int width_in_characters)
 {
     int wh2 = 5 + wm->font()->Size().y + 5;
     int wh3 = wh2 + wm->font()->Size().y + 12;
+    const std::string filename_format(std::max(width_in_characters, 1), '*');
     Jwindow *j = wm->CreateWindow(
         ivec2(0), ivec2(-1),
         new info_field(5, 5, 0, prompt,
-                       new text_field(0, wh2, filename_id, ">", "****************************************", def,
+                       new text_field(0, wh2, filename_id, ">", filename_format.c_str(), def,
                                       new button(50, wh3, ok_id, ok_name,
                                                  new button(100, wh3, cancel_id, cancel_name,
                                                             new file_picker(15, wh3 + wm->font()->Size().y + 10,
-                                                                            filename_id, 8, NULL))))),
+                                                                            filename_id, 8, start_directory,
+                                                                            width_in_characters, NULL))))),
 
         FILENAME_str);
     return j;

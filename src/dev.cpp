@@ -15,6 +15,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <string>
 
 #include "common.h"
 
@@ -88,6 +89,13 @@ char const *symbol_str(char const *name)
 }
 
 static game_object *copy_object = NULL;
+static constexpr int editor_level_dialog_width = 56;
+
+static std::string editor_levels_directory()
+{
+    const char *data_directory = get_filename_prefix();
+    return std::string(data_directory ? data_directory : "") + "levels";
+}
 
 pmenu *dev_menu = NULL;
 Jwindow *mess_win = NULL, *warn_win = NULL;
@@ -2238,9 +2246,11 @@ void dev_controll::handle_event(Event &ev)
         case ID_LEVEL_LOAD: {
             if (!mess_win)
             {
+                const std::string levels_directory = editor_levels_directory();
                 mess_win = file_dialog(symbol_str("level_name"), current_level ? current_level->name() : "",
                                        ID_LEVEL_LOAD_OK, symbol_str("ok_button"), ID_CANCEL,
-                                       symbol_str("cancel_button"), symbol_str("FILENAME"), ID_MESS_STR1);
+                                       symbol_str("cancel_button"), symbol_str("FILENAME"), ID_MESS_STR1,
+                                       levels_directory.c_str(), editor_level_dialog_width);
                 wm->grab_focus(mess_win);
             }
         }
@@ -2276,10 +2286,12 @@ void dev_controll::handle_event(Event &ev)
         case ID_LEVEL_SAVEAS: {
             if (!mess_win)
             {
+                const std::string levels_directory = editor_levels_directory();
                 mess_win =
                     file_dialog(symbol_str("saveas_name"), current_level ? current_level->name() : "untitled.spe",
                                 ID_LEVEL_SAVEAS_OK, symbol_str("ok_button"), ID_CANCEL, symbol_str("cancel_button"),
-                                symbol_str("FILENAME"), ID_MESS_STR1);
+                                symbol_str("FILENAME"), ID_MESS_STR1, levels_directory.c_str(),
+                                editor_level_dialog_width);
                 wm->grab_focus(mess_win);
             }
         }

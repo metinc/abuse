@@ -14,6 +14,7 @@
 #include "jwindow.h"
 
 Jwindow *file_dialog(char const *prompt, char const *def, int ok_id, char const *ok_name, int cancel_id,
-                     char const *cancel_name, char const *FILENAME_str, int filename_id);
+                     char const *cancel_name, char const *FILENAME_str, int filename_id,
+                     char const *start_directory = ".", int width_in_characters = 40);
 
 #endif
