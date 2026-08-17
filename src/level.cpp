@@ -197,7 +197,10 @@ void level::unactivate_all()
     all_block_total = 0;
 
     for (; o; o = o->next)
+    {
         o->active = 0;
+        o->interpolation_valid = false;
+    }
 }
 
 void level::pull_actives(game_object *o, game_object *&last_active, int &t)
@@ -470,10 +473,13 @@ void level::interpolate_object_positions(float interpolation_ratio)
     {
         o->x_interpolation_copy = o->x;
         o->y_interpolation_copy = o->y;
-        int32_t distance_x = o->x - o->last_x;
-        int32_t distance_y = o->y - o->last_y;
-        o->x = o->last_x + std::round(distance_x * interpolation_ratio);
-        o->y = o->last_y + std::round(distance_y * interpolation_ratio);
+        if (o->interpolation_valid)
+        {
+            int32_t distance_x = o->x - o->last_x;
+            int32_t distance_y = o->y - o->last_y;
+            o->x = o->last_x + std::round(distance_x * interpolation_ratio);
+            o->y = o->last_y + std::round(distance_y * interpolation_ratio);
+        }
     }
 }
 
@@ -506,6 +512,7 @@ void level::tick()
         // Remember x and y so the movement of the object can be interpolated.
         cur->last_x = cur->x;
         cur->last_y = cur->y;
+        cur->interpolation_valid = true;
         o = o->next_active;
         l = o;
     }

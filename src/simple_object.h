@@ -60,6 +60,7 @@ class simple_object
     simple_object();
     int32_t x, y, last_x, last_y, x_interpolation_copy, y_interpolation_copy;
     int8_t direction, active;
+    bool interpolation_valid;
     uint16_t otype;
     character_state state;
     short current_frame;
