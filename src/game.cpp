@@ -1680,23 +1680,9 @@ void Game::update_screen(uint32_t elapsedMsFixed)
     {
         if (!(dev & EDIT_MODE) || refresh)
         {
-            view *f = first_view;
-            current_level->clear_active_list();
-            for (; f; f = f->next)
-            {
-                if (f->m_focus)
-                {
-                    int w, h;
+            collect_drawables();
 
-                    w = (f->m_bb.x - f->m_aa.x + 1);
-                    h = (f->m_bb.y - f->m_aa.y + 1);
-
-                    total_active += current_level->add_drawables(f->xoff() - w / 4, f->yoff() - h / 4,
-                                                                 f->xoff() + w + w / 4, f->yoff() + h + h / 4);
-                }
-            }
-
-            for (f = first_view; f; f = f->next)
+            for (view *f = first_view; f; f = f->next)
             {
                 if (f->drawable())
                 {
@@ -2234,10 +2220,30 @@ void Game::draw(int scene_mode)
     main_screen->line(0, main_screen->Size().y-1, main_screen->Size().x-1, main_screen->Size().y-1, bc);
     main_screen->line(main_screen->Size().x-1, 0, main_screen->Size().x-1, main_screen->Size().y-1, bc); */
 
+    collect_drawables();
     for (view *f = first_view; f; f = f->next)
         draw_map(f);
 
     sbar.redraw(main_screen);
+}
+
+void Game::collect_drawables()
+{
+    if (!current_level)
+        return;
+
+    current_level->clear_active_list();
+    for (view *v = first_view; v; v = v->next)
+    {
+        if (!v->m_focus)
+            continue;
+
+        const int width = v->m_bb.x - v->m_aa.x + 1;
+        const int height = v->m_bb.y - v->m_aa.y + 1;
+        total_active += current_level->add_drawables(v->xoff() - width / 4, v->yoff() - height / 4,
+                                                     v->xoff() + width + width / 4,
+                                                     v->yoff() + height + height / 4);
+    }
 }
 
 int external_print = 0;

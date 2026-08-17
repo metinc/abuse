@@ -104,6 +104,7 @@ class Game
     bool editor_playtest_available = false;
 
     void discard_editor_playtest();
+    void collect_drawables();
 
   public:
     JCFont *save_game_font; //AR
