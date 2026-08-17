@@ -99,7 +99,7 @@ void status_bar::draw_num(image *screen, int x, int y, int num, int *offset)
 void status_bar::redraw(image *screen)
 {
     need_rf = 0;
-    if (!v)
+    if (!v || !is_visible())
         return;
 
     if (total_weapons)
@@ -179,7 +179,7 @@ void status_bar::redraw(image *screen)
 
 void status_bar::area(int &x1, int &y1, int &x2, int &y2)
 {
-    if (sbar <= 0 || !total_weapons)
+    if (sbar <= 0 || !is_visible())
     {
         x2 = xres;
         y2 = yres;
@@ -205,9 +205,14 @@ void status_bar::area(int &x1, int &y1, int &x2, int &y2)
     y2 = yres;
 }
 
+bool status_bar::is_visible()
+{
+    return !(dev & EDIT_MODE) && total_weapons;
+}
+
 bool status_bar::overlays_view()
 {
-    return sbar > 0 && total_weapons;
+    return sbar > 0 && is_visible();
 }
 
 int status_bar::camera_view_height(int rendered_height, int view_top)
@@ -222,7 +227,7 @@ int status_bar::camera_view_height(int rendered_height, int view_top)
 
 void status_bar::draw_health(image *screen, int amount)
 {
-    if (total_weapons)
+    if (is_visible())
     {
         int x1, y1, x2, y2;
         area(x1, y1, x2, y2);
@@ -232,7 +237,7 @@ void status_bar::draw_health(image *screen, int amount)
 
 void status_bar::draw_ammo(image *screen, int weapon_num, int amount, int light)
 {
-    if (total_weapons)
+    if (is_visible())
     {
         int x1, y1, x2, y2;
         area(x1, y1, x2, y2);
@@ -243,7 +248,7 @@ void status_bar::draw_ammo(image *screen, int weapon_num, int amount, int light)
 
 int status_bar::mouse_in_area()
 {
-    if (!v)
+    if (!v || !is_visible())
         return 0;
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
@@ -268,7 +273,7 @@ int status_bar::mouse_in_area()
 
 void status_bar::draw_update()
 {
-    if (total_weapons && v)
+    if (is_visible() && v)
     {
         if (DEFINEDP(symbol_value(l_mouse_can_switch)) && symbol_value(l_mouse_can_switch) && mouse_in_area())
         {
@@ -295,7 +300,7 @@ void status_bar::draw_update()
 
 void status_bar::step()
 {
-    if (!v)
+    if (!v || !is_visible())
         return;
     if (!DEFINEDP(symbol_value(l_mouse_can_switch)) || !symbol_value(l_mouse_can_switch))
         return;

@@ -42,6 +42,7 @@ class status_bar
     void step();
     void draw_health(image *screen, int amount);
     void draw_ammo(image *screen, int weapon_num, int amount, int light);
+    bool is_visible();
     bool overlays_view();
     int camera_view_height(int rendered_height, int view_top);
     void need_refresh()

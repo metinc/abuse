@@ -833,7 +833,8 @@ void recalc_local_view_space()
                     f->suggest.cx2 = Xres - 2;
 
                 f->suggest.cy1 = y;
-                f->suggest.cy2 = sbar.overlays_view() ? h - 1 : h - (total_weapons ? 33 : 0);
+                f->suggest.cy2 = !sbar.is_visible() || sbar.overlays_view() ? h - 1
+                                                                           : h - (total_weapons ? 33 : 0);
 
                 f->suggest.shift = f->m_shift;
                 f->suggest.pan_x = f->pan_x;
