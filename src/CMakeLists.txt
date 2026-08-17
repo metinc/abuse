@@ -96,10 +96,19 @@ target_link_libraries(abuse
     SDL3_mixer::SDL3_mixer
 )
 
+# This small native tool is required by the asset build and deliberately has
+# no SDL, OpenCV, or game-runtime dependencies.
+if(NOT CMAKE_CROSSCOMPILING)
+    add_executable(abuse-hmi2mid
+        sdlport/hmi.cpp sdlport/hmi.h
+        tool/hmi2mid.cpp)
+endif()
+
 if(ABUSE_BUILD_TOOLS)
     add_executable(abuse-tool
         file_utils.cpp file_utils.h
         tool/abuse-tool.cpp
+        sdlport/hmi.cpp sdlport/hmi.h
         crc.cpp crc.h
         tool/AR_SPEC.cpp tool/AR_SPEC.h
         tool/AR_Help.cpp tool/AR_Help.h)

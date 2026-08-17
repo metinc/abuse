@@ -42,7 +42,7 @@ class song
   public:
     explicit song(char const *filename);
     void play(float gain = 1.0f);
-    void stop(int fadeout_time = 0); // time in ms
+    void stop(int fadeout_time = 0); // milliseconds; zero uses a short default fade
     bool playing() const;
     void set_gain(float gain);
     bool reload();

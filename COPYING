@@ -18,6 +18,7 @@ src/sdlport/*:
    Licensed under the GNU GPL 2+. Please read COPYING.GPL for details.
 src/sdlport/hmi.h:
 src/sdlport/hmi.cpp:
+src/tool/hmi2mid.cpp:
    Copyright (c) 2011 Jochen Schleu <jjs@jjs.at>
    Copyright (c) 2024-2025 Andrej Pancik
    Licensed under the WTFPL. Please read COPYING.WTFPL for details.

@@ -1341,7 +1341,7 @@ void do_title()
             current_song->stop();
             current_song.reset();
         }
-        current_song = std::make_unique<song>("music/intro.hmi");
+        current_song = std::make_unique<song>("music/intro.mid");
         current_song->play(music_volume);
     }
 
@@ -2386,7 +2386,7 @@ void music_check()
     {
         if (!current_song)
         {
-            current_song = std::make_unique<song>("music/intro.hmi");
+            current_song = std::make_unique<song>("music/intro.mid");
             current_song->play(music_volume);
 
             /*      if(DEFINEDP(symbol_function(l_next_song)))  // if user function installed, call it to load up next song

@@ -14,15 +14,15 @@
 #endif
 
 #include <array>
+#include <cstdint>
 #include <vector>
 #include <cstring>
 #include <cstdio>
 #include <algorithm>
 
-#include "file_utils.h"
-#include "common.h"
+#include "hmi.h"
 
-// Load Abuse HMI files and covert them to standard Midi format
+// Load Abuse HMI files and convert them to Standard MIDI format
 //
 // HMI files differ from Midi files in the following ways:
 // - there is a header giving offsets to the tracks and various other
@@ -248,7 +248,7 @@ std::vector<uint8_t> load_hmi_as_midi(char const *filename)
     if (!filename)
         return {};
 
-    FILE *hmifile = prefix_fopen(filename, "rb");
+    FILE *hmifile = fopen(filename, "rb");
     if (hmifile == nullptr)
         return {};
 
@@ -339,4 +339,22 @@ std::vector<uint8_t> load_hmi_as_midi(char const *filename)
 
     output_buffer.resize(static_cast<size_t>(output_buffer_ptr - output_buffer.data()));
     return output_buffer;
+}
+
+bool convert_hmi_to_midi_file(char const *input_filename, char const *output_filename)
+{
+    if (!input_filename || !output_filename)
+        return false;
+
+    const std::vector<uint8_t> midi = load_hmi_as_midi(input_filename);
+    if (midi.empty())
+        return false;
+
+    FILE *midi_file = fopen(output_filename, "wb");
+    if (!midi_file)
+        return false;
+
+    const bool written = fwrite(midi.data(), 1, midi.size(), midi_file) == midi.size();
+    const bool closed = fclose(midi_file) == 0;
+    return written && closed;
 }

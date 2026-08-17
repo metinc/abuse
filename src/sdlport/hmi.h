@@ -15,5 +15,6 @@
 #include <vector>
 
 std::vector<uint8_t> load_hmi_as_midi(char const *filename);
+bool convert_hmi_to_midi_file(char const *input_filename, char const *output_filename);
 
 #endif

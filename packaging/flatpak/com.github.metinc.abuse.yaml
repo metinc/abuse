@@ -44,7 +44,7 @@ modules:
         tag: release-3.4.0
         commit: a962f40bbba175e9716557a25d5d7965f134a3d3
 
-  # SDL_mixer uses FluidSynth to play the game's converted HMI/MIDI music
+  # SDL_mixer uses FluidSynth to play the game's build-generated MIDI music
   # with the bundled SoundFonts. Only the synthesizer library is needed;
   # audio-device and command-line integrations are handled by SDL_mixer.
   - name: fluidsynth

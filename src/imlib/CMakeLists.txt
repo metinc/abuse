@@ -30,7 +30,6 @@ add_library(imlib STATIC
     ../sdlport/jdir.cpp
     ../sdlport/joystick.cpp ../sdlport/joy.h
     ../sdlport/setup.cpp ../sdlport/setup.h
-    ../sdlport/hmi.cpp ../sdlport/hmi.h
     ../sdlport/errorui.cpp ../sdlport/errorui.h
 )
 

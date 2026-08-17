@@ -90,8 +90,9 @@ The editor uses `editor_framebuffer_width` and `editor_framebuffer_height` as it
 The in-game Audio Settings window lists available SoundFonts from `data/soundfonts` and applies a selection without
 restarting the game. Changes apply as soon as a SoundFont is selected while preserving the current music position.
 
-`data/music` contains Standard MIDI conversions of every HMI song. `soundtrack.mid` concatenates them in soundtrack
-order and can be regenerated with `scripts/merge_midi.py`.
+The build converts every HMI song in `data/music` to Standard MIDI. Only the generated `.mid` files are installed and
+packaged; HMI conversion is not part of the game's runtime audio path. The C++ converter is also available manually as
+`abuse-tool hmi2mid <input.hmi> <output.mid>`.
 
 #### Game Settings
 

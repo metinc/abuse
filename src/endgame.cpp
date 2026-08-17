@@ -502,9 +502,9 @@ void share_end()
 void show_end()
 {
     //AR real end screen
-    //since there is a victory.hmi in the music folder my guess would be that it was supposed to be played during the end screen
+    // Since there is victory music, play it during the end screen.
     //you can even hear him howling in the track, it matches the on screen text
-    bFILE *fp = open_file("music/victory.hmi", "rb");
+    bFILE *fp = open_file("music/victory.mid", "rb");
     if (fp->open_failure())
         delete fp;
     else
@@ -516,7 +516,7 @@ void show_end()
             current_song.reset();
         }
 
-        current_song = std::make_unique<song>("music/victory.hmi");
+        current_song = std::make_unique<song>("music/victory.mid");
         current_song->play(music_volume);
 
         delete fp;

@@ -26,7 +26,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <filesystem>
+#include <mutex>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -34,7 +37,6 @@
 #include <SDL3_mixer/SDL_mixer.h>
 
 #include "sound.h"
-#include "hmi.h"
 #include "specs.h"
 #include "setup.h"
 
@@ -44,20 +46,174 @@ extern Settings settings;
 namespace
 {
 constexpr int SFX_TRACK_COUNT = 50;
+constexpr int MUSIC_TRACK_POOL_SIZE = 2;
+constexpr int MUSIC_FADE_MILLISECONDS = 100;
+constexpr char FLUIDSYNTH_DECODER[] = "FLUIDSYNTH";
 constexpr char FLUIDSYNTH_SOUNDFONT_PROPERTY[] = "SDL_mixer.decoder.fluidsynth.soundfont_path";
 
 MIX_Mixer *mixer = nullptr;
 std::vector<MIX_Track *> sfx_tracks;
+std::vector<MIX_Track *> music_tracks;
 std::string soundfont_path;
+bool fluidsynth_available = false;
+
+struct RetiredMusic
+{
+    MIX_Track *track;
+    MIX_Audio *audio;
+};
+
+std::mutex music_mutex;
+std::vector<RetiredMusic *> retired_music;
+
+MIX_Track *acquire_music_track()
+{
+    std::lock_guard<std::mutex> lock(music_mutex);
+    if (!music_tracks.empty())
+    {
+        MIX_Track *track = music_tracks.back();
+        music_tracks.pop_back();
+        return track;
+    }
+    return mixer ? MIX_CreateTrack(mixer) : nullptr;
+}
+
+void release_music_track(MIX_Track *track)
+{
+    if (!track)
+        return;
+
+    MIX_SetTrackStoppedCallback(track, nullptr, nullptr);
+    MIX_SetTrackAudio(track, nullptr);
+
+    bool keep = false;
+    {
+        std::lock_guard<std::mutex> lock(music_mutex);
+        if (mixer && music_tracks.size() < MUSIC_TRACK_POOL_SIZE)
+        {
+            music_tracks.push_back(track);
+            keep = true;
+        }
+    }
+    if (!keep)
+        MIX_DestroyTrack(track);
+}
+
+void SDLCALL retired_music_stopped(void *userdata, MIX_Track *track)
+{
+    auto *retired = static_cast<RetiredMusic *>(userdata);
+    MIX_SetTrackStoppedCallback(track, nullptr, nullptr);
+    MIX_SetTrackAudio(track, nullptr);
+    MIX_DestroyAudio(retired->audio);
+
+    bool keep_track = false;
+    {
+        std::lock_guard<std::mutex> lock(music_mutex);
+        const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
+        if (it != retired_music.end())
+            retired_music.erase(it);
+        if (mixer && music_tracks.size() < MUSIC_TRACK_POOL_SIZE)
+        {
+            music_tracks.push_back(track);
+            keep_track = true;
+        }
+    }
+    if (!keep_track)
+        MIX_DestroyTrack(track);
+    delete retired;
+}
+
+void dispose_music(MIX_Track *&track, MIX_Audio *&audio, int fadeout_milliseconds)
+{
+    if (!track)
+    {
+        MIX_DestroyAudio(audio);
+        audio = nullptr;
+        return;
+    }
+
+    if (!MIX_TrackPlaying(track) || MIX_TrackPaused(track))
+    {
+        release_music_track(track);
+        MIX_DestroyAudio(audio);
+        track = nullptr;
+        audio = nullptr;
+        return;
+    }
+
+    auto *retired = new (std::nothrow) RetiredMusic{track, audio};
+    if (!retired)
+    {
+        MIX_StopTrack(track, 0);
+        release_music_track(track);
+        MIX_DestroyAudio(audio);
+        track = nullptr;
+        audio = nullptr;
+        return;
+    }
+
+    const bool already_fading_out = MIX_GetTrackFadeFrames(track) < 0;
+    {
+        std::lock_guard<std::mutex> lock(music_mutex);
+        retired_music.push_back(retired);
+    }
+    track = nullptr;
+    audio = nullptr;
+
+    if (!MIX_SetTrackStoppedCallback(retired->track, retired_music_stopped, retired))
+    {
+        {
+            std::lock_guard<std::mutex> lock(music_mutex);
+            const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
+            if (it != retired_music.end())
+                retired_music.erase(it);
+        }
+        MIX_StopTrack(retired->track, 0);
+        release_music_track(retired->track);
+        MIX_DestroyAudio(retired->audio);
+        delete retired;
+        return;
+    }
+
+    if (!already_fading_out &&
+        !MIX_StopTrack(retired->track, MIX_TrackMSToFrames(retired->track, fadeout_milliseconds)))
+    {
+        MIX_SetTrackStoppedCallback(retired->track, nullptr, nullptr);
+        {
+            std::lock_guard<std::mutex> lock(music_mutex);
+            const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
+            if (it != retired_music.end())
+                retired_music.erase(it);
+        }
+        release_music_track(retired->track);
+        MIX_DestroyAudio(retired->audio);
+        delete retired;
+    }
+}
+
+std::filesystem::path resolve_audio_path(const char *filename)
+{
+    const std::filesystem::path filename_path(filename);
+    if (filename_path.is_absolute())
+        return filename_path;
+
+    const std::filesystem::path data_path = std::filesystem::path(get_filename_prefix()) / filename_path;
+    if (std::filesystem::is_regular_file(data_path))
+        return data_path;
+
+    const std::filesystem::path generated_path = std::filesystem::path(ABUSE_GENERATED_ASSETDIR) / filename_path;
+    if (std::filesystem::is_regular_file(generated_path))
+        return generated_path;
+
+    return data_path;
+}
 
 MIX_Audio *load_prefixed_audio(const char *filename)
 {
     if (!filename)
         return nullptr;
 
-    const std::filesystem::path filename_path(filename);
-    const std::filesystem::path audio_path =
-        filename_path.is_absolute() ? filename_path : std::filesystem::path(get_filename_prefix()) / filename_path;
+    const std::filesystem::path audio_path = resolve_audio_path(filename);
     return MIX_LoadAudio(mixer, audio_path.string().c_str(), true);
 }
 
@@ -119,6 +275,13 @@ bool sound_set_soundfont(const std::string &configured_soundfont)
     if (!resolve_soundfont(configured_soundfont, resolved_path))
         return false;
 
+    if (sound_is_initialized() && !resolved_path.empty() && !fluidsynth_available)
+    {
+        printf("Sound: FluidSynth MIDI decoder is unavailable; cannot use SoundFont: %s\n",
+               resolved_path.c_str());
+        return false;
+    }
+
     soundfont_path = std::move(resolved_path);
     if (soundfont_path.empty())
         printf("Sound: Using the default SoundFont.\n");
@@ -161,12 +324,16 @@ bool sound_init()
     }
 
     const int num_decoders = MIX_GetNumAudioDecoders();
+    fluidsynth_available = false;
     if (num_decoders > 0)
     {
         printf("Sound: Audio decoders:");
         for (int i = 0; i < num_decoders; i++)
         {
-            printf("%s%s", (i == 0) ? " " : ", ", MIX_GetAudioDecoder(i));
+            const char *decoder = MIX_GetAudioDecoder(i);
+            printf("%s%s", (i == 0) ? " " : ", ", decoder);
+            if (decoder && std::strcmp(decoder, FLUIDSYNTH_DECODER) == 0)
+                fluidsynth_available = true;
         }
         printf("\n");
     }
@@ -208,6 +375,18 @@ bool sound_init()
         sfx_tracks.push_back(track);
     }
 
+    music_tracks.reserve(MUSIC_TRACK_POOL_SIZE);
+    for (int i = 0; i < MUSIC_TRACK_POOL_SIZE; ++i)
+    {
+        MIX_Track *track = MIX_CreateTrack(mixer);
+        if (!track)
+        {
+            printf("Sound: Could only create %zu reusable music tracks: %s\n", music_tracks.size(), SDL_GetError());
+            break;
+        }
+        music_tracks.push_back(track);
+    }
+
     return true;
 }
 
@@ -223,9 +402,20 @@ void sound_uninit()
         return;
 
     MIX_DestroyMixer(mixer);
-    mixer = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(music_mutex);
+        mixer = nullptr;
+        music_tracks.clear();
+        for (RetiredMusic *retired : retired_music)
+        {
+            MIX_DestroyAudio(retired->audio);
+            delete retired;
+        }
+        retired_music.clear();
+    }
     sfx_tracks.clear();
     soundfont_path.clear();
+    fluidsynth_available = false;
     MIX_Quit();
 }
 
@@ -314,8 +504,7 @@ void sound_effect::play(float gain, float frequency_ratio, int panpot)
 /**
   * @brief Constructor for music/song objects
   *
-  * Loads a music file (HMI format) and prepares it for playback.
-  * Uses SDL_IOStream for memory-based playback to avoid keeping files open.
+  * Loads a Standard MIDI music file and prepares it for playback.
   *
   * @param filename Path to the music file
   */
@@ -332,16 +521,8 @@ bool song::load()
 
     try
     {
-        // Load HMI format music file into memory
-        std::vector<uint8_t> data = load_hmi_as_midi(m_filename.c_str());
-
-        if (data.empty())
-        {
-            printf("Sound: ERROR - could not load %s\n", m_filename.c_str());
-            return false;
-        }
-
-        SDL_IOStream *io = SDL_IOFromConstMem(data.data(), data.size());
+        const std::filesystem::path audio_path = resolve_audio_path(m_filename.c_str());
+        SDL_IOStream *io = SDL_IOFromFile(audio_path.string().c_str(), "rb");
         if (!io)
         {
             printf("Sound: ERROR - could not create IO stream for %s: %s\n", m_filename.c_str(), SDL_GetError());
@@ -352,11 +533,29 @@ bool song::load()
         bool properties_ok = props != 0;
         properties_ok = properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_IOSTREAM_POINTER, io);
         properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_CLOSEIO_BOOLEAN, true);
-        properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_PREDECODE_BOOLEAN, true);
+        // Keep the small MIDI file in memory and let FluidSynth generate PCM
+        // incrementally while the track plays. Predecoding a whole song can
+        // otherwise consume tens of megabytes and delays every transition.
+        properties_ok = properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_PREDECODE_BOOLEAN, false);
+        properties_ok =
+            properties_ok && SDL_SetBooleanProperty(props, MIX_PROP_AUDIO_LOAD_SKIP_METADATA_TAGS_BOOLEAN, true);
         properties_ok =
             properties_ok && SDL_SetPointerProperty(props, MIX_PROP_AUDIO_LOAD_PREFERRED_MIXER_POINTER, mixer);
         if (properties_ok && !soundfont_path.empty())
-            properties_ok = SDL_SetStringProperty(props, FLUIDSYNTH_SOUNDFONT_PROPERTY, soundfont_path.c_str());
+        {
+            if (!fluidsynth_available)
+            {
+                printf("Sound: ERROR - FluidSynth is required to play %s with the selected SoundFont\n",
+                       m_filename.c_str());
+                properties_ok = false;
+            }
+            else
+            {
+                properties_ok = SDL_SetStringProperty(props, MIX_PROP_AUDIO_DECODER_STRING, FLUIDSYNTH_DECODER);
+                properties_ok = properties_ok &&
+                                SDL_SetStringProperty(props, FLUIDSYNTH_SOUNDFONT_PROPERTY, soundfont_path.c_str());
+            }
+        }
 
         if (properties_ok)
             m_audio = MIX_LoadAudioWithProperties(props);
@@ -370,13 +569,13 @@ bool song::load()
             return false;
         }
 
-        m_track = MIX_CreateTrack(mixer);
+        m_track = acquire_music_track();
         if (!m_track)
             printf("Sound: ERROR - could not create music track for %s: %s\n", m_filename.c_str(), SDL_GetError());
         else if (!MIX_SetTrackAudio(m_track, m_audio))
         {
             printf("Sound: ERROR - could not configure music track for %s: %s\n", m_filename.c_str(), SDL_GetError());
-            MIX_DestroyTrack(m_track);
+            release_music_track(m_track);
             m_track = nullptr;
         }
         return m_track != nullptr;
@@ -395,15 +594,9 @@ bool song::load()
   */
 song::~song()
 {
-    if (playing())
-        stop();
-
     if (!sound_is_initialized())
         return;
-    MIX_DestroyTrack(m_track);
-    MIX_DestroyAudio(m_audio);
-    m_track = nullptr;
-    m_audio = nullptr;
+    dispose_music(m_track, m_audio, MUSIC_FADE_MILLISECONDS);
 }
 
 /**
@@ -426,6 +619,8 @@ bool song::start_playback(Sint64 start_milliseconds)
     if (options)
     {
         SDL_SetNumberProperty(options, MIX_PROP_PLAY_LOOPS_NUMBER, -1);
+        SDL_SetNumberProperty(options, MIX_PROP_PLAY_FADE_IN_MILLISECONDS_NUMBER, MUSIC_FADE_MILLISECONDS);
+        SDL_SetFloatProperty(options, MIX_PROP_PLAY_FADE_IN_START_GAIN_FLOAT, 0.0f);
         if (start_milliseconds > 0)
             SDL_SetNumberProperty(options, MIX_PROP_PLAY_START_MILLISECOND_NUMBER, start_milliseconds);
     }
@@ -445,8 +640,8 @@ void song::stop(int fadeout_time)
 {
     if (sound_is_initialized() && m_track)
     {
-        const int duration = fadeout_time > 0 ? fadeout_time : 100;
-        MIX_StopTrack(m_track, MIX_TrackMSToFrames(m_track, duration));
+        const int duration = fadeout_time > 0 ? fadeout_time : MUSIC_FADE_MILLISECONDS;
+        dispose_music(m_track, m_audio, duration);
     }
 }
 
@@ -484,7 +679,7 @@ bool song::reload()
 
     if (!load())
     {
-        MIX_DestroyTrack(m_track);
+        release_music_track(m_track);
         MIX_DestroyAudio(m_audio);
         m_audio = old_audio;
         m_track = old_track;
@@ -498,15 +693,25 @@ bool song::reload()
         const Sint64 position_frames = MIX_GetTrackPlaybackPosition(old_track);
         if (position_frames >= 0)
             position_milliseconds = MIX_TrackFramesToMS(old_track, position_frames);
-        MIX_StopTrack(old_track, 0);
     }
-    MIX_DestroyTrack(old_track);
-    MIX_DestroyAudio(old_audio);
 
     if (resume)
     {
         set_gain(m_gain);
-        return start_playback(position_milliseconds);
+        if (!start_playback(position_milliseconds))
+        {
+            release_music_track(m_track);
+            MIX_DestroyAudio(m_audio);
+            m_audio = old_audio;
+            m_track = old_track;
+            return false;
+        }
+        dispose_music(old_track, old_audio, MUSIC_FADE_MILLISECONDS);
+    }
+    else
+    {
+        release_music_track(old_track);
+        MIX_DestroyAudio(old_audio);
     }
     return true;
 }

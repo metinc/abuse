@@ -22,6 +22,7 @@
 #include "image.h"
 #include "pcxread.h"
 #include "crc.h"
+#include "sdlport/hmi.h"
 
 #include "AR_SPEC.h"
 
@@ -49,6 +50,21 @@ int abuse_tool(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+    if (argc >= 2 && !strcmp(argv[1], "hmi2mid"))
+    {
+        if (argc != 4)
+        {
+            fprintf(stderr, "Usage: abuse-tool hmi2mid <input.hmi> <output.mid>\n");
+            return EXIT_FAILURE;
+        }
+
+        if (convert_hmi_to_midi_file(argv[2], argv[3]))
+            return EXIT_SUCCESS;
+
+        fprintf(stderr, "abuse-tool: could not convert %s to %s\n", argv[2], argv[3]);
+        return EXIT_FAILURE;
+    }
+
     int result = 0;
 
     if (argc == 1)
@@ -93,9 +109,12 @@ void Usage()
            "   move    <id1> <id2>         move entry <id1> to position <id2>\n"
            "   del     <id>                delete entry <id>\n"
            "\n"
+           "Usage 2: abuse-tool hmi2mid <input.hmi> <output.mid>\n"
+           "   Convert an Abuse HMI music file to Standard MIDI.\n"
+           "\n"
            "See the abuse-tool(6) manual page for more information.\n"
            "\n"
-           "Usage 2: abuse-tool\n"
+           "Usage 3: abuse-tool\n"
            "\n"
            "   To extract the images to modern image formats the program reads\n"
            "   the settings and list of files located in \"..\\abuse-tool\\extract.txt\"\n"

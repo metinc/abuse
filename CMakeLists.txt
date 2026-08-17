@@ -24,11 +24,23 @@ endif()
 
 # Options
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
+set(ABUSE_HMI2MID_EXECUTABLE "" CACHE FILEPATH
+    "Host executable used to convert HMI music while cross-compiling")
 
 # Dependencies used by the game
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
 find_package(SDL3_net 3.0.0 REQUIRED)
+
+# The bundled soundtrack is MIDI and the selected SoundFont is passed to the
+# FluidSynth decoder. Catch incomplete SDL_mixer packages at configure time
+# when their package metadata exposes the enabled decoder set.
+if(DEFINED SDLMIXER_MIDI_FLUIDSYNTH AND NOT SDLMIXER_MIDI_FLUIDSYNTH)
+    message(FATAL_ERROR "SDL3_mixer was built without FluidSynth MIDI support")
+endif()
+if(WIN32 AND SDLMIXER_MIDI_FLUIDSYNTH)
+    find_package(FluidSynth CONFIG REQUIRED)
+endif()
 
 find_package(toml11 4.4 CONFIG QUIET)
 if(NOT TARGET toml11::toml11)
@@ -91,11 +103,13 @@ endif()
 # Installed and packaged builds find their assets relative to SDL_GetBasePath()
 # first, so this path is only used when running directly from the build tree.
 file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data" ABUSE_DEVELOPMENT_ASSETDIR)
+file(TO_CMAKE_PATH "${CMAKE_CURRENT_BINARY_DIR}/data" ABUSE_GENERATED_ASSETDIR)
 
 add_compile_definitions(
     ASSETDIR="${ABUSE_DEFAULT_ASSETDIR}"
     ABUSE_ASSETDIR_FROM_BASE="${ABUSE_ASSETDIR_FROM_BASE}"
     ABUSE_DEVELOPMENT_ASSETDIR="${ABUSE_DEVELOPMENT_ASSETDIR}"
+    ABUSE_GENERATED_ASSETDIR="${ABUSE_GENERATED_ASSETDIR}"
     PACKAGE_VERSION="${PROJECT_VERSION}"
     HAVE_CONFIG_H
 )
@@ -109,12 +123,19 @@ add_subdirectory(data)
 if(WIN32)
     if(CMAKE_CROSSCOMPILING)
         install(TARGETS abuse RUNTIME DESTINATION .)
-        install(FILES
+        set(windows_runtime_dlls
             "$<TARGET_FILE:SDL3::SDL3>"
             "$<TARGET_FILE:SDL3_mixer::SDL3_mixer>"
             "$<TARGET_FILE:SDL3_net::SDL3_net>"
-            DESTINATION .
         )
+        # vcpkg's MinGW SDL3_mixer links to the shared FluidSynth runtime.
+        # It is not a direct dependency of abuse.exe, so include it explicitly.
+        if(TARGET FluidSynth::libfluidsynth)
+            list(APPEND windows_runtime_dlls "$<TARGET_FILE:FluidSynth::libfluidsynth>")
+        else()
+            message(FATAL_ERROR "FluidSynth runtime target not found for the Windows package")
+        endif()
+        install(FILES ${windows_runtime_dlls} DESTINATION .)
 
         set(mingw_runtime_dirs "")
         foreach(root_path IN LISTS CMAKE_FIND_ROOT_PATH)
@@ -191,7 +212,8 @@ else()
         if(FLUIDSYNTH_RUNTIME_LIBRARY)
             list(APPEND LINUXDEPLOY_APPDIR_ARGS --library "${FLUIDSYNTH_RUNTIME_LIBRARY}")
         else()
-            message(STATUS "FluidSynth was not found; AppImage MIDI playback will use another available SDL_mixer backend")
+            message(STATUS
+                "No separate FluidSynth runtime was found; assuming SDL3_mixer contains the decoder without an external library")
         endif()
 
         add_custom_target(appdir
@@ -398,11 +420,13 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
                 "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/x86_64-w64-mingw32.cmake"
                 "-DCMAKE_PREFIX_PATH=${WINDOWS_VCPKG_INSTALLED_DIR}/x64-mingw-dynamic"
                 -DABUSE_BUILD_TOOLS=OFF
+                "-DABUSE_HMI2MID_EXECUTABLE=$<TARGET_FILE:abuse-hmi2mid>"
                 "-DABUSE_WINDOWS_OUTPUT_DIR=${CMAKE_BINARY_DIR}"
                 "-DWIXL_EXECUTABLE=${HOST_WIXL_EXECUTABLE}"
                 "-DWIXL_HEAT_EXECUTABLE=${HOST_WIXL_HEAT_EXECUTABLE}"
             COMMAND "${CMAKE_COMMAND}" --build "${WINDOWS_CROSS_BUILD_DIR}"
                 --config Release --target windows-package-artifacts --parallel
+            DEPENDS abuse-hmi2mid
             COMMENT "Cross-building Windows ZIP and MSI"
             USES_TERMINAL
             VERBATIM
