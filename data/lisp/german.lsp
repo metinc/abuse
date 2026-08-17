@@ -166,7 +166,7 @@
 	 (setq menu1_new          "Neues Level")
 	 (setq menu1_resize       "Kartengröße ändern")
 	 (setq menu1_suspend      "Nicht-Spieler Lähmung an/aus")
-	 (setq menu1_toggle       "Spiel Modus an/aus     (TAB)")
+	 (setq menu1_toggle       "Level spielen          (TAB)")
 	 (setq menu1_savepal      "Paletten speichern")
 	 (setq menu1_startc       "Cache-Profil starten")
 	 (setq menu1_endc         "Cache-Profil beenden")
@@ -312,8 +312,6 @@
 
          (setq to_be_continued "Fortsetzung folgt.....")
          (setq no_edit         "Diese Abuse-Version hat keine Edit-Funktionen")
-         (setq no_hirez        "High-Res. gibt es nur im Edit-Modus (-edit)")
-         (setq no2             "-2 kann nicht mit -edit zusammen benutzt werden")
          (setq no_pals         "Paletten sind nicht definiert")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : size width height\n")

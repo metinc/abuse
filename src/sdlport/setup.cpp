@@ -123,7 +123,6 @@ Settings::Settings()
     //random
     this->local_save = false;
     this->grab_input = false; // don't grab the input
-    this->editor = false; // disable editor mode
     this->physics_update = 65; // original 65ms/15 FPS
     this->max_fps = 300;
     this->big_font = false;
@@ -733,7 +732,6 @@ bool Settings::ReadTomlFile()
 
         const settings_document *general = find_table(document, "general");
         read_string(general, "general", "language", language);
-        read_boolean(general, "general", "editor", editor);
         read_boolean(general, "general", "grab_input", grab_input);
         read_boolean(general, "general", "local_save", local_save);
 
@@ -817,7 +815,6 @@ void Settings::BeginCommandLineOverrides()
     file_linear_filter = linear_filter;
     file_mono = mono;
     file_local_save = local_save;
-    file_editor = editor;
 }
 
 void Settings::SetFullscreen(bool enabled)
@@ -877,7 +874,7 @@ bool Settings::Save() const
 
         settings_document &general = ensure_table(document, "general");
         set_value(general, "language", language);
-        set_value(general, "editor", command_line_overrides ? file_editor : editor);
+        general.as_table().erase("editor");
         set_value(general, "grab_input", grab_input);
         set_value(general, "local_save", command_line_overrides ? file_local_save : local_save);
 
@@ -980,7 +977,6 @@ void showHelp(const char *executableName)
     printf("Options:\n\n");
     printf("** Abuse Options **\n");
     printf("  -size <arg>       Set the size of the screen\n");
-    printf("  -edit             Startup in editor mode\n");
     printf("  -a <arg>          Use addon named <arg>\n");
     printf("  -f <arg>          Load map file named <arg>\n");
     printf("  -lisp             Startup in lisp interpreter mode\n");

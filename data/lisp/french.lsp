@@ -165,7 +165,7 @@ plan \n"
 	 (setq menu1_new          "Nouveau niveau")
 	 (setq menu1_resize       "Taille de la carte")
 	 (setq menu1_suspend      "Découple toutes les fonctions")
-	 (setq menu1_toggle       "Activer/désactiver mode jeu  (TAB)")
+	 (setq menu1_toggle       "Jouer au niveau (TAB)")
 	 (setq menu1_savepal      "Sauvegarder palettes         ")
 	 (setq menu1_startc       "Début de l'antémémoire   ")
 	 (setq menu1_endc         "Fin de l'antémémoire     ")
@@ -309,8 +309,6 @@ plan \n"
 
          (setq to_be_continued "A suivre.....")
          (setq no_edit         "Cette version du jeu est dépourvue de l'éditeur")
-         (setq no_hirez        "La haute résolution n'est disponible qu'avec le mode éditer (-edit)")
-         (setq no2             "Ne peut pas utiliser -2 avec -edit")
          (setq no_pals         "Aucune palette définie")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : taille largeur hauteur\n")

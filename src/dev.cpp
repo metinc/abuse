@@ -844,7 +844,6 @@ void dev_controll::toggle_search_window()
 }
 
 int open_owin = 0, open_fwin = 0, open_bwin = 0, start_edit = 0, start_nodelay = 0, start_doubled = 0;
-bool editor_started_from_menu = false;
 
 int get_option(char const *name);
 
@@ -863,15 +862,7 @@ void dev_init(int argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-        if (!strcmp(argv[i], "-edit"))
-        {
-            dev |= EDIT_MODE;
-            start_edit = 1;
-            start_running = 1;
-            disable_autolight = 1;
-            settings.editor = true;
-        }
-        else if (!strcmp(argv[i], "-fwin"))
+        if (!strcmp(argv[i], "-fwin"))
             open_fwin = 1;
         else if (!strcmp(argv[i], "-bwin"))
             open_bwin = 1;
@@ -898,37 +889,6 @@ void dev_init(int argc, char **argv)
 
     if (get_option("-no_autolight"))
         disable_autolight = 0;
-
-    if ((get_option("-size")) && !start_edit)
-    {
-        printf("%s\n", symbol_str("no_hirez"));
-        exit(EXIT_SUCCESS);
-    }
-
-    fg_reversed = prop->getd("fg_reversed", 0);
-    mouse_scrolling = prop->getd("mouse_scrolling", 0);
-    palettes_locked = prop->getd("palettes_locked", 0);
-    view_shift_disabled = prop->getd("view_shift_disabled", 0);
-    fps_on = prop->getd("fps_on", 0);
-    show_names = prop->getd("show_names", 0);
-    raise_all = prop->getd("raise_all", 0);
-}
-
-void AR_dev_init()
-{
-    //TODO...enbale command line options via config
-    scale_mult = 1;
-    scale_div = 1;
-    dev = 0;
-    start_running = 0;
-    prop = new property_manager;
-
-    prop->load("defaults.prp");
-
-    dev |= EDIT_MODE;
-    start_edit = 1;
-    start_running = 1;
-    disable_autolight = 1;
 
     fg_reversed = prop->getd("fg_reversed", 0);
     mouse_scrolling = prop->getd("mouse_scrolling", 0);
@@ -2418,7 +2378,7 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
         case ID_PLAY_MODE: {
-            dev ^= EDIT_MODE;
+            the_game->start_editor_playtest();
         }
         break;
         case ID_QUIT: {
@@ -3925,7 +3885,7 @@ static pmi filemenu[]={
       { "Resize map",         ID_LEVEL_RESIZE,NULL,-1},
       { NULL,0,NULL,-1},
       { "Suspend non-players",ID_SUSPEND,NULL,-1},
-      { "Play mode toggle (TAB)",ID_PLAY_MODE,NULL,-1},
+      { "Play level (TAB)",ID_PLAY_MODE,NULL,-1},
       { NULL,0,NULL,-1},
       { "Save Palettes         ",ID_EDIT_SAVE,NULL,-1},
       { "Start cache profile   ",ID_CACHE_PROFILE,NULL,-1},

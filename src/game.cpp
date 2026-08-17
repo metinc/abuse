@@ -15,6 +15,7 @@
 #endif
 
 #include <algorithm>
+#include <filesystem>
 
 #include "common.h"
 
@@ -72,6 +73,7 @@
 #include "ui/chat.h"
 #include "demo.h"
 #include "netcfg.h"
+#include "file_utils.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -97,6 +99,7 @@ int req_end = 0;
 constexpr int legacy_activation_view_width = 319;
 constexpr int legacy_activation_view_height = 200;
 constexpr int legacy_status_bar_height = 32;
+constexpr char editor_playtest_file[] = ".abuse-editor-playtest.spe";
 
 char **start_argv;
 int start_argc;
@@ -529,10 +532,9 @@ int Game::done()
 
 void Game::end_session()
 {
-    if (editor_started_from_menu)
+    if (dev & EDIT_MODE)
     {
-        if (set_editor_mode(false))
-            editor_started_from_menu = false;
+        set_editor_mode(false);
         return;
     }
 
@@ -554,13 +556,8 @@ bool Game::set_editor_mode(bool enabled)
     if (enabled && !settings.GetEditorFramebufferSize(width, height))
         return false;
 
-    const bool old_editor_setting = settings.editor;
-    settings.editor = enabled;
     if (!resize_framebuffer(width, height))
-    {
-        settings.editor = old_editor_setting;
         return false;
-    }
 
     wm->SetMousePos(wm->GetMousePos());
     pal->load();
@@ -570,7 +567,13 @@ bool Game::set_editor_mode(bool enabled)
         start_edit = 1;
         disable_autolight = 1;
         set_frame_size(0);
-        load_level(level_file);
+        const bool resume_playtest = editor_playtest_available;
+        load_level(resume_playtest ? editor_playtest_file : level_file);
+        if (resume_playtest)
+        {
+            current_level->set_name(editor_level_name.c_str());
+            discard_editor_playtest();
+        }
         toggle_edit_mode();
         dev_cont->load_stuff();
         recalc_local_view_space();
@@ -588,6 +591,59 @@ bool Game::set_editor_mode(bool enabled)
 
     main_screen->AddDirty(ivec2(0), main_screen->Size());
     return true;
+}
+
+void Game::discard_editor_playtest()
+{
+    const char *save_prefix = get_save_filename_prefix();
+    const std::filesystem::path path = std::filesystem::path(save_prefix ? save_prefix : "") / editor_playtest_file;
+    std::error_code error;
+    std::filesystem::remove(path, error);
+    if (save_prefix && save_prefix[0])
+    {
+        error.clear();
+        std::filesystem::remove(editor_playtest_file, error);
+    }
+    editor_playtest_available = false;
+    editor_level_name.clear();
+}
+
+void Game::start_editor_playtest()
+{
+    if (!(dev & EDIT_MODE) || !current_level)
+        return;
+
+    // Editor input is deliberately not sent while the simulation is paused.
+    // Do not replay those queued key presses when play mode starts.
+    reset_keymap();
+    pending_input_events.clear();
+    for (view *v = player_list; v; v = v->next)
+        v->reset_keymap();
+
+    discard_editor_playtest();
+    editor_level_name = current_level->name();
+    const std::string original_name = current_level->original_name();
+    if (!current_level->save(editor_playtest_file, 0, original_name.c_str(), false))
+    {
+        editor_level_name.clear();
+        return;
+    }
+    editor_playtest_available = true;
+
+    if (!set_editor_mode(false))
+    {
+        discard_editor_playtest();
+        return;
+    }
+
+    load_level(editor_playtest_file);
+    set_state(RUN_STATE);
+    for (view *v = player_list; v; v = v->next)
+        if (v->m_focus)
+        {
+            v->reset_player();
+            v->reset_camera();
+        }
 }
 
 int need_delay = 1;
@@ -1644,7 +1700,7 @@ void Game::update_screen(uint32_t elapsedMsFixed)
             {
                 if (f->drawable())
                 {
-                    draw_map(f, settings.editor == false, elapsedMsFixed);
+                    draw_map(f, !(dev & EDIT_MODE), elapsedMsFixed);
                 }
             }
             if (current_automap)
@@ -1748,7 +1804,7 @@ void Game::get_input()
             if (ev.type == EV_KEY && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 1);
-                if (playing_state(state))
+                if (playing_state(state) && !(dev & EDIT_MODE))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS),
@@ -1758,7 +1814,7 @@ void Game::get_input()
             else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 0);
-                if (playing_state(state))
+                if (playing_state(state) && !(dev & EDIT_MODE))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
@@ -1864,8 +1920,7 @@ void Game::get_input()
                         break;
                         case JK_TAB:
                             if (start_edit)
-                                toggle_edit_mode();
-                            need_refresh();
+                                start_editor_playtest();
                             break;
                         case '9':
                             dev = dev ^ PERFORMANCE_TEST_MODE;
@@ -2065,6 +2120,7 @@ extern void *current_demo;
 
 Game::~Game()
 {
+    discard_editor_playtest();
     current_demo = NULL;
     if (first_view == player_list)
         first_view = NULL;
@@ -2410,23 +2466,10 @@ int main(int argc, char *argv[])
         game_net_init(argc, argv);
         Lisp::Init();
 
-        //AR start editor via config file, or if command line
-        if (settings.editor)
-            AR_dev_init();
-        else
-            dev_init(argc, argv);
+        dev_init(argc, argv);
 
-        short target_xres = settings.xres;
-        short target_yres = settings.yres;
-        if (settings.editor && !settings.GetEditorFramebufferSize(target_xres, target_yres))
-        {
-            fprintf(stderr, "Video: Editor framebuffer is too large for the desktop aspect ratio\n");
-            exit(EXIT_FAILURE);
-        }
-        xres = target_xres;
-        yres = target_yres;
-        if (settings.editor)
-            printf("Video: Using editor %dx%d framebuffer\n", xres, yres);
+        xres = settings.xres;
+        yres = settings.yres;
 
         //AR the intro loop is in the constructor itself
         Game *g = new Game(argc, argv);

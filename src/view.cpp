@@ -181,6 +181,20 @@ void view::pan_editor(int32_t x, int32_t y)
     pan_y_last = pan_y;
 }
 
+void view::reset_camera()
+{
+    pan_x = 0;
+    pan_y = 0;
+    pan_x_last = 0;
+    pan_y_last = 0;
+    no_xleft = 0;
+    no_xright = 0;
+    no_ytop = 0;
+    no_ybottom = 0;
+    interpolation_ratio = 1.0f;
+    m_lastpos = m_focus ? ivec2(m_focus->x, m_focus->y) : ivec2(0);
+}
+
 // updates the camera position to follow the player
 void view::update_scroll(float interpolation_ratio)
 {

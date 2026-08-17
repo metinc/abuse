@@ -45,7 +45,6 @@ class Settings
     //random
     bool local_save;
     bool grab_input; //confine the mouse to the rendered game area in windowed mode
-    bool editor; //enable editor mode
     short physics_update; //custom pysics update time in miliseconds
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
@@ -116,7 +115,7 @@ class Settings
     short file_editor_xres = 640, file_editor_yres = 400;
     bool file_widescreen_support = true;
     bool file_no_sound = false, file_linear_filter = false, file_mono = false;
-    bool file_local_save = false, file_editor = false;
+    bool file_local_save = false;
 };
 
 #endif // _SETUP_H_

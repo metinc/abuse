@@ -102,6 +102,7 @@ class view
     void note_downkey();
     int handle_event(Event &ev);
     void update_scroll(float interpolation_ratio);
+    void reset_camera();
     void pan_editor(int32_t x, int32_t y);
     void draw_hp();
     void draw_ammo();

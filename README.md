@@ -99,7 +99,6 @@ order and can be regenerated with `scripts/merge_midi.py`.
 - `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
 - `[gameplay].max_fps` - Frame-rate limit
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
-- `[general].editor` - Enable editor mode
 - `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
 
 ### Key Bindings
@@ -214,14 +213,13 @@ The first gamepad used becomes active; other connected gamepads are ignored unti
 
 | Argument        | Description                 |
 | --------------- | --------------------------- |
-| `-edit`         | Launch editor mode          |
 | `-fwin`         | Open foreground editor      |
 | `-bwin`         | Open background editor      |
 | `-owin`         | Open objects window         |
 | `-no_autolight` | Disable auto lighting       |
 | `-nolight`      | Disable all lighting        |
 | `-bastard`      | Bypass filename security    |
-| `-size`         | Custom window size (editor) |
+| `-size`         | Custom framebuffer size     |
 | `-lisp`         | Start LISP interpreter      |
 | `-ec`           | Empty cache                 |
 | `-t <filename>` | Insert tiles from file      |

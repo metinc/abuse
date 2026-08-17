@@ -26,6 +26,7 @@
 #include "view.h"
 #include "id.h"
 
+#include <string>
 #include <vector>
 
 #define MAPFW 100
@@ -99,6 +100,10 @@ class Game
     uint8_t keymap[JK_KEY_COUNT / 8];
     bool suppress_chat_activation_text = false;
     std::vector<pending_input_event> pending_input_events;
+    std::string editor_level_name;
+    bool editor_playtest_available = false;
+
+    void discard_editor_playtest();
 
   public:
     JCFont *save_game_font; //AR
@@ -209,6 +214,7 @@ class Game
     }
     void end_session();
     bool set_editor_mode(bool enabled);
+    void start_editor_playtest();
     void need_refresh()
     {
         refresh = 1;

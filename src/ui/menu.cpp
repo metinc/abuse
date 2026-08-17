@@ -267,10 +267,7 @@ void menu_handler(Event &ev, InputManager *inm)
 
         case ID_EDITOR:
             if (!audio_settings_window)
-            {
-                if (the_game->set_editor_mode(true))
-                    editor_started_from_menu = true;
-            }
+                the_game->set_editor_mode(true);
             break;
 
         case ID_LOAD_PLAYER_GAME:

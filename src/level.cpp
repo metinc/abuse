@@ -2179,7 +2179,7 @@ void level::load_cache_info(spec_directory *sd, bFILE *fp)
     }
 }
 
-int level::save(char const *filename, int save_all)
+int level::save(char const *filename, int save_all, char const *first_name_override, bool create_backup)
 {
     //AR clisp.case 223 saves the game in game
 
@@ -2187,7 +2187,8 @@ int level::save(char const *filename, int save_all)
 
     sprintf(name, "%s", filename);
     // sprintf( bkname, "%slevsave.bak", get_save_filename_prefix() );
-    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup)) // make a backup
+    if (!save_all && create_backup && DEFINEDP(symbol_value(l_keep_backup)) &&
+        symbol_value(l_keep_backup)) // make a backup
     {
         bFILE *fp = open_file(name, "rb"); // does file already exist?
         if (!fp->open_failure())
@@ -2223,7 +2224,7 @@ int level::save(char const *filename, int save_all)
     {
         if (first_name)
             free(first_name);
-        first_name = strdup(name);
+        first_name = strdup(first_name_override ? first_name_override : name);
     }
 
     object_node *players, *objs;

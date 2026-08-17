@@ -21,12 +21,10 @@ extern int confirm_quit();
 
 extern int scale_mult, scale_div;
 extern int start_edit;
-extern bool editor_started_from_menu;
 extern char level_file[100];
 extern image *small_render;
 
 void dev_init(int argc, char **argv);
-void AR_dev_init();
 
 void dev_cleanup();
 void toggle_edit_mode();

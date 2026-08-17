@@ -168,7 +168,7 @@
 	 (setq menu1_new          "New level")
 	 (setq menu1_resize       "Resize map")
 	 (setq menu1_suspend      "Suspend non-players")
-	 (setq menu1_toggle       "Play mode toggle (TAB)")
+	 (setq menu1_toggle       "Play level (TAB)")
 	 (setq menu1_savepal      "Save Palettes         ")
 	 (setq menu1_startc       "Start cache profile   ")
 	 (setq menu1_endc         "End cache profile     ")
@@ -317,8 +317,6 @@
 
 	 (setq to_be_continued "To be continued.....")
          (setq no_edit         "This version of ABUSE does not have editing features")
-         (setq no_hirez        "Hi-rez is only available for edit mode (-edit)")
-	 (setq no2             "Cannot use -2 with -edit")
 	 (setq no_pals         "No palettes defined")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : size width height\n")

@@ -44,7 +44,6 @@ menu_demos = false
 [general]
 # english, german, or french
 language = "english"
-editor = false
 # Confine the mouse to the rendered game area in windowed mode
 grab_input = false
 local_save = false
