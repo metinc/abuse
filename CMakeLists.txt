@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 
+if(POLICY CMP0177)
+    cmake_policy(SET CMP0177 NEW)
+endif()
+
 project(abuse
     VERSION 1.0.5
     DESCRIPTION "Run and gun game"
@@ -11,6 +15,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(GNUInstallDirs)
+
+# The existing platform-specific sources use WIN32, while MinGW guarantees
+# _WIN32. Keep the project-wide platform check consistent for cross builds.
+if(WIN32)
+    add_compile_definitions(WIN32)
+endif()
 
 # Options
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
@@ -97,13 +107,45 @@ add_subdirectory(data)
 # One canonical installation layout. Platform packagers and linuxdeploy consume
 # these same rules.
 if(WIN32)
-    install(TARGETS abuse
-        RUNTIME_DEPENDENCIES
-            PRE_EXCLUDE_REGEXES "api-ms-.*" "ext-ms-.*"
-            POST_EXCLUDE_REGEXES ".*[Ww]indows[/\\\\][Ss]ystem32.*"
-        RUNTIME DESTINATION .
-    )
-    install(FILES COPYING.toml11 DESTINATION .)
+    if(CMAKE_CROSSCOMPILING)
+        install(TARGETS abuse RUNTIME DESTINATION .)
+        install(FILES
+            "$<TARGET_FILE:SDL3::SDL3>"
+            "$<TARGET_FILE:SDL3_mixer::SDL3_mixer>"
+            "$<TARGET_FILE:SDL3_net::SDL3_net>"
+            DESTINATION .
+        )
+
+        set(mingw_runtime_dirs "")
+        foreach(root_path IN LISTS CMAKE_FIND_ROOT_PATH)
+            list(APPEND mingw_runtime_dirs "${root_path}/bin")
+        endforeach()
+        foreach(runtime_dll
+                libgcc_s_seh-1.dll
+                libstdc++-6.dll
+                libwinpthread-1.dll)
+            unset(runtime_dll_path)
+            find_file(runtime_dll_path
+                NAMES "${runtime_dll}"
+                PATHS ${mingw_runtime_dirs}
+                NO_DEFAULT_PATH
+                NO_CACHE
+            )
+            if(runtime_dll_path)
+                install(FILES "${runtime_dll_path}" DESTINATION .)
+            else()
+                message(FATAL_ERROR "MinGW runtime library not found: ${runtime_dll}")
+            endif()
+        endforeach()
+    else()
+        install(TARGETS abuse
+            RUNTIME_DEPENDENCIES
+                PRE_EXCLUDE_REGEXES "api-ms-.*" "ext-ms-.*"
+                POST_EXCLUDE_REGEXES ".*[Ww]indows[/\\\\][Ss]ystem32.*"
+            RUNTIME DESTINATION .
+        )
+    endif()
+    install(FILES COPYING COPYING.toml11 DESTINATION .)
 elseif(APPLE)
     install(TARGETS abuse BUNDLE DESTINATION .)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/macOS/abuse.icns"
@@ -244,7 +286,15 @@ set(CPACK_PACKAGE_EXECUTABLES "abuse;Abuse")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 
 if(WIN32)
-    set(CPACK_GENERATOR "WIX;ZIP")
+    set(CPACK_PACKAGE_FILE_NAME "Abuse-${PROJECT_VERSION}-win64")
+    if(CMAKE_CROSSCOMPILING)
+        set(CPACK_GENERATOR "ZIP")
+        set(ABUSE_WINDOWS_OUTPUT_DIR "${CMAKE_BINARY_DIR}" CACHE PATH
+            "Output directory for Windows packages")
+        set(CPACK_PACKAGE_DIRECTORY "${ABUSE_WINDOWS_OUTPUT_DIR}")
+    else()
+        set(CPACK_GENERATOR "WIX;ZIP")
+    endif()
     set(CPACK_WIX_UPGRADE_GUID "3A89DEB1-B520-4DF5-B44D-96A0EBB27DC0")
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/doc/icon.ico")
@@ -264,3 +314,101 @@ else()
 endif()
 
 include(CPack)
+
+if(WIN32 AND CMAKE_CROSSCOMPILING)
+    find_program(WIXL_EXECUTABLE NAMES wixl DOC "Path to wixl")
+    find_program(WIXL_HEAT_EXECUTABLE NAMES wixl-heat DOC "Path to wixl-heat")
+
+    set(WINDOWS_ZIP_OUTPUT
+        "${ABUSE_WINDOWS_OUTPUT_DIR}/Abuse-${PROJECT_VERSION}-win64.zip")
+    add_custom_target(windows-zip
+        COMMAND "${CMAKE_CPACK_COMMAND}"
+            --config "${CMAKE_BINARY_DIR}/CPackConfig.cmake"
+            -G ZIP
+            -B "${ABUSE_WINDOWS_OUTPUT_DIR}"
+        DEPENDS abuse
+        BYPRODUCTS "${WINDOWS_ZIP_OUTPUT}"
+        COMMENT "Creating Abuse-${PROJECT_VERSION}-win64.zip"
+        VERBATIM
+    )
+
+    if(WIXL_EXECUTABLE AND WIXL_HEAT_EXECUTABLE)
+        set(WINDOWS_STAGE_DIR "${CMAKE_BINARY_DIR}/windows-msi-stage")
+        set(WINDOWS_MSI_OUTPUT
+            "${ABUSE_WINDOWS_OUTPUT_DIR}/Abuse-${PROJECT_VERSION}-win64.msi")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/packaging/windows")
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/abuse.wxs.in"
+            "${CMAKE_BINARY_DIR}/packaging/windows/abuse.wxs"
+            @ONLY
+        )
+
+        add_custom_target(windows-msi
+            COMMAND "${CMAKE_COMMAND}" -E remove_directory "${WINDOWS_STAGE_DIR}"
+            COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}"
+                --config Release --prefix "${WINDOWS_STAGE_DIR}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DWIXL_EXECUTABLE=${WIXL_EXECUTABLE}"
+                "-DWIXL_HEAT_EXECUTABLE=${WIXL_HEAT_EXECUTABLE}"
+                "-DSTAGING_DIR=${WINDOWS_STAGE_DIR}"
+                "-DPRODUCT_WXS=${CMAKE_BINARY_DIR}/packaging/windows/abuse.wxs"
+                "-DOUTPUT=${WINDOWS_MSI_OUTPUT}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/build-msi.cmake"
+            DEPENDS abuse
+            BYPRODUCTS "${WINDOWS_MSI_OUTPUT}"
+            COMMENT "Creating Abuse-${PROJECT_VERSION}-win64.msi"
+            VERBATIM
+        )
+        add_custom_target(windows-package-artifacts
+            DEPENDS windows-zip windows-msi)
+    else()
+        message(STATUS "wixl or wixl-heat was not found; the windows-msi target is disabled")
+    endif()
+endif()
+
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    set(VCPKG_ROOT "$ENV{VCPKG_ROOT}" CACHE PATH "Path to a vcpkg ports checkout")
+    find_program(HOST_VCPKG_EXECUTABLE NAMES vcpkg)
+    find_program(MINGW_C_COMPILER NAMES x86_64-w64-mingw32-gcc)
+    find_program(MINGW_CXX_COMPILER NAMES x86_64-w64-mingw32-g++)
+    find_program(MINGW_RC_COMPILER NAMES x86_64-w64-mingw32-windres)
+    find_program(HOST_WIXL_EXECUTABLE NAMES wixl)
+    find_program(HOST_WIXL_HEAT_EXECUTABLE NAMES wixl-heat)
+
+    if(EXISTS "${VCPKG_ROOT}/.vcpkg-root" AND HOST_VCPKG_EXECUTABLE
+            AND MINGW_C_COMPILER AND MINGW_CXX_COMPILER AND MINGW_RC_COMPILER
+            AND HOST_WIXL_EXECUTABLE AND HOST_WIXL_HEAT_EXECUTABLE)
+        set(WINDOWS_CROSS_BUILD_DIR "${CMAKE_BINARY_DIR}/windows-x64")
+        set(WINDOWS_VCPKG_INSTALLED_DIR
+            "${WINDOWS_CROSS_BUILD_DIR}/vcpkg_installed")
+        add_custom_target(windows-packages
+            COMMAND "${CMAKE_COMMAND}" -E env VCPKG_DISABLE_METRICS=1
+                "${HOST_VCPKG_EXECUTABLE}" install
+                --triplet x64-mingw-dynamic
+                --host-triplet x64-linux
+                "--vcpkg-root=${VCPKG_ROOT}"
+                "--x-manifest-root=${CMAKE_CURRENT_SOURCE_DIR}"
+                "--x-install-root=${WINDOWS_VCPKG_INSTALLED_DIR}"
+                --x-wait-for-lock
+            COMMAND "${CMAKE_COMMAND}"
+                -S "${CMAKE_CURRENT_SOURCE_DIR}"
+                -B "${WINDOWS_CROSS_BUILD_DIR}"
+                -G "${CMAKE_GENERATOR}"
+                -DCMAKE_BUILD_TYPE=Release
+                "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/x86_64-w64-mingw32.cmake"
+                "-DCMAKE_PREFIX_PATH=${WINDOWS_VCPKG_INSTALLED_DIR}/x64-mingw-dynamic"
+                -DABUSE_BUILD_TOOLS=OFF
+                "-DABUSE_WINDOWS_OUTPUT_DIR=${CMAKE_BINARY_DIR}"
+                "-DWIXL_EXECUTABLE=${HOST_WIXL_EXECUTABLE}"
+                "-DWIXL_HEAT_EXECUTABLE=${HOST_WIXL_HEAT_EXECUTABLE}"
+            COMMAND "${CMAKE_COMMAND}" --build "${WINDOWS_CROSS_BUILD_DIR}"
+                --config Release --target windows-package-artifacts --parallel
+            COMMENT "Cross-building Windows ZIP and MSI"
+            USES_TERMINAL
+            VERBATIM
+        )
+    else()
+        message(STATUS
+            "vcpkg with its ports checkout, MinGW-w64, or msitools was not found; the windows-packages target is disabled")
+    endif()
+endif()

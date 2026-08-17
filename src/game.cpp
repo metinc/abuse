@@ -20,8 +20,8 @@
 #include "common.h"
 
 #ifdef WIN32
-#include <WinSock2.h>
-#include <Windows.h>
+#include <winsock2.h>
+#include <windows.h>
 // Windows has its own CreateWindow function. It uses preprocessor magic to
 // change between ASCII and wide-character versions, which masks our
 // version of CreateWindow.

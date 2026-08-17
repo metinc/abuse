@@ -17,7 +17,8 @@
 #include <unistd.h>
 #endif
 #ifdef WIN32
-#include <Windows.h>
+#include <winsock2.h>
+#include <windows.h>
 // Windows preprocessor magic shadows JWindowManager's CreateWindow function.
 #undef CreateWindow
 #endif
@@ -222,17 +223,8 @@ char const *get_login()
         return cur_user_name;
 
 #if defined WIN32
-    DWORD bufferSize = 120;
-    TCHAR *login;
-    login = (TCHAR *)malloc(bufferSize * sizeof(TCHAR));
-    if (GetUserName(login, &bufferSize))
-    {
-        return (char *)login;
-    }
-    else
-    {
-        return "unknown";
-    }
+    DWORD buffer_size = sizeof(cur_user_name);
+    return GetUserNameA(cur_user_name, &buffer_size) ? cur_user_name : "unknown";
 #else
     char const *login = getlogin();
     return login ? login : "unknown";

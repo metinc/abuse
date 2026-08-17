@@ -50,6 +50,8 @@ extern Settings settings;
 #define ENGINE_MAJOR 1
 #define ENGINE_MINOR 20
 
+constexpr double ABUSE_PI = 3.14159265358979323846;
+
 // the following are references to lisp symbols
 LSymbol *l_chat_input, *l_post_render;
 
@@ -1169,7 +1171,7 @@ long c_caller(CFunc number, void *args)
         int32_t x1 = current_object->x;
         int32_t y1 = current_object->y;
 
-        double angle_rad = angle_deg * (M_PI / 180.0);
+        double angle_rad = angle_deg * (ABUSE_PI / 180.0);
 
         int32_t dx = x1 - origin_x;
         int32_t dy = y1 - origin_y;

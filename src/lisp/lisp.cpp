@@ -49,6 +49,8 @@ size_t LSymbol::count = 0;
 int print_level = 0, trace_level = 0, trace_print_level = 1000;
 int total_user_functions;
 
+constexpr double ABUSE_PI = 3.14159265358979323846;
+
 void lbreak(char const *format, ...)
 {
     char st[300];
@@ -550,17 +552,17 @@ void *lisp_equal(void *n1, void *n2)
 
 int32_t lisp_cos(int32_t x)
 {
-    return lround(cosf(x * (M_PI / 180.0)) * 0xffff);
+    return lround(cosf(x * (ABUSE_PI / 180.0)) * 0xffff);
 }
 
 int32_t lisp_sin(int32_t x)
 {
-    return lround(sinf(x * (M_PI / 180.0)) * 0xffff);
+    return lround(sinf(x * (ABUSE_PI / 180.0)) * 0xffff);
 }
 
 int32_t lisp_atan2(int32_t dy, int32_t dx)
 {
-    return (atan2f(-dy, -dx) + M_PI) * 180.0 / M_PI;
+    return (atan2f(-dy, -dx) + ABUSE_PI) * 180.0 / ABUSE_PI;
 }
 
 LSymbol *LSymbol::Find(char const *name)

@@ -116,6 +116,15 @@ cmake --build build --target package
 
 Under Windows you can use [MSYS2 MinGW 64-bit](https://www.msys2.org/) to run the command.
 
+On Arch Linux, install the cross-build tools and clone the vcpkg ports registry:
+
+```sh
+sudo pacman -S --needed mingw-w64-gcc msitools vcpkg
+git clone https://github.com/microsoft/vcpkg.git ~/.local/share/vcpkg
+cmake -B build -DVCPKG_ROOT="$HOME/.local/share/vcpkg"
+cmake --build build --target windows-packages
+```
+
 # AppImage
 
 The `appdir` and `appimage` targets use
