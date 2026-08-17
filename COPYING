@@ -27,6 +27,10 @@ src/sdlport/errorui.cpp:
    Copyright (c) 2014 Copyright (c) 2014 Daniel Potter
    Licensed under the GNU GPL 2+. Please read COPYING.GPL for details.
 
+src/tool/third_party/stb_image_write.h:
+   Copyright (c) 2017 Sean Barrett
+   Licensed under the MIT License included at the end of that file.
+
 src/*:
    Copyright (c) 1995 Crack dot Com
    These files were released in the public domain.

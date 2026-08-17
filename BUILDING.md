@@ -6,7 +6,6 @@
 - SDL3_mixer
 - SDL3_net
 - [CMake 3.21 or later](https://cmake.org/)
-- OpenCV (only when building the optional `abuse-tool` asset extraction utility)
 
 ### Linux
 
@@ -36,8 +35,6 @@ sudo cmake --install SDL3_net-3.2.0/build
 
 The Abuse build will find SDL3_net under `/usr/local` automatically.
 
-Also install `opencv` if you want to build `abuse-tool`.
-
 For other distributions, use the equivalent packages from your package manager.
 
 ### macOS
@@ -49,7 +46,6 @@ brew install cmake
 brew install sdl3
 brew install sdl3_mixer
 brew install sdl3_net
-brew install opencv # Only needed for abuse-tool
 ```
 
 # Compiling
@@ -67,8 +63,8 @@ the repository root:
 cmake -B build
 ```
 
-The `abuse-tool` utility is enabled by default. To build only the game and
-avoid the OpenCV dependency, configure with:
+The `abuse-tool` utility is enabled by default and uses its bundled lightweight
+image writer. To build only the game, configure with:
 
 ```sh
 cmake -B build -DABUSE_BUILD_TOOLS=OFF

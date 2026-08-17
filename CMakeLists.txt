@@ -54,11 +54,6 @@ if(NOT TARGET toml11::toml11)
     FetchContent_MakeAvailable(toml11)
 endif()
 
-# OpenCV is only used by abuse-tool, not by the game.
-if(ABUSE_BUILD_TOOLS)
-    find_package(OpenCV REQUIRED COMPONENTS core imgcodecs)
-endif()
-
 # System checks
 include(CheckIncludeFiles)
 

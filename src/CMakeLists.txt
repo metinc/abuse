@@ -97,7 +97,7 @@ target_link_libraries(abuse
 )
 
 # This small native tool is required by the asset build and deliberately has
-# no SDL, OpenCV, or game-runtime dependencies.
+# no SDL or game-runtime dependencies.
 if(NOT CMAKE_CROSSCOMPILING)
     add_executable(abuse-hmi2mid
         sdlport/hmi.cpp sdlport/hmi.h
@@ -111,10 +111,10 @@ if(ABUSE_BUILD_TOOLS)
         sdlport/hmi.cpp sdlport/hmi.h
         crc.cpp crc.h
         tool/AR_SPEC.cpp tool/AR_SPEC.h
-        tool/AR_Help.cpp tool/AR_Help.h)
+        tool/AR_Help.cpp tool/AR_Help.h
+        tool/third_party/stb_image_write.h)
 
-    target_include_directories(abuse-tool PRIVATE ${OpenCV_INCLUDE_DIRS})
-    target_link_libraries(abuse-tool PRIVATE imlib ${OpenCV_LIBS})
+    target_link_libraries(abuse-tool PRIVATE imlib)
 endif()
 
 include_directories(

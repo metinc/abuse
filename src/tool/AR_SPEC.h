@@ -1,5 +1,5 @@
 /*
- * Extracting PCX images stored in Abuse SPEC files to modern image formats using OpenCV
+ * Extracting PCX images stored in Abuse SPEC files to modern image formats
  *	Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,26 +21,7 @@
 // AR 2016 - settings and list of files to process are stored in "..\abuse-tool\extract.txt"
 //
 
-// OpenCV-2.1.0-win32-vs2008
-//	- linker
-//		cv210.lib
-//		cxcore210.lib
-//		highgui210.lib
-//	- libraries
-//		OpenCV2.1\lib
-//	- include
-//		OpenCV2.1\include
-//		OpenCV2.1\include\opencv
-//
-
-//OpenCV supported image file formats (! - see more info online):
-//	Windows bitmaps				- *.bmp, *.dib			(always supported)
-//	JPEG files					- *.jpeg, *.jpg, *.jpe	(!)
-//	JPEG 2000 files				- *.jp2					(!)
-//	Portable Network Graphics	- *.png					(!)
-//	Portable image format		- *.pbm, *.pgm, *.ppm	(always supported)
-//	Sun rasters					- *.sr, *.ras			(always supported)
-//	TIFF files					- *.tiff, *.tif			(!)
+// Supported output formats: PNG, JPEG/JPG/JPE, BMP/DIB and TGA.
 
 //Abuse image types (transparency):
 //	- static/solid image
@@ -59,9 +40,6 @@
 #include <fstream>
 #include <sstream>
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/highgui.hpp>
-
 #include "common.h"
 #include "specs.h"
 #include "image.h"
@@ -70,14 +48,14 @@
 
 #include "AR_Help.h"
 
-enum AR_OpenCV_Stuff
+enum AR_ImageOption
 {
-    AR_OCV_KEEPCOLOR, // transparency - keep original values
-    AR_OCV_COLORTOALPHA, // transparency - store in alpha channel (png only)
-    AR_OCV_NEWCOLOR, // transparency - replace color with new values
-    AR_OCV_FILEPERPCX, // output - each image will be stored in separate files
-    AR_OCV_FILEPERGROUP, // output - animations or foregorund/background tilesets will be stored in one file
-    AR_OCV_FILEPERSPEC // output - all the images in spe file will be stored in one file
+    AR_IMAGE_KEEPCOLOR, // transparency - keep original values
+    AR_IMAGE_COLORTOALPHA, // transparency - store in alpha channel (png only)
+    AR_IMAGE_NEWCOLOR, // transparency - replace color with new values
+    AR_IMAGE_FILEPERPCX, // output - each image will be stored in separate files
+    AR_IMAGE_FILEPERGROUP, // output - animations or foregorund/background tilesets will be stored in one file
+    AR_IMAGE_FILEPERSPEC // output - all the images in spe file will be stored in one file
 };
 
 class AR_ImageGroup
@@ -101,8 +79,8 @@ class AR_SPEC
 
     std::string image_format;
 
-    int png_compression; // 0-9, higher value means a smaller size and longer compression time, OpenCV default is 3
-    int jpeg_quality; // 0-100, higher is better, OpenCV default is 95
+    int png_compression; // 0-9, higher means smaller files and slower encoding
+    int jpeg_quality; // 1-100, higher is better
 
     int alpha; // handling "transparent" black pixels in animated images
     int alpha_r, alpha_g,
@@ -139,5 +117,6 @@ class AR_SPEC
     bool AR_CreateTile(image *im, std::string path, palette *pal, palette *pal_custom);
     bool AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std::string name, palette *pal,
                         palette *pal_hires, palette *pal_custom);
-    bool AR_SaveImage(cv::Mat &ocv, std::string path);
+    bool AR_SaveImage(const std::vector<uint8_t> &pixels, int width, int height, int channels,
+                      const std::string &path);
 };
