@@ -188,7 +188,7 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
 
     source_gain = std::clamp(source_gain, 0.0f, 1.0f);
     const float distance_gain = static_cast<float>(400 - mindist) / 400.0f;
-    const float gain = distance_gain * sfx_volume - (1.0f - source_gain);
+    const float gain = distance_gain * sfx_volume * source_gain;
     if (gain > 0.0f)
         cache.sfx(id)->play(gain, frequency_ratio, p);
 }
