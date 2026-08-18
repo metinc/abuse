@@ -109,6 +109,60 @@ std::string timestamped_replay_filename()
                   local_time.tm_min, local_time.tm_sec, milliseconds);
     return filename;
 }
+
+std::filesystem::path temporary_replay_checkpoint_path()
+{
+    std::error_code error;
+    const std::filesystem::path directory = std::filesystem::temp_directory_path(error);
+    if (error)
+        return {};
+
+    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
+    return directory / ("abuse-replay-checkpoint-" + std::to_string(nonce) + ".spe");
+}
+}
+
+void demo_manager::clear_playback_checkpoint()
+{
+    if (playback_checkpoint_path.empty())
+        return;
+
+    std::error_code error;
+    std::filesystem::remove(playback_checkpoint_path, error);
+    playback_checkpoint_path.clear();
+}
+
+bool demo_manager::save_playback_checkpoint()
+{
+    if (state != PLAYING || !current_level)
+        return false;
+
+    const std::filesystem::path path = temporary_replay_checkpoint_path();
+    if (path.empty())
+        return false;
+
+    if (!current_level->save(path.string().c_str(), 1, NULL, false))
+    {
+        std::error_code error;
+        std::filesystem::remove(path, error);
+        return false;
+    }
+
+    std::error_code error;
+    if (!playback_checkpoint_path.empty())
+        std::filesystem::remove(playback_checkpoint_path, error);
+    playback_checkpoint_path = path.string();
+
+    return true;
+}
+
+bool demo_manager::load_playback_checkpoint()
+{
+    if (state != PLAYING || playback_checkpoint_path.empty())
+        return false;
+
+    the_game->request_level_load(playback_checkpoint_path.c_str());
+    return true;
 }
 
 int demo_manager::start_recording(char const *filename)
@@ -371,6 +425,9 @@ int demo_manager::start_playing(char const *filename)
     else
         reset_game();
 
+    if (!save_playback_checkpoint())
+        std::fprintf(stderr, "Unable to create the replay checkpoint\n");
+
     return 1;
 }
 
@@ -390,6 +447,7 @@ int demo_manager::set_state(demo_state new_state, char const *filename)
     case PLAYING: {
         delete record_file;
         record_file = NULL;
+        clear_playback_checkpoint();
         l_difficulty->SetValue(initial_difficulty);
         if (game_mode_overridden && main_net_cfg)
             main_net_cfg->game_mode = initial_game_mode == net_configuration::COOP ? net_configuration::COOP

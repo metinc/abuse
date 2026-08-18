@@ -14,6 +14,8 @@
 #include "lisp.h"
 #include "jwindow.h"
 
+#include <string>
+
 class demo_manager
 {
     LObject *initial_difficulty;
@@ -22,6 +24,9 @@ class demo_manager
     int skip_next;
     bool automatic_recording;
     bool game_mode_overridden;
+    std::string playback_checkpoint_path;
+
+    void clear_playback_checkpoint();
 
   public:
     enum demo_state
@@ -41,6 +46,8 @@ class demo_manager
     int start_playing(char const *filename);
     int start_recording(char const *filename);
     int start_automatic_recording();
+    bool save_playback_checkpoint();
+    bool load_playback_checkpoint();
     bool is_automatic_recording() const
     {
         return automatic_recording;

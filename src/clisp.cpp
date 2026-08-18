@@ -2104,11 +2104,19 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::SaveGame: {
         char *fn = lstring_value(CAR(args));
-        current_level->save(fn, 1);
+        if (demo_man.current_state() == demo_manager::PLAYING)
+        {
+            if (!demo_man.save_playback_checkpoint())
+                std::fprintf(stderr, "Unable to update the replay checkpoint\n");
+        }
+        else
+        {
+            current_level->save(fn, 1);
 
-        //AR
-        settings.quick_load = get_save_filename_prefix();
-        settings.quick_load += fn;
+            //AR
+            settings.quick_load = get_save_filename_prefix();
+            settings.quick_load += fn;
+        }
     }
     break;
     case CFunc::SetHp: {
@@ -2116,15 +2124,23 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::RequestLevelLoad: {
+        char const *requested_name = lstring_value(CAR(args));
+        if (demo_man.current_state() == demo_manager::PLAYING && strncmp(requested_name, "save", 4) == 0)
+        {
+            if (!demo_man.load_playback_checkpoint())
+                std::fprintf(stderr, "Unable to load the replay checkpoint\n");
+            break;
+        }
+
         char fn[255];
         // If a save filename is requested, prepend the savegame directory.
-        if (strncmp(lstring_value(CAR(args)), "save", 4) == 0)
+        if (strncmp(requested_name, "save", 4) == 0)
         {
-            sprintf(fn, "%s%s", get_save_filename_prefix(), lstring_value(CAR(args)));
+            sprintf(fn, "%s%s", get_save_filename_prefix(), requested_name);
         }
         else
         {
-            strcpy(fn, lstring_value(CAR(args)));
+            strcpy(fn, requested_name);
         }
         the_game->request_level_load(fn);
 
@@ -2456,6 +2472,9 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::GetSaveSlot: {
         the_game->reset_keymap();
+        if (demo_man.current_state() == demo_manager::PLAYING)
+            return 1;
+
         return load_game(1, symbol_str("SAVE"));
     }
     break;
