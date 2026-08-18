@@ -39,6 +39,10 @@ class ico_button : public ifield
         return up;
     }
     void set_act_id(int id);
+    void set_enabled(bool value)
+    {
+        enabled = value;
+    }
 };
 
 class ico_switch_button : public ifield

@@ -145,6 +145,9 @@ extern float sfx_volume;
 
 void ico_button::handle_event(Event &ev, image *screen, InputManager *im)
 {
+    if (!enabled)
+        return;
+
     bool validEvent = ((ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && ev.key == 13) || ev.type == EV_MOUSE_BUTTON ||
                       (ev.type == EV_MOUSE_MOVE && ev.mouse_button > 0);
     if (!validEvent)

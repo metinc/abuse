@@ -60,36 +60,34 @@ struct SlotButtons
     int button_height = 0;
 };
 
-SlotButtons create_slot_buttons(int total_saved, int rows, image **thumbnails)
+SlotButtons create_slot_buttons(int rows, image **thumbnails)
 {
     SlotButtons result;
     result.button_width = cache.img(save_buts[0])->Size().x;
     result.button_height = cache.img(save_buts[0])->Size().y;
 
     ico_button *last = nullptr;
-    int slot = 0;
-    for (int index = 0; index < total_saved; index++)
+    for (int slot = 0; slot < MAX_SAVE_GAMES; slot++)
     {
-        while (thumbnails && slot < MAX_SAVE_GAMES && !thumbnails[slot])
-            slot++;
-
-        const int x = index / rows * result.button_width;
-        const int y = index % rows * result.button_height;
+        const int x = slot / rows * result.button_width;
+        const int y = slot % rows * result.button_height;
         ico_button *button =
             new ico_button(x, y, ID_LOAD_GAME_NUMBER + slot, save_buts[slot * 3 + 0], save_buts[slot * 3 + 0],
                            save_buts[slot * 3 + 1], save_buts[slot * 3 + 2], nullptr);
-        button->set_act_id(ID_LOAD_GAME_PREVIEW + slot);
+        const bool enabled = !thumbnails || thumbnails[slot];
+        button->set_enabled(enabled);
+        if (enabled)
+            button->set_act_id(ID_LOAD_GAME_PREVIEW + slot);
 
         if (last)
             last->next = button;
         else
             result.first = button;
         last = button;
-        slot++;
     }
 
-    result.width = (total_saved + rows - 1) / rows * result.button_width;
-    result.height = std::min(total_saved, rows) * result.button_height;
+    result.width = (MAX_SAVE_GAMES + rows - 1) / rows * result.button_width;
+    result.height = std::min(MAX_SAVE_GAMES, rows) * result.button_height;
     return result;
 }
 
@@ -154,7 +152,7 @@ int get_save_spot()
     if (last_free)
         return last_free; // if there are any slots not created yet...
 
-    const SlotButtons slots = create_slot_buttons(MAX_SAVE_GAMES, MAX_SAVE_LINES, nullptr);
+    const SlotButtons slots = create_slot_buttons(MAX_SAVE_LINES, nullptr);
     const ivec2 client_size(slots.width, slots.height);
     Jwindow *l_win =
         wm->CreateWindow(centered_window_position(client_size), client_size, slots.first, symbol_str("SAVE"));
@@ -263,11 +261,8 @@ int load_game(int show_all,
 
     if (!total_saved)
         return 0;
-    if (total_saved > MAX_SAVE_GAMES)
-        total_saved = MAX_SAVE_GAMES;
-
     constexpr int preview_gap = 5;
-    const SlotButtons slots = create_slot_buttons(total_saved, MAX_SAVE_LINES, thumbnails);
+    const SlotButtons slots = create_slot_buttons(MAX_SAVE_LINES, thumbnails);
     const ivec2 preview_size(max_w + 2, max_h + 2);
     const ivec2 client_size(slots.width + preview_gap + preview_size.x, std::max(slots.height, preview_size.y));
     Jwindow *window = wm->CreateWindow(centered_window_position(client_size), client_size, slots.first, title);
