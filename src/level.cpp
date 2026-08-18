@@ -2565,7 +2565,10 @@ void level::to_front(game_object *o) // move to end of list, so we are drawn las
 {
     if (o == last)
         return;
-    first_active = NULL; // make sure nothing goes screwy with the active list
+
+    // Keep the active list stable for the remainder of this physics tick.
+    // Game::Step() rebuilds it from the reordered master list before the next
+    // tick, so the new render order takes effect without interrupting physics.
 
     if (o == first)
         first = first->next;
@@ -2588,7 +2591,9 @@ void level::to_back(game_object *o) // to make the character drawn in back, put 
 {
     if (o == first)
         return;
-    first_active = NULL; // make sure nothing goes screwy with the active list
+
+    // Do not invalidate the active list while objects are being simulated.
+    // It is rebuilt from the master list at the start of the next tick.
 
     game_object *w = first;
     for (; w && w->next != o; w = w->next)
