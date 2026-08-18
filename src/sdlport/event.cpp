@@ -318,21 +318,25 @@ void EventHandler::Get(Event &ev)
         if (sdlev.wheel.x < 0)
         {
             ev.key = get_key_binding("b4", 0);
+            ev.mouse_wheel = 1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.x > 0)
         {
             ev.key = get_key_binding("b3", 0);
+            ev.mouse_wheel = -1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.y < 0)
         {
             ev.key = get_key_binding("b4", 0);
+            ev.mouse_wheel = -1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.y > 0)
         {
             ev.key = get_key_binding("b3", 0);
+            ev.mouse_wheel = 1;
             ev.type = EV_KEY;
         }
         if (ev.type == EV_KEY)
@@ -341,6 +345,7 @@ void EventHandler::Get(Event &ev)
             // be stuck down forever.
             Event release_event = ev;
             release_event.type = EV_KEYRELEASE;
+            release_event.mouse_wheel = 0;
             Push(std::move(release_event));
         }
         break;

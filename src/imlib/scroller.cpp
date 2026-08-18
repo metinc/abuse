@@ -299,6 +299,26 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
     }
     break;
     case EV_KEY: {
+        if (ev.mouse_wheel)
+        {
+            int new_position = sx - ev.mouse_wheel;
+            if (new_position < 0)
+                new_position = 0;
+            else if (new_position > max_scroll_position())
+                new_position = max_scroll_position();
+
+            if (new_position != sx)
+            {
+                if (scrollbar_visible())
+                    draw_widget(screen, 1);
+                sx = new_position;
+                if (scrollbar_visible())
+                    draw_widget(screen, 0);
+                scroll_event(sx, screen);
+            }
+            break;
+        }
+
         switch (ev.key)
         {
         case JK_LEFT: {

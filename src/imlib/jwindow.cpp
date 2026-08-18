@@ -559,7 +559,8 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
 
     if (!m_grab)
     {
-        if (ev.type == EV_MOUSE_BUTTON || ev.type == EV_MOUSE_MOVE)
+        const bool wheel_event = ev.mouse_wheel != 0;
+        if (ev.type == EV_MOUSE_BUTTON || ev.type == EV_MOUSE_MOVE || wheel_event)
         {
             for (i = m_first; i; i = i->next)
             {
@@ -571,8 +572,10 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
                 ev.type == EV_MOUSE_MOVE && ev.mouse_button != 0 && (!in_area || !in_area->selectable());
             if (leaving_while_pressed && in_area && !no_selections_allowed)
                 in_area = NULL;
+            if (wheel_event && in_area && !in_area->selectable())
+                in_area = NULL;
             if (in_area != m_active &&
-                (no_selections_allowed || (in_area && in_area->selectable()) || leaving_while_pressed))
+                (wheel_event || no_selections_allowed || (in_area && in_area->selectable()) || leaving_while_pressed))
             {
                 if (m_active)
                     m_active->draw(0, m_surf);
