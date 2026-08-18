@@ -158,16 +158,18 @@
 	  (stopped "firebomb")
 	  (walking "firebomb")))
 
+(defun give_ammo_pickup (type amount)
+  (if (and (not (has_weapon type)) change_on_pickup)
+      (progn
+	(give_weapon type)
+	(set_current_weapon type))
+    (give_weapon type))
+  (add_ammo type amount)
+  T)
+
 (defun giver (type)
   (let ((amount (get_ability start_hp)))
-    (with_object (bg)
-		 (progn
-		   (if (and (not (has_weapon type)) change_on_pickup)
-		       (progn
-			 (give_weapon type)
-			 (set_current_weapon type))
-		     (give_weapon type))
-		   (add_ammo type amount)))))
+    (apply_player_pickup (bg) (list 'give_ammo_pickup type amount))))
 
 
 ;; XXX: Mac Abuse reimplements this in C++

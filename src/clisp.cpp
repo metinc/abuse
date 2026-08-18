@@ -2601,6 +2601,9 @@ long c_caller(CFunc number, void *args)
             return 1;
     }
     break;
+    case CFunc::Cooperative:
+        return main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    break;
     case CFunc::TimeForNextLevel: {
         if (main_net_cfg &&
             (main_net_cfg->state == net_configuration::CLIENT || main_net_cfg->state == net_configuration::SERVER))

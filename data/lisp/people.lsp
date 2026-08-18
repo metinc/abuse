@@ -71,6 +71,25 @@
 )
 
 
+;; Apply a pickup's effect to the touching player normally, or to every
+;; player when the current network game is cooperative.  Return true if at
+;; least one player accepted the pickup (health uses this to remain available
+;; when everybody is already full).
+(defun apply_pickup_to_player_list (player effect)
+  (if player
+      (let ((next (next_focus player))
+	    (accepted (with_object player (eval effect))))
+	(if (apply_pickup_to_player_list next effect)
+	    T
+	  accepted))
+    nil))
+
+(defun apply_player_pickup (picker effect)
+  (if (cooperative)
+      (apply_pickup_to_player_list (first_focus) effect)
+    (with_object picker (eval effect))))
+
+
 
 (defun pressing_action_key ()
   (> (player_y_suggest) 0))

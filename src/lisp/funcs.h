@@ -361,6 +361,7 @@ enum class CFunc
     SetDelayOn, // T or nil
     EnableChatting,
     AmAClient,
+    Cooperative,
     TimeForNextLevel,
     ResetKills,
     SetGameName, // server game name
