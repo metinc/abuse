@@ -55,6 +55,7 @@ class Settings
     bool player_touching_console; //only allow quicksave if player is touching the console
     bool skip_intro;
     bool menu_demos;
+    bool record_replays;
 
     double gamma;
 

@@ -160,6 +160,7 @@
 	 (setq edit_top           "Bearbeiten")
 	 (setq window_top         "Fenster")
 	 (setq menu1_load         "Level laden")
+	 (setq menu1_replay       "Replay abspielen")
 	 (setq menu1_save         "Level speichern          (S)")
 	 (setq menu1_saveas       "Level speichern als")
 	 (setq menu1_savegame     "Spiel speichern")
@@ -186,6 +187,7 @@
 	 (setq menu2_map          "Karte an/aus           (M)")
 	 (setq menu2_view         "Blickwinkel ausschalten")
 	 (setq menu2_fps          "Bildrate/Objektzahl zeigen")
+	 (setq replay_filename    "Replay-Datei")
 
 	 (setq menu3_fore         "Vordergrund      (F)")
 	 (setq menu3_back         "Hintergrund      (B)")

@@ -159,6 +159,7 @@ plan \n"
 	 (setq edit_top           "Editer")
 	 (setq window_top         "Fenêtres")
 	 (setq menu1_load         "Lancer niveau")
+	 (setq menu1_replay       "Lire le replay")
 	 (setq menu1_save         "Sauvegarder niveau (S)")
 	 (setq menu1_saveas       "Enregistrer sous")
 	 (setq menu1_savegame     "Sauvegarder jeu")
@@ -185,6 +186,7 @@ plan \n"
 	 (setq menu2_map          "Activer/désactiver carte        (?)")
 	 (setq menu2_view         "Activer/désactiver changement de vue")
 	 (setq menu2_fps          "Afficher nombre d'objets")
+	 (setq replay_filename    "Fichier replay")
 
 	 (setq menu3_fore         "Premier plan     (f)")
 	 (setq menu3_back         "Arrière-plan     (b)")

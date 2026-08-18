@@ -13,6 +13,11 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <filesystem>
+#include <limits>
 #include <string>
 
 #include "common.h"
@@ -27,6 +32,7 @@
 #include "lisp.h"
 #include "clisp.h"
 #include "net/netface.h"
+#include "file_utils.h"
 
 demo_manager demo_man;
 ivec2 last_demo_mpos;
@@ -50,7 +56,8 @@ void get_event(Event &ev)
     case EV_KEY: {
         if (demo_man.state == demo_manager::PLAYING)
             demo_man.set_state(demo_manager::NORMAL);
-        else if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING)
+        else if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING &&
+                 !demo_man.is_automatic_recording())
         {
             demo_man.set_state(demo_manager::NORMAL);
             the_game->show_help("Finished recording");
@@ -68,25 +75,70 @@ bool event_waiting()
     return wm->IsPending();
 }
 
-int demo_manager::start_recording(char *filename)
+namespace
 {
-    if (!current_level)
+std::filesystem::path replay_write_path(char const *filename)
+{
+    std::filesystem::path path(filename);
+    if (path.is_relative())
+    {
+        char const *prefix = get_save_filename_prefix();
+        if (prefix && prefix[0])
+            path = std::filesystem::path(prefix) / path;
+    }
+    return path;
+}
+
+std::string timestamped_replay_filename()
+{
+    using namespace std::chrono;
+    const system_clock::time_point now = system_clock::now();
+    const std::time_t time = system_clock::to_time_t(now);
+    std::tm local_time = {};
+#ifdef WIN32
+    localtime_s(&local_time, &time);
+#else
+    localtime_r(&time, &local_time);
+#endif
+    const long milliseconds = duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+    char filename[80];
+    std::snprintf(filename, sizeof(filename), "replays/replay-%04d%02d%02d-%02d%02d%02d-%03ld.dat",
+                  local_time.tm_year + 1900, local_time.tm_mon + 1, local_time.tm_mday, local_time.tm_hour,
+                  local_time.tm_min, local_time.tm_sec, milliseconds);
+    return filename;
+}
+}
+
+int demo_manager::start_recording(char const *filename)
+{
+    if (!current_level || !filename || !filename[0])
         return 0;
 
     record_file = open_file(filename, "wb");
     if (record_file->open_failure())
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
 
-    char name[100];
-    strcpy(name, current_level->name());
+    std::filesystem::path snapshot_name(filename);
+    snapshot_name.replace_extension(".spe");
+    const std::string snapshot = snapshot_name.generic_string();
+    if (snapshot.size() + 1 > std::numeric_limits<uint16_t>::max() ||
+        !current_level->save(replay_write_path(snapshot.c_str()).string().c_str(), 1, NULL, false))
+    {
+        delete record_file;
+        record_file = NULL;
+        std::error_code error;
+        std::filesystem::remove(replay_write_path(filename), error);
+        return 0;
+    }
 
-    the_game->load_level(name);
-    record_file->write((void *)"DEMO,VERSION:2", 14);
-    record_file->write_uint8(strlen(name) + 1);
-    record_file->write(name, strlen(name) + 1);
+    record_file->write((void *)"DEMO,VERSION:3", 14);
+    record_file->write_uint16(static_cast<uint16_t>(snapshot.size() + 1));
+    record_file->write(snapshot.c_str(), snapshot.size() + 1);
 
     if (DEFINEDP(symbol_value(l_difficulty)))
     {
@@ -103,9 +155,23 @@ int demo_manager::start_recording(char *filename)
         record_file->write_uint8(3);
 
     state = RECORDING;
+    std::printf("Recording replay to %s\n", replay_write_path(filename).string().c_str());
 
-    reset_game();
+    return 1;
+}
 
+int demo_manager::start_automatic_recording()
+{
+    if (state != NORMAL)
+        return 0;
+
+    const std::string filename = timestamped_replay_filename();
+    automatic_recording = true;
+    if (!start_recording(filename.c_str()))
+    {
+        automatic_recording = false;
+        return 0;
+    }
     return 1;
 }
 
@@ -166,35 +232,54 @@ void demo_manager::reset_game()
     current_level->set_tick_counter(0);
 }
 
-int demo_manager::start_playing(char *filename)
+int demo_manager::start_playing(char const *filename)
 {
     uint8_t sig[15];
     record_file = open_file(filename, "rb");
     if (record_file->open_failure())
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
-    char name[100], nsize, diff;
-    if (record_file->read(sig, 14) != 14 || memcmp(sig, "DEMO,VERSION:2", 14) != 0 ||
-        record_file->read(&nsize, 1) != 1 || record_file->read(name, nsize) != nsize ||
+    if (record_file->read(sig, 14) != 14)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    const bool snapshot_replay = memcmp(sig, "DEMO,VERSION:3", 14) == 0;
+    if (!snapshot_replay && memcmp(sig, "DEMO,VERSION:2", 14) != 0)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    uint16_t name_size = snapshot_replay ? record_file->read_uint16() : record_file->read_uint8();
+    if (!name_size || name_size > 4096)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    std::string name(name_size, '\0');
+    uint8_t diff;
+    if (record_file->read(name.data(), name_size) != name_size || name.back() != '\0' ||
         record_file->read(&diff, 1) != 1)
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
+    name.pop_back();
 
-    char tname[100], *c;
-    strcpy(tname, name);
-    c = tname;
-    while (*c)
-    {
-        if (*c == '\\')
-            *c = '/';
-        c++;
-    }
+    std::replace(name.begin(), name.end(), '\\', '/');
+    std::string tname(name);
 
-    bFILE *probe = open_file(tname, "rb"); // see if the level still exists?
+    bFILE *probe = open_file(tname.c_str(), "rb"); // see if the level still exists?
     if (probe->open_failure())
     {
         delete probe;
@@ -214,13 +299,8 @@ int demo_manager::start_playing(char *filename)
                                          embedded_path.substr(embedded_slash == std::string::npos
                                                                   ? 0
                                                                   : embedded_slash + 1);
-            if (adjacent_level.size() < sizeof(tname))
-            {
-                strcpy(tname, adjacent_level.c_str());
-                probe = open_file(tname, "rb");
-            }
-            else
-                probe = NULL;
+            tname = adjacent_level;
+            probe = open_file(tname.c_str(), "rb");
         }
         else
             probe = NULL;
@@ -228,14 +308,22 @@ int demo_manager::start_playing(char *filename)
         if (!probe || probe->open_failure())
         {
             delete record_file;
+            record_file = NULL;
             delete probe;
             return 0;
         }
     }
     delete probe;
 
-    the_game->load_level(tname);
-    initial_difficulty = l_difficulty;
+    if ((dev & EDIT_MODE) && !the_game->set_editor_mode(false))
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    the_game->load_level(tname.c_str());
+    initial_difficulty = l_difficulty->GetValue();
 
     switch (diff)
     {
@@ -254,12 +342,19 @@ int demo_manager::start_playing(char *filename)
     }
 
     state = PLAYING;
-    reset_game();
+    if (snapshot_replay)
+    {
+        the_game->set_state(RUN_STATE);
+        last_demo_mpos = ivec2(0, 0);
+        last_demo_mbut = 0;
+    }
+    else
+        reset_game();
 
     return 1;
 }
 
-int demo_manager::set_state(demo_state new_state, char *filename)
+int demo_manager::set_state(demo_state new_state, char const *filename)
 {
     if (new_state == state)
         return 1;
@@ -268,11 +363,14 @@ int demo_manager::set_state(demo_state new_state, char *filename)
     {
     case RECORDING: {
         delete record_file;
+        record_file = NULL;
+        automatic_recording = false;
     }
     break;
     case PLAYING: {
         delete record_file;
-        l_difficulty = initial_difficulty;
+        record_file = NULL;
+        l_difficulty->SetValue(initial_difficulty);
         // Playback has ended before we return to the menu.  Game::set_state()
         // uses this state to choose the cursor, and PLAYING selects a blank one.
         state = NORMAL;

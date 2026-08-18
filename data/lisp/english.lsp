@@ -162,6 +162,7 @@
 	 (setq edit_top           "Edit")
 	 (setq window_top         "Windows")
 	 (setq menu1_load         "Load Level")
+	 (setq menu1_replay       "Play replay")
 	 (setq menu1_save         "Save Level         (S)")
 	 (setq menu1_saveas       "Save level as")
 	 (setq menu1_savegame     "Save game")
@@ -189,6 +190,7 @@
 	 (setq menu2_view         "Disable view shifts")
 	 (setq menu2_alight       "Disable Autolight (A)")
 	 (setq menu2_fps          "Show FPS/Obj count")
+	 (setq replay_filename    "Replay file")
 
 	 (setq menu3_fore         "Foreground  (F)")
 	 (setq menu3_back         "Background  (B)")

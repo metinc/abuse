@@ -2513,6 +2513,7 @@ int main(int argc, char *argv[])
         constexpr Uint64 NANOSECONDS_PER_SECOND = 1000000000;
         const Uint64 target_frame_time = NANOSECONDS_PER_SECOND / static_cast<Uint64>(settings.max_fps);
         Uint64 frame_deadline = SDL_GetTicksNS() + target_frame_time;
+        bool automatic_recording_failed = false;
 
         while (!g->done())
         {
@@ -2529,14 +2530,30 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
+            if (demo_man.is_automatic_recording() &&
+                (!current_level || g->state == MENU_STATE))
+                demo_man.set_state(demo_manager::NORMAL);
+
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
 
             // make sure physics process gets called every 65 ms
             if (SDL_GetTicks() - lastFixedUpdate >= settings.physics_update)
             {
-                if (demo_man.current_state() == demo_manager::NORMAL)
+                if (demo_man.current_state() != demo_manager::PLAYING)
                 {
+                    if (settings.record_replays && !automatic_recording_failed &&
+                        demo_man.current_state() == demo_manager::NORMAL &&
+                        current_level && g->state == RUN_STATE && !(dev & EDIT_MODE))
+                    {
+                        if (!demo_man.start_automatic_recording())
+                        {
+                            std::fprintf(stderr,
+                                         "Unable to start automatic replay recording; disabled for this session\n");
+                            automatic_recording_failed = true;
+                        }
+                    }
+
                     net_receive();
 
                     // Consume the current lockstep packet before load_level()
@@ -2586,6 +2603,9 @@ int main(int argc, char *argv[])
                 frame_deadline = now;
             frame_deadline += target_frame_time;
         }
+
+        if (demo_man.is_automatic_recording())
+            demo_man.set_state(demo_manager::NORMAL);
 
         net_uninit();
 

@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <ctype.h>
+#include <filesystem>
 #include <string.h>
 #include <string>
 
@@ -96,6 +97,19 @@ static std::string editor_levels_directory()
 {
     const char *data_directory = get_filename_prefix();
     return std::string(data_directory ? data_directory : "") + "levels";
+}
+
+static std::string editor_replays_directory()
+{
+    const char *save_directory = get_save_filename_prefix();
+    const std::filesystem::path user_replays =
+        std::filesystem::path(save_directory ? save_directory : "") / "replays";
+    std::error_code error;
+    if (std::filesystem::is_directory(user_replays, error))
+        return user_replays.string();
+
+    const char *data_directory = get_filename_prefix();
+    return (std::filesystem::path(data_directory ? data_directory : "") / "replays").string();
 }
 
 pmenu *dev_menu = NULL;
@@ -2440,20 +2454,21 @@ void dev_controll::handle_event(Event &ev)
         case ID_PLAY_DEMO: {
             if (!mess_win)
             {
-                int h = wm->font()->Size().y + 8;
-                mess_win = wm->CreateWindow(
-                    ivec2(xres / 2, yres / 2), ivec2(-1),
-                    new text_field(0, h * 0, ID_PLAY_DEMO_FILENAME, "demo filename", "*******************", "demo.dat",
-                                   new button(10, h * 2, ID_PLAY_DEMO_OK, symbol_str("ok_button"),
-                                              new button(40, h * 2, ID_CANCEL, symbol_str("cancel_button"), NULL))));
+                const std::string replays_directory = editor_replays_directory();
+                mess_win = file_dialog(symbol_str("replay_filename"), "replays/demo1.dat", ID_PLAY_DEMO_OK,
+                                       symbol_str("ok_button"), ID_CANCEL, symbol_str("cancel_button"),
+                                       symbol_str("FILENAME"), ID_MESS_STR1, replays_directory.c_str(),
+                                       editor_level_dialog_width, ".dat");
+                wm->grab_focus(mess_win);
             }
         }
         break;
 
         case ID_PLAY_DEMO_OK: {
-            demo_man.set_state(demo_manager::PLAYING, mess_win->read(ID_PLAY_DEMO_FILENAME));
+            const std::string filename = mess_win->read(ID_MESS_STR1);
             wm->close_window(mess_win);
             mess_win = NULL;
+            demo_man.set_state(demo_manager::PLAYING, filename.c_str());
         }
         break;
 
@@ -3839,6 +3854,7 @@ struct pmi
 };
 
 static pmi filemenu[] = {{"menu1_load", ID_LEVEL_LOAD, NULL, -1},
+                         {"menu1_replay", ID_PLAY_DEMO, NULL, -1},
                          {NULL, 0, NULL, -1},
                          {"menu1_save", ID_LEVEL_SAVE, NULL, -1},
                          {"menu1_saveas", ID_LEVEL_SAVEAS, NULL, -1},
@@ -3875,9 +3891,6 @@ static pmi editmenu[] = {{"menu2_light", ID_TOGGLE_LIGHT, NULL, -1},
                          {"menu2_view", ID_DISABLE_VIEW_SHIFT, &view_shift_disabled, -1},
                          {"menu2_alight", ID_DISABLE_AUTOLIGHT, &disable_autolight, 'A'},
                          {"menu2_fps", ID_SHOW_FPS, &fps_on, -1},
-                         //  { NULL,0,NULL,-1},
-                         //  { "Record demo",                ID_RECORD_DEMO,NULL,-1},
-                         //  { "Play demo",                  ID_PLAY_DEMO,NULL,-1},
                          {NULL, -1, NULL, -1}};
 
 // Window Menus

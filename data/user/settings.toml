@@ -40,6 +40,8 @@ max_fps = 300
 skip_intro = false
 # Play recorded demos after the main menu has been idle.
 menu_demos = false
+# Record every game as a timestamped replay under the save path's replays folder.
+record_replays = false
 
 [general]
 # english, german, or french

@@ -99,6 +99,7 @@ packaged; HMI conversion is not part of the game's runtime audio path. The C++ c
 - `[gameplay].difficulty` - Difficulty (`"easy"`, `"medium"`, `"hard"`, or `"extreme"`)
 - `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
 - `[gameplay].max_fps` - Frame-rate limit
+- `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
 - `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
 

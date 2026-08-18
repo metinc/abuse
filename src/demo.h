@@ -16,9 +16,10 @@
 
 class demo_manager
 {
-    LSymbol *initial_difficulty;
+    LObject *initial_difficulty;
     bFILE *record_file;
     int skip_next;
+    bool automatic_recording;
 
   public:
     enum demo_state
@@ -27,7 +28,7 @@ class demo_manager
         RECORDING,
         PLAYING
     } state;
-    int set_state(demo_state new_state, char *filename = NULL);
+    int set_state(demo_state new_state, char const *filename = NULL);
     demo_state current_state()
     {
         return state;
@@ -35,8 +36,13 @@ class demo_manager
     int save_packet(void *packet, int packet_size); // returns non 0 if actually saved
     int get_packet(void *packet, int &packet_size); // returns non 0 if actually loaded
 
-    int start_playing(char *filename);
-    int start_recording(char *filename);
+    int start_playing(char const *filename);
+    int start_recording(char const *filename);
+    int start_automatic_recording();
+    bool is_automatic_recording() const
+    {
+        return automatic_recording;
+    }
     void reset_game();
     int demo_skip()
     {
@@ -52,6 +58,9 @@ class demo_manager
     {
         state = NORMAL;
         skip_next = 0;
+        record_file = NULL;
+        initial_difficulty = NULL;
+        automatic_recording = false;
     }
     void do_inputs();
 };

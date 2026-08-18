@@ -244,8 +244,7 @@ enum dev_ids
     ID_RECORD_DEMO_FILENAME,
 
     ID_PLAY_DEMO,
-    ID_PLAY_DEMO_OK,
-    ID_PLAY_DEMO_FILENAME
+    ID_PLAY_DEMO_OK
 };
 
 #define EDIT_MODE 1

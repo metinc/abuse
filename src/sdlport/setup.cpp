@@ -133,6 +133,7 @@ Settings::Settings()
     this->cheat_god = false;
     this->skip_intro = false;
     this->menu_demos = false;
+    this->record_replays = false;
     this->gamma = 1.0;
     this->difficulty = "hard";
 
@@ -729,6 +730,7 @@ bool Settings::ReadTomlFile()
         read_integer(gameplay, "gameplay", "max_fps", max_fps);
         read_boolean(gameplay, "gameplay", "skip_intro", skip_intro);
         read_boolean(gameplay, "gameplay", "menu_demos", menu_demos);
+        read_boolean(gameplay, "gameplay", "record_replays", record_replays);
 
         const settings_document *general = find_table(document, "general");
         read_string(general, "general", "language", language);
@@ -871,6 +873,7 @@ bool Settings::Save() const
         set_value(gameplay, "max_fps", max_fps);
         set_value(gameplay, "skip_intro", skip_intro);
         set_value(gameplay, "menu_demos", menu_demos);
+        set_value(gameplay, "record_replays", record_replays);
 
         settings_document &general = ensure_table(document, "general");
         set_value(general, "language", language);
