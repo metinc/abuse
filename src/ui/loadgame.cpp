@@ -104,7 +104,8 @@ void draw_preview(Jwindow *window, image *thumbnail, ivec2 position, ivec2 size)
     const ivec2 content_position = position + ivec2(1);
     const ivec2 content_size = size - ivec2(2);
     window->m_surf->Bar(content_position, content_position + content_size - ivec2(1), window->backg);
-    window->m_surf->PutImage(thumbnail, content_position + (content_size - thumbnail->Size()) / 2);
+    if (thumbnail)
+        window->m_surf->PutImage(thumbnail, content_position + (content_size - thumbnail->Size()) / 2);
 }
 }
 
@@ -217,8 +218,6 @@ int load_game(int show_all,
     int max_w = 160, max_h = 100;
     memset(thumbnails, 0, sizeof(thumbnails));
 
-    image *first = NULL;
-
     for (int slot = 0; slot < MAX_SAVE_GAMES; slot++)
     {
         int fail = 0;
@@ -240,8 +239,6 @@ int load_game(int show_all,
                     max_w = thumbnails[slot]->Size().x;
                 if (thumbnails[slot]->Size().y > max_h)
                     max_h = thumbnails[slot]->Size().y;
-                if (!first)
-                    first = thumbnails[slot];
                 total_saved++;
             }
             else
@@ -253,8 +250,6 @@ int load_game(int show_all,
             thumbnails[slot]->clear();
             console_font->PutString(thumbnails[slot], ivec2(0), symbol_str("no_saved"));
             total_saved++;
-            if (!first)
-                first = thumbnails[slot];
         }
         delete fp;
     }
@@ -268,11 +263,33 @@ int load_game(int show_all,
     Jwindow *window = wm->CreateWindow(centered_window_position(client_size), client_size, slots.first, title);
     const ivec2 preview_position(window->x1() + slots.width + preview_gap,
                                  window->y1() + (client_size.y - preview_size.y) / 2);
-    draw_preview(window, first, preview_position, preview_size);
+    draw_preview(window, nullptr, preview_position, preview_size);
 
     // AR controller UI movement
     int mx, my; //mouse position
     const ivec2 button_origin = window->m_pos + ivec2(window->x1(), window->y1());
+    int preview_slot = -1;
+
+    const auto update_preview = [&](ivec2 mouse_position) {
+        const ivec2 relative_position = mouse_position - button_origin;
+        int hovered_slot = -1;
+        if (relative_position.x >= 0 && relative_position.y >= 0 && relative_position.x < slots.width &&
+            relative_position.y < slots.height)
+        {
+            const int column = relative_position.x / slots.button_width;
+            const int row = relative_position.y / slots.button_height;
+            const int slot = column * MAX_SAVE_LINES + row;
+            if (slot < MAX_SAVE_GAMES && thumbnails[slot])
+                hovered_slot = slot;
+        }
+
+        if (hovered_slot != preview_slot)
+        {
+            preview_slot = hovered_slot;
+            draw_preview(window, preview_slot >= 0 ? thumbnails[preview_slot] : nullptr, preview_position,
+                         preview_size);
+        }
+    };
 
     //AR initial position of the mouse in the window for controller use
     mx = button_origin.x + slots.button_width / 2;
@@ -296,10 +313,10 @@ int load_game(int show_all,
 
                 if (ev.type == EV_MESSAGE && ev.message.id >= ID_LOAD_GAME_PREVIEW &&
                     ev.message.id < ID_LOAD_PLAYER_GAME)
-                {
-                    int draw_num = ev.message.id - ID_LOAD_GAME_PREVIEW;
-                    draw_preview(window, thumbnails[draw_num], preview_position, preview_size);
-                }
+                    update_preview(wm->GetMousePos());
+
+                if (ev.type == EV_MOUSE_MOVE)
+                    update_preview(ev.mouse_move);
 
                 if ((ev.type == EV_CLOSE_WINDOW && ev.window == window) || (ev.type == EV_KEY && ev.key == JK_ESC))
                     quit = 1;
