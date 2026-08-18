@@ -14,6 +14,10 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <vector>
+
 #include "common.h"
 
 #include "light.h"
@@ -413,819 +417,262 @@ void calc_light_table(palette *pal)
     free(lightpath);
 }
 
-light_patch *light_patch::copy(light_patch *Next)
-{
-    light_patch *p = new light_patch(x1, y1, x2, y2, Next);
-    p->total = total;
-    if (total)
-    {
-        p->lights = (light_source **)malloc(total * sizeof(light_source *));
-        memcpy(p->lights, lights, total * (sizeof(light_source *)));
-    }
-    else
-        p->lights = NULL;
-    return p;
-}
-
-#define MAX_LP 6
-
-// insert light into list make sure the are sorted by y1
-void insert_light(light_patch *&first, light_patch *l)
-{
-    if (!first)
-        first = l;
-    else if (l->y1 < first->y1)
-    {
-        l->next = first;
-        first = l;
-    }
-    else
-    {
-        light_patch *p = first;
-        for (; p->next && p->next->y1 < l->y1; p = p->next)
-            ;
-        l->next = p->next;
-        p->next = l;
-    }
-}
-
-void add_light(light_patch *&first, int32_t x1, int32_t y1, int32_t x2, int32_t y2, light_source *who)
-{
-    light_patch *next;
-    light_patch *p = first;
-    for (; p; p = next)
-    {
-        next = p->next;
-        // first see if light patch we are adding is enclosed entirely by another patch
-        if (x1 >= p->x1 && y1 >= p->y1 && x2 <= p->x2 && y2 <= p->y2)
-        {
-            if (p->total == MAX_LP)
-                return;
-
-            if (x1 > p->x1)
-            {
-                light_patch *l = p->copy(NULL);
-                l->x2 = x1 - 1;
-                insert_light(first, l);
-            }
-            if (x2 < p->x2)
-            {
-                light_patch *l = p->copy(NULL);
-                l->x1 = x2 + 1;
-                insert_light(first, l);
-            }
-            if (y1 > p->y1)
-            {
-                light_patch *l = p->copy(NULL);
-                l->x1 = x1;
-                l->x2 = x2;
-                l->y2 = y1 - 1;
-                insert_light(first, l);
-            }
-            if (y2 < p->y2)
-            {
-                light_patch *l = p->copy(NULL);
-                l->x1 = x1;
-                l->x2 = x2;
-                l->y1 = y2 + 1;
-                insert_light(first, l);
-            }
-            p->x1 = x1;
-            p->y1 = y1;
-            p->x2 = x2;
-            p->y2 = y2;
-            // p has possibly changed it's y1, so we need to move it to it's correct sorted
-            // spot in the list
-            if (first == p)
-                first = first->next;
-            else
-            {
-                light_patch *q = first;
-                for (; q->next != p; q = q->next)
-                    ;
-                q->next = p->next;
-            }
-            insert_light(first, p);
-
-            p->total++;
-            p->lights = (light_source **)realloc(p->lights, sizeof(light_source *) * p->total);
-            p->lights[p->total - 1] = who;
-            return;
-        }
-
-        // see if the patch completly covers another patch.
-        if (x1 <= p->x1 && y1 <= p->y1 && x2 >= p->x2 && y2 >= p->y2)
-        {
-            if (x1 < p->x1)
-                add_light(first, x1, y1, p->x1 - 1, y2, who);
-            if (x2 > p->x2)
-                add_light(first, p->x2 + 1, y1, x2, y2, who);
-            if (y1 < p->y1)
-                add_light(first, p->x1, y1, p->x2, p->y1 - 1, who);
-            if (y2 > p->y2)
-                add_light(first, p->x1, p->y2 + 1, p->x2, y2, who);
-            if (p->total == MAX_LP)
-                return;
-            p->total++;
-            p->lights = (light_source **)realloc(p->lights, sizeof(light_source *) * p->total);
-            p->lights[p->total - 1] = who;
-            return;
-        }
-
-        // see if we intersect another rect
-        if (!(x2 < p->x1 || y2 < p->y1 || x1 > p->x2 || y1 > p->y2))
-        {
-            int ax1, ay1, ax2, ay2;
-            if (x1 < p->x1)
-            {
-                add_light(first, x1, std::max(y1, p->y1), p->x1 - 1, std::min(y2, p->y2), who);
-                ax1 = p->x1;
-            }
-            else
-                ax1 = x1;
-
-            if (x2 > p->x2)
-            {
-                add_light(first, p->x2 + 1, std::max(y1, p->y1), x2, std::min(y2, p->y2), who);
-                ax2 = p->x2;
-            }
-            else
-                ax2 = x2;
-
-            if (y1 < p->y1)
-            {
-                add_light(first, x1, y1, x2, p->y1 - 1, who);
-                ay1 = p->y1;
-            }
-            else
-                ay1 = y1;
-
-            if (y2 > p->y2)
-            {
-                add_light(first, x1, p->y2 + 1, x2, y2, who);
-                ay2 = p->y2;
-            }
-            else
-                ay2 = y2;
-
-            add_light(first, ax1, ay1, ax2, ay2, who);
-
-            return;
-        }
-    }
-}
-
-light_patch *find_patch(int screenx, int screeny, light_patch *list)
-{
-    for (; list; list = list->next)
-    {
-        if (screenx >= list->x1 && screenx <= list->x2 && screeny >= list->y1 && screeny <= list->y2)
-            return list;
-    }
-    return NULL;
-}
-
-/* shit
-int calc_light_value(light_patch *which, int32_t x, int32_t y)
-{
-  int lv=0;
-  int t=which->total;
-  for (register int i=t-1; i>=0; i--)
-  {
-    light_source *fn=which->lights[i];
-    if (fn->type==9)
-    {
-      lv=fn->inner_radius;
-      i=0;
-    }
-    else
-    {
-      int32_t dx=abs(fn->x-x)<<fn->xshift;
-      int32_t dy=abs(fn->y-y)<<fn->yshift;
-      int32_t  r2;
-      if (dx<dy)
-        r2=dx+dy-(dx>>1);
-      else r2=dx+dy-(dy>>1);
-
-      if (r2>=fn->inner_radius)
-      {
-    if (r2<fn->outer_radius)
-    {
-      lv+=((fn->outer_radius-r2)*fn->mul_div)>>16;
-    }
-      } else lv=63;
-    }
-  }
-  if (lv>63) return 63;
-  else
-    return lv;
-} */
-
-void reduce_patches(light_patch *f) // find constant valued patches
-{
-}
-
-light_patch *make_patch_list(int width, int height, int32_t screenx, int32_t screeny)
-{
-    light_patch *first = new light_patch(0, 0, width - 1, height - 1, NULL);
-
-    for (light_source *f = first_light_source; f; f = f->next) // determine which lights will have effect
-    {
-        int32_t x1 = f->x1 - screenx, y1 = f->y1 - screeny, x2 = f->x2 - screenx, y2 = f->y2 - screeny;
-        if (x1 < 0)
-            x1 = 0;
-        if (y1 < 0)
-            y1 = 0;
-        if (x2 >= width)
-            x2 = width - 1;
-        if (y2 >= height)
-            y2 = height - 1;
-
-        if (x1 <= x2 && y1 <= y2)
-            add_light(first, x1, y1, x2, y2, f);
-    }
-    reduce_patches(first);
-
-    return first;
-}
-
-void delete_patch_list(light_patch *first)
-{
-    while (first)
-    {
-        light_patch *p = first;
-        first = first->next;
-        delete p;
-    }
-}
-
-inline void MAP_PUT(uint8_t *screen_addr, uint8_t *remap, int w)
-{
-    register int cx = w;
-    register uint8_t *di = screen_addr;
-    register uint8_t *si = remap;
-    while (cx--)
-    {
-        uint8_t x = *((uint8_t *)si + *((uint8_t *)di));
-        *((uint8_t *)(di++)) = x;
-    }
-}
-
-inline void MAP_2PUT(uint8_t *in_addr, uint8_t *out_addr, uint8_t *remap, int w)
-{
-    while (w--)
-    {
-        uint8_t x = *(((uint8_t *)remap) + (*(uint8_t *)(in_addr++)));
-        *((uint8_t *)(out_addr++)) = x;
-        *((uint8_t *)(out_addr++)) = x;
-    }
-}
-
 uint16_t min_light_level;
-// calculate the light value for this block.  sum up all contritors
-inline int calc_light_value(light_patch *lp, // light patch to look at
-                            int32_t sx, // screen x & y
-                            int32_t sy)
+
+namespace
 {
-    int lv = min_light_level, r2, light_count;
-    register int dx, dy; // x and y distances
+struct light_grid
+{
+    std::vector<light_source *> radial;
+    std::vector<light_source *> solid;
+    std::vector<uint8_t> samples;
+};
 
-    light_source **lon_p = lp->lights;
+// Keep samples aligned to world coordinates. Otherwise the interpolation grid
+// would slide over a stationary light as the camera moved and make it shimmer.
+int32_t align_down(int32_t value, int step)
+{
+    int32_t remainder = value % step;
+    if (remainder < 0)
+        remainder += step;
+    return value - remainder;
+}
 
-    for (light_count = lp->total; light_count > 0; light_count--)
+bool lighting_sample_size(int &step_x, int &step_y)
+{
+    switch (light_detail)
     {
-        light_source *fn = *lon_p;
-        register int32_t *dt = &(*lon_p)->type;
-        // note we are accessing structure members by bypassing the compiler
-        // for speed, this may not work on all compilers, but don't
-        // see why it shouldn't..  all members are int32_t
+    case HIGH_DETAIL:
+        step_x = 4;
+        step_y = 2;
+        return true;
+    case MEDIUM_DETAIL:
+        step_x = 8;
+        step_y = 4;
+        return true;
+    case LOW_DETAIL:
+        step_x = 16;
+        step_y = 8;
+        return true;
+    case POOR_DETAIL:
+    default:
+        return false;
+    }
+}
 
-        if (*dt == 9) // (dt==type),  if light is a Solid rectangle, return it value
-            return fn->inner_radius;
-        else
+uint8_t radial_light_value(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
+{
+    int64_t value = min_light_level;
+
+    for (light_source const *source : lights)
+    {
+        if (world_x < source->x1 || world_x > source->x2 || world_y < source->y1 || world_y > source->y2)
+            continue;
+
+        const int64_t dx = std::abs(static_cast<int64_t>(source->x) - world_x) << source->xshift;
+        const int64_t dy = std::abs(static_cast<int64_t>(source->y) - world_y) << source->yshift;
+        const int64_t distance = dx < dy ? dx + dy - dx / 2 : dx + dy - dy / 2;
+        if (distance < source->outer_radius)
+            value += ((source->outer_radius - distance) * source->mul_div) >> 16;
+    }
+
+    return static_cast<uint8_t>(std::min<int64_t>(value, 63));
+}
+
+int solid_light_value(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
+{
+    for (light_source const *source : lights)
+        if (world_x >= source->x1 && world_x <= source->x2 && world_y >= source->y1 && world_y <= source->y2)
+            return std::clamp(source->inner_radius, 0, 63);
+    return -1;
+}
+
+void copy_doubled(image *source, image *destination, ivec2 clip_min, ivec2 clip_max, int32_t out_x, int32_t out_y)
+{
+    for (int y = clip_min.y; y < clip_max.y; ++y)
+    {
+        uint8_t const *input = source->scan_line(y) + clip_min.x;
+        uint8_t *output0 = destination->scan_line(out_y + y * 2) + out_x + clip_min.x * 2;
+        uint8_t *output1 = output0 + destination->Size().x;
+        for (int x = clip_min.x; x < clip_max.x; ++x)
         {
-            dt++;
-            dx = abs(*dt - sx);
-            dt++; // xdist between light and this block  (dt==x)
-            dx <<= *dt;
-            dt++; // shift makes distance further,
-                // making light skinner. (dt==xshift)
+            const uint8_t color = *input++;
+            *output0++ = color;
+            *output0++ = color;
+            *output1++ = color;
+            *output1++ = color;
+        }
+    }
+}
 
-            dy = abs(*dt - sy);
-            dt++; // ydist (dt==y)
-            dy <<= *dt;
-            dt++; // (dt==yshift)
+void apply_uniform_light(image *source, image *destination, ivec2 clip_min, ivec2 clip_max, uint8_t *remap,
+                         int output_scale, int32_t out_x, int32_t out_y)
+{
+    for (int y = clip_min.y; y < clip_max.y; ++y)
+    {
+        uint8_t *input = source->scan_line(y) + clip_min.x;
+        if (output_scale == 1)
+        {
+            for (int x = clip_min.x; x < clip_max.x; ++x, ++input)
+                *input = remap[*input];
+            continue;
+        }
 
-            if (dx < dy) // calculate approximate distance
-                r2 = dx + dy - (dx >> 1);
-            else
-                r2 = dx + dy - (dy >> 1);
+        uint8_t *output0 = destination->scan_line(out_y + y * 2) + out_x + clip_min.x * 2;
+        uint8_t *output1 = output0 + destination->Size().x;
+        for (int x = clip_min.x; x < clip_max.x; ++x)
+        {
+            const uint8_t color = remap[*input++];
+            *output0++ = color;
+            *output0++ = color;
+            *output1++ = color;
+            *output1++ = color;
+        }
+    }
+}
 
-            if (r2 < *dt) // if this withing the light's outer radius?  (dt==outer_radius)
+void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint8_t *light_lookup, uint16_t ambient,
+                         image *destination, int output_scale, int32_t out_x, int32_t out_y)
+{
+    ivec2 clip_min, clip_max;
+    source->GetClip(clip_min, clip_max);
+    const int width = clip_max.x - clip_min.x;
+    const int height = clip_max.y - clip_min.y;
+    if (width <= 0 || height <= 0)
+        return;
+
+    int step_x = 0;
+    int step_y = 0;
+    const bool lighting_enabled = lighting_sample_size(step_x, step_y);
+
+    const int adjusted_ambient = std::clamp(static_cast<int>(ambient) + ambient_ramp, 0, 63);
+    min_light_level = static_cast<uint16_t>(adjusted_ambient);
+
+    // The doubled path is also the scaler, so it must still copy pixels when
+    // lighting is disabled or full-bright. The normal path already contains
+    // the desired pixels and can return immediately.
+    if (!lighting_enabled || adjusted_ambient == 63)
+    {
+        if (output_scale == 2)
+            copy_doubled(source, destination, clip_min, clip_max, out_x, out_y);
+        return;
+    }
+
+    // Reuse the small working buffers across frames. This avoids replacing the
+    // old patch graph's many allocations with three new allocations per view.
+    static thread_local light_grid grid;
+    grid.radial.clear();
+    grid.solid.clear();
+    const int32_t world_right = screen_x + width - 1;
+    const int32_t world_bottom = screen_y + height - 1;
+    for (light_source *light = first_light_source; light; light = light->next)
+    {
+        if (light->x2 < screen_x || light->x1 > world_right || light->y2 < screen_y || light->y1 > world_bottom)
+            continue;
+        (light->type == 9 ? grid.solid : grid.radial).push_back(light);
+    }
+
+    if (grid.radial.empty() && grid.solid.empty())
+    {
+        apply_uniform_light(source, destination, clip_min, clip_max, light_lookup + (adjusted_ambient << 8),
+                            output_scale, out_x, out_y);
+        return;
+    }
+
+    const int32_t first_world_x = align_down(screen_x, step_x);
+    const int32_t first_world_y = align_down(screen_y, step_y);
+    const int first_local_x = first_world_x - screen_x;
+    const int first_local_y = first_world_y - screen_y;
+    const int columns = (width - 1 - first_local_x) / step_x + 2;
+    const int rows = (height - 1 - first_local_y) / step_y + 2;
+    grid.samples.resize(static_cast<size_t>(columns) * rows);
+
+    for (int row = 0; row < rows; ++row)
+    {
+        const int32_t world_y = first_world_y + row * step_y;
+        for (int column = 0; column < columns; ++column)
+        {
+            const int32_t world_x = first_world_x + column * step_x;
+            grid.samples[static_cast<size_t>(row) * columns + column] =
+                radial_light_value(grid.radial, world_x, world_y);
+        }
+    }
+
+    for (int row = 0; row + 1 < rows; ++row)
+    {
+        const int local_y0 = first_local_y + row * step_y;
+        const int y_begin = std::max(0, local_y0);
+        const int y_end = std::min(height, local_y0 + step_y);
+        for (int local_y = y_begin; local_y < y_end; ++local_y)
+        {
+            const int y_fraction = local_y - local_y0;
+            const int world_y = screen_y + local_y;
+            uint8_t const *top = grid.samples.data() + static_cast<size_t>(row) * columns;
+            uint8_t const *bottom = top + columns;
+            uint8_t *input = source->scan_line(clip_min.y + local_y) + clip_min.x;
+            uint8_t *output0 = nullptr;
+            uint8_t *output1 = nullptr;
+            if (output_scale == 2)
             {
-                int v = *dt - r2;
-                dt++;
-                lv += v * (*dt) >> 16;
+                const int destination_y = out_y + (clip_min.y + local_y) * 2;
+                output0 = destination->scan_line(destination_y) + out_x + clip_min.x * 2;
+                output1 = output0 + destination->Size().x;
+            }
+
+            for (int column = 0; column + 1 < columns; ++column)
+            {
+                const int local_x0 = first_local_x + column * step_x;
+                const int x_begin = std::max(0, local_x0);
+                const int x_end = std::min(width, local_x0 + step_x);
+                const int left =
+                    (top[column] * (step_y - y_fraction) + bottom[column] * y_fraction + step_y / 2) / step_y;
+                const int right =
+                    (top[column + 1] * (step_y - y_fraction) + bottom[column + 1] * y_fraction + step_y / 2) / step_y;
+
+                for (int local_x = x_begin; local_x < x_end; ++local_x)
+                {
+                    const int world_x = screen_x + local_x;
+                    const int solid = grid.solid.empty() ? -1 : solid_light_value(grid.solid, world_x, world_y);
+                    const int x_fraction = local_x - local_x0;
+                    const int intensity =
+                        solid >= 0 ? solid : (left * (step_x - x_fraction) + right * x_fraction + step_x / 2) / step_x;
+                    const uint8_t color = input[local_x];
+                    const uint8_t lit_color = light_lookup[(intensity << 8) + color];
+
+                    if (output_scale == 1)
+                    {
+                        input[local_x] = lit_color;
+                    }
+                    else
+                    {
+                        output0[local_x * 2] = output0[local_x * 2 + 1] = lit_color;
+                        output1[local_x * 2] = output1[local_x * 2 + 1] = lit_color;
+                    }
+                }
             }
         }
-        lon_p++;
-    }
-
-    if (lv > 63)
-        return 63; // lighting table only has 64 (256 bytes) entries
-    else
-        return lv;
-}
-
-void remap_line_asm2(uint8_t *addr, uint8_t *light_lookup, uint8_t *remap_line, int count)
-//inline void remap_line_asm2(uint8_t *addr,uint8_t *light_lookup,uint8_t *remap_line,int count)
-{
-    while (count--)
-    {
-        uint8_t *off = light_lookup + (((int32_t)*remap_line) << 8);
-        remap_line++;
-
-        *addr = off[*addr];
-        addr[1] = off[addr[1]];
-        addr[2] = off[addr[2]];
-        addr[3] = off[addr[3]];
-        addr[4] = off[addr[4]];
-        addr[5] = off[addr[5]];
-        addr[6] = off[addr[6]];
-        addr[7] = off[addr[7]];
-        addr += 8;
     }
 }
-
-inline void put_8line(uint8_t *in_line, uint8_t *out_line, uint8_t *remap, uint8_t *light_lookup, int count)
-{
-    uint8_t v;
-    int x;
-    for (x = 0; x < count; x++)
-    {
-        uint8_t *off = light_lookup + (((int32_t)*remap) << 8);
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        v = off[*(in_line++)];
-        *(out_line++) = v;
-        *(out_line++) = v;
-
-        remap++;
-    }
-}
+} // namespace
 
 void light_screen(image *sc, int32_t screenx, int32_t screeny, uint8_t *light_lookup, uint16_t ambient)
 {
-    int lx_run = 0, ly_run; // light block x & y run size in pixels ==  (1<<lx_run)
-
     if (shutdown_lighting && !disable_autolight)
         ambient = shutdown_lighting_value;
-
-    switch (light_detail)
-    {
-    case HIGH_DETAIL: {
-        lx_run = 2;
-        ly_run = 1;
-    }
-    break; // 4 x 2 patches
-    case MEDIUM_DETAIL: {
-        lx_run = 3;
-        ly_run = 2;
-    }
-    break; // 8 x 4 patches  (default)
-    case LOW_DETAIL: {
-        lx_run = 4;
-        ly_run = 3;
-    }
-    break; // 16 x 8 patches
-    case POOR_DETAIL: // poor detail is no lighting
-        return;
-    }
-    if ((int)ambient + ambient_ramp < 0)
-        min_light_level = 0;
-    else if ((int)ambient + ambient_ramp > 63)
-        min_light_level = 63;
-    else
-        min_light_level = (int)ambient + ambient_ramp;
-
-    if (ambient == 63)
-        return;
-    ivec2 caa, cbb;
-    sc->GetClip(caa, cbb);
-
-    light_patch *first = make_patch_list(cbb.x - caa.x, cbb.y - caa.y, screenx, screeny);
-
-    int prefix_x = (screenx & 7);
-    int prefix = screenx & 7;
-    if (prefix)
-        prefix = 8 - prefix;
-    int suffix_x = cbb.x - 1 - caa.x - (screenx & 7);
-
-    int suffix = (cbb.x - caa.x - prefix) & 7;
-
-    int32_t remap_size = ((cbb.x - caa.x - prefix - suffix) >> lx_run);
-
-    uint8_t *remap_line = (uint8_t *)malloc(remap_size);
-
-    light_patch *f = first;
-
-    main_screen->Lock();
-
-    int scr_w = main_screen->Size().x;
-    uint8_t *screen_line = main_screen->scan_line(caa.y) + caa.x;
-
-    for (int y = caa.y; y < cbb.y;)
-    {
-        int x, count;
-        //    while (f->next && f->y2<y)
-        //      f=f->next;
-        uint8_t *rem = remap_line;
-
-        int todoy = 4 - ((screeny + y) & 3);
-        if (y + todoy >= cbb.y)
-            todoy = cbb.y - y;
-
-        int calcy = ((y + screeny) & (~3)) - caa.y;
-
-        if (suffix)
-        {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > suffix_x || lp->x2 < suffix_x); lp = lp->next)
-                ;
-            uint8_t *caddr = (uint8_t *)screen_line + cbb.x - caa.x - suffix;
-            uint8_t *r = light_lookup + (((int32_t)calc_light_value(lp, suffix_x + screenx, calcy) << 8));
-            switch (todoy)
-            {
-            case 4: {
-                MAP_PUT(caddr, r, suffix);
-                caddr += scr_w;
-            }
-            case 3: {
-                MAP_PUT(caddr, r, suffix);
-                caddr += scr_w;
-            }
-            case 2: {
-                MAP_PUT(caddr, r, suffix);
-                caddr += scr_w;
-            }
-            case 1: {
-                MAP_PUT(caddr, r, suffix);
-            }
-            }
-        }
-
-        if (prefix)
-        {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > prefix_x || lp->x2 < prefix_x); lp = lp->next)
-                ;
-
-            uint8_t *r = light_lookup + (((int32_t)calc_light_value(lp, prefix_x + screenx, calcy) << 8));
-            uint8_t *caddr = (uint8_t *)screen_line;
-            switch (todoy)
-            {
-            case 4: {
-                MAP_PUT(caddr, r, prefix);
-                caddr += scr_w;
-            }
-            case 3: {
-                MAP_PUT(caddr, r, prefix);
-                caddr += scr_w;
-            }
-            case 2: {
-                MAP_PUT(caddr, r, prefix);
-                caddr += scr_w;
-            }
-            case 1: {
-                MAP_PUT(caddr, r, prefix);
-            }
-            }
-            screen_line += prefix;
-        }
-
-        light_patch *last_lp = f;
-        int current_y = y - caa.y;
-        for (x = prefix, count = 0; count < remap_size; count++, x += 8, rem++)
-        {
-            while (last_lp &&
-                   (last_lp->y1 > current_y || last_lp->y2 < current_y || last_lp->x1 > x || last_lp->x2 < x))
-            {
-                last_lp = last_lp->next;
-                if (!last_lp)
-                    last_lp = f; // Restart from beginning if end reached.
-            }
-            *rem = calc_light_value(last_lp, x + screenx, calcy);
-        }
-
-        switch (todoy)
-        {
-        case 4:
-            remap_line_asm2(screen_line, light_lookup, remap_line, count);
-            y++;
-            todoy--;
-            screen_line += scr_w;
-        case 3:
-            remap_line_asm2(screen_line, light_lookup, remap_line, count);
-            y++;
-            todoy--;
-            screen_line += scr_w;
-        case 2:
-            remap_line_asm2(screen_line, light_lookup, remap_line, count);
-            y++;
-            todoy--;
-            screen_line += scr_w;
-        case 1:
-            remap_line_asm2(screen_line, light_lookup, remap_line, count);
-            y++;
-            todoy--;
-            screen_line += scr_w;
-        }
-
-        screen_line -= prefix;
-    }
-    main_screen->Unlock();
-
-    while (first)
-    {
-        light_patch *p = first;
-        first = first->next;
-        delete p;
-    }
-    free(remap_line);
+    smooth_light_screen(sc, screenx, screeny, light_lookup, ambient, sc, 1, 0, 0);
 }
 
 void double_light_screen(image *sc, int32_t screenx, int32_t screeny, uint8_t *light_lookup, uint16_t ambient,
                          image *out, int32_t out_x, int32_t out_y)
 {
-    if (sc->Size().x * 2 + out_x > out->Size().x || sc->Size().y * 2 + out_y > out->Size().y)
-        return; // screen was resized and small_render has not changed size yet
-
-    int lx_run = 0, ly_run; // light block x & y run size in pixels ==  (1<<lx_run)
-    switch (light_detail)
-    {
-    case HIGH_DETAIL: {
-        lx_run = 2;
-        ly_run = 1;
-    }
-    break; // 4 x 2 patches
-    case MEDIUM_DETAIL: {
-        lx_run = 3;
-        ly_run = 2;
-    }
-    break; // 8 x 4 patches  (default)
-    case LOW_DETAIL: {
-        lx_run = 4;
-        ly_run = 3;
-    }
-    break; // 16 x 8 patches
-    case POOR_DETAIL: // poor detail is no lighting
+    ivec2 clip_min, clip_max;
+    sc->GetClip(clip_min, clip_max);
+    if (out_x < 0 || out_y < 0 || out_x + clip_max.x * 2 > out->Size().x || out_y + clip_max.y * 2 > out->Size().y)
         return;
-    }
-    if ((int)ambient + ambient_ramp < 0)
-        min_light_level = 0;
-    else if ((int)ambient + ambient_ramp > 63)
-        min_light_level = 63;
-    else
-        min_light_level = (int)ambient + ambient_ramp;
 
-    ivec2 caa, cbb;
-    sc->GetClip(caa, cbb);
-
-    if (ambient == 63) // lights off, just double the pixels
-    {
-        uint8_t *src = sc->scan_line(0);
-        uint8_t *dst = out->scan_line(out_y + caa.y * 2) + caa.x * 2 + out_x;
-        int d_skip = out->Size().x - sc->Size().x * 2;
-        int x, y;
-        uint16_t v;
-        for (y = sc->Size().y; y; y--)
-        {
-            for (x = sc->Size().x; x; x--)
-            {
-                v = *(src++);
-                *(dst++) = v;
-                *(dst++) = v;
-            }
-            dst = dst + d_skip;
-            memcpy(dst, dst - out->Size().x, sc->Size().x * 2);
-            dst += out->Size().x;
-        }
-
-        return;
-    }
-
-    light_patch *first = make_patch_list(cbb.x - caa.x, cbb.y - caa.y, screenx, screeny);
-
-    int scr_w = sc->Size().x;
-    int dscr_w = out->Size().x;
-
-    int prefix_x = (screenx & 7);
-    int prefix = screenx & 7;
-    if (prefix)
-        prefix = 8 - prefix;
-    int suffix_x = cbb.x - 1 - caa.x - (screenx & 7);
-
-    int suffix = (cbb.x - caa.x - prefix) & 7;
-
-    int32_t remap_size = ((cbb.x - caa.x - prefix - suffix) >> lx_run);
-
-    uint8_t *remap_line = (uint8_t *)malloc(remap_size);
-
-    light_patch *f = first;
-    uint8_t *in_line = sc->scan_line(caa.y) + caa.x;
-    uint8_t *out_line = out->scan_line(caa.y * 2 + out_y) + caa.x * 2 + out_x;
-
-    for (int y = caa.y; y < cbb.y;)
-    {
-        int x, count;
-        //    while (f->next && f->y2<y)
-        //      f=f->next;
-        uint8_t *rem = remap_line;
-
-        int todoy = 4 - ((screeny + y) & 3);
-        if (y + todoy >= cbb.y)
-            todoy = cbb.y - y;
-
-        int calcy = ((y + screeny) & (~3)) - caa.y;
-
-        if (suffix)
-        {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > suffix_x || lp->x2 < suffix_x); lp = lp->next)
-                ;
-            uint8_t *caddr = (uint8_t *)in_line + cbb.x - caa.x - suffix;
-            uint8_t *daddr = (uint8_t *)out_line + (cbb.x - caa.x - suffix) * 2;
-
-            uint8_t *r = light_lookup + (((int32_t)calc_light_value(lp, suffix_x + screenx, calcy) << 8));
-            switch (todoy)
-            {
-            case 4: {
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 3: {
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 2: {
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 1: {
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, suffix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            break;
-            }
-        }
-
-        if (prefix)
-        {
-            light_patch *lp = f;
-            for (; (lp->y1 > y - caa.y || lp->y2 < y - caa.y || lp->x1 > prefix_x || lp->x2 < prefix_x); lp = lp->next)
-                ;
-
-            uint8_t *r = light_lookup + (((int32_t)calc_light_value(lp, prefix_x + screenx, calcy) << 8));
-            uint8_t *caddr = (uint8_t *)in_line;
-            uint8_t *daddr = (uint8_t *)out_line;
-            switch (todoy)
-            {
-            case 4: {
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 3: {
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 2: {
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            case 1: {
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                MAP_2PUT(caddr, daddr, r, prefix);
-                daddr += dscr_w;
-                caddr += scr_w;
-            }
-            break;
-            }
-            in_line += prefix;
-            out_line += prefix * 2;
-        }
-
-        light_patch *last_lp = f;
-        int current_y = y - caa.y;
-        for (x = prefix, count = 0; count < remap_size; count++, x += 8, rem++)
-        {
-            while (last_lp &&
-                   (last_lp->y1 > current_y || last_lp->y2 < current_y || last_lp->x1 > x || last_lp->x2 < x))
-            {
-                last_lp = last_lp->next;
-                if (!last_lp)
-                    last_lp = f; // Restart from beginning if end reached.
-            }
-            *rem = calc_light_value(last_lp, x + screenx, calcy);
-        }
-
-        rem = remap_line;
-
-        put_8line(in_line, out_line, rem, light_lookup, count);
-        memcpy(out_line + dscr_w, out_line, count * 16);
-        out_line += dscr_w;
-        in_line += scr_w;
-        out_line += dscr_w;
-        y++;
-        todoy--;
-        if (todoy)
-        {
-            put_8line(in_line, out_line, rem, light_lookup, count);
-            memcpy(out_line + dscr_w, out_line, count * 16);
-            out_line += dscr_w;
-            in_line += scr_w;
-            out_line += dscr_w;
-            y++;
-            todoy--;
-            if (todoy)
-            {
-                put_8line(in_line, out_line, rem, light_lookup, count);
-                memcpy(out_line + dscr_w, out_line, count * 16);
-                out_line += dscr_w;
-                in_line += scr_w;
-                out_line += dscr_w;
-                y++;
-                todoy--;
-                if (todoy)
-                {
-                    put_8line(in_line, out_line, rem, light_lookup, count);
-                    memcpy(out_line + dscr_w, out_line, count * 16);
-                    out_line += dscr_w;
-                    in_line += scr_w;
-                    out_line += dscr_w;
-                    y++;
-                }
-            }
-        }
-        in_line -= prefix;
-        out_line -= prefix * 2;
-    }
-
-    while (first)
-    {
-        light_patch *p = first;
-        first = first->next;
-        delete p;
-    }
-    free(remap_line);
+    if (shutdown_lighting && !disable_autolight)
+        ambient = shutdown_lighting_value;
+    smooth_light_screen(sc, screenx, screeny, light_lookup, ambient, out, 2, out_x, out_y);
 }
 
 void add_light_spec(spec_directory *sd, char const *level_name)
