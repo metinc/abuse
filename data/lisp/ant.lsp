@@ -651,7 +651,10 @@
 		  (select (otype)
 			  (AD_4 AD_10)
 			  (AD_5 AD_11)
-			  (AD_6 AD_12))))
+			  (AD_6 AD_12)
+			  (CP_4 CP_10)
+			  (CP_5 CP_11)
+			  (CP_6 CP_12))))
 	     (if normal_type
 		 (if (next_picture)
 		     T
