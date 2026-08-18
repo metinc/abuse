@@ -32,6 +32,7 @@
 #include "lisp.h"
 #include "clisp.h"
 #include "net/netface.h"
+#include "netcfg.h"
 #include "file_utils.h"
 
 demo_manager demo_man;
@@ -136,7 +137,7 @@ int demo_manager::start_recording(char const *filename)
         return 0;
     }
 
-    record_file->write((void *)"DEMO,VERSION:3", 14);
+    record_file->write((void *)"DEMO,VERSION:4", 14);
     record_file->write_uint16(static_cast<uint16_t>(snapshot.size() + 1));
     record_file->write(snapshot.c_str(), snapshot.size() + 1);
 
@@ -153,6 +154,9 @@ int demo_manager::start_recording(char const *filename)
     }
     else
         record_file->write_uint8(3);
+
+    const bool cooperative = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    record_file->write_uint8(cooperative ? 1 : 0);
 
     state = RECORDING;
     std::printf("Recording replay to %s\n", replay_write_path(filename).string().c_str());
@@ -249,7 +253,8 @@ int demo_manager::start_playing(char const *filename)
         return 0;
     }
 
-    const bool snapshot_replay = memcmp(sig, "DEMO,VERSION:3", 14) == 0;
+    const bool mode_replay = memcmp(sig, "DEMO,VERSION:4", 14) == 0;
+    const bool snapshot_replay = mode_replay || memcmp(sig, "DEMO,VERSION:3", 14) == 0;
     if (!snapshot_replay && memcmp(sig, "DEMO,VERSION:2", 14) != 0)
     {
         delete record_file;
@@ -275,6 +280,14 @@ int demo_manager::start_playing(char const *filename)
         return 0;
     }
     name.pop_back();
+
+    uint8_t recorded_game_mode = 0;
+    if (mode_replay && record_file->read(&recorded_game_mode, 1) != 1)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
 
     std::replace(name.begin(), name.end(), '\\', '/');
     std::string tname(name);
@@ -320,6 +333,13 @@ int demo_manager::start_playing(char const *filename)
         delete record_file;
         record_file = NULL;
         return 0;
+    }
+
+    game_mode_overridden = mode_replay && main_net_cfg;
+    if (game_mode_overridden)
+    {
+        initial_game_mode = main_net_cfg->game_mode;
+        main_net_cfg->game_mode = recorded_game_mode == 1 ? net_configuration::COOP : net_configuration::DEATHMATCH;
     }
 
     the_game->load_level(tname.c_str());
@@ -371,6 +391,10 @@ int demo_manager::set_state(demo_state new_state, char const *filename)
         delete record_file;
         record_file = NULL;
         l_difficulty->SetValue(initial_difficulty);
+        if (game_mode_overridden && main_net_cfg)
+            main_net_cfg->game_mode = initial_game_mode == net_configuration::COOP ? net_configuration::COOP
+                                                                                   : net_configuration::DEATHMATCH;
+        game_mode_overridden = false;
         // Playback has ended before we return to the menu.  Game::set_state()
         // uses this state to choose the cursor, and PLAYING selects a blank one.
         state = NORMAL;

@@ -17,9 +17,11 @@
 class demo_manager
 {
     LObject *initial_difficulty;
+    int initial_game_mode;
     bFILE *record_file;
     int skip_next;
     bool automatic_recording;
+    bool game_mode_overridden;
 
   public:
     enum demo_state
@@ -60,7 +62,9 @@ class demo_manager
         skip_next = 0;
         record_file = NULL;
         initial_difficulty = NULL;
+        initial_game_mode = 0;
         automatic_recording = false;
+        game_mode_overridden = false;
     }
     void do_inputs();
 };
