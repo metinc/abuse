@@ -318,10 +318,10 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/addon/twist/levels)
 
 INSTALL(FILES
-    levels/demo1.dat levels/demo2.dat levels/demo3.dat
-    levels/demo4.dat levels/demo5.dat
-    levels/demo1.spe levels/demo2.spe levels/demo4.spe levels/demo5.spe
-DESTINATION ${ASSETDIR}/levels)
+    replays/demo1.dat replays/demo2.dat replays/demo3.dat
+    replays/demo4.dat replays/demo5.dat
+    replays/demo1.spe replays/demo2.spe replays/demo4.spe replays/demo5.spe
+DESTINATION ${ASSETDIR}/replays)
 
 INSTALL(FILES
     addon/aliens/aliens.txt

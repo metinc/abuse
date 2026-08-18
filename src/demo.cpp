@@ -12,6 +12,9 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
+#include <string>
+
 #include "common.h"
 
 #include "game.h"
@@ -194,9 +197,40 @@ int demo_manager::start_playing(char *filename)
     bFILE *probe = open_file(tname, "rb"); // see if the level still exists?
     if (probe->open_failure())
     {
-        delete record_file;
         delete probe;
-        return 0;
+
+        // Bundled replays keep their original embedded level name for
+        // compatibility.  If that path no longer exists, look for the level
+        // snapshot beside the replay file instead.
+        std::string replay_path(filename);
+        std::replace(replay_path.begin(), replay_path.end(), '\\', '/');
+        std::string embedded_path(tname);
+        size_t replay_slash = replay_path.find_last_of('/');
+        size_t embedded_slash = embedded_path.find_last_of('/');
+
+        if (replay_slash != std::string::npos)
+        {
+            std::string adjacent_level = replay_path.substr(0, replay_slash + 1) +
+                                         embedded_path.substr(embedded_slash == std::string::npos
+                                                                  ? 0
+                                                                  : embedded_slash + 1);
+            if (adjacent_level.size() < sizeof(tname))
+            {
+                strcpy(tname, adjacent_level.c_str());
+                probe = open_file(tname, "rb");
+            }
+            else
+                probe = NULL;
+        }
+        else
+            probe = NULL;
+
+        if (!probe || probe->open_failure())
+        {
+            delete record_file;
+            delete probe;
+            return 0;
+        }
     }
     delete probe;
 

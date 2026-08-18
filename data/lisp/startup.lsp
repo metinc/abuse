@@ -78,7 +78,7 @@
 ;  (5 (setf title_screen '("art/title.spe" . "frabs_screen6"))))
 (setf logo              '("art/title.spe" . "cdc_logo"))
 
-(setf demos        '("levels/demo1.dat" "levels/demo3.dat" "levels/demo4.dat" "levels/demo5.dat"))
+(setf demos        '("replays/demo1.dat" "replays/demo3.dat" "replays/demo4.dat" "replays/demo5.dat"))
 (setq help_screens '("art/help.spe" "sell1"))
 
 (if (not (get_option "-f"))
@@ -86,4 +86,3 @@
       (if skip_trainer_level
 	  (set_first_level "levels/level01.spe")
 	(set_first_level "levels/level00.spe"))))
-

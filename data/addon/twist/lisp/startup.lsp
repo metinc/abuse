@@ -68,7 +68,7 @@
 			(seq "pipe" 1 9)))))
 
 
-(setf demos        '("levels/demo1.dat" "levels/demo3.dat" "levels/demo4.dat" "levels/demo5.dat"))
+(setf demos        '("replays/demo1.dat" "replays/demo3.dat" "replays/demo4.dat" "replays/demo5.dat"))
 
 (if (not (get_option "-f"))
     (progn
