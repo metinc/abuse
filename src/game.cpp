@@ -2529,14 +2529,6 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
-            // see if a request for a level load was made during the last tick
-            if (req_name[0])
-            {
-                g->load_level(req_name);
-                req_name[0] = 0;
-                g->draw(g->state == SCENE_STATE);
-            }
-
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
 
@@ -2546,10 +2538,32 @@ int main(int argc, char *argv[])
                 if (demo_man.current_state() == demo_manager::NORMAL)
                 {
                     net_receive();
+
+                    // Consume the current lockstep packet before load_level()
+                    // resets the level tick, then build the next packet from
+                    // the newly loaded level.  Loading at the top of the frame
+                    // leaves an old-level packet in flight after the engine
+                    // has begun waiting for the new level's tick numbers.
+                    if (req_name[0])
+                    {
+                        g->load_level(req_name);
+                        req_name[0] = 0;
+                        g->draw(g->state == SCENE_STATE);
+                    }
+
                     net_send();
                 }
                 else
+                {
                     demo_man.do_inputs();
+
+                    if (req_name[0])
+                    {
+                        g->load_level(req_name);
+                        req_name[0] = 0;
+                        g->draw(g->state == SCENE_STATE);
+                    }
+                }
 
                 service_net_request();
 
