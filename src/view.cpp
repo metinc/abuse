@@ -34,6 +34,7 @@
 #include "dev.h"
 #include "jrand.h"
 #include "clisp.h"
+#include "cop.h"
 #include "demo.h"
 #include "ui/sbar.h"
 #include "nfserver.h"
@@ -914,9 +915,21 @@ void view::reset_player()
 {
     if (m_focus)
     {
+        const bool use_coop_checkpoint =
+            main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP &&
+            figures[m_focus->otype]->tv > coop_checkpoint_y && m_focus->lvars[coop_checkpoint_active];
+        const ivec2 checkpoint = use_coop_checkpoint
+                                    ? ivec2(m_focus->lvars[coop_checkpoint_x], m_focus->lvars[coop_checkpoint_y])
+                                    : ivec2(0);
+
         game_object *start = current_level ? current_level->get_random_start(320, m_focus->controller()) : 0;
         m_focus->defaults();
-        if (start)
+        if (use_coop_checkpoint)
+        {
+            m_focus->x = checkpoint.x;
+            m_focus->y = checkpoint.y;
+        }
+        else if (start)
         {
             m_focus->x = start->x;
             m_focus->y = start->y;
@@ -941,6 +954,13 @@ void view::reset_player()
             current_object = m_focus;
             ((LSymbol *)figures[m_focus->otype]->get_fun(OFUN_CONSTRUCTOR))->EvalUserFunction(NULL);
             current_object = o;
+        }
+
+        if (use_coop_checkpoint)
+        {
+            m_focus->lvars[coop_checkpoint_active] = 1;
+            m_focus->lvars[coop_checkpoint_x] = checkpoint.x;
+            m_focus->lvars[coop_checkpoint_y] = checkpoint.y;
         }
         sbar.redraw(main_screen);
 

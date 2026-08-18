@@ -154,7 +154,7 @@ void initCFuncs()
     add_c_function("add_palette", 1, -1, CFunc::AddPalette);
     add_c_bool_fun("screen_shot", 1, 1, CFunc::ScreenShot);
     add_c_bool_fun("set_zoom", 1, 1, CFunc::SetZoom);
-    add_c_function("show_help", 1, 1, CFunc::ShowHelp);
+    add_c_function("show_help", 1, 2, CFunc::ShowHelp);
     add_c_function("direction", 0, 0, CFunc::Direction);
     add_c_function("set_direction", 1, 1, CFunc::SetDirection);
     add_c_bool_fun("freeze_player", 1, 1, CFunc::FreezePlayer);

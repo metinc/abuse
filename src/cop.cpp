@@ -24,6 +24,7 @@
 #include "jrand.h"
 #include "clisp.h"
 #include "ant.h"
+#include "cop.h"
 #include "dev.h"
 #include <SDL3/SDL_timer.h>
 
@@ -55,26 +56,6 @@ signed char small_fire_off[24 * 2] = // x & y offset from character to end of gu
 signed char large_fire_off[24 * 2] = {18, 25, 17,  30, 15,  34, 14,  36, 10,  39, 7,   41, 4,   42, -3,  41,
                                       -8, 39, -11, 37, -14, 33, -16, 30, -18, 25, -17, 21, -14, 17, -11, 15,
                                       -7, 13, -4,  12, 3,   12, 9,   12, 12,  15, 14,  16, 15,  18, 16,  21};
-
-enum
-{
-    in_climbing_area,
-    disable_top_draw,
-    just_hit,
-    ship_pan_x,
-    special_power,
-    used_special_power,
-    last1_x,
-    last1_y,
-    last2_x,
-    last2_y,
-    has_saved_this_level,
-    r_ramp,
-    g_ramp,
-    b_ramp,
-    is_teleporting,
-    just_fired
-};
 
 enum
 {

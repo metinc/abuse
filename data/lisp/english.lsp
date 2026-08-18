@@ -249,6 +249,7 @@
 		   (9 "Shoot hidden walls to destroy them")
 		   (10 "Shoot switch ball to activate")
 		   (11 "Press down to teleport")
+		   (12 "Checkpoint updated")
 		   ))
 
 	 (setq not_there       "This game has stopped running")

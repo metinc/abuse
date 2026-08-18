@@ -133,6 +133,9 @@
   (setq is_teleporting 0)
   (setq just_fired 0)
   (setq has_compass 0)
+  (setq coop_checkpoint_active 0)
+  (setq coop_checkpoint_x 0)
+  (setq coop_checkpoint_y 0)
   (setq special_power NO_POWER))
 
 
@@ -538,6 +541,8 @@
 	is_teleporting
 	just_fired
 	has_compass
+	coop_checkpoint_active
+	coop_checkpoint_x coop_checkpoint_y
 	)
   (range 50 50)
   (abilities (walk_top_speed    3)
@@ -831,37 +836,48 @@
 
 
 
+(defun update_coop_checkpoint (new_x new_y)
+  (setq coop_checkpoint_active 1)
+  (setq coop_checkpoint_x new_x)
+  (setq coop_checkpoint_y new_y)
+  T)
+
 (defun restart_ai ()
   (select (aistate)
-	      (0 (next_picture)
-		 (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
-		     (set_aistate 2)))
-	      (1 (next_picture);; wait for save (actived state)
-		 (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
-		     (set_aistate 2)))
-	      (2 (set_state running)
-		 (set_aistate 3))
-	      (3 (set_aistate 4))
-	      (4
-	       ;; In multiplayer, activate the console without opening the save UI.
-	       (let ((spot (if (eq (total_players) 1) (get_save_slot) 0)))
-		 (set_state stopped)
-		 (set_aistate 1)
-		 (if (not (eq spot 0));; did they escape ?
-		     (progn
-		       (show_help (concatenate 'string Station (num2str (xvel)) secured))
-		       (with_object (bg)
-			    (progn
-			      (let ((old_hp (hp)))
-				(if (not (eq difficulty 'extreme))
-				    (set_hp 100));; save the player with 100 health, unless on extreme
-				(play_sound SAVE_SND 127 (x) (y))
-				(setq has_saved_this_level spot)
-				(save_game (concatenate 'string "save" (digstr spot 4) ".spe"))
-				(set_hp old_hp)
-				))))))
-
-	       ))
+    (0 (next_picture)
+       (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
+	   (set_aistate 2)))
+    (1 (next_picture);; wait for save (actived state)
+       (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
+	   (set_aistate 2)))
+    (2 (set_state running)
+       (set_aistate 3))
+    (3 (set_aistate 4))
+    (4
+     ;; In multiplayer, activate the console without opening the save UI.
+     (let ((spot (if (eq (total_players) 1) (get_save_slot) 0)))
+       (set_state stopped)
+       (set_aistate 1)
+       (if (cooperative)
+	   (progn
+	     (apply_player_pickup
+	       (bg) (list 'update_coop_checkpoint (x) (y)))
+	     (with_object (bg)
+	       (if (local_player)
+		   ;; One second fully visible, followed by the one-second fade.
+		   (show_help (get_train_msg 12) 1000)))
+	     (play_sound SAVE_SND 127 (x) (y)))
+	 (if (not (eq spot 0));; did they escape ?
+	     (progn
+	       (show_help (concatenate 'string Station (num2str (xvel)) secured))
+	       (with_object (bg)
+		 (let ((old_hp (hp)))
+		   (if (not (eq difficulty 'extreme))
+		       (set_hp 100));; save the player with 100 health, unless on extreme
+		   (play_sound SAVE_SND 127 (x) (y))
+		   (setq has_saved_this_level spot)
+		   (save_game (concatenate 'string "save" (digstr spot 4) ".spe"))
+		   (set_hp old_hp)))))))))
   T)
 
 

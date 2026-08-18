@@ -240,6 +240,7 @@ plan \n"
                    (9 "Tirez sur les parois destructibles pour les démolir")
                    (10 "Tirez sur l'interrupteur sphérique pour l'activer")
                    (11 "Appuyez sur la flèche bas pour vous téléporter")
+                   (12 "Point de contrôle mis à jour")
                    ))
 	 (setq not_there       "Ce jeu s'est arrêté")
 	 (setq max_error       "Nombre max. de joueurs doit être supérieur ou égal au nombre min. de joueurs") ; V-C changed

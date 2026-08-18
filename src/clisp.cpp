@@ -1013,9 +1013,15 @@ long c_caller(CFunc number, void *args)
         the_game->zoom = lnumber_value(CAR(args));
         the_game->draw();
         break;
-    case CFunc::ShowHelp:
-        the_game->show_help(lstring_value(CAR(args)));
-        break;
+    case CFunc::ShowHelp: {
+        const char *message = lstring_value(CAR(args));
+        args = CDR(args);
+        if (args)
+            the_game->show_message(message, std::max(0, lnumber_value(CAR(args))));
+        else
+            the_game->show_help(message);
+    }
+    break;
 
     case CFunc::Direction:
         return current_object->direction;

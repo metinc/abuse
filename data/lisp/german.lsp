@@ -238,7 +238,8 @@
                    (8 "Für nächsten Level Pfeiltaste (unten) drücken.")
                    (9 "Auf versteckte Wände schießen, um sie zu zerstören.")
                    (10 "Kugel anschießen, um zu aktivieren.")
-                   (11 "Pfeiltaste (unten) drücken, um zu teleportieren.")))
+                   (11 "Pfeiltaste (unten) drücken, um zu teleportieren.")
+                   (12 "Kontrollpunkt aktualisiert")))
 
  (setq not_there       "Spiel läuft nicht mehr ")
  (setq max_error       "Max Spielerzahl sollte gleich oder mehr als Min Spielerzahl sein ") ; V-C changed
