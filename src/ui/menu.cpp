@@ -418,21 +418,16 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     y += h;
 
     //difficulty/hardness icon
-    ico_switch_button *set = NULL;
-    if (!main_net_cfg ||
-        (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
-    {
-        set = new ico_switch_button(
-            x, y, ID_NULL, diff_on,
-            load_icon(3, ID_EASY, x, y, h,
-                      load_icon(8, ID_MEDIUM, x, y, h,
-                                load_icon(9, ID_HARD, x, y, h, load_icon(10, ID_EXTREME, x, y, h, NULL, "ic_extreme"),
-                                          "ic_hard"),
-                                "ic_medium"),
-                      "ic_easy"),
-            NULL);
-        y += h;
-    }
+    ico_switch_button *set = new ico_switch_button(
+        x, y, ID_NULL, diff_on,
+        load_icon(3, ID_EASY, x, y, h,
+                  load_icon(8, ID_MEDIUM, x, y, h,
+                            load_icon(9, ID_HARD, x, y, h,
+                                      load_icon(10, ID_EXTREME, x, y, h, NULL, "ic_extreme"), "ic_hard"),
+                            "ic_medium"),
+                  "ic_easy"),
+        NULL);
+    y += h;
 
     ico_button *color = load_icon(4, ID_LIGHT_OFF, x, y, h, NULL, "ic_gamma");
     y += h;
@@ -457,13 +452,8 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
 
     //connect buttons/make list
 
-    if (set)
-    {
-        start->next = set;
-        set->next = color;
-    }
-    else
-        start->next = color;
+    start->next = set;
+    set->next = color;
 
     color->next = volume;
 
