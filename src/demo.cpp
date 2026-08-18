@@ -43,21 +43,29 @@ extern base_memory_struct *base; // points to shm_addr
 void get_event(Event &ev)
 {
     wm->get_event(ev);
-    if (demo_man.state == demo_manager::PLAYING &&
-        (ev.type == EV_MOUSE_MOVE || ev.type == EV_MOUSE_BUTTON))
+    if (demo_man.state == demo_manager::PLAYING)
     {
-        // Demo packets own the pointer position and buttons. Physical mouse
-        // input must not leak into playback between recorded ticks.
-        ev.type = EV_SPURIOUS;
-        return;
+        if (ev.type == EV_KEY && ev.key == JK_ESC)
+        {
+            demo_man.set_state(demo_manager::NORMAL);
+            ev.type = EV_SPURIOUS;
+            return;
+        }
+
+        if (ev.type == EV_MOUSE_MOVE || ev.type == EV_MOUSE_BUTTON || ev.type == EV_KEY ||
+            ev.type == EV_KEYRELEASE || ev.type == EV_TEXT_INPUT)
+        {
+            // Replay packets own all player input. Only a physical Escape key
+            // is allowed to leave playback.
+            ev.type = EV_SPURIOUS;
+            return;
+        }
     }
 
     switch (ev.type)
     {
     case EV_KEY: {
-        if (demo_man.state == demo_manager::PLAYING)
-            demo_man.set_state(demo_manager::NORMAL);
-        else if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING &&
+        if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING &&
                  !demo_man.is_automatic_recording())
         {
             demo_man.set_state(demo_manager::NORMAL);

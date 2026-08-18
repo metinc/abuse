@@ -1790,7 +1790,8 @@ void Game::get_input()
             if (ev.type == EV_KEY && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 1);
-                if (playing_state(state) && !(dev & EDIT_MODE))
+                if (playing_state(state) && !(dev & EDIT_MODE) &&
+                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS),
@@ -1800,7 +1801,8 @@ void Game::get_input()
             else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 0);
-                if (playing_state(state) && !(dev & EDIT_MODE))
+                if (playing_state(state) && !(dev & EDIT_MODE) &&
+                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
@@ -2530,8 +2532,9 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
-            if (demo_man.is_automatic_recording() &&
-                (!current_level || g->state == MENU_STATE))
+            // Opening the menu with Escape is only a pause in the current
+            // session. Keep its replay open until the level is actually left.
+            if (demo_man.is_automatic_recording() && !current_level)
                 demo_man.set_state(demo_manager::NORMAL);
 
             // if (demo_man.current_state() != demo_manager::PLAYING)

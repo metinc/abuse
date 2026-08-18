@@ -639,15 +639,21 @@ int view::process_input(char cmd, uint8_t *&pk) // return 0 if something went wr
         return 1;
     }
     break;
-    case SCMD_KEYPRESS:
-        set_key_down(*(pk++), 1);
-        break;
+    case SCMD_KEYPRESS: {
+        const int key = *(pk++);
+        if (demo_man.current_state() != demo_manager::PLAYING || key != JK_ESC)
+            set_key_down(key, 1);
+    }
+    break;
     case SCMD_EXT_KEYPRESS:
         set_key_down(*(pk++) + 256, 1);
         break;
-    case SCMD_KEYRELEASE:
-        set_key_down(*(pk++), 0);
-        break;
+    case SCMD_KEYRELEASE: {
+        const int key = *(pk++);
+        if (demo_man.current_state() != demo_manager::PLAYING || key != JK_ESC)
+            set_key_down(key, 0);
+    }
+    break;
     case SCMD_EXT_KEYRELEASE:
         set_key_down(*(pk++) + 256, 0);
         break;

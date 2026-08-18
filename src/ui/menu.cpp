@@ -254,6 +254,8 @@ void menu_handler(Event &ev, InputManager *inm)
         case ID_START_GAME:
             if (!audio_settings_window)
             {
+                if (demo_man.is_automatic_recording())
+                    demo_man.set_state(demo_manager::NORMAL);
                 the_game->load_level(level_file);
                 the_game->set_state(RUN_STATE);
                 view *v;
@@ -267,7 +269,11 @@ void menu_handler(Event &ev, InputManager *inm)
 
         case ID_EDITOR:
             if (!audio_settings_window)
+            {
+                if (demo_man.is_automatic_recording())
+                    demo_man.set_state(demo_manager::NORMAL);
                 the_game->set_editor_mode(true);
+            }
             break;
 
         case ID_LOAD_PLAYER_GAME:
@@ -277,6 +283,8 @@ void menu_handler(Event &ev, InputManager *inm)
                 the_game->reset_keymap();
                 if (got_level)
                 {
+                    if (demo_man.is_automatic_recording())
+                        demo_man.set_state(demo_manager::NORMAL);
                     char name[255];
                     sprintf(name, "%ssave%04d.spe", get_save_filename_prefix(), got_level);
 
@@ -296,21 +304,29 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_MEDIUM: {
+            if (demo_man.is_automatic_recording())
+                demo_man.set_state(demo_manager::NORMAL);
             l_difficulty->SetValue(l_medium);
             save_difficulty();
         }
         break;
         case ID_HARD: {
+            if (demo_man.is_automatic_recording())
+                demo_man.set_state(demo_manager::NORMAL);
             l_difficulty->SetValue(l_hard);
             save_difficulty();
         }
         break;
         case ID_EXTREME: {
+            if (demo_man.is_automatic_recording())
+                demo_man.set_state(demo_manager::NORMAL);
             l_difficulty->SetValue(l_extreme);
             save_difficulty();
         }
         break;
         case ID_EASY: {
+            if (demo_man.is_automatic_recording())
+                demo_man.set_state(demo_manager::NORMAL);
             l_difficulty->SetValue(l_easy);
             save_difficulty();
         }
@@ -322,6 +338,8 @@ void menu_handler(Event &ev, InputManager *inm)
                 net_configuration *cfg = new net_configuration;
                 if (cfg->input())
                 {
+                    if (demo_man.is_automatic_recording())
+                        demo_man.set_state(demo_manager::NORMAL);
                     if (main_net_cfg)
                         delete main_net_cfg;
                     main_net_cfg = cfg;
@@ -658,6 +676,8 @@ void main_menu()
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {
+                if (demo_man.is_automatic_recording())
+                    demo_man.set_state(demo_manager::NORMAL);
                 exit(EXIT_SUCCESS);
             }
         }
