@@ -30,8 +30,8 @@
   (aref ai_ammo aitype))
 
 
-(defun link_weapon_line_light (color)
-  (let ((light (add_line_light sgb_lastx sgb_lasty (x) (y) 3 24 color)))
+(defun link_weapon_line_light (color radius)
+  (let ((light (add_line_light sgb_lastx sgb_lasty (x) (y) 3 radius color)))
     (set_light_intensity light 40)
     (link_light light)))
 
@@ -129,7 +129,7 @@
 					  (setq sgb_lasty (y))
 					  (set_x old_x)
 					  (set_y old_y))
-					(link_weapon_line_light 0)
+					(link_weapon_line_light 0 24)
 					)))
 
 
@@ -166,7 +166,7 @@
 					      (if (not (eq bx nil))
 						  (do_damage 30 bx (* (cos sgb_angle) 20)
 							     (* (sin sgb_angle) 10)))))
-					(link_weapon_line_light 7)
+					(link_weapon_line_light 7 24)
 					)))
 
 
@@ -194,7 +194,7 @@
 					      (setq sgb_speed (+ sgb_speed (/ (xvel) 2)))
 					      (link_object creator)))
 					(sgun_ai)
-					(link_weapon_line_light 1)
+					(link_weapon_line_light 1 12)
 					)))
 
 	  ;; Optional weapon types supplied by the bundled add-ons.
@@ -460,6 +460,5 @@
 	(set_targetable nil)
 	(set_state stopped)
 	T))))
-
 
 
