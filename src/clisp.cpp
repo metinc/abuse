@@ -357,7 +357,26 @@ void *l_caller(LispFunc number, void *args)
         int xs = lnumber_value(CAR(args)->Eval());
         args = lcdr(args);
         int ys = lnumber_value(CAR(args)->Eval());
-        return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys));
+        args = lcdr(args);
+        int tint = args ? lnumber_value(CAR(args)->Eval()) : LIGHT_TINT_WHITE;
+        return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys, tint));
+    }
+    break;
+    case LispFunc::AddLineLight: {
+        int x1 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int y1 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int x2 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int y2 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int r1 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int r2 = lnumber_value(CAR(args)->Eval());
+        args = lcdr(args);
+        int tint = args ? lnumber_value(CAR(args)->Eval()) : LIGHT_TINT_WHITE;
+        return LPointer::Create(add_line_light_source(x1, y1, x2, y2, r1, r2, tint));
     }
     break;
     case LispFunc::FindEnemy: {
@@ -1185,6 +1204,21 @@ long c_caller(CFunc number, void *args)
         int32_t x2 = x1 - std::lround(dist * cos(angle_rad));
         int32_t y2 = y1 + std::lround(dist * sin(angle_rad));
 
+        // A laser may own a line light. Keep its endpoints identical to the
+        // visible, length-limited beam before the lighting pass runs.
+        for (int i = 0; i < current_object->total_lights(); ++i)
+        {
+            light_source *light = current_object->get_light(i);
+            if (light->type == LIGHT_TYPE_LINE)
+            {
+                light->x = x1;
+                light->y = y1;
+                light->xshift = x2;
+                light->yshift = y2;
+                light->calc_range();
+            }
+        }
+
         ivec2 pos1 = the_game->GameToMouse(ivec2(x1, y1 - 1), current_view);
         ivec2 pos2 = the_game->GameToMouse(ivec2(x2, y2 - 1), current_view);
         main_screen->Line(pos1, pos2, medium_color);
@@ -1267,6 +1301,20 @@ long c_caller(CFunc number, void *args)
         return 1;
     }
     break;
+    case CFunc::SetLightLine: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        args = lcdr(args);
+        l->x = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->y = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->xshift = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->yshift = lnumber_value(CAR(args));
+        l->calc_range();
+        return 1;
+    }
+    break;
     case CFunc::SetLightXShift: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->xshift = lnumber_value(CAR(CDR(args)));
@@ -1278,6 +1326,18 @@ long c_caller(CFunc number, void *args)
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->yshift = lnumber_value(CAR(CDR(args)));
         l->calc_range();
+        return 1;
+    }
+    break;
+    case CFunc::SetLightColor: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        l->tint = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_TINT_COUNT - 1);
+        return 1;
+    }
+    break;
+    case CFunc::SetLightIntensity: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        l->strength = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_STRENGTH_MAX);
         return 1;
     }
     break;
@@ -1298,6 +1358,12 @@ long c_caller(CFunc number, void *args)
         break;
     case CFunc::LightYShift:
         return ((light_source *)lpointer_value(CAR(args)))->yshift;
+        break;
+    case CFunc::LightColor:
+        return ((light_source *)lpointer_value(CAR(args)))->tint;
+        break;
+    case CFunc::LightIntensity:
+        return ((light_source *)lpointer_value(CAR(args)))->strength;
         break;
     case CFunc::Xacel:
         return current_object->xacel();

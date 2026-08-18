@@ -30,6 +30,11 @@
   (aref ai_ammo aitype))
 
 
+(defun link_weapon_line_light (color)
+  (let ((light (add_line_light sgb_lastx sgb_lasty (x) (y) 3 24 color)))
+    (set_light_intensity light 40)
+    (link_light light)))
+
 
 (defun fire_object (creator type x y angle target)
   (select type
@@ -124,6 +129,7 @@
 					  (setq sgb_lasty (y))
 					  (set_x old_x)
 					  (set_y old_y))
+					(link_weapon_line_light 0)
 					)))
 
 
@@ -160,6 +166,7 @@
 					      (if (not (eq bx nil))
 						  (do_damage 30 bx (* (cos sgb_angle) 20)
 							     (* (sin sgb_angle) 10)))))
+					(link_weapon_line_light 7)
 					)))
 
 
@@ -187,7 +194,14 @@
 					      (setq sgb_speed (+ sgb_speed (/ (xvel) 2)))
 					      (link_object creator)))
 					(sgun_ai)
+					(link_weapon_line_light 1)
 					)))
+
+	  ;; Optional weapon types supplied by the bundled add-ons.
+	  (11 (leon_fire_object creator type x y angle target))
+	  (12 (leon_fire_object creator type x y angle target))
+	  (13 (leon_fire_object creator type x y angle target))
+	  (50 (alien_fire_object creator x y angle target))
 
 	  )
 )
@@ -446,8 +460,6 @@
 	(set_targetable nil)
 	(set_state stopped)
 	T))))
-
-
 
 
 

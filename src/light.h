@@ -24,26 +24,47 @@ extern int16_t ambient_ramp;
 
 extern int16_t shutdown_lighting_value, shutdown_lighting;
 
+enum light_tint
+{
+    LIGHT_TINT_WHITE,
+    LIGHT_TINT_RED,
+    LIGHT_TINT_YELLOW,
+    LIGHT_TINT_PURPLE,
+    LIGHT_TINT_GRAY,
+    LIGHT_TINT_GREEN,
+    LIGHT_TINT_BLUE,
+    LIGHT_TINT_CYAN,
+    LIGHT_TINT_COUNT
+};
+
+constexpr int LIGHT_STRENGTH_MAX = 63;
+constexpr int LIGHT_TYPE_SOLID = 9;
+constexpr int LIGHT_TYPE_LINE = 10;
+
 class light_source
 {
   public:
-    int32_t type, x, xshift, y, yshift;
+    int32_t type, tint, strength, x, xshift, y, yshift;
     int32_t outer_radius, mul_div, inner_radius;
 
     int32_t x1, y1, x2, y2;
+    int64_t line_dx, line_dy, line_length_squared, line_length;
     char known;
     light_source *next;
 
     void calc_range();
     light_source(char Type, int32_t X, int32_t Y, int32_t Inner_radius, int32_t Outer_radius, int32_t Xshift,
-                 int32_t Yshift, light_source *Next);
+                 int32_t Yshift, light_source *Next, int32_t Tint = LIGHT_TINT_WHITE,
+                 int32_t Strength = LIGHT_STRENGTH_MAX);
     light_source *copy();
 };
 
 void delete_all_lights();
 void delete_light(light_source *which);
 light_source *add_light_source(char type, int32_t x, int32_t y, int32_t inner, int32_t outer, int32_t xshift,
-                               int32_t yshift);
+                               int32_t yshift, int32_t tint = LIGHT_TINT_WHITE);
+light_source *add_line_light_source(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int32_t inner, int32_t outer,
+                                    int32_t tint = LIGHT_TINT_WHITE);
 
 void add_light_spec(spec_directory *sd, char const *level_name);
 void write_lights(bFILE *fp);

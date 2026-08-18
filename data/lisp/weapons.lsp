@@ -483,6 +483,10 @@
 
 
 (defun pgun_ai ()
+  (if (> (total_lights) 0)
+      (if (eq (state_time) 5)
+	  (delete_light (get_light 0))
+	(set_light_intensity (get_light 0) (- 40 (* (state_time) 7)))))
   (select (state_time)
 	  (0 T)
 	  (1 T)
@@ -503,6 +507,8 @@
 
 (defun lsaber_ai ()
   (shift_rand_table (random 80))
+  (if (> (total_lights) 0)
+      (delete_light (get_light 0)))
   nil)
 
 
@@ -588,4 +594,3 @@
   (flags (unlistable T)
 	 (add_front T))
   (states "art/misc.spe" (stopped  "dfris_bullet")))
-

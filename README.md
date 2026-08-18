@@ -226,6 +226,27 @@ The first gamepad used becomes active; other connected gamepads are ignored unti
 | `-t <filename>` | Insert tiles from file      |
 | `-cprint`       | Enable console printing     |
 
+### Colored Lights
+
+Light sources support these palette-aware color values:
+
+| Value | Color  | Value | Color |
+| ----- | ------ | ----- | ----- |
+| 0     | White  | 4     | Gray  |
+| 1     | Red    | 5     | Green |
+| 2     | Yellow | 6     | Blue  |
+| 3     | Purple | 7     | Cyan  |
+
+The level editor exposes the value as `Color 0-7` when creating or editing a light. Lisp code can pass the color as
+the optional eighth argument to `(add_light type x y r1 r2 xshift yshift [color])`, change it with
+`(set_light_color light color)`, and read it with `(light_color light)`. Omitting the color keeps the traditional
+white light. Runtime effects can fade a light with `(set_light_intensity light value)`, where the value ranges from
+0 to 63; `(light_intensity light)` returns its current value.
+
+Line lights are available as `(add_line_light x1 y1 x2 y2 r1 r2 [color])`. The light has full strength within `r1`
+pixels of the segment and fades out at `r2`; `(set_light_line light x1 y1 x2 y2)` moves both endpoints. Weapons 1,
+5, and 6 use this shape for red, white, and cyan glows respectively.
+
 ## Resources
 
 ### Game Information

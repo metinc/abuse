@@ -49,6 +49,7 @@ enum dev_ids
     DEV_LEDIT_H,
     DEV_LEDIT_R1,
     DEV_LEDIT_R2,
+    DEV_LEDIT_TINT,
 
     DEV_PALETTE,
     DEV_LIGHT_BUTTON_BOX,
@@ -67,6 +68,7 @@ enum dev_ids
     DEV_LIGHTH,
     DEV_LIGHTR1,
     DEV_LIGHTR2,
+    DEV_LIGHT_TINT,
     DEV_LIGHT_ADD,
     DEV_BG_PICKER,
     DEV_FG_PICKER,

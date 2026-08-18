@@ -13,6 +13,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <ctype.h>
 #include <string.h>
 #include <string>
@@ -1399,6 +1400,7 @@ void dev_controll::toggle_light_window()
         prop->setd("light create h", atoi(lightw->read(DEV_LIGHTH)));
         prop->setd("light create r1", atoi(lightw->read(DEV_LIGHTR1)));
         prop->setd("light create r2", atoi(lightw->read(DEV_LIGHTR2)));
+        prop->setd("light create tint", atoi(lightw->read(DEV_LIGHT_TINT)));
         wm->close_window(lightw);
         lightw = NULL;
         return;
@@ -1434,12 +1436,14 @@ void dev_controll::toggle_light_window()
                                                                                            cache.img(light_buttons[11]),
                                                                                            NULL))))))))))),
             new text_field(0, bh * 4, DEV_LIGHTW, "W ", "******", prop->getd("light create w", 0),
-                           new text_field(0, bh * 4 + th * 1, DEV_LIGHTH, "H ", "******",
-                                          prop->getd("light create h", 0),
-                                          new text_field(0, bh * 4 + th * 2, DEV_LIGHTR1, "R1", "******",
-                                                         prop->getd("light create r1", 1),
-                                                         new text_field(0, bh * 4 + th * 3, DEV_LIGHTR2, "R2", "******",
-                                                                        prop->getd("light create r2", 100), NULL))))),
+                           new text_field(
+                               0, bh * 4 + th * 1, DEV_LIGHTH, "H ", "******", prop->getd("light create h", 0),
+                               new text_field(
+                                   0, bh * 4 + th * 2, DEV_LIGHTR1, "R1", "******", prop->getd("light create r1", 1),
+                                   new text_field(0, bh * 4 + th * 3, DEV_LIGHTR2, "R2", "******",
+                                                  prop->getd("light create r2", 100),
+                                                  new text_field(0, bh * 4 + th * 4, DEV_LIGHT_TINT, "Color 0-7", "*",
+                                                                 prop->getd("light create tint", 0), NULL)))))),
         symbol_str("l_light"));
 }
 
@@ -2165,10 +2169,12 @@ void dev_controll::handle_event(Event &ev)
                                 0, bh, DEV_LEDIT_W, "W ", "******", edit_light->xshift,
                                 new text_field(
                                     0, bh + th * 1, DEV_LEDIT_H, "H ", "******", edit_light->yshift,
-                                    new text_field(0, bh + th * 2, DEV_LEDIT_R1, "R1", "******",
-                                                   (int)(edit_light->inner_radius),
-                                                   new text_field(0, bh + th * 3, DEV_LEDIT_R2, "R2", "******",
-                                                                  (int)(edit_light->outer_radius), NULL))))));
+                                    new text_field(
+                                        0, bh + th * 2, DEV_LEDIT_R1, "R1", "******", (int)(edit_light->inner_radius),
+                                        new text_field(0, bh + th * 3, DEV_LEDIT_R2, "R2", "******",
+                                                       (int)(edit_light->outer_radius),
+                                                       new text_field(0, bh + th * 4, DEV_LEDIT_TINT, "Color 0-7", "*",
+                                                                      edit_light->tint, NULL)))))));
                 }
                 else if (ev.window == NULL)
                 {
@@ -2720,6 +2726,7 @@ void dev_controll::handle_event(Event &ev)
             edit_light->yshift = atoi(ledit->read(DEV_LEDIT_H));
             edit_light->inner_radius = atoi(ledit->read(DEV_LEDIT_R1));
             edit_light->outer_radius = atoi(ledit->read(DEV_LEDIT_R2));
+            edit_light->tint = std::clamp(atoi(ledit->read(DEV_LEDIT_TINT)), 0, LIGHT_TINT_COUNT - 1);
             if (edit_light->outer_radius <= edit_light->inner_radius)
             {
                 edit_light->inner_radius = edit_light->outer_radius - 1;
@@ -2770,7 +2777,8 @@ void dev_controll::handle_event(Event &ev)
             ivec2 pos = the_game->MouseToGame(last_demo_mpos);
             edit_light = add_light_source(ev.message.id - DEV_LIGHT0, snap_x(pos.x), snap_y(pos.y),
                                           atoi(lightw->read(DEV_LIGHTR1)), atoi(lightw->read(DEV_LIGHTR2)),
-                                          atoi(lightw->read(DEV_LIGHTW)), atoi(lightw->read(DEV_LIGHTH)));
+                                          atoi(lightw->read(DEV_LIGHTW)), atoi(lightw->read(DEV_LIGHTH)),
+                                          atoi(lightw->read(DEV_LIGHT_TINT)));
             state = DEV_MOVE_LIGHT;
         }
         break;

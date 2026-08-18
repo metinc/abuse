@@ -1026,7 +1026,18 @@ void *sgun_ai()
     game_object *o = current_object;
 
     if (o->lvars[sgb_lifetime] == 0)
+    {
+        for (int i = 0; i < o->total_lights();)
+        {
+            light_source *light = o->get_light(i);
+            if (light->type == LIGHT_TYPE_LINE)
+                current_level->remove_light(light);
+            else
+                ++i;
+        }
         return NULL;
+    }
+
     o->lvars[sgb_lifetime]--;
 
     o->lvars[sgb_speed] = o->lvars[sgb_speed] * 6 / 5;

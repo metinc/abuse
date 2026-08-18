@@ -63,7 +63,7 @@ light_source *number_to_light(int32_t x)
 
 light_source *light_source::copy()
 {
-    next = new light_source(type, x, y, inner_radius, outer_radius, xshift, yshift, next);
+    next = new light_source(type, x, y, inner_radius, outer_radius, xshift, yshift, next, tint, strength);
     return next;
 }
 
@@ -171,11 +171,23 @@ void light_source::calc_range()
         y2 = y + (outer_radius >> yshift);
     }
     break;
-    case 9: {
+    case LIGHT_TYPE_SOLID: {
         x1 = x;
         y1 = y;
         x2 = x + xshift;
         y2 = y + yshift;
+    }
+    break;
+    case LIGHT_TYPE_LINE: {
+        x1 = std::min(x, xshift) - outer_radius;
+        y1 = std::min(y, yshift) - outer_radius;
+        x2 = std::max(x, xshift) + outer_radius;
+        y2 = std::max(y, yshift) + outer_radius;
+        line_dx = static_cast<int64_t>(xshift) - x;
+        line_dy = static_cast<int64_t>(yshift) - y;
+        line_length_squared = line_dx * line_dx + line_dy * line_dy;
+        line_length = std::max(std::abs(line_dx), std::abs(line_dy)) +
+                      std::min(std::abs(line_dx), std::abs(line_dy)) / 2;
     }
     break;
     }
@@ -183,9 +195,11 @@ void light_source::calc_range()
 }
 
 light_source::light_source(char Type, int32_t X, int32_t Y, int32_t Inner_radius, int32_t Outer_radius, int32_t Xshift,
-                           int32_t Yshift, light_source *Next)
+                           int32_t Yshift, light_source *Next, int32_t Tint, int32_t Strength)
 {
     type = Type;
+    tint = std::clamp(Tint, 0, LIGHT_TINT_COUNT - 1);
+    strength = std::clamp(Strength, 0, LIGHT_STRENGTH_MAX);
     x = X;
     y = Y;
     inner_radius = Inner_radius;
@@ -206,15 +220,30 @@ int count_lights()
 }
 
 light_source *add_light_source(char type, int32_t x, int32_t y, int32_t inner, int32_t outer, int32_t xshift,
-                               int32_t yshift)
+                               int32_t yshift, int32_t tint)
 {
-    first_light_source = new light_source(type, x, y, inner, outer, xshift, yshift, first_light_source);
+    first_light_source = new light_source(type, x, y, inner, outer, xshift, yshift, first_light_source, tint);
     return first_light_source;
+}
+
+light_source *add_line_light_source(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int32_t inner, int32_t outer,
+                                    int32_t tint)
+{
+    return add_light_source(LIGHT_TYPE_LINE, x1, y1, inner, outer, x2, y2, tint);
 }
 
 #define TTINTS 9
 uint8_t *tints[TTINTS];
 uint8_t bright_tint[256];
+constexpr int LIGHT_TINT_STEPS = 17;
+std::vector<uint8_t> light_tint_table;
+
+uint16_t light_table_crc(palette *pal)
+{
+    // Mix in a format revision so caches created before colored tint tables
+    // were initialized correctly are rebuilt once.
+    return calc_crc((uint8_t *)pal->addr(), 768) ^ 0x4c43;
+}
 
 void calc_tint(uint8_t *tint, int rs, int gs, int bs, int ra, int ga, int ba, palette *pal)
 {
@@ -247,6 +276,33 @@ void calc_tint(uint8_t *tint, int rs, int gs, int bs, int ra, int ga, int ba, pa
         *tint = f2.GetMapping(f.GetMapping(i));
 }
 
+void calc_colored_light_table(palette *pal)
+{
+    light_tint_table.resize(static_cast<size_t>(LIGHT_TINT_COUNT) * LIGHT_TINT_STEPS * 256);
+    for (int tint = 0; tint < LIGHT_TINT_COUNT; ++tint)
+    {
+        for (int step = 0; step < LIGHT_TINT_STEPS; ++step)
+        {
+            const int weight = step * 63 / (LIGHT_TINT_STEPS - 1);
+            for (int color = 0; color < 256; ++color)
+            {
+                uint8_t mapped = static_cast<uint8_t>(color);
+                if (tint != LIGHT_TINT_WHITE && weight != 0)
+                {
+                    uint8_t base_r, base_g, base_b;
+                    uint8_t tint_r, tint_g, tint_b;
+                    pal->get(color, base_r, base_g, base_b);
+                    pal->get(tints[tint][color], tint_r, tint_g, tint_b);
+                    mapped = pal->find_closest((base_r * (63 - weight) + tint_r * weight + 31) / 63,
+                                               (base_g * (63 - weight) + tint_g * weight + 31) / 63,
+                                               (base_b * (63 - weight) + tint_b * weight + 31) / 63);
+                }
+                light_tint_table[(static_cast<size_t>(tint) * LIGHT_TINT_STEPS + step) * 256 + color] = mapped;
+            }
+        }
+    }
+}
+
 void calc_light_table(palette *pal)
 {
     white_light_initial = (uint8_t *)malloc(256 * 64);
@@ -271,7 +327,7 @@ void calc_light_table(palette *pal)
     }
     else
     {
-        if (fp->read_uint16() != calc_crc((uint8_t *)pal->addr(), 768))
+        if (fp->read_uint16() != light_table_crc(pal))
             recalc = 1;
         else
         {
@@ -334,9 +390,9 @@ void calc_light_table(palette *pal)
           b--;
       }
     }
-    stat_man->pop();
+    stat_man->pop();*/
 
-        stat_man->push("tints", NULL);
+        stack_stat tint_status("tints");
         uint8_t t[TTINTS * 6] = {
             0, 0, 0, 0, 0, 0, // normal
             0, 0, 0, 1, 0, 0, // red
@@ -372,11 +428,11 @@ void calc_light_table(palette *pal)
         // make the colored tints
         for (i = 1; i < TTINTS - 1; i++)
         {
-            stat_man->update(i * 100 / (TTINTS - 1));
+            if (stat_man)
+                stat_man->update(i * 100 / (TTINTS - 1));
             calc_tint(tints[i], ti[0], ti[1], ti[2], ti[3], ti[4], ti[5], pal);
             ti += 6;
         }
-        stat_man->pop();
         /*    fprintf(stderr,"calculating transparency tables (256 total)\n");
     trans_table=(uint8_t *)malloc(256*256);
 
@@ -404,7 +460,7 @@ void calc_light_table(palette *pal)
             printf("Unable to open file %s for writing\n", lightpath);
         else
         {
-            f->write_uint16(calc_crc((uint8_t *)pal->addr(), 768));
+            f->write_uint16(light_table_crc(pal));
             f->write(white_light, 256 * 64);
             //      f->write(green_light,256*64);
             for (int i = 0; i < TTINTS; i++)
@@ -414,6 +470,7 @@ void calc_light_table(palette *pal)
         }
         delete f;
     }
+    calc_colored_light_table(pal);
     free(lightpath);
 }
 
@@ -421,11 +478,30 @@ uint16_t min_light_level;
 
 namespace
 {
+struct light_sample
+{
+    uint8_t intensity;
+    uint8_t red;
+    uint8_t green;
+    uint8_t blue;
+};
+
 struct light_grid
 {
     std::vector<light_source *> radial;
     std::vector<light_source *> solid;
-    std::vector<uint8_t> samples;
+    std::vector<light_sample> samples;
+};
+
+constexpr uint8_t tint_channels[LIGHT_TINT_COUNT][3] = {
+    {0, 0, 0}, // white does not tint the illuminated pixels
+    {1, 0, 0}, // red
+    {1, 1, 0}, // yellow
+    {1, 0, 1}, // purple
+    {1, 1, 1}, // gray
+    {0, 1, 0}, // green
+    {0, 0, 1}, // blue
+    {0, 1, 1}, // cyan
 };
 
 // Keep samples aligned to world coordinates. Otherwise the interpolation grid
@@ -460,31 +536,96 @@ bool lighting_sample_size(int &step_x, int &step_y)
     }
 }
 
-uint8_t radial_light_value(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
+light_sample radial_light_value(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
 {
     int64_t value = min_light_level;
+    int64_t red = 0;
+    int64_t green = 0;
+    int64_t blue = 0;
 
     for (light_source const *source : lights)
     {
         if (world_x < source->x1 || world_x > source->x2 || world_y < source->y1 || world_y > source->y2)
             continue;
 
-        const int64_t dx = std::abs(static_cast<int64_t>(source->x) - world_x) << source->xshift;
-        const int64_t dy = std::abs(static_cast<int64_t>(source->y) - world_y) << source->yshift;
-        const int64_t distance = dx < dy ? dx + dy - dx / 2 : dx + dy - dy / 2;
+        int64_t distance;
+        if (source->type == LIGHT_TYPE_LINE)
+        {
+            const int64_t point_x = static_cast<int64_t>(world_x) - source->x;
+            const int64_t point_y = static_cast<int64_t>(world_y) - source->y;
+            const int64_t projection = point_x * source->line_dx + point_y * source->line_dy;
+
+            int64_t distance_x;
+            int64_t distance_y;
+            if (source->line_length_squared == 0 || projection <= 0)
+            {
+                distance_x = std::abs(point_x);
+                distance_y = std::abs(point_y);
+                distance = std::max(distance_x, distance_y) + std::min(distance_x, distance_y) / 2;
+            }
+            else if (projection >= source->line_length_squared)
+            {
+                distance_x = std::abs(static_cast<int64_t>(world_x) - source->xshift);
+                distance_y = std::abs(static_cast<int64_t>(world_y) - source->yshift);
+                distance = std::max(distance_x, distance_y) + std::min(distance_x, distance_y) / 2;
+            }
+            else
+            {
+                const int64_t cross = std::abs(source->line_dx * point_y - source->line_dy * point_x);
+                distance = (cross + source->line_length / 2) / source->line_length;
+            }
+        }
+        else
+        {
+            const int64_t dx = std::abs(static_cast<int64_t>(source->x) - world_x) << source->xshift;
+            const int64_t dy = std::abs(static_cast<int64_t>(source->y) - world_y) << source->yshift;
+            distance = std::max(dx, dy) + std::min(dx, dy) / 2;
+        }
         if (distance < source->outer_radius)
-            value += ((source->outer_radius - distance) * source->mul_div) >> 16;
+        {
+            int64_t contribution = ((source->outer_radius - distance) * source->mul_div) >> 16;
+            if (source->strength != LIGHT_STRENGTH_MAX)
+                contribution = contribution * source->strength / LIGHT_STRENGTH_MAX;
+            value += contribution;
+            if (source->tint != LIGHT_TINT_WHITE)
+            {
+                red += contribution * tint_channels[source->tint][0];
+                green += contribution * tint_channels[source->tint][1];
+                blue += contribution * tint_channels[source->tint][2];
+            }
+        }
     }
 
-    return static_cast<uint8_t>(std::min<int64_t>(value, 63));
+    return {static_cast<uint8_t>(std::min<int64_t>(value, 63)), static_cast<uint8_t>(std::min<int64_t>(red, 63)),
+            static_cast<uint8_t>(std::min<int64_t>(green, 63)), static_cast<uint8_t>(std::min<int64_t>(blue, 63))};
 }
 
-int solid_light_value(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
+light_source const *solid_light_at(std::vector<light_source *> const &lights, int32_t world_x, int32_t world_y)
 {
     for (light_source const *source : lights)
         if (world_x >= source->x1 && world_x <= source->x2 && world_y >= source->y1 && world_y <= source->y2)
-            return std::clamp(source->inner_radius, 0, 63);
-    return -1;
+            return source;
+    return nullptr;
+}
+
+int tint_from_channels(int red, int green, int blue)
+{
+    const int strength = std::max({red, green, blue});
+    if (strength == 0)
+        return LIGHT_TINT_WHITE;
+
+    const int mask = (red * 2 >= strength ? 4 : 0) | (green * 2 >= strength ? 2 : 0) | (blue * 2 >= strength ? 1 : 0);
+    constexpr uint8_t mask_to_tint[8] = {LIGHT_TINT_WHITE, LIGHT_TINT_BLUE,   LIGHT_TINT_GREEN,  LIGHT_TINT_CYAN,
+                                         LIGHT_TINT_RED,   LIGHT_TINT_PURPLE, LIGHT_TINT_YELLOW, LIGHT_TINT_GRAY};
+    return mask_to_tint[mask];
+}
+
+uint8_t apply_colored_tint(int tint, int strength, uint8_t color)
+{
+    if (tint == LIGHT_TINT_WHITE || strength <= 0 || light_tint_table.empty())
+        return color;
+    const int step = std::clamp((strength * (LIGHT_TINT_STEPS - 1) + 31) / 63, 0, LIGHT_TINT_STEPS - 1);
+    return light_tint_table[(static_cast<size_t>(tint) * LIGHT_TINT_STEPS + step) * 256 + color];
 }
 
 void copy_doubled(image *source, image *destination, ivec2 clip_min, ivec2 clip_max, int32_t out_x, int32_t out_y)
@@ -563,13 +704,15 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
     static thread_local light_grid grid;
     grid.radial.clear();
     grid.solid.clear();
+    bool has_colored_lights = false;
     const int32_t world_right = screen_x + width - 1;
     const int32_t world_bottom = screen_y + height - 1;
     for (light_source *light = first_light_source; light; light = light->next)
     {
         if (light->x2 < screen_x || light->x1 > world_right || light->y2 < screen_y || light->y1 > world_bottom)
             continue;
-        (light->type == 9 ? grid.solid : grid.radial).push_back(light);
+        (light->type == LIGHT_TYPE_SOLID ? grid.solid : grid.radial).push_back(light);
+        has_colored_lights |= light->tint != LIGHT_TINT_WHITE;
     }
 
     if (grid.radial.empty() && grid.solid.empty())
@@ -607,8 +750,8 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
         {
             const int y_fraction = local_y - local_y0;
             const int world_y = screen_y + local_y;
-            uint8_t const *top = grid.samples.data() + static_cast<size_t>(row) * columns;
-            uint8_t const *bottom = top + columns;
+            light_sample const *top = grid.samples.data() + static_cast<size_t>(row) * columns;
+            light_sample const *bottom = top + columns;
             uint8_t *input = source->scan_line(clip_min.y + local_y) + clip_min.x;
             uint8_t *output0 = nullptr;
             uint8_t *output1 = nullptr;
@@ -624,20 +767,47 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
                 const int local_x0 = first_local_x + column * step_x;
                 const int x_begin = std::max(0, local_x0);
                 const int x_end = std::min(width, local_x0 + step_x);
-                const int left =
-                    (top[column] * (step_y - y_fraction) + bottom[column] * y_fraction + step_y / 2) / step_y;
-                const int right =
-                    (top[column + 1] * (step_y - y_fraction) + bottom[column + 1] * y_fraction + step_y / 2) / step_y;
+                auto vertical = [step_y, y_fraction](uint8_t top_value, uint8_t bottom_value) {
+                    return (top_value * (step_y - y_fraction) + bottom_value * y_fraction + step_y / 2) / step_y;
+                };
+                const int left = vertical(top[column].intensity, bottom[column].intensity);
+                const int right = vertical(top[column + 1].intensity, bottom[column + 1].intensity);
+                const int red_left = has_colored_lights ? vertical(top[column].red, bottom[column].red) : 0;
+                const int red_right = has_colored_lights ? vertical(top[column + 1].red, bottom[column + 1].red) : 0;
+                const int green_left = has_colored_lights ? vertical(top[column].green, bottom[column].green) : 0;
+                const int green_right =
+                    has_colored_lights ? vertical(top[column + 1].green, bottom[column + 1].green) : 0;
+                const int blue_left = has_colored_lights ? vertical(top[column].blue, bottom[column].blue) : 0;
+                const int blue_right = has_colored_lights ? vertical(top[column + 1].blue, bottom[column + 1].blue) : 0;
 
                 for (int local_x = x_begin; local_x < x_end; ++local_x)
                 {
                     const int world_x = screen_x + local_x;
-                    const int solid = grid.solid.empty() ? -1 : solid_light_value(grid.solid, world_x, world_y);
+                    light_source const *solid =
+                        grid.solid.empty() ? nullptr : solid_light_at(grid.solid, world_x, world_y);
                     const int x_fraction = local_x - local_x0;
                     const int intensity =
-                        solid >= 0 ? solid : (left * (step_x - x_fraction) + right * x_fraction + step_x / 2) / step_x;
+                        solid ? std::clamp(adjusted_ambient + (solid->inner_radius - adjusted_ambient) *
+                                                                  solid->strength / LIGHT_STRENGTH_MAX,
+                                           0, 63)
+                              : (left * (step_x - x_fraction) + right * x_fraction + step_x / 2) / step_x;
                     const uint8_t color = input[local_x];
-                    const uint8_t lit_color = light_lookup[(intensity << 8) + color];
+                    uint8_t lit_color = light_lookup[(intensity << 8) + color];
+                    if (has_colored_lights)
+                    {
+                        const int red =
+                            solid ? tint_channels[solid->tint][0] * solid->strength
+                                  : (red_left * (step_x - x_fraction) + red_right * x_fraction + step_x / 2) / step_x;
+                        const int green =
+                            solid
+                                ? tint_channels[solid->tint][1] * solid->strength
+                                : (green_left * (step_x - x_fraction) + green_right * x_fraction + step_x / 2) / step_x;
+                        const int blue =
+                            solid ? tint_channels[solid->tint][2] * solid->strength
+                                  : (blue_left * (step_x - x_fraction) + blue_right * x_fraction + step_x / 2) / step_x;
+                        lit_color = apply_colored_tint(tint_from_channels(red, green, blue),
+                                                       std::max({red, green, blue}), lit_color);
+                    }
 
                     if (output_scale == 1)
                     {
@@ -679,7 +849,7 @@ void add_light_spec(spec_directory *sd, char const *level_name)
 {
     int32_t size = 4 + 4; // number of lights and minimum light levels
     for (light_source *f = first_light_source; f; f = f->next)
-        size += 6 * 4 + 1;
+        size += 6 * 4 + 2;
     sd->add_by_hand(new spec_entry(SPEC_LIGHT_LIST, "lights", NULL, size, 0));
 }
 
@@ -700,6 +870,7 @@ void write_lights(bFILE *fp)
         fp->write_uint32(f->inner_radius);
         fp->write_uint32(f->outer_radius);
         fp->write_uint8(f->type);
+        fp->write_uint8(f->tint);
     }
 }
 
@@ -711,6 +882,7 @@ void read_lights(spec_directory *sd, bFILE *fp, char const *level_name)
     {
         fp->seek(se->offset, SEEK_SET);
         int32_t t = fp->read_uint32();
+        const bool has_tints = se->size >= static_cast<unsigned long>(8 + t * (6 * 4 + 2));
         min_light_level = fp->read_uint32();
         light_source *last = NULL;
         while (t)
@@ -723,8 +895,9 @@ void read_lights(spec_directory *sd, bFILE *fp, char const *level_name)
             int32_t ir = fp->read_uint32();
             int32_t ora = fp->read_uint32();
             int32_t ty = fp->read_uint8();
+            int32_t tint = has_tints ? fp->read_uint8() : LIGHT_TINT_WHITE;
 
-            light_source *p = new light_source(ty, x, y, ir, ora, xshift, yshift, NULL);
+            light_source *p = new light_source(ty, x, y, ir, ora, xshift, yshift, NULL, tint);
 
             if (first_light_source)
                 last->next = p;

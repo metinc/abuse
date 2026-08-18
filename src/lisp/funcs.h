@@ -199,14 +199,19 @@ enum class CFunc
     SetLightR2,
     SetLightX,
     SetLightY,
+    SetLightLine,
     SetLightXShift,
     SetLightYShift,
+    SetLightColor,
+    SetLightIntensity,
     LightR1,
     LightR2,
     LightX,
     LightY,
     LightXShift,
     LightYShift,
+    LightColor,
+    LightIntensity,
     Xacel,
     Yacel,
     DeleteLight,
@@ -382,7 +387,8 @@ enum class LispFunc
     GetObject,
     GetLight,
     WithObjects,
-    AddLight, // type, x, y, r1, r2, xshift, yshift
+    AddLight, // type, x, y, r1, r2, xshift, yshift, [color]
+    AddLineLight, // x1, y1, x2, y2, r1, r2, [color]
     FindEnemy, // exclude
     UserFun, // calls anobject's user function
     Time, // returns a fixed point (times and operation)
