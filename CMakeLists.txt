@@ -6,7 +6,8 @@ endif()
 
 project(abuse
     VERSION 1.0.5
-    DESCRIPTION "Run and gun game"
+    DESCRIPTION "Dark 2D side-scrolling run-and-gun game"
+    HOMEPAGE_URL "https://github.com/metinc/abuse"
     LANGUAGES C CXX
 )
 
@@ -24,21 +25,61 @@ endif()
 
 # Options
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
+option(ABUSE_ALLOW_FOREIGN_PACKAGE_BUILD
+    "Allow DEB/RPM creation outside their native distribution family" OFF)
+option(ABUSE_BUNDLE_SDL_RUNTIME
+    "Install SDL3, SDL3_mixer, and SDL3_net in a private package directory" OFF)
+set(ABUSE_SDL3_LICENSE_FILE "" CACHE FILEPATH
+    "SDL3 license file installed when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
+set(ABUSE_SDL3_MIXER_LICENSE_FILE "" CACHE FILEPATH
+    "SDL3_mixer license file installed when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
+set(ABUSE_SDL3_NET_LICENSE_FILE "" CACHE FILEPATH
+    "SDL3_net license file installed when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
 set(ABUSE_HMI2MID_EXECUTABLE "" CACHE FILEPATH
     "Host executable used to convert HMI music while cross-compiling")
+set(ABUSE_WINDOWS_RUNTIME_DIR "" CACHE PATH
+    "Directory containing additional Windows runtime DLLs")
+
+# Distribution packages need a few native layout decisions before the install
+# rules are declared. Debian policy reserves /usr/games for game executables;
+# RPM-family distributions use the regular /usr/bin location.
+set(ABUSE_HOST_DISTRIBUTION_IDS "")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND EXISTS "/etc/os-release")
+    file(STRINGS "/etc/os-release" _abuse_os_release_ids
+        REGEX "^(ID|ID_LIKE)=")
+    foreach(_abuse_os_release_id IN LISTS _abuse_os_release_ids)
+        string(REGEX REPLACE "^[^=]+=" "" _abuse_os_release_id
+            "${_abuse_os_release_id}")
+        string(REPLACE "\"" "" _abuse_os_release_id
+            "${_abuse_os_release_id}")
+        string(APPEND ABUSE_HOST_DISTRIBUTION_IDS
+            " ${_abuse_os_release_id}")
+    endforeach()
+    string(STRIP "${ABUSE_HOST_DISTRIBUTION_IDS}"
+        ABUSE_HOST_DISTRIBUTION_IDS)
+endif()
+
+if(ABUSE_HOST_DISTRIBUTION_IDS MATCHES "(^| )(debian|ubuntu)( |$)")
+    set(_abuse_default_install_bindir "games")
+else()
+    set(_abuse_default_install_bindir "${CMAKE_INSTALL_BINDIR}")
+endif()
+set(ABUSE_INSTALL_BINDIR "${_abuse_default_install_bindir}" CACHE STRING
+    "Directory below the install prefix for the game executable")
 
 # Dependencies used by the game
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
 find_package(SDL3_net 3.0.0 REQUIRED)
 
-# The bundled soundtrack is MIDI and the selected SoundFont is passed to the
-# FluidSynth decoder. Catch incomplete SDL_mixer packages at configure time
-# when their package metadata exposes the enabled decoder set.
+# A selected SoundFont is passed to SDL_mixer's FluidSynth decoder. Some Linux
+# distributions build SDL_mixer with another MIDI backend instead; those
+# builds remain usable, but custom SoundFonts are unavailable.
 if(DEFINED SDLMIXER_MIDI_FLUIDSYNTH AND NOT SDLMIXER_MIDI_FLUIDSYNTH)
-    message(FATAL_ERROR "SDL3_mixer was built without FluidSynth MIDI support")
+    message(STATUS
+        "SDL3_mixer has no FluidSynth decoder; custom SoundFonts will be disabled")
 endif()
-if(WIN32 AND SDLMIXER_MIDI_FLUIDSYNTH)
+if(WIN32 AND SDLMIXER_MIDI_FLUIDSYNTH AND NOT ABUSE_WINDOWS_RUNTIME_DIR)
     find_package(FluidSynth CONFIG REQUIRED)
 endif()
 
@@ -113,6 +154,56 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(src)
 add_subdirectory(data)
 
+# Container-built distribution packages carry the pinned SDL runtime in a
+# private directory. This keeps the native packages usable on distributions
+# that do not yet ship all three SDL3 libraries while still allowing their
+# package managers to derive the remaining system-library dependencies.
+if(ABUSE_BUNDLE_SDL_RUNTIME)
+    if(WIN32 OR APPLE)
+        message(FATAL_ERROR
+            "ABUSE_BUNDLE_SDL_RUNTIME is only supported for Linux packages")
+    endif()
+
+    set(ABUSE_PRIVATE_LIBDIR "${CMAKE_INSTALL_LIBDIR}/abuse")
+    set_target_properties(abuse PROPERTIES
+        INSTALL_RPATH "\$ORIGIN/../${ABUSE_PRIVATE_LIBDIR}")
+
+    set(_abuse_bundled_sdl_targets "")
+    foreach(_abuse_sdl_target IN ITEMS
+            SDL3::SDL3 SDL3_mixer::SDL3_mixer SDL3_net::SDL3_net)
+        get_target_property(_abuse_sdl_aliased_target
+            "${_abuse_sdl_target}" ALIASED_TARGET)
+        if(_abuse_sdl_aliased_target)
+            list(APPEND _abuse_bundled_sdl_targets
+                "${_abuse_sdl_aliased_target}")
+        else()
+            list(APPEND _abuse_bundled_sdl_targets "${_abuse_sdl_target}")
+        endif()
+    endforeach()
+    install(IMPORTED_RUNTIME_ARTIFACTS ${_abuse_bundled_sdl_targets}
+        LIBRARY DESTINATION "${ABUSE_PRIVATE_LIBDIR}")
+
+    foreach(_abuse_sdl_license IN ITEMS
+            ABUSE_SDL3_LICENSE_FILE
+            ABUSE_SDL3_MIXER_LICENSE_FILE
+            ABUSE_SDL3_NET_LICENSE_FILE)
+        if(NOT EXISTS "${${_abuse_sdl_license}}")
+            message(FATAL_ERROR
+                "${_abuse_sdl_license} must name an existing license file "
+                "when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
+        endif()
+    endforeach()
+    install(FILES "${ABUSE_SDL3_LICENSE_FILE}"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+        RENAME SDL3.txt)
+    install(FILES "${ABUSE_SDL3_MIXER_LICENSE_FILE}"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+        RENAME SDL3_mixer.txt)
+    install(FILES "${ABUSE_SDL3_NET_LICENSE_FILE}"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+        RENAME SDL3_net.txt)
+endif()
+
 # One canonical installation layout. Platform packagers and linuxdeploy consume
 # these same rules.
 if(WIN32)
@@ -123,9 +214,15 @@ if(WIN32)
             "$<TARGET_FILE:SDL3_mixer::SDL3_mixer>"
             "$<TARGET_FILE:SDL3_net::SDL3_net>"
         )
-        # vcpkg's MinGW SDL3_mixer links to the shared FluidSynth runtime.
-        # It is not a direct dependency of abuse.exe, so include it explicitly.
-        if(TARGET FluidSynth::libfluidsynth)
+        if(ABUSE_WINDOWS_RUNTIME_DIR)
+            file(GLOB windows_dependency_dlls LIST_DIRECTORIES FALSE
+                "${ABUSE_WINDOWS_RUNTIME_DIR}/*.dll")
+            if(NOT windows_dependency_dlls)
+                message(FATAL_ERROR
+                    "No DLLs found in ABUSE_WINDOWS_RUNTIME_DIR: ${ABUSE_WINDOWS_RUNTIME_DIR}")
+            endif()
+            list(APPEND windows_runtime_dlls ${windows_dependency_dlls})
+        elseif(TARGET FluidSynth::libfluidsynth)
             list(APPEND windows_runtime_dlls "$<TARGET_FILE:FluidSynth::libfluidsynth>")
         else()
             message(FATAL_ERROR "FluidSynth runtime target not found for the Windows package")
@@ -134,7 +231,9 @@ if(WIN32)
 
         set(mingw_runtime_dirs "")
         foreach(root_path IN LISTS CMAKE_FIND_ROOT_PATH)
-            list(APPEND mingw_runtime_dirs "${root_path}/bin")
+            list(APPEND mingw_runtime_dirs
+                "${root_path}/bin"
+                "${root_path}/sys-root/mingw/bin")
         endforeach()
         foreach(runtime_dll
                 libgcc_s_seh-1.dll
@@ -169,7 +268,7 @@ elseif(APPLE)
     install(FILES COPYING.toml11 DESTINATION "abuse.app/Contents/Resources")
 else()
     install(TARGETS abuse
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RUNTIME DESTINATION "${ABUSE_INSTALL_BINDIR}"
     )
 
     install(FILES
@@ -179,14 +278,75 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.png"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/160x160/apps")
     install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse-128.png"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps"
+        RENAME "com.github.metinc.abuse.png")
+    install(FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
-    install(FILES COPYING.toml11 DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/abuse")
+    find_program(GZIP_EXECUTABLE gzip REQUIRED)
+    set(ABUSE_GENERATED_DOCDIR "${CMAKE_CURRENT_BINARY_DIR}/packaging/doc")
+    file(MAKE_DIRECTORY "${ABUSE_GENERATED_DOCDIR}")
+    foreach(_abuse_compressed_document IN ITEMS
+            "CHANGELOG.md;changelog.gz"
+            "doc/abuse.6;abuse.6.gz")
+        list(GET _abuse_compressed_document 0 _abuse_document_source)
+        list(GET _abuse_compressed_document 1 _abuse_document_output)
+        execute_process(
+            COMMAND "${GZIP_EXECUTABLE}" -9 -n -c
+                "${CMAKE_CURRENT_SOURCE_DIR}/${_abuse_document_source}"
+            OUTPUT_FILE
+                "${ABUSE_GENERATED_DOCDIR}/${_abuse_document_output}"
+            RESULT_VARIABLE _abuse_gzip_result)
+        if(NOT _abuse_gzip_result EQUAL 0)
+            message(FATAL_ERROR
+                "Could not compress ${_abuse_document_source}")
+        endif()
+    endforeach()
+
+    install(FILES AUTHORS DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+    install(FILES "${ABUSE_GENERATED_DOCDIR}/changelog.gz"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+    install(FILES "${ABUSE_GENERATED_DOCDIR}/abuse.6.gz"
+        DESTINATION "${CMAKE_INSTALL_MANDIR}/man6")
+
+    if(ABUSE_HOST_DISTRIBUTION_IDS MATCHES
+            "(^| )(debian|ubuntu)( |$)")
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/packaging/debian/changelog.in"
+            "${ABUSE_GENERATED_DOCDIR}/changelog.Debian"
+            @ONLY)
+        execute_process(
+            COMMAND "${GZIP_EXECUTABLE}" -9 -n -c
+                "${ABUSE_GENERATED_DOCDIR}/changelog.Debian"
+            OUTPUT_FILE "${ABUSE_GENERATED_DOCDIR}/changelog.Debian.gz"
+            RESULT_VARIABLE _abuse_gzip_result)
+        if(NOT _abuse_gzip_result EQUAL 0)
+            message(FATAL_ERROR "Could not compress the Debian changelog")
+        endif()
+        install(FILES packaging/debian/copyright
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+        install(FILES "${ABUSE_GENERATED_DOCDIR}/changelog.Debian.gz"
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+        install(FILES packaging/debian/lintian-overrides
+            DESTINATION "${CMAKE_INSTALL_DATADIR}/lintian/overrides"
+            RENAME abuse)
+    else()
+        # RPM packages carry their license texts because RPM distributions do
+        # not provide Debian's /usr/share/common-licenses directory.
+        install(FILES COPYING
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}"
+            RENAME copyright)
+        install(FILES COPYING.GPL COPYING.WTFPL COPYING.toml11
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+    endif()
 
     # SDL_mixer loads FluidSynth at runtime, so it is not visible in abuse's
-    # normal link dependency graph. Pass it to linuxdeploy explicitly so that
-    # it and its transitive runtime dependencies are bundled.
-    find_library(FLUIDSYNTH_RUNTIME_LIBRARY NAMES fluidsynth)
+    # normal link dependency graph. Pass it to linuxdeploy explicitly when the
+    # installed SDL_mixer package exposes that decoder.
+    if(NOT DEFINED SDLMIXER_MIDI_FLUIDSYNTH OR SDLMIXER_MIDI_FLUIDSYNTH)
+        find_library(FLUIDSYNTH_RUNTIME_LIBRARY NAMES fluidsynth)
+    endif()
     string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" APPIMAGE_ARCH)
     if(APPIMAGE_ARCH MATCHES "^(amd64|x64|x86_64)$")
         set(APPIMAGE_ARCH x86_64)
@@ -196,6 +356,87 @@ else()
         set(APPIMAGE_ARCH i686)
     endif()
 
+    # The newest glibc symbol used by any executable or bundled library defines
+    # an AppImage's minimum compatible glibc. Keep this check next to the
+    # packaging target so a build on a rolling distribution cannot silently
+    # produce an incompatible image.
+    set(ABUSE_APPIMAGE_GLIBC_BASELINE "2.36" CACHE STRING
+        "Newest GLIBC symbol version allowed in an AppImage")
+    find_program(READELF_EXECUTABLE NAMES readelf REQUIRED)
+
+    find_program(DOCKER_EXECUTABLE NAMES docker podman)
+    if(DOCKER_EXECUTABLE AND APPIMAGE_ARCH STREQUAL "x86_64")
+        set(_abuse_container_user_args "")
+        find_program(ID_EXECUTABLE NAMES id)
+        if(ID_EXECUTABLE)
+            execute_process(COMMAND "${ID_EXECUTABLE}" -u
+                OUTPUT_VARIABLE _abuse_host_uid
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            execute_process(COMMAND "${ID_EXECUTABLE}" -g
+                OUTPUT_VARIABLE _abuse_host_gid
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            if(_abuse_host_uid MATCHES "^[0-9]+$" AND
+                    _abuse_host_gid MATCHES "^[0-9]+$")
+                set(_abuse_container_user_args
+                    --user "${_abuse_host_uid}:${_abuse_host_gid}")
+            endif()
+        endif()
+        add_custom_target(appimage-container
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_BINARY_DIR}/appimage"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/appimage/Dockerfile
+                --target appimage-artifact
+                --tag "abuse-appimage-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                ${_abuse_container_user_args}
+                --volume "${CMAKE_BINARY_DIR}/appimage:/output"
+                "abuse-appimage-builder:${PROJECT_VERSION}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building the Debian 12 AppImage with a GLIBC 2.36 baseline"
+            USES_TERMINAL
+            VERBATIM
+        )
+
+        add_custom_target(packages-container
+            COMMAND "${CMAKE_COMMAND}" -E remove_directory
+                "${CMAKE_BINARY_DIR}/packages"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_BINARY_DIR}/packages"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/appimage/Dockerfile
+                --target packages-artifact
+                --tag "abuse-debian-package-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                ${_abuse_container_user_args}
+                --volume "${CMAKE_BINARY_DIR}/packages:/output"
+                "abuse-debian-package-builder:${PROJECT_VERSION}"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/rpm/Dockerfile
+                --tag "abuse-rpm-package-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                --cap-add SYS_ADMIN
+                --cap-add NET_ADMIN
+                --security-opt seccomp=unconfined
+                --security-opt systempaths=unconfined
+                --env "ABUSE_VERSION=${PROJECT_VERSION}"
+                --env "OUTPUT_UID=${_abuse_host_uid}"
+                --env "OUTPUT_GID=${_abuse_host_gid}"
+                --volume "${CMAKE_BINARY_DIR}/packages:/output"
+                "abuse-rpm-package-builder:${PROJECT_VERSION}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building all packages in two containers"
+            USES_TERMINAL
+            VERBATIM
+        )
+    elseif(NOT DOCKER_EXECUTABLE)
+        message(STATUS
+            "docker/podman was not found; the container package targets are disabled")
+    endif()
+
     find_program(LINUXDEPLOY
         NAMES linuxdeploy "linuxdeploy-${APPIMAGE_ARCH}.AppImage"
         DOC "Path to linuxdeploy or its official AppImage")
@@ -203,7 +444,7 @@ else()
         set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
         set(LINUXDEPLOY_APPDIR_ARGS
             --appdir "${APPDIR}"
-            --deploy-deps-only "${APPDIR}/usr/${CMAKE_INSTALL_BINDIR}/abuse")
+            --deploy-deps-only "${APPDIR}/usr/${ABUSE_INSTALL_BINDIR}/abuse")
         if(FLUIDSYNTH_RUNTIME_LIBRARY)
             list(APPEND LINUXDEPLOY_APPDIR_ARGS --library "${FLUIDSYNTH_RUNTIME_LIBRARY}")
         else()
@@ -227,6 +468,11 @@ else()
 
         set(APPIMAGE_OUTPUT "${CMAKE_BINARY_DIR}/Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.AppImage")
         add_custom_target(appimage
+            COMMAND "${CMAKE_COMMAND}"
+                "-DAPPDIR=${APPDIR}"
+                "-DREADELF=${READELF_EXECUTABLE}"
+                "-DMAX_GLIBC=${ABUSE_APPIMAGE_GLIBC_BASELINE}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/packaging/appimage/CheckGlibcBaseline.cmake"
             COMMAND ${CMAKE_COMMAND} -E env
                 "LDAI_NO_APPSTREAM=1"
                 "LDAI_OUTPUT=${APPIMAGE_OUTPUT}"
@@ -297,7 +543,12 @@ set(CPACK_PACKAGE_VENDOR "Crack-Dot-Com")
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Abuse game")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "Dark 2D side-scrolling run-and-gun game")
+set(ABUSE_PACKAGE_DESCRIPTION
+    "Abuse is an SDL port of the 1995 run-and-gun game.\nIt includes the original campaign, multiplayer levels, and add-ons.\nMusic, sound effects, and several SoundFonts are bundled as well.")
+set(CPACK_PACKAGE_DESCRIPTION "${ABUSE_PACKAGE_DESCRIPTION}")
+set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
 set(CPACK_PACKAGE_EXECUTABLES "abuse;Abuse")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
@@ -321,13 +572,64 @@ elseif(APPLE)
     set(CPACK_PACKAGING_INSTALL_PREFIX .)
     set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 else()
-    set(CPACK_GENERATOR "TGZ;DEB;RPM")
+    # A native package must be built against the ABI and package database of
+    # its target distribution. Select only the host's native generator for the
+    # default package target; cpack -G remains available for explicit builds.
+    set(CPACK_GENERATOR "TGZ")
+    if(ABUSE_HOST_DISTRIBUTION_IDS MATCHES
+            "(^| )(debian|ubuntu)( |$)")
+        list(APPEND CPACK_GENERATOR DEB)
+    elseif(ABUSE_HOST_DISTRIBUTION_IDS MATCHES
+            "(^| )(fedora|rhel|centos|rocky|almalinux|suse|opensuse|mageia)( |$)")
+        list(APPEND CPACK_GENERATOR RPM)
+    endif()
     set(CPACK_PACKAGE_CONTACT "Metin Çelik <metincelik88@gmail.com>")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl3-0, libsdl3-mixer0, libsdl3-net0")
+
+    # dpkg-shlibdeps derives libc, libstdc++, libgcc and the three SDL runtime
+    # dependencies (including their minimum ABI versions) from the packaged
+    # executable. This intentionally requires DEB packages to be built on the
+    # target Debian-family distribution rather than from an unrelated host.
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "${ABUSE_PACKAGE_DESCRIPTION}")
+    set(ABUSE_DEBIAN_RUNTIME_DEPENDS "" CACHE STRING
+        "Additional runtime-loaded dependencies for Debian packages")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "${ABUSE_DEBIAN_RUNTIME_DEPENDS}")
+    set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+    set(CPACK_DEBIAN_PACKAGE_RELEASE 1)
     set(CPACK_DEBIAN_PACKAGE_SECTION "games")
-    set(CPACK_RPM_PACKAGE_LICENSE "GPL-2.0")
+    set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION ON)
+
+    # RPM's automatic dependency generator records all direct ELF SONAME and
+    # symbol-version requirements. Keep explicit requirements only for the
+    # minimum SDL API versions. For native builds, optional decoder dependencies
+    # are owned by the distribution's SDL3_mixer package. The container build
+    # links FluidSynth directly so this scanner records it automatically.
+    set(CPACK_RPM_PACKAGE_AUTOREQ ON)
+    set(CPACK_RPM_PACKAGE_DESCRIPTION "${ABUSE_PACKAGE_DESCRIPTION}")
+    set(ABUSE_RPM_RUNTIME_REQUIRES
+        "SDL3 >= 3.4.0, SDL3_mixer >= 3.2.0, SDL3_net >= 3.0.0"
+        CACHE STRING "Additional runtime requirements for RPM packages")
+    set(CPACK_RPM_PACKAGE_REQUIRES "${ABUSE_RPM_RUNTIME_REQUIRES}")
+    set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+    set(CPACK_RPM_PACKAGE_RELEASE 1)
+    set(CPACK_RPM_PACKAGE_LICENSE
+        "GPL-2.0-or-later AND GPL-2.0-only AND MIT AND WTFPL AND LicenseRef-Abuse-Data")
     set(CPACK_RPM_PACKAGE_GROUP "Amusements/Games")
-    set(CPACK_RPM_PACKAGE_REQUIRES "SDL3, SDL3_mixer, SDL3_net")
+    set(CPACK_RPM_USER_FILELIST
+        "%license /usr/${CMAKE_INSTALL_DOCDIR}/copyright"
+        "%license /usr/${CMAKE_INSTALL_DOCDIR}/COPYING.GPL"
+        "%license /usr/${CMAKE_INSTALL_DOCDIR}/COPYING.WTFPL"
+        "%license /usr/${CMAKE_INSTALL_DOCDIR}/COPYING.toml11")
+
+    # Release packages must not accidentally contain an unoptimized Debug
+    # executable. The per-generator CPack hook enforces this at package time.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/CPackProjectConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/packaging/CPackProjectConfig.cmake"
+        @ONLY)
+    set(CPACK_PROJECT_CONFIG_FILE
+        "${CMAKE_CURRENT_BINARY_DIR}/packaging/CPackProjectConfig.cmake")
+    set(CPACK_STRIP_FILES ON)
 endif()
 
 include(CPack)

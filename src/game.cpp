@@ -436,7 +436,8 @@ void Game::set_state(int new_state)
     if (d)
         draw(state == SCENE_STATE);
 
-    dev_cont->set_state(new_state);
+    if (dev_cont)
+        dev_cont->set_state(new_state);
 }
 
 void Game::menu_select(Event &ev)
@@ -1368,7 +1369,7 @@ void do_title()
     fade_out(32);
 
     void *space_snd = LSymbol::FindOrCreate("SPACE_SND")->GetValue();
-    char *str = lstring_value(LSymbol::FindOrCreate("plot_start")->Eval());
+    char *str = lstring_value(leval(LSymbol::FindOrCreate("plot_start")));
 
     //AR plot screen
     bFILE *fp = open_file("art/smoke.spe", "rb");
@@ -2243,8 +2244,7 @@ void Game::collect_drawables()
         const int width = v->m_bb.x - v->m_aa.x + 1;
         const int height = v->m_bb.y - v->m_aa.y + 1;
         total_active += current_level->add_drawables(v->xoff() - width / 4, v->yoff() - height / 4,
-                                                     v->xoff() + width + width / 4,
-                                                     v->yoff() + height + height / 4);
+                                                     v->xoff() + width + width / 4, v->yoff() + height + height / 4);
     }
 }
 
@@ -2371,7 +2371,7 @@ void check_for_lisp(int argc, char **argv)
                     l_user_stack.push(prog);
                     while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
                         s++;
-                    prog->Eval()->Print();
+                    leval(prog)->Print();
                     l_user_stack.pop(1);
                 }
                 free(l);
@@ -2546,8 +2546,8 @@ int main(int argc, char *argv[])
                 if (demo_man.current_state() != demo_manager::PLAYING)
                 {
                     if (settings.record_replays && !automatic_recording_failed &&
-                        demo_man.current_state() == demo_manager::NORMAL &&
-                        current_level && g->state == RUN_STATE && !(dev & EDIT_MODE))
+                        demo_man.current_state() == demo_manager::NORMAL && current_level && g->state == RUN_STATE &&
+                        !(dev & EDIT_MODE))
                     {
                         if (!demo_man.start_automatic_recording())
                         {

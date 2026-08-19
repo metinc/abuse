@@ -329,7 +329,7 @@ void load_data(int argc, char **argv)
     snprintf(prog, sizeof(prog), "(load \"%s\")\n", lsf);
 
     cs = prog;
-    if (!LObject::Compile(cs)->Eval())
+    if (!leval(LObject::Compile(cs)))
     {
         printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);

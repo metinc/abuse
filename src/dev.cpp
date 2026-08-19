@@ -66,10 +66,10 @@ char const *symbol_str(char const *name)
     char prog[50];
     char const *cs = prog;
     strcpy(prog, "(setq section 'game_section)\n");
-    LObject::Compile(cs)->Eval();
+    leval(LObject::Compile(cs));
     strcpy(prog, "(load \"lisp/english.lsp\")\n");
     cs = prog;
-    if (!LObject::Compile(cs)->Eval())
+    if (!leval(LObject::Compile(cs)))
     {
         printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);
@@ -998,7 +998,7 @@ void dev_controll::load_stuff()
         cs = prog;
         LObject *p = LObject::Compile(cs);
         l_user_stack.push(p);
-        p->Eval();
+        leval(p);
         l_user_stack.pop(1);
         for (int i = 0; i < total_pals; i++)
             pal_wins[i]->close_window();
@@ -1012,7 +1012,7 @@ void dev_controll::do_command(char const *command, Event &ev)
     int l, h, x, y, i;
     if (command[0] == '(') // is this a lisp command?
     {
-        LObject::Compile(command)->Eval();
+        leval(LObject::Compile(command));
         return;
     }
 
@@ -2570,7 +2570,7 @@ void dev_controll::handle_event(Event &ev)
             sprintf(name, "(add_palette \"%s\" %d %d)", mess_win->read(ID_MESS_STR3),
                     atoi(mess_win->read(ID_MESS_STR1)), atoi(mess_win->read(ID_MESS_STR2)));
             char const *s = name;
-            LObject::Compile(s)->Eval();
+            leval(LObject::Compile(s));
             wm->PushMessage(ID_CANCEL); // close window
         }
         break;

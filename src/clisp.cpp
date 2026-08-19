@@ -215,7 +215,7 @@ void *l_caller(LispFunc number, void *args)
     switch (number)
     {
     case LispFunc::GoState: {
-        current_object->set_aistate(lnumber_value(CAR(args)->Eval()));
+        current_object->set_aistate(lnumber_value(leval(CAR(args))));
         current_object->set_aistate_time(0);
         void *ai = figures[current_object->otype]->get_fun(OFUN_AI);
         if (!ai)
@@ -229,7 +229,7 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::WithObject: {
         game_object *old_cur = current_object;
-        current_object = (game_object *)lpointer_value(CAR(args)->Eval());
+        current_object = (game_object *)lpointer_value(leval(CAR(args)));
         void *ret = eval_block(CDR(args));
         current_object = old_cur;
         return ret;
@@ -240,7 +240,7 @@ void *l_caller(LispFunc number, void *args)
         int collision;
         game_object *o;
         if (args)
-            o = (game_object *)lpointer_value(CAR(args)->Eval());
+            o = (game_object *)lpointer_value(leval(CAR(args)));
         else
             o = current_object;
         game_object *hit = current_object->bmove(collision, o);
@@ -265,28 +265,28 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::FindClosest:
         return LPointer::Create(current_level->find_closest(current_object->x, current_object->y,
-                                                            lnumber_value(CAR(args)->Eval()), current_object));
+                                                            lnumber_value(leval(CAR(args))), current_object));
         break;
     case LispFunc::FindXClosest:
         return LPointer::Create(current_level->find_xclosest(current_object->x, current_object->y,
-                                                             lnumber_value(CAR(args)->Eval()), current_object));
+                                                             lnumber_value(leval(CAR(args))), current_object));
         break;
     case LispFunc::FindXRange: {
-        long n1 = lnumber_value(CAR(args)->Eval());
-        long n2 = lnumber_value(CAR(CDR(args))->Eval());
+        long n1 = lnumber_value(leval(CAR(args)));
+        long n2 = lnumber_value(leval(CAR(CDR(args))));
         return LPointer::Create(current_level->find_xrange(current_object->x, current_object->y, n1, n2));
     }
     break;
     case LispFunc::AddObject: {
-        int type = lnumber_value(CAR(args)->Eval());
+        int type = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x = lnumber_value(CAR(args)->Eval());
+        long x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y = lnumber_value(CAR(args)->Eval());
+        long y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         game_object *o;
         if (args)
-            o = create(type, x, y, 0, lnumber_value(CAR(args)->Eval()));
+            o = create(type, x, y, 0, lnumber_value(leval(CAR(args))));
         else
             o = create(type, x, y);
         if (current_level)
@@ -295,15 +295,15 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::AddObjectAfter: {
-        int type = lnumber_value(CAR(args)->Eval());
+        int type = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x = lnumber_value(CAR(args)->Eval());
+        long x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y = lnumber_value(CAR(args)->Eval());
+        long y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         game_object *o;
         if (args)
-            o = create(type, x, y, 0, lnumber_value(CAR(args)->Eval()));
+            o = create(type, x, y, 0, lnumber_value(leval(CAR(args))));
         else
             o = create(type, x, y);
         if (current_level)
@@ -316,7 +316,7 @@ void *l_caller(LispFunc number, void *args)
         return LPointer::Create(the_game->first_view->m_focus);
         break;
     case LispFunc::NextFocus: {
-        view *v = ((game_object *)lpointer_value(CAR(args)->Eval()))->controller()->next;
+        view *v = ((game_object *)lpointer_value(leval(CAR(args))))->controller()->next;
         if (v)
             return LPointer::Create(v->m_focus);
         else
@@ -324,11 +324,11 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GetObject: {
-        return LPointer::Create((void *)current_object->get_object(lnumber_value(CAR(args)->Eval())));
+        return LPointer::Create((void *)current_object->get_object(lnumber_value(leval(CAR(args)))));
     }
     break;
     case LispFunc::GetLight: {
-        return LPointer::Create((void *)current_object->get_light(lnumber_value(CAR(args)->Eval())));
+        return LPointer::Create((void *)current_object->get_light(lnumber_value(leval(CAR(args)))));
     }
     break;
     case LispFunc::WithObjects: {
@@ -337,45 +337,45 @@ void *l_caller(LispFunc number, void *args)
         for (int i = 0; i < old_cur->total_objects(); i++)
         {
             current_object = old_cur->get_object(i);
-            ret = CAR(args)->Eval();
+            ret = leval(CAR(args));
         }
         current_object = old_cur;
         return ret;
     }
     break;
     case LispFunc::AddLight: {
-        int t = lnumber_value(CAR(args)->Eval());
+        int t = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r1 = lnumber_value(CAR(args)->Eval());
+        int r1 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r2 = lnumber_value(CAR(args)->Eval());
+        int r2 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int xs = lnumber_value(CAR(args)->Eval());
+        int xs = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int ys = lnumber_value(CAR(args)->Eval());
+        int ys = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int tint = args ? lnumber_value(CAR(args)->Eval()) : LIGHT_TINT_WHITE;
+        int tint = args ? lnumber_value(leval(CAR(args))) : LIGHT_TINT_WHITE;
         return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys, tint));
     }
     break;
     case LispFunc::AddLineLight: {
-        int x1 = lnumber_value(CAR(args)->Eval());
+        int x1 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int y1 = lnumber_value(CAR(args)->Eval());
+        int y1 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int x2 = lnumber_value(CAR(args)->Eval());
+        int x2 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int y2 = lnumber_value(CAR(args)->Eval());
+        int y2 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r1 = lnumber_value(CAR(args)->Eval());
+        int r1 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r2 = lnumber_value(CAR(args)->Eval());
+        int r2 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int tint = args ? lnumber_value(CAR(args)->Eval()) : LIGHT_TINT_WHITE;
+        int tint = args ? lnumber_value(leval(CAR(args))) : LIGHT_TINT_WHITE;
         return LPointer::Create(add_line_light_source(x1, y1, x2, y2, r1, r2, tint));
     }
     break;
@@ -391,13 +391,13 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Time: {
-        long trials = lnumber_value(CAR(args)->Eval());
+        long trials = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         time_marker start;
         for (int x = 0; x < trials; x++)
         {
             LSpace::Tmp.Clear();
-            CAR(args)->Eval();
+            leval(CAR(args));
         }
         time_marker end;
         return LFixedPoint::Create((long)(end.diff_time(&start) * (1 << 16)));
@@ -412,16 +412,16 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::FindObjectInArea: {
-        long x1 = lnumber_value(CAR(args)->Eval());
+        long x1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y1 = lnumber_value(CAR(args)->Eval());
+        long y1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x2 = lnumber_value(CAR(args)->Eval());
+        long x2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y2 = lnumber_value(CAR(args)->Eval());
+        long y2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
-        void *list = CAR(args)->Eval();
+        void *list = leval(CAR(args));
         game_object *find = current_level->find_object_in_area(current_object->x, current_object->y, x1, y1, x2, y2,
                                                                list, current_object);
         if (find)
@@ -432,12 +432,12 @@ void *l_caller(LispFunc number, void *args)
     break;
 
     case LispFunc::FindObjectInAngle: {
-        long a1 = lnumber_value(CAR(args)->Eval());
+        long a1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long a2 = lnumber_value(CAR(args)->Eval());
+        long a2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
-        void *list = CAR(args)->Eval();
+        void *list = leval(CAR(args));
         PtrRef r1(list);
         game_object *find =
             current_level->find_object_in_angle(current_object->x, current_object->y, a1, a2, list, current_object);
@@ -477,13 +477,13 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::SeeDist: {
-        int32_t x1 = lnumber_value(CAR(args)->Eval());
+        int32_t x1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t y1 = lnumber_value(CAR(args)->Eval());
+        int32_t y1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t x2 = lnumber_value(CAR(args)->Eval());
+        int32_t x2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t y2 = lnumber_value(CAR(args)->Eval());
+        int32_t y2 = lnumber_value(leval(CAR(args)));
         current_level->foreground_intersect(x1, y1, x2, y2);
         void *ret = NULL;
         push_onto_list(LNumber::Create(y2), ret);
@@ -593,7 +593,7 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Argv: {
-        return LString::Create(start_argv[lnumber_value(CAR(args)->Eval())]);
+        return LString::Create(start_argv[lnumber_value(leval(CAR(args)))]);
     }
     break;
     case LispFunc::MouseStat: {
@@ -610,9 +610,9 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::MouseToGame: {
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
         ivec2 pos = the_game->MouseToGame(ivec2(x, y));
@@ -626,9 +626,9 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GameToMouse: {
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
         ivec2 pos = the_game->GameToMouse(ivec2(x, y), current_view);
@@ -660,15 +660,15 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::System:
         /* FIXME: this looks rather dangerous */
-        system(lstring_value(CAR(args)->Eval()));
+        system(lstring_value(leval(CAR(args))));
         break;
     case LispFunc::ConvertSlashes: {
-        void *fn = CAR(args)->Eval();
+        void *fn = leval(CAR(args));
         args = CDR(args);
         char tmp[200];
         {
             PtrRef r1(fn);
-            char *slash = lstring_value(CAR(args)->Eval());
+            char *slash = lstring_value(leval(CAR(args)));
             char *filename = lstring_value(fn);
 
             char *s = filename, *tp;
@@ -689,7 +689,7 @@ void *l_caller(LispFunc number, void *args)
         char **files, **dirs;
         int tfiles, tdirs, i;
 
-        get_directory(lstring_value(CAR(args)->Eval()), files, tfiles, dirs, tdirs);
+        get_directory(lstring_value(leval(CAR(args))), files, tfiles, dirs, tdirs);
         void *fl = NULL, *dl = NULL, *rl = NULL;
         {
             PtrRef r1(fl), r2(dl);
@@ -726,17 +726,17 @@ void *l_caller(LispFunc number, void *args)
         break;
     case LispFunc::MkPtr: {
         long x;
-        sscanf(lstring_value(CAR(args)->Eval()), "%lx", &x);
+        sscanf(lstring_value(leval(CAR(args))), "%lx", &x);
         return LPointer::Create((void *)(intptr_t)x);
     }
     break;
     case LispFunc::Seq: {
         char name[256], name2[256];
-        strcpy(name, lstring_value(CAR(args)->Eval()));
+        strcpy(name, lstring_value(leval(CAR(args))));
         args = CDR(args);
-        long first = lnumber_value(CAR(args)->Eval());
+        long first = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long last = lnumber_value(CAR(args)->Eval());
+        long last = lnumber_value(leval(CAR(args)));
         long i;
         void *ret = NULL;
         PtrRef r1(ret);

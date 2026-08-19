@@ -354,14 +354,24 @@ bool sound_init()
         return false;
     }
 
-    // FluidSynth needs an explicit SoundFont on systems without a configured
-    // system-wide default. Fall back to the bundled default when the configured
-    // font is unavailable.
-    const std::string fallback = fallback_soundfont(datadir / "soundfonts");
-    if (settings.soundfont.empty() || !sound_set_soundfont(settings.soundfont))
+    if (fluidsynth_available)
     {
-        if (sound_set_soundfont(fallback))
-            settings.SetSoundFont(fallback);
+        // FluidSynth needs an explicit SoundFont on systems without a
+        // configured system-wide default. Fall back to the bundled default
+        // when the configured font is unavailable.
+        const std::string fallback = fallback_soundfont(datadir / "soundfonts");
+        if (settings.soundfont.empty() || !sound_set_soundfont(settings.soundfont))
+        {
+            if (sound_set_soundfont(fallback))
+                settings.SetSoundFont(fallback);
+        }
+    }
+    else
+    {
+        // Let SDL_mixer select another available MIDI backend (for example
+        // Timidity). A configured SoundFont is meaningful only to FluidSynth.
+        soundfont_path.clear();
+        printf("Sound: FluidSynth is unavailable; using SDL_mixer's default MIDI decoder.\n");
     }
     sfx_tracks.reserve(SFX_TRACK_COUNT);
     for (int i = 0; i < SFX_TRACK_COUNT; ++i)
