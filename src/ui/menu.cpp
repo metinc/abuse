@@ -678,7 +678,7 @@ void main_menu()
             {
                 if (demo_man.is_automatic_recording())
                     demo_man.set_state(demo_manager::NORMAL);
-                exit(EXIT_SUCCESS);
+                stop_menu = 1;
             }
         }
 

@@ -337,15 +337,32 @@ int sdl_datagram_socket::read(void *buf, const int size, net_address **addr)
 
 tcpip_protocol::~tcpip_protocol()
 {
+    shutdown();
+}
+
+void tcpip_protocol::shutdown_at_exit()
+{
+    tcpip.shutdown();
+}
+
+void tcpip_protocol::shutdown()
+{
     cleanup();
     if (initialized)
+    {
         NET_Quit();
+        initialized = false;
+    }
 }
 
 bool tcpip_protocol::ensure_initialized()
 {
     if (!initialized)
+    {
         initialized = NET_Init();
+        if (initialized && !shutdown_registered)
+            shutdown_registered = std::atexit(shutdown_at_exit) == 0;
+    }
     return initialized;
 }
 
