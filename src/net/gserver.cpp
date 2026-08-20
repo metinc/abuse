@@ -365,7 +365,11 @@ int game_server::process_net()
                     player_client *f = player_list, *found = NULL;
                     for (; !found && f; f = f->next)
                     {
-                        if (f->has_joined() && from->equal(f->data_address))
+                        // More than one client can legitimately have the same
+                        // IP address. The UDP source port is part of the game
+                        // endpoint and distinguishes those clients.
+                        if (f->has_joined() && from->equal(f->data_address) &&
+                            from->get_port() == f->data_address->get_port())
                             found = f;
                     }
 
