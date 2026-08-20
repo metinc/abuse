@@ -238,6 +238,20 @@ uint8_t bright_tint[256];
 constexpr int LIGHT_TINT_STEPS = 17;
 std::vector<uint8_t> light_tint_table;
 
+namespace
+{
+constexpr uint8_t tint_channels[LIGHT_TINT_COUNT][3] = {
+    {0, 0, 0}, // white does not tint the illuminated pixels
+    {1, 0, 0}, // red
+    {1, 1, 0}, // yellow
+    {1, 0, 1}, // purple
+    {1, 1, 1}, // gray
+    {0, 1, 0}, // green
+    {0, 0, 1}, // blue
+    {0, 1, 1}, // cyan
+};
+}
+
 uint16_t light_table_crc(palette *pal)
 {
     // Mix in a format revision so caches created before colored tint tables
@@ -290,12 +304,15 @@ void calc_colored_light_table(palette *pal)
                 if (tint != LIGHT_TINT_WHITE && weight != 0)
                 {
                     uint8_t base_r, base_g, base_b;
-                    uint8_t tint_r, tint_g, tint_b;
                     pal->get(color, base_r, base_g, base_b);
-                    pal->get(tints[tint][color], tint_r, tint_g, tint_b);
-                    mapped = pal->find_closest((base_r * (63 - weight) + tint_r * weight + 31) / 63,
-                                               (base_g * (63 - weight) + tint_g * weight + 31) / 63,
-                                               (base_b * (63 - weight) + tint_b * weight + 31) / 63);
+                    // Colored lights are emissive: raise their active RGB channels instead of
+                    // merely remapping the pixel to a hue with the same perceived brightness.
+                    auto add_light = [weight](uint8_t channel, bool enabled) {
+                        return enabled ? channel + ((255 - channel) * weight + 31) / 63 : channel;
+                    };
+                    mapped = pal->find_closest(add_light(base_r, tint_channels[tint][0]),
+                                               add_light(base_g, tint_channels[tint][1]),
+                                               add_light(base_b, tint_channels[tint][2]));
                 }
                 light_tint_table[(static_cast<size_t>(tint) * LIGHT_TINT_STEPS + step) * 256 + color] = mapped;
             }
@@ -491,17 +508,6 @@ struct light_grid
     std::vector<light_source *> radial;
     std::vector<light_source *> solid;
     std::vector<light_sample> samples;
-};
-
-constexpr uint8_t tint_channels[LIGHT_TINT_COUNT][3] = {
-    {0, 0, 0}, // white does not tint the illuminated pixels
-    {1, 0, 0}, // red
-    {1, 1, 0}, // yellow
-    {1, 0, 1}, // purple
-    {1, 1, 1}, // gray
-    {0, 1, 0}, // green
-    {0, 0, 1}, // blue
-    {0, 1, 1}, // cyan
 };
 
 // Keep samples aligned to world coordinates. Otherwise the interpolation grid

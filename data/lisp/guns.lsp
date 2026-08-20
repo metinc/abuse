@@ -32,7 +32,7 @@
 
 (defun link_weapon_line_light (color radius)
   (let ((light (add_line_light sgb_lastx sgb_lasty (x) (y) 3 radius color)))
-    (set_light_intensity light 40)
+    (set_light_intensity light 20)
     (link_light light)))
 
 
@@ -298,6 +298,7 @@
 
 
 
+
     (defun spray_gun_cons ()
       (setq spray.bullet_speed 20)
       (setq spray.angle_speed  10)
@@ -460,5 +461,3 @@
 	(set_targetable nil)
 	(set_state stopped)
 	T))))
-
-
