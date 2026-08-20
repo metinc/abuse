@@ -1969,6 +1969,21 @@ void net_send(int force = 0)
                 if (p->local_player())
                     p->get_input();
 
+            // sync difficulty
+            if (client_number() == 0 && player_list->next)
+            {
+                uint8_t difficulty = NET_DIFFICULTY_HARD;
+                if (l_difficulty->GetValue() == l_easy)
+                    difficulty = NET_DIFFICULTY_EASY;
+                else if (l_difficulty->GetValue() == l_medium)
+                    difficulty = NET_DIFFICULTY_MEDIUM;
+                else if (l_difficulty->GetValue() == l_extreme)
+                    difficulty = NET_DIFFICULTY_EXTREME;
+
+                base->packet.write_uint8(SCMD_SET_DIFFICULTY);
+                base->packet.write_uint8(difficulty);
+            }
+
             base->packet.write_uint8(SCMD_SYNC);
             base->packet.write_uint16(make_sync());
 

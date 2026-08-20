@@ -1518,6 +1518,24 @@ void process_packet_commands(uint8_t *pk, int size)
         }
         break;
 
+        case SCMD_SET_DIFFICULTY: {
+            const uint8_t difficulty = *(pk++);
+            LObject *host_difficulty = l_hard;
+            if (difficulty == NET_DIFFICULTY_EASY)
+                host_difficulty = l_easy;
+            else if (difficulty == NET_DIFFICULTY_MEDIUM)
+                host_difficulty = l_medium;
+            else if (difficulty == NET_DIFFICULTY_EXTREME)
+                host_difficulty = l_extreme;
+
+            if (l_difficulty->GetValue() != host_difficulty)
+            {
+                DEBUG_LOG("Applying host difficulty %d", difficulty);
+                l_difficulty->SetValue(host_difficulty);
+            }
+        }
+        break;
+
         case SCMD_SYNC: {
             uint16_t x;
             memcpy(&x, pk, 2);
@@ -1535,8 +1553,9 @@ void process_packet_commands(uint8_t *pk, int size)
             else if (x != sync_uint16 && !already_reloaded)
             {
                 printf("out of sync %d (packet=%d, calced=%d)\n", current_level->tick_counter(), x, sync_uint16);
-                if (demo_man.current_state() == demo_manager::NORMAL)
-                    net_reload();
+                // Playback packets were handled above. A live network game
+                // must also resynchronize while a replay is being recorded.
+                net_reload();
                 already_reloaded = 1;
             }
         }
