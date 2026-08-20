@@ -26,6 +26,7 @@ bool video_set_fullscreen(bool enabled);
 void video_change_settings(int scale_add, bool toggle_fullscreen);
 void video_update_mouse_confinement();
 ivec2 video_window_to_game(float window_x, float window_y);
+ivec2 video_game_to_window_size(ivec2 size);
 void video_warp_mouse(ivec2 position);
 bool video_start_text_input();
 void video_stop_text_input();

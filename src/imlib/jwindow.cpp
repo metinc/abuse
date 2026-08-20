@@ -345,12 +345,20 @@ void WindowManager::flush_screen()
         update_dirty(p->m_surf, p->m_pos.x, p->m_pos.y);
     }
 
-    image *present_screen = video_present_screen();
-    const ivec2 cursor_position = m_pos - m_center;
-    m_sprite->m_save->PutPart(present_screen, ivec2(0), cursor_position, cursor_position + m_sprite->m_visual->Size());
-    present_screen->PutImage(m_sprite->m_visual, cursor_position, 1);
-    present_framebuffer();
-    present_screen->PutImage(m_sprite->m_save, cursor_position);
+    if (HardwareCursorActive())
+    {
+        present_framebuffer();
+    }
+    else
+    {
+        image *present_screen = video_present_screen();
+        const ivec2 cursor_position = m_pos - m_center;
+        m_sprite->m_save->PutPart(present_screen, ivec2(0), cursor_position,
+                                  cursor_position + m_sprite->m_visual->Size());
+        present_screen->PutImage(m_sprite->m_visual, cursor_position, 1);
+        present_framebuffer();
+        present_screen->PutImage(m_sprite->m_save, cursor_position);
+    }
 }
 
 Jwindow::Jwindow(char const *name)

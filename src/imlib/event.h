@@ -35,6 +35,7 @@ constexpr int MIDDLE_BUTTON = 4;
 #include <utility>
 
 class Jwindow;
+struct SDL_Cursor;
 
 void reset_input_sources();
 
@@ -82,11 +83,7 @@ class EventHandler
     void Get(Event &ev);
     void flush_screen();
 
-    void SetMouseShape(image *im, ivec2 center)
-    {
-        m_sprite->SetVisual(im, 1);
-        m_center = center;
-    }
+    void SetMouseShape(image *im, ivec2 center);
     void SetMousePos(ivec2 pos);
     //AR
     ivec2 GetMousePos()
@@ -97,6 +94,10 @@ class EventHandler
     {
         m_ignore_wheel_events = ignore;
     }
+    bool HardwareCursorActive() const
+    {
+        return m_cursor != nullptr;
+    }
 
   private:
     std::deque<Event> m_events;
@@ -106,8 +107,11 @@ class EventHandler
   protected:
     /* Mouse information */
     Sprite *m_sprite;
+    SDL_Cursor *m_cursor;
     ivec2 m_pos, m_center;
     int m_button;
+
+    void RefreshMouseCursor();
 };
 
 #endif

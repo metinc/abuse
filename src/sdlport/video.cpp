@@ -230,8 +230,9 @@ void set_mode()
     main_screen->clear();
     presentation_screen->clear();
 
-    // Hide the mouse cursor and set up the mouse
-    SDL_HideCursor();
+    // Cursor visuals are handled by SDL so their movement is independent of
+    // the VSync-limited game framebuffer.
+    SDL_ShowCursor();
 
     if (settings.fullscreen && create_window)
         video_set_fullscreen(true);
@@ -295,6 +296,29 @@ ivec2 video_window_to_game(float window_x, float window_y)
     game_y *= static_cast<float>(main_screen->Size().y) / logical_height;
     return ivec2(std::clamp(static_cast<int>(std::lround(game_x)), 0, main_screen->Size().x - 1),
                  std::clamp(static_cast<int>(std::lround(game_y)), 0, main_screen->Size().y - 1));
+}
+
+ivec2 video_game_to_window_size(ivec2 size)
+{
+    if (!renderer || !main_screen)
+        return Max(size, ivec2(1));
+
+    int logical_width;
+    int logical_height;
+    SDL_RendererLogicalPresentation mode;
+    float origin_x, origin_y, extent_x, extent_y;
+    if (!SDL_GetRenderLogicalPresentation(renderer, &logical_width, &logical_height, &mode) || logical_width <= 0 ||
+        logical_height <= 0)
+        return Max(size, ivec2(1));
+
+    const float logical_x = static_cast<float>(size.x) * logical_width / main_screen->Size().x;
+    const float logical_y = static_cast<float>(size.y) * logical_height / main_screen->Size().y;
+    if (!SDL_RenderCoordinatesToWindow(renderer, 0.0f, 0.0f, &origin_x, &origin_y) ||
+        !SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &extent_x, &extent_y))
+        return Max(size, ivec2(1));
+
+    return ivec2(std::max(1, static_cast<int>(std::lround(std::abs(extent_x - origin_x)))),
+                 std::max(1, static_cast<int>(std::lround(std::abs(extent_y - origin_y)))));
 }
 
 void video_warp_mouse(ivec2 position)

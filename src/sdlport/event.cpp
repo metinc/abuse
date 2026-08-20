@@ -219,6 +219,7 @@ EventHandler::EventHandler(image *screen, palette *pal)
     m_ignore_wheel_events = false;
     m_button = 0;
     m_center = ivec2(0, 0);
+    m_cursor = nullptr;
 
     CHECK(screen && pal);
     m_screen = screen;
@@ -234,6 +235,7 @@ EventHandler::EventHandler(image *screen, palette *pal)
     f.Apply(im);
 
     m_sprite = new Sprite(screen, im, ivec2(100, 100));
+    RefreshMouseCursor();
 
     float mouse_x, mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
@@ -246,7 +248,105 @@ EventHandler::EventHandler(image *screen, palette *pal)
 EventHandler::~EventHandler()
 {
     video_stop_text_input();
+    if (m_cursor)
+    {
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        SDL_DestroyCursor(m_cursor);
+    }
     delete m_sprite;
+}
+
+void EventHandler::RefreshMouseCursor()
+{
+    const auto use_software_cursor = [this]() {
+        if (m_cursor)
+        {
+            SDL_SetCursor(SDL_GetDefaultCursor());
+            SDL_DestroyCursor(m_cursor);
+            m_cursor = nullptr;
+        }
+        SDL_HideCursor();
+    };
+
+    image *visual = m_sprite->m_visual;
+    palette *colors = last_loaded();
+    if (!visual || !colors)
+    {
+        use_software_cursor();
+        return;
+    }
+
+    const ivec2 source_size = visual->Size();
+    SDL_Surface *source = SDL_CreateSurface(source_size.x, source_size.y, SDL_PIXELFORMAT_RGBA32);
+    if (!source)
+    {
+        fprintf(stderr, "Warning: Unable to create mouse cursor surface: %s\n", SDL_GetError());
+        use_software_cursor();
+        return;
+    }
+
+    auto *pixels = static_cast<Uint32 *>(source->pixels);
+    const int pitch = source->pitch / static_cast<int>(sizeof(Uint32));
+    for (int y = 0; y < source_size.y; y++)
+    {
+        const uint8_t *indices = visual->scan_line(y);
+        for (int x = 0; x < source_size.x; x++)
+        {
+            const uint8_t index = indices[x];
+            pixels[y * pitch + x] = SDL_MapSurfaceRGBA(source, colors->red(index), colors->green(index),
+                                                       colors->blue(index), index == 0 ? 0 : 255);
+        }
+    }
+
+    const ivec2 cursor_size = video_game_to_window_size(source_size);
+    SDL_Surface *scaled = source;
+    if (cursor_size != source_size)
+    {
+        scaled = SDL_ScaleSurface(source, cursor_size.x, cursor_size.y, SDL_SCALEMODE_NEAREST);
+        if (!scaled)
+        {
+            fprintf(stderr, "Warning: Unable to scale mouse cursor: %s\n", SDL_GetError());
+            SDL_DestroySurface(source);
+            use_software_cursor();
+            return;
+        }
+    }
+
+    const int hot_x = std::clamp(m_center.x * cursor_size.x / source_size.x, 0, cursor_size.x - 1);
+    const int hot_y = std::clamp(m_center.y * cursor_size.y / source_size.y, 0, cursor_size.y - 1);
+    SDL_Cursor *cursor = SDL_CreateColorCursor(scaled, hot_x, hot_y);
+    if (!cursor)
+    {
+        fprintf(stderr, "Warning: Unable to create mouse cursor: %s\n", SDL_GetError());
+        use_software_cursor();
+    }
+    else if (!SDL_SetCursor(cursor))
+    {
+        fprintf(stderr, "Warning: Unable to activate mouse cursor: %s\n", SDL_GetError());
+        SDL_DestroyCursor(cursor);
+        cursor = nullptr;
+        use_software_cursor();
+    }
+
+    if (scaled != source)
+        SDL_DestroySurface(scaled);
+    SDL_DestroySurface(source);
+
+    if (cursor)
+    {
+        SDL_Cursor *old_cursor = m_cursor;
+        m_cursor = cursor;
+        if (old_cursor)
+            SDL_DestroyCursor(old_cursor);
+        SDL_ShowCursor();
+    }
+}
+
+void EventHandler::SetMouseShape(image *im, ivec2 center)
+{
+    m_sprite->SetVisual(im, 1);
+    m_center = center;
+    RefreshMouseCursor();
 }
 
 void EventHandler::SetMousePos(ivec2 pos)
@@ -304,10 +404,12 @@ void EventHandler::Get(Event &ev)
     case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
         video_update_mouse_confinement();
+        RefreshMouseCursor();
         break;
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
         video_update_mouse_confinement();
+        RefreshMouseCursor();
         break;
     case SDL_EVENT_WINDOW_MAXIMIZED:
     case SDL_EVENT_WINDOW_RESTORED:
