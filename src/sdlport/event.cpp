@@ -234,7 +234,10 @@ EventHandler::EventHandler(image *screen, palette *pal)
     f.Apply(im);
 
     m_sprite = new Sprite(screen, im, ivec2(100, 100));
-    m_pos = screen->Size() / 2;
+
+    float mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    m_pos = video_window_to_game(mouse_x, mouse_y);
 
     if (!video_start_text_input())
         fprintf(stderr, "Warning: Unable to start text input: %s\n", SDL_GetError());

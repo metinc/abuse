@@ -607,7 +607,6 @@ void main_menu()
     //AR controller ui movement
     int selected_column = 1;
     int selected_row = 0;
-    wm->SetMousePos(ivec2(column_x[selected_column] + button_w / 2, column_y[selected_column] + button_h / 2));
 
     InputManager *inm = new InputManager(main_screen, list);
     inm->allow_no_selections();
