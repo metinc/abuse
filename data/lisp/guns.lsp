@@ -33,7 +33,8 @@
 (defun link_weapon_line_light (color radius)
   (let ((light (add_line_light sgb_lastx sgb_lasty (x) (y) 3 radius color)))
     (set_light_intensity light 20)
-    (link_light light)))
+    (link_light light)
+    light))
 
 
 (defun fire_object (creator type x y angle target)
@@ -129,7 +130,8 @@
 					  (setq sgb_lasty (y))
 					  (set_x old_x)
 					  (set_y old_y))
-					(link_weapon_line_light 0 24)
+					(let ((light (link_weapon_line_light 0 24)))
+					  (flicker_light light 40 5 24 3))
 					)))
 
 
@@ -166,7 +168,8 @@
 					      (if (not (eq bx nil))
 						  (do_damage 30 bx (* (cos sgb_angle) 20)
 							     (* (sin sgb_angle) 10)))))
-					(link_weapon_line_light 7 24)
+					(let ((light (link_weapon_line_light 7 24)))
+					  (flicker_light light 20 5 24 4))
 					)))
 
 
