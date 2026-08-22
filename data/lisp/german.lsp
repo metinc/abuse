@@ -275,6 +275,7 @@
          (setq min_wait        "Wartet auf %d zusätzliche Spieler!")
          (setq online_min_wait "Teile den Raumcode %s,\ndamit Spieler beitreten können.\nWarte auf %d weitere Spieler!")
          (setq copy_room_code  "Raumcode kopieren")
+         (setq searching_local_games "Suche nach lokalen Spielen")
          (setq lev_complete    "Level abgeschlossen")
          (setq no_low_mem         (concatenate 'string "Nicht genügend Grundspeicher\n"
                                            "  Vorschläge...\n"

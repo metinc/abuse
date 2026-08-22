@@ -138,6 +138,7 @@ class info_field : public ifield
 
   public:
     info_field(int X, int Y, int ID, char const *info, ifield *Next);
+    void change_text(char const *new_text);
     virtual void area(int &x1, int &y1, int &x2, int &y2);
     virtual void draw_first(image *screen);
     virtual void draw(int active, image *screen)

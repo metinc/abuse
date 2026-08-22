@@ -284,6 +284,7 @@
 	 (setq min_wait        "Waiting for %d more player(s) to join!")
 	 (setq online_min_wait "Share room code %s,\nso players can join.\nWaiting for %d more player(s)!")
 	 (setq copy_room_code  "Copy room code")
+	 (setq searching_local_games "Searching for local games")
 	 (setq lev_complete    "Level Completed!")
 	 ;(setq lev_complete    "Level %d Completed!") XXX: Mac Abuse
 	 (setq no_low_mem      "Not enough low memory")

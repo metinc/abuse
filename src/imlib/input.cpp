@@ -578,6 +578,12 @@ info_field::info_field(int X, int Y, int ID, char const *info, ifield *Next)
     w = -1;
 }
 
+void info_field::change_text(char const *new_text)
+{
+    text = new_text ? new_text : "";
+    w = -1;
+}
+
 void info_field::area(int &x1, int &y1, int &x2, int &y2)
 {
     if (w == -1) // if we haven't calculated this yet

@@ -131,6 +131,7 @@ enum
     NET_GAMEMODE,
     NET_CONNECTION,
     NET_ROOM_CODE,
+    NET_LOCAL_SEARCH,
     NET_GAME = 400,
     MIN_1,
     MIN_2,
@@ -684,7 +685,21 @@ int net_configuration::input() // pulls up dialog box and input fileds
         else
             sb = new button(x + 40, y + ns_h - 9 - fnt->Size().y, NET_ONLINE_JOIN, symbol_str("join_online"), sb);
 
-        InputManager inm(main_screen, sb);
+        char search_text[256];
+        snprintf(search_text, sizeof(search_text), "%s", symbol_str("searching_local_games"));
+        const int search_x = x + ns_w / 2 - strlen(search_text) * fnt->Size().x / 2;
+        info_field *search_status = new info_field(search_x, y + 25, NET_LOCAL_SEARCH, search_text, sb);
+
+        InputManager inm(main_screen, search_status);
+
+        auto redraw_browser = [&]() {
+            main_screen->PutImage(ns, ivec2(x, y));
+            fnt->PutString(main_screen,
+                           ivec2(x + ns_w / 2 - strlen(nw_s) * fnt->Size().x / 2,
+                                 y + 21 / 2 - fnt->Size().y / 2),
+                           nw_s, wm->medium_color());
+            inm.redraw();
+        };
 
         inm.allow_no_selections();
         inm.clear_current();
@@ -698,7 +713,8 @@ int net_configuration::input() // pulls up dialog box and input fileds
         };
         net_address *game_addr[MAX_GAMES + 1];
         int join_game = -1;
-        time_marker start, now;
+        int search_dots = 0;
+        time_marker start, search_animation, now;
 
         do
         {
@@ -750,12 +766,26 @@ int net_configuration::input() // pulls up dialog box and input fileds
             char name[256];
 
             now.get_time();
+            if (search_status && now.diff_time(&search_animation) > 0.5)
+            {
+                search_animation.get_time();
+                search_dots = (search_dots + 1) % 4;
+                snprintf(search_text, sizeof(search_text), "%s%.*s", symbol_str("searching_local_games"),
+                         search_dots, "...");
+                search_status->change_text(search_text);
+                redraw_browser();
+            }
             if (total_games < MAX_GAMES && now.diff_time(&start) > 0.5)
             {
                 start.get_time();
                 net_address *find = prot->find_address(0x9090, name); // was server_port
                 if (find)
                 {
+                    if (search_status)
+                    {
+                        delete inm.unlink(NET_LOCAL_SEARCH);
+                        search_status = NULL;
+                    }
                     int bw = strlen(name) * fnt->Size().x;
                     inm.add(new button(x + ns_w / 2 - bw / 2, y + button_y, NET_GAME + total_games, name, NULL));
                     find->set_port(server_port);
@@ -763,7 +793,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
 
                     total_games++;
                     button_y += fnt->Size().y + 10;
-                    inm.redraw();
+                    redraw_browser();
                 }
             }
 

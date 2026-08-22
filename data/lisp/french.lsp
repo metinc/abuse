@@ -275,6 +275,7 @@ plan \n"
          (setq min_wait        "Veuillez attendre pour %d participant(s) !")
          (setq online_min_wait "Partagez le code %s\npour permettre aux joueurs de participer.\nEncore %d joueur(s) attendu(s) !")
          (setq copy_room_code  "Copier le code")
+         (setq searching_local_games "Recherche de parties locales")
          (setq lev_complete    "Niveau terminé !")
          (setq no_low_mem         (concatenate 'string "Gestionnaire de mémoire : Pas assez de mémoire disponible\n"
                                            "  Suggestions...\n"
