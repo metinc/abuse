@@ -24,6 +24,7 @@ class JCFont
 
     void PutChar(image *screen, ivec2 pos, unsigned char ch, int color = -1);
     void PutString(image *screen, ivec2 pos, std::string_view text, int color = -1);
+    static std::string EncodeForFont(std::string_view text);
     ivec2 Size() const
     {
         return m_size;

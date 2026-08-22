@@ -84,7 +84,8 @@ void chat_console::clear()
 
 void chat_console::put_all(char *st)
 {
-    std::string_view remaining = st ? std::string_view(st) : std::string_view();
+    const std::string encoded = JCFont::EncodeForFont(st ? std::string_view(st) : std::string_view());
+    std::string_view remaining = encoded;
     do
     {
         const size_t newline = remaining.find('\n');

@@ -1738,13 +1738,13 @@ void Game::get_input()
                 pending_chat_length--;
             else if (event.value == JK_ENTER)
                 pending_chat_length = 0;
-            else if (event.value >= ' ' && event.value <= '~' &&
+            else if (((event.value >= ' ' && event.value <= '~') || event.value >= 0x80) &&
                      pending_chat_length < view::MAX_CHAT_INPUT_LENGTH)
                 pending_chat_length++;
         }
 
     auto send_chat_key = [this, &pending_chat_length](int key) {
-        if (key >= ' ' && key <= '~')
+        if ((key >= ' ' && key <= '~') || key >= 0x80)
         {
             if (pending_chat_length >= view::MAX_CHAT_INPUT_LENGTH)
                 return false;
@@ -1757,6 +1757,16 @@ void Game::get_input()
 
         pending_input_events.push_back({SCMD_CHAT_KEYPRESS, static_cast<uint8_t>(key)});
         return true;
+    };
+
+    auto send_chat_text = [&send_chat_key](std::string_view text) {
+        for (const unsigned char ch : JCFont::EncodeForFont(text))
+        {
+            if (ch < ' ' || (ch > '~' && ch < 0x80))
+                continue;
+            if (!send_chat_key(ch))
+                break;
+        }
     };
 
     while (event_waiting())
@@ -1774,9 +1784,7 @@ void Game::get_input()
 
             if (ev.type == EV_TEXT_INPUT)
             {
-                for (unsigned char ch : ev.text)
-                    if (ch >= ' ' && ch <= '~')
-                        send_chat_key(ch);
+                send_chat_text(ev.text);
             }
             else if (ev.type == EV_KEY)
             {
@@ -1784,12 +1792,8 @@ void Game::get_input()
                     (wm->key_pressed(JK_CTRL_L) || wm->key_pressed(JK_CTRL_R)))
                 {
                     char *clipboard = SDL_GetClipboardText();
-                    for (const unsigned char *ch = reinterpret_cast<unsigned char *>(clipboard);
-                         ch && *ch; ++ch)
-                    {
-                        if (*ch >= ' ' && *ch <= '~' && !send_chat_key(*ch))
-                            break;
-                    }
+                    if (clipboard)
+                        send_chat_text(clipboard);
                     SDL_free(clipboard);
                 }
                 else if (ev.key == JK_BACKSPACE || ev.key == JK_ENTER)
