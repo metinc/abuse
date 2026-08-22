@@ -321,6 +321,10 @@
 	 ;(setq ic_macconf      "Screen Options")
 	 (setq ic_multiplayer   "Multiplayer")            ; ----
 	 (setq ic_editor        "Level Editor")
+	 (setq language         "Language")
+	 (setq language_english "English")
+	 (setq language_german  "German")
+	 (setq language_french  "French")
 
 
 	 (setq no_file         "Could not find file '%s'")

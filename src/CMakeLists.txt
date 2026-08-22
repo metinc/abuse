@@ -65,6 +65,7 @@ add_executable(abuse
     ui/audio_volume.h
     ui/chat.cpp ui/chat.h
     ui/console.cpp ui/console.h
+    ui/general_settings.cpp ui/general_settings.h
     ui/gui.cpp ui/gui.h
     ui/help.cpp ui/help.h
     ui/loadgame.cpp ui/loadgame.h

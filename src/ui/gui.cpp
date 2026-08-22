@@ -21,12 +21,7 @@
 
 static ToastMessage help_toast;
 
-ToastMessage::ToastMessage() : m_background(NULL), m_screen(NULL), m_pos(0) {}
-
-ToastMessage::~ToastMessage()
-{
-    delete m_background;
-}
+ToastMessage::ToastMessage() : m_screen(NULL), m_pos(0), m_background_pos(0), m_background_size(0) {}
 
 void ToastMessage::Show(image *screen, std::string_view text)
 {
@@ -47,8 +42,18 @@ void ToastMessage::Show(image *screen, std::string_view text)
     m_pos = ivec2((screen->Size().x - size.x) / 2, screen_margin);
 
     m_screen = screen;
-    m_background = new image(size);
-    m_background->PutPart(screen, ivec2(0), m_pos, m_pos + size);
+    m_background_pos = Max(m_pos, ivec2(0));
+    const ivec2 background_end = Min(m_pos + size, screen->Size());
+    m_background_size = Max(background_end - m_background_pos, ivec2(0));
+    m_background.resize(m_background_size.x * m_background_size.y);
+
+    screen->Lock();
+    for (int y = 0; y < m_background_size.y; y++)
+    {
+        memcpy(m_background.data() + y * m_background_size.x,
+               screen->scan_line(m_background_pos.y + y) + m_background_pos.x, m_background_size.x);
+    }
+    screen->Unlock();
 
     const ivec2 bottom_right = m_pos + size - ivec2(1);
     screen->Bar(m_pos, bottom_right, wm->dark_color());
@@ -58,12 +63,29 @@ void ToastMessage::Show(image *screen, std::string_view text)
 
 void ToastMessage::Hide()
 {
-    if (!m_background)
+    if (!m_screen)
         return;
 
-    m_screen->PutImage(m_background, m_pos);
-    delete m_background;
-    m_background = NULL;
+    ivec2 clip_aa, clip_bb;
+    m_screen->GetClip(clip_aa, clip_bb);
+    const ivec2 restore_aa = Max(m_background_pos, clip_aa);
+    const ivec2 restore_bb = Min(m_background_pos + m_background_size, clip_bb);
+    if (restore_aa < restore_bb)
+    {
+        const ivec2 offset = restore_aa - m_background_pos;
+        const ivec2 span = restore_bb - restore_aa;
+
+        m_screen->Lock();
+        for (int y = 0; y < span.y; y++)
+        {
+            memcpy(m_screen->scan_line(restore_aa.y + y) + restore_aa.x,
+                   m_background.data() + (offset.y + y) * m_background_size.x + offset.x, span.x);
+        }
+        m_screen->Unlock();
+        m_screen->AddDirty(restore_aa, restore_bb);
+    }
+
+    m_background.clear();
     m_screen = NULL;
 }
 

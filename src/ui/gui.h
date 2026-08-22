@@ -11,18 +11,20 @@
 #ifndef __GUI_HPP_
 #define __GUI_HPP_
 #include <string_view>
+#include <vector>
 
 #include "jwindow.h"
 
 class ToastMessage
 {
-    image *m_background;
+    std::vector<uint8_t> m_background;
     image *m_screen;
     ivec2 m_pos;
+    ivec2 m_background_pos;
+    ivec2 m_background_size;
 
   public:
     ToastMessage();
-    ~ToastMessage();
     ToastMessage(const ToastMessage &) = delete;
     ToastMessage &operator=(const ToastMessage &) = delete;
 

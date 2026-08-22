@@ -21,6 +21,7 @@
 #include "dev.h"
 
 #include "audio_settings.h"
+#include "general_settings.h"
 
 #include "menu.h"
 #include "lisp.h"
@@ -240,6 +241,13 @@ void menu_handler(Event &ev, InputManager *inm)
     case EV_MESSAGE: {
         switch (ev.message.id)
         {
+        case ID_GENERAL_SETTINGS:
+            if (!audio_settings_window)
+            {
+                show_general_settings();
+                inm->redraw();
+            }
+            break;
         case ID_LIGHT_OFF:
             if (!audio_settings_window)
             {

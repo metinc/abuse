@@ -246,7 +246,8 @@ enum dev_ids
     ID_PLAY_DEMO,
     ID_PLAY_DEMO_OK,
 
-    ID_GENERAL_SETTINGS
+    ID_GENERAL_SETTINGS,
+    ID_LANGUAGE_PICKER
 };
 
 #define EDIT_MODE 1
