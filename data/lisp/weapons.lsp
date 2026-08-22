@@ -158,16 +158,18 @@
 	  (stopped "firebomb")
 	  (walking "firebomb")))
 
+(defun give_ammo_pickup (type amount)
+  (if (and (not (has_weapon type)) change_on_pickup)
+      (progn
+	(give_weapon type)
+	(set_current_weapon type))
+    (give_weapon type))
+  (add_ammo type amount)
+  T)
+
 (defun giver (type)
   (let ((amount (get_ability start_hp)))
-    (with_object (bg)
-		 (progn
-		   (if (and (not (has_weapon type)) change_on_pickup)
-		       (progn
-			 (give_weapon type)
-			 (set_current_weapon type))
-		     (give_weapon type))
-		   (add_ammo type amount)))))
+    (apply_player_pickup (bg) (list 'give_ammo_pickup type amount))))
 
 
 ;; XXX: Mac Abuse reimplements this in C++
@@ -474,6 +476,24 @@
 (make_ammo_icon 'DFRIS_ICON10 "dfris_large"     10)
 
 
+;; Returns deterministic noise in the range [-amplitude, amplitude].
+;; Using the game tick instead of random keeps replays and network games in sync.
+(defun light_noise (seed amplitude)
+  (let ((sample (mod (abs (+ (* (game_tick) 17)
+                             (* (x) 3)
+                             (* (y) 5)
+                             (* seed 29))) 251)))
+    (- (mod (+ (* (* sample sample) 13) (* sample 17) 19)
+            (+ (* amplitude 2) 1))
+       amplitude)))
+
+
+;; Flickers a light around the supplied intensity and outer radius.
+(defun flicker_light (light intensity intensity_noise radius radius_noise)
+  (set_light_intensity light (+ intensity (light_noise 0 intensity_noise)))
+  (set_light_r2 light (+ radius (light_noise 1 radius_noise))))
+
+
 (defun pgun_draw ()
   (let ((c (- 255 (* (state_time) 40))))
     (scatter_line sgb_lastx sgb_lasty (x) (y) (find_rgb c (/ c 2) c) (state_time))
@@ -483,6 +503,12 @@
 
 
 (defun pgun_ai ()
+  (if (> (total_lights) 0)
+      (if (eq (state_time) 5)
+	  (delete_light (get_light 0))
+	(flicker_light (get_light 0)
+	               (- 40 (* (state_time) 7)) 5
+	               24 3)))
   (select (state_time)
 	  (0 T)
 	  (1 T)
@@ -503,6 +529,8 @@
 
 (defun lsaber_ai ()
   (shift_rand_table (random 80))
+  (if (> (total_lights) 0)
+      (delete_light (get_light 0)))
   nil)
 
 
@@ -588,4 +616,3 @@
   (flags (unlistable T)
 	 (add_front T))
   (states "art/misc.spe" (stopped  "dfris_bullet")))
-

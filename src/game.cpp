@@ -14,11 +14,14 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
+#include <filesystem>
+
 #include "common.h"
 
 #ifdef WIN32
-#include <WinSock2.h>
-#include <Windows.h>
+#include <winsock2.h>
+#include <windows.h>
 // Windows has its own CreateWindow function. It uses preprocessor magic to
 // change between ASCII and wide-character versions, which masks our
 // version of CreateWindow.
@@ -45,7 +48,7 @@
 #include "id.h"
 #include "timing.h"
 #include "automap.h"
-#include "help.h"
+#include "ui/help.h"
 #include "ability.h"
 #include "cache.h"
 #include "lisp.h"
@@ -58,19 +61,19 @@
 #include "transp.h"
 #include "clisp.h"
 #include "guistat.h"
-#include "menu.h"
-#include "gamma.h"
+#include "ui/menu.h"
 #include "lisp_gc.h"
 #include "demo.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "profile.h"
 #include "compiled.h"
 #include "lisp_gc.h"
 #include "pmenu.h"
 #include "timing.h"
-#include "chat.h"
+#include "ui/chat.h"
 #include "demo.h"
 #include "netcfg.h"
+#include "file_utils.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -87,13 +90,19 @@ int total_active = 0;
 int32_t map_xoff = 0, map_yoff = 0;
 int32_t current_vxadd, current_vyadd;
 int frame_panic = 0, massive_frame_panic = 0;
-int demo_start = 0, idle_ticks = 0;
 int req_end = 0;
 
-extern palette *old_pal;
+// Level scripts were authored around the original 320x200 framebuffer. Keep
+// the simulation's activation envelope at that size even when a larger aspect
+// ratio exposes more of the map. The horizontal view historically ends one
+// pixel before the framebuffer edge; the status bar consumes 32 visible rows.
+constexpr int legacy_activation_view_width = 319;
+constexpr int legacy_activation_view_height = 200;
+constexpr int legacy_status_bar_height = 32;
+constexpr char editor_playtest_file[] = ".abuse-editor-playtest.spe";
+
 char **start_argv;
 int start_argc;
-int has_joystick = 0;
 char req_name[100];
 
 extern uint8_t chatting_enabled;
@@ -134,42 +143,11 @@ void handle_no_space()
     exit(EXIT_FAILURE);
 }
 
-//AR gave up because of switching palette problems
-//AR get image and palette
-/*int title_screen_hr = -1;
-image* title_screen_hr_img = NULL;
-palette *title_screen_hr_p = NULL;
-
-void AR_HiresTitleScreen()
+void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
-	title_screen_hr = cache.reg("art/title.spe","title_screen_hires",SPEC_IMAGE,1);
-	title_screen_hr_img = cache.img(cache.reg("art/title.spe","title_screen_hires",SPEC_IMAGE,1));
-
-	bFILE *fp = open_file("art/title.spe", "rb");
-	if(!fp->open_failure())
-	{
-		spec_directory sd(fp);	
-
-		for(unsigned int i=0;i<sd.total;i++)
-		{
-			std::string name = sd.entries[i]->name;
-			if(name=="palette_hires")
-			{
-				title_screen_hr_p = new palette(sd.entries[i],fp);
-				break;
-			}
-		}
-	}
-
-	delete fp;
-}*/
-//
-
-void Game::play_sound(int id, int vol, int32_t x, int32_t y)
-{
-    if (!(sound_avail & SFX_INITIALIZED))
+    if (!sound_is_initialized())
         return;
-    if (vol < 1)
+    if (source_gain <= 0.0f)
         return;
     if (!player_list)
         return;
@@ -208,9 +186,11 @@ void Game::play_sound(int id, int vol, int32_t x, int32_t y)
     if (p > 255)
         p = 255;
 
-    int v = (400 - mindist) * sfx_volume / 400 - (127 - vol);
-    if (v > 0)
-        cache.sfx(id)->play(v, 128, p);
+    source_gain = std::clamp(source_gain, 0.0f, 1.0f);
+    const float distance_gain = static_cast<float>(400 - mindist) / 400.0f;
+    const float gain = distance_gain * sfx_volume * source_gain;
+    if (gain > 0.0f)
+        cache.sfx(id)->play(gain, frequency_ratio, p);
 }
 
 int get_option(char const *name)
@@ -366,7 +346,6 @@ int window_state(int state)
     {
     case RUN_STATE:
     case PAUSE_STATE:
-    case JOY_CALB_STATE:
         return 1;
 
     case INTRO_START_STATE:
@@ -382,9 +361,6 @@ int window_state(int state)
 
 void Game::set_state(int new_state)
 {
-    // If we're no longer in the run state, jump back to virtual mouse state
-    if (new_state != RUN_STATE)
-        wm->SetRightStickMouse();
     int d = 0;
     reset_keymap(); // we think all the keys are up right now
 
@@ -426,7 +402,10 @@ void Game::set_state(int new_state)
     // switching to / from scene mode cause the screen size to change and the border to change
     // so we need to redraw.
     if (window_state(new_state) && !window_state(state))
-        wm->show_windows();
+    {
+        if (dev & EDIT_MODE)
+            wm->show_windows();
+    }
     else if (!window_state(new_state) && window_state(state))
         wm->hide_windows();
 
@@ -435,7 +414,13 @@ void Game::set_state(int new_state)
 
     pal->load(); // restore old palette
 
-    if (playing_state(state) && !(dev & EDIT_MODE))
+    if (demo_man.current_state() == demo_manager::PLAYING)
+    {
+        image *blank = new image(ivec2(2, 2));
+        blank->clear();
+        wm->SetMouseShape(blank, ivec2(0));
+    }
+    else if (playing_state(state) && !(dev & EDIT_MODE))
         wm->SetMouseShape(cache.img(c_target)->copy(), ivec2(8));
     else
         wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
@@ -451,43 +436,8 @@ void Game::set_state(int new_state)
     if (d)
         draw(state == SCENE_STATE);
 
-    dev_cont->set_state(new_state);
-}
-
-void Game::joy_calb(Event &ev)
-{
-    if (!joy_win) // make sure the joystick calibration window is open
-        return;
-
-    if (ev.type == EV_SPURIOUS) // spurious means we should update our status
-    {
-        int b1, b2, b3 = 0, x, y;
-        joy_status(b1, b2, b2, x, y);
-        int but = b1 | b2 | b3;
-        if (x > 0)
-            x = 1;
-        else if (x < 0)
-            x = -1;
-        if (y > 0)
-            y = 1;
-        else if (y < 0)
-            y = -1;
-        if (but)
-            but = 1;
-        int dx = 20, dy = 5;
-        image *jim = cache.img(joy_picts[but * 9 + (y + 1) * 3 + x + 1]);
-        joy_win->m_surf->Bar(ivec2(dx, dy), ivec2(dx + jim->Size().x + 6, dy + jim->Size().y + 6), wm->black());
-        joy_win->m_surf->PutImage(jim, ivec2(dx + 3, dy + 3));
-
-        if (but)
-            joy_calibrate();
-    }
-    else if (ev.type == EV_MESSAGE && ev.message.id == JOY_OK)
-    {
-        wm->close_window(joy_win);
-        joy_win = NULL;
-        set_state(MENU_STATE);
-    }
+    if (dev_cont)
+        dev_cont->set_state(new_state);
 }
 
 void Game::menu_select(Event &ev)
@@ -496,7 +446,7 @@ void Game::menu_select(Event &ev)
     if (top_menu)
     {
 #if 0
-        wm->Push(new Event(men_mess[((pick_list *)ev.message.data)->get_selection()], NULL));
+        wm->PushMessage(men_mess[static_cast<pick_list *>(ev.message.data)->get_selection()]);
         wm->close_window(top_menu);
         top_menu = NULL;
 #endif
@@ -510,9 +460,29 @@ void Game::show_help(const std::string &msg)
 
 void Game::show_help(const char *msg)
 {
-    strcpy(help_text, msg);
+    show_message(msg, settings.physics_update);
+}
+
+void Game::show_message(const char *msg, uint32_t hold_time)
+{
+    snprintf(help_text, sizeof(help_text), "%s", msg ? msg : "");
+    help_hold_time = hold_time;
     help_start_time = SDL_GetTicks();
     help_active = true;
+}
+
+float Game::transient_message_visibility() const
+{
+    if (!(dev & DRAW_HELP_LAYER) || !help_active)
+        return 1.0f;
+
+    Uint64 elapsed = SDL_GetTicks() - help_start_time;
+    if (elapsed <= help_hold_time)
+        return 0.0f;
+    if (elapsed >= help_hold_time + HELP_FADE_MS)
+        return 1.0f;
+
+    return static_cast<float>(elapsed - help_hold_time) / static_cast<float>(HELP_FADE_MS);
 }
 
 void Game::draw_value(image *screen, int x, int y, int w, int h, int val, int max)
@@ -563,6 +533,12 @@ int Game::done()
 
 void Game::end_session()
 {
+    if (dev & EDIT_MODE)
+    {
+        set_editor_mode(false);
+        return;
+    }
+
     finished = true;
     if (main_net_cfg)
     {
@@ -571,7 +547,122 @@ void Game::end_session()
     }
 }
 
+bool Game::set_editor_mode(bool enabled)
+{
+    if (enabled == ((dev & EDIT_MODE) != 0))
+        return true;
+
+    short width = settings.xres;
+    short height = settings.yres;
+    if (enabled && !settings.GetEditorFramebufferSize(width, height))
+        return false;
+
+    if (!resize_framebuffer(width, height))
+        return false;
+
+    wm->SetMousePos(wm->GetMousePos());
+    pal->load();
+
+    if (enabled)
+    {
+        start_edit = 1;
+        disable_autolight = 1;
+        set_frame_size(0);
+        const bool resume_playtest = editor_playtest_available;
+        load_level(resume_playtest ? editor_playtest_file : level_file);
+        if (resume_playtest)
+        {
+            current_level->set_name(editor_level_name.c_str());
+            discard_editor_playtest();
+        }
+        toggle_edit_mode();
+        dev_cont->load_stuff();
+        recalc_local_view_space();
+        set_state(RUN_STATE);
+    }
+    else
+    {
+        toggle_edit_mode();
+        start_edit = 0;
+        disable_autolight = 0;
+        set_frame_size(3);
+        recalc_local_view_space();
+        set_state(MENU_STATE);
+    }
+
+    main_screen->AddDirty(ivec2(0), main_screen->Size());
+    return true;
+}
+
+void Game::discard_editor_playtest()
+{
+    const char *save_prefix = get_save_filename_prefix();
+    const std::filesystem::path path = std::filesystem::path(save_prefix ? save_prefix : "") / editor_playtest_file;
+    std::error_code error;
+    std::filesystem::remove(path, error);
+    if (save_prefix && save_prefix[0])
+    {
+        error.clear();
+        std::filesystem::remove(editor_playtest_file, error);
+    }
+    editor_playtest_available = false;
+    editor_level_name.clear();
+}
+
+void Game::start_editor_playtest()
+{
+    if (!(dev & EDIT_MODE) || !current_level)
+        return;
+
+    // Editor input is deliberately not sent while the simulation is paused.
+    // Do not replay those queued key presses when play mode starts.
+    reset_keymap();
+    pending_input_events.clear();
+    for (view *v = player_list; v; v = v->next)
+        v->reset_keymap();
+
+    discard_editor_playtest();
+    editor_level_name = current_level->name();
+    const std::string original_name = current_level->original_name();
+    if (!current_level->save(editor_playtest_file, 0, original_name.c_str(), false))
+    {
+        editor_level_name.clear();
+        return;
+    }
+    editor_playtest_available = true;
+
+    if (!set_editor_mode(false))
+    {
+        discard_editor_playtest();
+        return;
+    }
+
+    load_level(editor_playtest_file);
+    set_state(RUN_STATE);
+    for (view *v = player_list; v; v = v->next)
+        if (v->m_focus)
+        {
+            v->reset_player();
+            v->reset_camera();
+        }
+}
+
 int need_delay = 1;
+
+void Game::pan_editor_view(int32_t xs, int32_t ys)
+{
+    if (dev & MAP_MODE)
+    {
+        map_xoff = std::max(0, map_xoff + xs / 2);
+        map_yoff = std::max(0, map_yoff + ys / 2);
+    }
+    else
+    {
+        for (view *v = first_view; v; v = v->next)
+            v->pan_editor(xs, ys);
+    }
+    refresh = 1;
+}
 
 void Game::dev_scroll()
 {
@@ -616,26 +707,7 @@ void Game::dev_scroll()
         if (xs || ys)
         {
             need_delay = 1;
-            if (dev & MAP_MODE)
-            {
-                map_xoff += xs / 2;
-                map_yoff += ys / 2;
-                if (map_xoff < 0)
-                    map_xoff = 0;
-                if (map_yoff < 0)
-                    map_yoff = 0;
-            }
-            else
-            {
-                for (view *v = first_view; v; v = v->next)
-                {
-                    if (xs >= 0 || v->xoff() > 0)
-                        v->pan_x += xs;
-                    if (ys >= 0 || v->yoff() > 0)
-                        v->pan_y += ys;
-                }
-            }
-            refresh = 1;
+            pan_editor_view(xs, ys);
         }
     }
 }
@@ -673,38 +745,42 @@ static void post_render()
 
 void controller_aim(view *v)
 {
-    // Aim with the controller each update rather than waiting for input events
-    // Convert to percentage above "dead zone". Don't move if value is below "dead zone". Range is [-32767,32767]
-    float fx = 0;
-    float fy = 0;
+    static Uint64 last_update = SDL_GetTicksNS();
+    static float aimx = 0, aimy = 0;
+    const Uint64 now = SDL_GetTicksNS();
+    const float elapsed = std::min(static_cast<float>(now - last_update) / 1000000000.0f, 0.1f);
+    last_update = now;
 
-    if (fabs(settings.ctr_aim_x) > settings.ctr_rst_dz)
+    if (!settings.gamepad_enabled || (chat && chat->showing()))
+        return;
+
+    const float input_x = settings.ctr_aim_x;
+    const float input_y = settings.ctr_aim_invert_y ? -settings.ctr_aim_y : settings.ctr_aim_y;
+    const float magnitude = std::hypot(input_x, input_y);
+    if (magnitude > settings.ctr_rst_dz)
     {
-        fx = (fabs(settings.ctr_aim_x) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-    }
+        const float usable_range = 32767.0f - settings.ctr_rst_dz;
+        const float strength = (std::min(magnitude, 32767.0f) - settings.ctr_rst_dz) / usable_range;
+        const float distance = settings.ctr_rst_s * strength * elapsed * 60.0f;
+        if (aimx == 0 && aimy == 0)
+        {
+            aimx = input_x / magnitude * 10;
+            aimy = input_y / magnitude * 10;
+        }
+        else
+        {
+            aimx += input_x / magnitude * distance;
+            aimy += input_y / magnitude * distance;
+        }
 
-    if (fabs(settings.ctr_aim_y) > settings.ctr_rst_dz)
-    {
-        fy = (fabs(settings.ctr_aim_y) - settings.ctr_rst_dz) / (33000 - settings.ctr_rst_dz);
-    }
-
-    if (fx != 0 || fy != 0)
-    {
-        // Move virtual crosshair inside a circular area based on right stick state and sensitivity
-        float angle = atan2(settings.ctr_aim_y, settings.ctr_aim_x);
-        static float aimx = 0, aimy = 0;
-        aimx += cos(angle) * (settings.ctr_rst_s * fx);
-        aimy += sin(angle) * (settings.ctr_rst_s * fy);
-
-        // Calculate aim based on the virtual crosshair
-        angle = atan2(aimy, aimx);
+        const float angle = atan2(aimy, aimx);
 
         // Set position of real crosshair (-13 moves center to chest area)
         wm->SetMousePos(ivec2(v->m_focus->x - v->xoff() + cos(angle) * settings.ctr_cd + settings.ctr_aim_correctx,
                               v->m_focus->y - v->yoff() + sin(angle) * settings.ctr_cd - 13));
 
-        // If outside circle, reposition to the edge of circle for the next update
-        // 10 is arbitrary - sensitivity is controlled using settings.ctr_rst_s
+        // Keep the virtual crosshair on a fixed-radius circle. Sensitivity
+        // controls how quickly the input rotates it, independent of frame rate.
         aimx = cos(angle) * 10;
         aimy = sin(angle) * 10;
     }
@@ -833,9 +909,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
             }
         }
     }
-
-    //  if(!(dev & EDIT_MODE))
-    //    server_check();
 
     uint8_t rescan = 0;
 
@@ -984,9 +1057,6 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         }
     }
 
-    //  if(!(dev & EDIT_MODE))
-    //    server_check();
-
     if (!(dev & MAP_MODE))
     {
 
@@ -1062,54 +1132,8 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
             }
         }
 
-        //    if(!(dev & EDIT_MODE))
-        //      server_check();
-
         if (dev_cont)
             dev_cont->dev_draw(v);
-
-        if (dev & DRAW_HELP_LAYER)
-        {
-            if (help_active)
-            {
-                Uint64 now = SDL_GetTicks();
-                Uint64 elapsed = now - help_start_time;
-
-                if (elapsed > settings.physics_update + HELP_FADE_MS)
-                {
-                    // Done showing. Turn off until next time show_help() is called.
-                    help_active = false;
-                }
-                else
-                {
-                    // Figure out the alpha (or tint color) based on elapsed time.
-                    int color = 2;
-                    if (elapsed > settings.physics_update)
-                    {
-                        // Start fading
-                        Uint64 fade_elapsed = elapsed - settings.physics_update;
-                        float fade_ratio = (float)fade_elapsed / (float)HELP_FADE_MS;
-                        fade_ratio = (fade_ratio > 1.0f) ? 1.0f : fade_ratio;
-
-                        // Darken color by fading from 2 to 31.
-                        color = 2 + (int)(29.0f * (fade_ratio));
-                    }
-
-                    ivec2 aa = v->m_aa;
-                    ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
-
-                    // Draw a darkened area.
-                    remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
-
-                    // Draw one line above and one below the text.
-                    main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
-                    main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
-
-                    // Draw the text.
-                    wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
-                }
-            }
-        }
 
         //AR this is showing that annoying flashing icon in bottom-left corner, so I disabled it
         //if(cache.in_use()) main_screen->PutImage(cache.img(vmm_image), ivec2(v->m_aa.x, v->m_bb.y - cache.img(vmm_image)->Size().y+1));
@@ -1142,6 +1166,48 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
 
     rand_on = ro; // restore random start in case in draw funs moved it
     // ... not every machine will draw the same thing
+
+    // Draw transient messages before the post-render HUD. The score renderer
+    // stays hidden while the message is solid and fades back in with it.
+    if ((dev & DRAW_HELP_LAYER) && help_active)
+    {
+        Uint64 now = SDL_GetTicks();
+        Uint64 elapsed = now - help_start_time;
+
+        if (elapsed >= help_hold_time + HELP_FADE_MS)
+        {
+            // Done showing. Turn off until next time show_help() is called.
+            help_active = false;
+        }
+        else
+        {
+            // Figure out the alpha (or tint color) based on elapsed time.
+            int color = 2;
+            if (elapsed > help_hold_time)
+            {
+                // Start fading
+                Uint64 fade_elapsed = elapsed - help_hold_time;
+                float fade_ratio = (float)fade_elapsed / (float)HELP_FADE_MS;
+                fade_ratio = (fade_ratio > 1.0f) ? 1.0f : fade_ratio;
+
+                // Darken color by fading from 2 to 31.
+                color = 2 + (int)(29.0f * (fade_ratio));
+            }
+
+            ivec2 aa = v->m_aa;
+            ivec2 bb(v->m_bb.x, v->m_aa.y + wm->font()->Size().y + 10);
+
+            // Draw a darkened area.
+            remap_area(main_screen, aa.x, aa.y, bb.x, bb.y, white_light + 40 * 256);
+
+            // Draw one line above and one below the text.
+            main_screen->Bar(aa, ivec2(bb.x, aa.y), color);
+            main_screen->Bar(ivec2(aa.x, bb.y), bb, color);
+
+            // Draw the text.
+            wm->font()->PutString(main_screen, aa + ivec2(5), help_text, color);
+        }
+    }
 
     post_render();
 
@@ -1213,7 +1279,7 @@ template <int N> static void Fade(image *im, int steps)
     if (im)
     {
         main_screen->clear();
-        main_screen->PutImage(im, ivec2((xres + 1 - im->Size().x) / 2, (yres + 1 - im->Size().y) / 2));
+        main_screen->PutImage(im, main_screen->Size() / 2 - im->Size() / 2);
     }
 
     Uint64 start_ms = SDL_GetTicks();
@@ -1269,20 +1335,20 @@ void do_title()
     if (cdc_logo == -1)
         return;
 
-    if (sound_avail & MUSIC_INITIALIZED)
+    if (sound_is_initialized())
     {
         if (current_song)
         {
             current_song->stop();
-            delete current_song;
+            current_song.reset();
         }
-        current_song = new song("music/intro.hmi");
+        current_song = std::make_unique<song>("music/intro.mid");
         current_song->play(music_volume);
     }
 
     void *logo_snd = LSymbol::FindOrCreate("LOGO_SND")->GetValue();
 
-    if (DEFINEDP(logo_snd) && (sound_avail & SFX_INITIALIZED))
+    if (DEFINEDP(logo_snd) && sound_is_initialized())
         cache.sfx(lnumber_value(logo_snd))->play(sfx_volume);
 
     // This must be a dynamic allocated image because if it
@@ -1303,7 +1369,7 @@ void do_title()
     fade_out(32);
 
     void *space_snd = LSymbol::FindOrCreate("SPACE_SND")->GetValue();
-    char *str = lstring_value(LSymbol::FindOrCreate("plot_start")->Eval());
+    char *str = lstring_value(leval(LSymbol::FindOrCreate("plot_start")));
 
     //AR plot screen
     bFILE *fp = open_file("art/smoke.spe", "rb");
@@ -1386,8 +1452,8 @@ void do_title()
             while (wm->IsPending() && ev.type != EV_KEY)
                 wm->get_event(ev);
 
-            if ((i % 5) == 0 && DEFINEDP(space_snd) && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(lnumber_value(space_snd))->play(sfx_volume * 90 / 127);
+            if ((i % 5) == 0 && DEFINEDP(space_snd) && sound_is_initialized())
+                cache.sfx(lnumber_value(space_snd))->play(sfx_volume * 0.71f);
 
             SDL_Delay(25);
         }
@@ -1430,7 +1496,7 @@ Game::Game(int argc, char **argv)
     current_level = NULL;
     refresh = 1;
     the_game = this;
-    top_menu = joy_win = NULL;
+    top_menu = NULL;
     old_view = first_view = NULL;
     nplayers = 1;
 
@@ -1448,9 +1514,9 @@ Game::Game(int argc, char **argv)
     zoom = 15;
     no_delay = 0;
 
-    has_joystick = joy_init(argc, argv);
+    const bool has_gamepad = joy_init();
     printf("Joystick : ");
-    if (has_joystick)
+    if (has_gamepad)
         printf("detected\n");
     else
         printf("not detected\n");
@@ -1480,10 +1546,13 @@ Game::Game(int argc, char **argv)
             exit(EXIT_SUCCESS);
         }
         net_reload();
+        // dev_init() deliberately resets start_running after the network
+        // setup. Enter gameplay only after the client has loaded the level.
+        start_running = current_level != NULL;
         //    load_level(NET_STARTFILE);
     }
 
-    set_mode(argc, argv);
+    set_mode();
     if (get_option("-2") && (xres < 639 || yres < 399))
     {
         close_graphics();
@@ -1541,16 +1610,13 @@ Game::Game(int argc, char **argv)
 
     wm = new WindowManager(main_screen, pal, bright_color, med_color, dark_color, game_font);
 
-    delete stat_man; // move to a graphical status manager
-    gui_status_manager *gstat = new gui_status_manager();
-    gstat->set_window_title("status");
-    stat_man = gstat;
+    stat_man = new gui_status_manager();
 
     chat = new chat_console(console_font, 50, 6);
 
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
 
-    gamma_correct(pal);
+    pal->load();
 
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
@@ -1615,27 +1681,13 @@ void Game::update_screen(uint32_t elapsedMsFixed)
     {
         if (!(dev & EDIT_MODE) || refresh)
         {
-            view *f = first_view;
-            current_level->clear_active_list();
-            for (; f; f = f->next)
-            {
-                if (f->m_focus)
-                {
-                    int w, h;
+            collect_drawables();
 
-                    w = (f->m_bb.x - f->m_aa.x + 1);
-                    h = (f->m_bb.y - f->m_aa.y + 1);
-
-                    total_active += current_level->add_drawables(f->xoff() - w / 4, f->yoff() - h / 4,
-                                                                 f->xoff() + w + w / 4, f->yoff() + h + h / 4);
-                }
-            }
-
-            for (f = first_view; f; f = f->next)
+            for (view *f = first_view; f; f = f->next)
             {
                 if (f->drawable())
                 {
-                    draw_map(f, settings.editor == false, elapsedMsFixed);
+                    draw_map(f, !(dev & EDIT_MODE), elapsedMsFixed);
                 }
             }
             if (current_automap)
@@ -1662,12 +1714,70 @@ extern int start_edit;
 
 void Game::get_input()
 {
-    idle_ticks++;
-
     Event ev;
+
+    auto clear_player_input = [this]() {
+        reset_keymap();
+        for (view *v = first_view; v; v = v->next)
+            if (v->local_player())
+                v->reset_keymap();
+        last_demo_mbut = 0;
+    };
+
+    auto send_chat_key = [this](int key) {
+        pending_input_events.push_back({SCMD_CHAT_KEYPRESS, static_cast<uint8_t>(key)});
+    };
+
     while (event_waiting())
     {
         get_event(ev);
+
+        if (chat && chat->showing())
+        {
+            // The chat window is modal. WindowManager has already handled
+            // dragging and its close button, but none of this event may reach
+            // the player controls.
+            last_demo_mbut = 0;
+            if ((ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && key_is_valid(ev.key))
+                set_key_down(ev.key, 0);
+
+            if (ev.type == EV_TEXT_INPUT)
+            {
+                const bool activation_text = suppress_chat_activation_text && (ev.text == "t" || ev.text == "T");
+                suppress_chat_activation_text = false;
+                if (!activation_text)
+                    for (unsigned char ch : ev.text)
+                        if (ch >= ' ' && ch <= '~')
+                            send_chat_key(ch);
+            }
+            else if (ev.type == EV_KEY)
+            {
+                if (ev.key == JK_BACKSPACE || ev.key == JK_ENTER)
+                    send_chat_key(ev.key);
+                else if (ev.key == JK_ESC)
+                {
+                    suppress_chat_activation_text = false;
+                    chat->toggle();
+                    clear_player_input();
+                }
+            }
+            else if (ev.type == EV_CLOSE_WINDOW && chat->chat_event(ev))
+            {
+                suppress_chat_activation_text = false;
+                chat->toggle();
+                clear_player_input();
+            }
+            continue;
+        }
+
+        if (state == RUN_STATE && ev.window == nullptr && ev.type == EV_KEY && (ev.key == 't' || ev.key == 'T') &&
+            chatting_enabled && !(dev & EDIT_MODE) && chat)
+        {
+            suppress_chat_activation_text = true;
+            chat->toggle();
+            clear_player_input();
+            continue;
+        }
 
         if (ev.type == EV_MOUSE_MOVE)
         {
@@ -1676,62 +1786,28 @@ void Game::get_input()
         // don't process repeated keys in the main window, it will slow down the game to handle such
         // useless events. However in other windows it might be useful, such as in input windows
         // where you want to repeatedly scroll down...
-        if (ev.type != EV_KEY || !key_down(ev.key) || ev.window || (dev & EDIT_MODE))
+        if (ev.type != EV_KEY || !key_is_valid(ev.key) || !key_down(ev.key) || ev.window || (dev & EDIT_MODE))
         {
-            if (ev.type == EV_KEY)
+            if (ev.type == EV_KEY && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 1);
-                if (playing_state(state))
+                if (playing_state(state) && !(dev & EDIT_MODE) &&
+                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
                 {
-                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
-                    if (!printable_chat_key)
-                    {
-                        if (ev.key < 256)
-                        {
-                            if (chat && chat->chat_event(ev))
-                                base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
-                            else
-                                base->packet.write_uint8(SCMD_KEYPRESS);
-                        }
-                        else
-                            base->packet.write_uint8(SCMD_EXT_KEYPRESS);
-                        base->packet.write_uint8(client_number());
-                        if (ev.key > 256)
-                            base->packet.write_uint8(ev.key - 256);
-                        else
-                            base->packet.write_uint8(ev.key);
-                    }
+                    pending_input_events.push_back(
+                        {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS),
+                         static_cast<uint8_t>(ev.key >= 256 ? ev.key - 256 : ev.key)});
                 }
             }
-            else if (ev.type == EV_KEYRELEASE)
+            else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 0);
-                if (playing_state(state))
+                if (playing_state(state) && !(dev & EDIT_MODE) &&
+                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
                 {
-                    const bool printable_chat_key = chat && chat->chat_event(ev) && ev.key >= ' ' && ev.key <= '~';
-                    if (!printable_chat_key)
-                    {
-                        if (ev.key < 256)
-                            base->packet.write_uint8(SCMD_KEYRELEASE);
-                        else
-                            base->packet.write_uint8(SCMD_EXT_KEYRELEASE);
-                        base->packet.write_uint8(client_number());
-                        if (ev.key > 255)
-                            base->packet.write_uint8(ev.key - 256);
-                        else
-                            base->packet.write_uint8(ev.key);
-                    }
-                }
-            }
-            else if (ev.type == EV_TEXT_INPUT && playing_state(state) && chat && chat->chat_event(ev))
-            {
-                for (unsigned char ch : ev.text)
-                {
-                    if (ch < ' ' || ch > '~')
-                        continue;
-                    base->packet.write_uint8(SCMD_CHAT_KEYPRESS);
-                    base->packet.write_uint8(client_number());
-                    base->packet.write_uint8(ch);
+                    pending_input_events.push_back(
+                        {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
+                         static_cast<uint8_t>(ev.key > 255 ? ev.key - 256 : ev.key)});
                 }
             }
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
@@ -1759,25 +1835,12 @@ void Game::get_input()
             {
                 switch (ev.message.id)
                 {
-                case CALB_JOY: {
-                    if (!joy_win)
-                    {
-                        joy_win = wm->CreateWindow(ivec2(80, 50), ivec2(-1),
-                                                   new button(70, 9, JOY_OK, "OK",
-                                                              new info_field(0, 30, DEV_NULL,
-                                                                             " Center joystick and\n"
-                                                                             "press the fire button",
-                                                                             NULL)),
-                                                   "Joystick");
-                        set_state(JOY_CALB_STATE);
-                    }
-                }
                 case TOP_MENU: {
                     menu_select(ev);
                 }
                 break;
                 case DEV_QUIT: {
-                    finished = true;
+                    end_session();
                 }
                 break;
                 }
@@ -1790,10 +1853,6 @@ void Game::get_input()
 
             switch (state)
             {
-            case JOY_CALB_STATE: {
-                joy_calb(ev);
-            }
-            break;
             case INTRO_START_STATE: {
                 if (dev & EDIT_MODE)
                     set_state(RUN_STATE);
@@ -1832,10 +1891,6 @@ void Game::get_input()
                             need_refresh();
                         }
                         break;
-                        case 'v': {
-                            wm->Push(new Event(DO_VOLUME, NULL));
-                        }
-                        break;
                         case 'p': {
                             if (!(dev & EDIT_MODE) &&
                                 (!main_net_cfg || (main_net_cfg->state != net_configuration::SERVER &&
@@ -1848,19 +1903,13 @@ void Game::get_input()
                         case 'S': {
                             if (start_edit)
                             {
-                                wm->Push(new Event(ID_LEVEL_SAVE, NULL));
+                                wm->PushMessage(ID_LEVEL_SAVE);
                             }
                         }
                         break;
                         case JK_TAB:
                             if (start_edit)
-                                toggle_edit_mode();
-                            need_refresh();
-                            break;
-                        case 'c':
-                        case 'C':
-                            if (chatting_enabled && (!(dev & EDIT_MODE) && chat))
-                                chat->toggle();
+                                start_editor_playtest();
                             break;
                         case '9':
                             dev = dev ^ PERFORMANCE_TEST_MODE;
@@ -1869,64 +1918,6 @@ void Game::get_input()
                         }
                     }
                     break;
-                    case EV_RESIZE: {
-                        view *v;
-                        for (v = first_view; v; v = v->next) // see if any views need to change size
-                        {
-                            if (v->local_player())
-                            {
-                                int w = (xres - 10) / (small_render ? 2 : 1);
-                                int h = (yres - 10) / (small_render ? 2 : 1);
-
-                                v->suggest.send_view = 1;
-                                v->suggest.cx1 = 5;
-                                v->suggest.cx2 = 5 + w;
-                                v->suggest.cy1 = 5;
-                                v->suggest.cy2 = 5 + h;
-                                v->suggest.pan_x = v->pan_x;
-                                v->suggest.pan_y = v->pan_y;
-                                v->suggest.shift = v->m_shift;
-                            }
-                        }
-                        draw();
-                    }
-                    break;
-                    case EV_MESSAGE: {
-                        switch (ev.message.id)
-                        {
-                        case RAISE_SFX:
-                        case LOWER_SFX:
-                        case RAISE_MUSIC:
-                        case LOWER_MUSIC: {
-                            if (ev.message.id == RAISE_SFX && sfx_volume != 127)
-                                sfx_volume = std::min(127, sfx_volume + 16);
-                            if (ev.message.id == LOWER_SFX && sfx_volume != 0)
-                                sfx_volume = std::max(sfx_volume - 16, 0);
-                            if (ev.message.id == RAISE_MUSIC && music_volume != 126)
-                            {
-                                music_volume = std::min(music_volume + 16, 127);
-                                if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_volume(music_volume);
-                            }
-
-                            if (ev.message.id == LOWER_MUSIC && music_volume != 0)
-                            {
-                                music_volume = std::max(music_volume - 16, 0);
-                                if (current_song && (sound_avail & MUSIC_INITIALIZED))
-                                    current_song->set_volume(music_volume);
-                            }
-
-                            ((button *)ev.message.data)->push();
-                            /*                                        volume_window->inm->redraw();
-                                        draw_value(volume_window->m_surf, 2, 43,
-                                                (volume_window->x2()-volume_window->x1()-1), 8, sfx_volume, 127);
-                                        draw_value(volume_window->m_surf, 2, 94,
-                                                (volume_window->x2()-volume_window->x1()-1), 8, music_volume, 127);
-*/
-                            break;
-                        }
-                        }
-                    }
                     }
                 }
             }
@@ -1936,9 +1927,20 @@ void Game::get_input()
     }
 }
 
+void Game::flush_pending_input()
+{
+    for (const pending_input_event &event : pending_input_events)
+    {
+        base->packet.write_uint8(event.command);
+        base->packet.write_uint8(client_number());
+        base->packet.write_uint8(event.value);
+    }
+    pending_input_events.clear();
+}
+
 void net_send(int force = 0)
 {
-    // XXX: this was added to avoid crashing on the PS3.
+    // Networking can run before the first local player has been created.
     if (!player_list)
         return;
 
@@ -1957,10 +1959,30 @@ void net_send(int force = 0)
                 exit(EXIT_SUCCESS);
             }
 
+            // Client receive replaces base->packet with the authoritative
+            // server packet. Append discrete events captured by get_input()
+            // only after that receive, while building this tick's outgoing input.
+            the_game->flush_pending_input();
+
             view *p = player_list;
             for (; p; p = p->next)
                 if (p->local_player())
                     p->get_input();
+
+            // sync difficulty
+            if (client_number() == 0 && player_list->next)
+            {
+                uint8_t difficulty = NET_DIFFICULTY_HARD;
+                if (l_difficulty->GetValue() == l_easy)
+                    difficulty = NET_DIFFICULTY_EASY;
+                else if (l_difficulty->GetValue() == l_medium)
+                    difficulty = NET_DIFFICULTY_MEDIUM;
+                else if (l_difficulty->GetValue() == l_extreme)
+                    difficulty = NET_DIFFICULTY_EXTREME;
+
+                base->packet.write_uint8(SCMD_SET_DIFFICULTY);
+                base->packet.write_uint8(difficulty);
+            }
 
             base->packet.write_uint8(SCMD_SYNC);
             base->packet.write_uint16(make_sync());
@@ -2021,40 +2043,37 @@ void Game::Step()
                 else
                     f->god = 0;
 
-                int w = (f->m_bb.x - f->m_aa.x + 1);
-                int h = (f->m_bb.y - f->m_aa.y + 1);
+                const int rendered_view_width = f->m_bb.x - f->m_aa.x + 1;
+                const int rendered_view_height = f->m_bb.y - f->m_aa.y + 1;
+                const int activation_view_width = std::min(rendered_view_width, legacy_activation_view_width);
+                const int activation_view_height =
+                    std::min(rendered_view_height,
+                             legacy_activation_view_height - (total_weapons ? legacy_status_bar_height : 0));
 
                 // Object activation affects simulation and must not depend on
-                // camera interpolation, which is updated at render frequency.
-                // Cover the full camera dead-zone range from authoritative
-                // player and view state so every peer activates the same set.
+                // camera interpolation or the display aspect ratio. Cover the
+                // full camera dead-zone range from authoritative player and
+                // view state so every peer activates the same set.
                 const int min_xoff =
-                    std::max(0, f->m_focus->x - f->no_xright - w / 2 + f->m_shift.x + f->pan_x);
+                    std::max(0, f->m_focus->x - f->no_xright - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int max_xoff =
-                    std::max(0, f->m_focus->x + f->no_xleft - w / 2 + f->m_shift.x + f->pan_x);
+                    std::max(0, f->m_focus->x + f->no_xleft - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int min_yoff =
-                    std::max(0, f->m_focus->y - f->no_ybottom - h / 2 - f->m_shift.y + f->pan_y);
+                    std::max(0, f->m_focus->y - f->no_ybottom - activation_view_height / 2 - f->m_shift.y + f->pan_y);
                 const int max_yoff =
-                    std::max(0, f->m_focus->y + f->no_ytop - h / 2 - f->m_shift.y + f->pan_y);
+                    std::max(0, f->m_focus->y + f->no_ytop - activation_view_height / 2 - f->m_shift.y + f->pan_y);
 
-                total_active += current_level->add_actives(min_xoff - w / 4, min_yoff - h / 4,
-                                                           max_xoff + w + w / 4, max_yoff + h + h / 4);
+                total_active += current_level->add_actives(
+                    min_xoff - activation_view_width / 4, min_yoff - activation_view_height / 4,
+                    max_xoff + activation_view_width + activation_view_width / 4,
+                    max_yoff + activation_view_height + activation_view_height / 4);
             }
         }
     }
 
     if (state == RUN_STATE)
     {
-        if ((dev & EDIT_MODE) || (main_net_cfg && (main_net_cfg->state == net_configuration::CLIENT ||
-                                                   main_net_cfg->state == net_configuration::SERVER)))
-            idle_ticks = 0;
-
-        if (demo_man.current_state() == demo_manager::NORMAL && idle_ticks > 420 && demo_start)
-        {
-            idle_ticks = 0;
-            set_state(MENU_STATE);
-        }
-        else if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
+        if (!(dev & EDIT_MODE)) // if edit mode, then don't step anything
         {
             //AR active play state
             if (key_down(JK_ESC))
@@ -2072,17 +2091,23 @@ void Game::Step()
         else
             dev_scroll();
     }
-    else if (state == JOY_CALB_STATE)
-    {
-        Event ev;
-        joy_calb(ev);
-    }
     else if (state == MENU_STATE)
     {
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 
-    if ((key_down('x') || key_down(JK_F4)) && (key_down(JK_ALT_L) || key_down(JK_ALT_R)))
+    const bool alt_pressed = key_down(JK_ALT_L) || key_down(JK_ALT_R);
+    if (key_down('x') && alt_pressed)
+    {
+        if (dev & EDIT_MODE)
+        {
+            if (confirm_quit())
+                end_session();
+        }
+        else
+            finished = true;
+    }
+    else if (key_down(JK_F4) && alt_pressed)
         finished = true;
 }
 
@@ -2099,6 +2124,7 @@ extern void *current_demo;
 
 Game::~Game()
 {
+    discard_editor_playtest();
     current_demo = NULL;
     if (first_view == player_list)
         first_view = NULL;
@@ -2180,7 +2206,7 @@ Game::~Game()
     if (total_help_screens)
         free(help_screens);
 
-    close_graphics();
+    close_framebuffer();
     image_uninit();
 }
 
@@ -2212,36 +2238,32 @@ void Game::draw(int scene_mode)
     main_screen->line(0, main_screen->Size().y-1, main_screen->Size().x-1, main_screen->Size().y-1, bc);
     main_screen->line(main_screen->Size().x-1, 0, main_screen->Size().x-1, main_screen->Size().y-1, bc); */
 
+    collect_drawables();
     for (view *f = first_view; f; f = f->next)
         draw_map(f);
 
     sbar.redraw(main_screen);
 }
 
-int external_print = 0;
-
-void start_sound(int argc, char **argv)
+void Game::collect_drawables()
 {
-    for (int i = 1; i < argc; i++)
-        if (!strcmp(argv[i], "-sfx_volume"))
-        {
-            i++;
-            if (atoi(argv[i]) >= 0 && atoi(argv[i]) < 127)
-                sfx_volume = atoi(argv[i]);
-            else
-                printf("Bad sound effects volume level, use 0..127\n");
-        }
-        else if (!strcmp(argv[i], "-music_volume"))
-        {
-            i++;
-            if (atoi(argv[i]) >= 0 && atoi(argv[i]) < 127)
-                music_volume = atoi(argv[i]);
-            else
-                printf("Bad music volume level, use 0..127\n");
-        }
+    if (!current_level)
+        return;
 
-    sound_avail = sound_init(argc, argv);
+    current_level->clear_active_list();
+    for (view *v = first_view; v; v = v->next)
+    {
+        if (!v->m_focus)
+            continue;
+
+        const int width = v->m_bb.x - v->m_aa.x + 1;
+        const int height = v->m_bb.y - v->m_aa.y + 1;
+        total_active += current_level->add_drawables(v->xoff() - width / 4, v->yoff() - height / 4,
+                                                     v->xoff() + width + width / 4, v->yoff() + height + height / 4);
+    }
 }
+
+int external_print = 0;
 
 void game_printer(char *st)
 {
@@ -2364,7 +2386,7 @@ void check_for_lisp(int argc, char **argv)
                     l_user_stack.push(prog);
                     while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
                         s++;
-                    prog->Eval()->Print();
+                    leval(prog)->Print();
                     l_user_stack.pop(1);
                 }
                 free(l);
@@ -2377,11 +2399,11 @@ void check_for_lisp(int argc, char **argv)
 
 void music_check()
 {
-    if (sound_avail & MUSIC_INITIALIZED)
+    if (sound_is_initialized())
     {
         if (!current_song)
         {
-            current_song = new song("music/intro.hmi");
+            current_song = std::make_unique<song>("music/intro.mid");
             current_song->play(music_volume);
 
             /*      if(DEFINEDP(symbol_function(l_next_song)))  // if user function installed, call it to load up next song
@@ -2414,9 +2436,7 @@ void game_net_init(int argc, char **argv)
         set_file_opener(open_nfs_file);
         if (main_net_cfg && main_net_cfg->state == net_configuration::CLIENT)
         {
-            if (set_file_server(net_server))
-                start_running = 1;
-            else
+            if (!set_file_server(net_server))
             {
                 printf("Unable to attach to server, quitting\n");
                 exit(EXIT_SUCCESS);
@@ -2450,9 +2470,7 @@ int main(int argc, char *argv[])
 
     show_startup();
 
-    start_sound(argc, argv);
-
-    stat_man = new text_status_manager();
+    sound_init();
 
     jrand_init();
     jrand(); // so compiler doesn't complain
@@ -2471,11 +2489,10 @@ int main(int argc, char *argv[])
         game_net_init(argc, argv);
         Lisp::Init();
 
-        //AR start editor via config file, or if command line
-        if (settings.editor)
-            AR_dev_init();
-        else
-            dev_init(argc, argv);
+        dev_init(argc, argv);
+
+        xres = settings.xres;
+        yres = settings.yres;
 
         //AR the intro loop is in the constructor itself
         Game *g = new Game(argc, argv);
@@ -2510,13 +2527,13 @@ int main(int argc, char *argv[])
 
         Uint64 lastFixedUpdate = SDL_GetTicks(); // last fixed 65 ms update
 
-        Uint64 frameStart;
-        float targetFrameTime = 1000.0f / static_cast<float>(settings.max_fps);
+        constexpr Uint64 NANOSECONDS_PER_SECOND = 1000000000;
+        const Uint64 target_frame_time = NANOSECONDS_PER_SECOND / static_cast<Uint64>(settings.max_fps);
+        Uint64 frame_deadline = SDL_GetTicksNS() + target_frame_time;
+        bool automatic_recording_failed = false;
 
         while (!g->done())
         {
-            frameStart = SDL_GetTicks();
-
             music_check();
 
             if (req_end)
@@ -2530,13 +2547,10 @@ int main(int argc, char *argv[])
                 req_end = 0;
             }
 
-            // see if a request for a level load was made during the last tick
-            if (req_name[0])
-            {
-                g->load_level(req_name);
-                req_name[0] = 0;
-                g->draw(g->state == SCENE_STATE);
-            }
+            // Opening the menu with Escape is only a pause in the current
+            // session. Keep its replay open until the level is actually left.
+            if (demo_man.is_automatic_recording() && !current_level)
+                demo_man.set_state(demo_manager::NORMAL);
 
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
@@ -2544,13 +2558,47 @@ int main(int argc, char *argv[])
             // make sure physics process gets called every 65 ms
             if (SDL_GetTicks() - lastFixedUpdate >= settings.physics_update)
             {
-                if (demo_man.current_state() == demo_manager::NORMAL)
+                if (demo_man.current_state() != demo_manager::PLAYING)
                 {
+                    if (settings.record_replays && !automatic_recording_failed &&
+                        demo_man.current_state() == demo_manager::NORMAL && current_level && g->state == RUN_STATE &&
+                        !(dev & EDIT_MODE))
+                    {
+                        if (!demo_man.start_automatic_recording())
+                        {
+                            std::fprintf(stderr,
+                                         "Unable to start automatic replay recording; disabled for this session\n");
+                            automatic_recording_failed = true;
+                        }
+                    }
+
                     net_receive();
+
+                    // Consume the current lockstep packet before load_level()
+                    // resets the level tick, then build the next packet from
+                    // the newly loaded level.  Loading at the top of the frame
+                    // leaves an old-level packet in flight after the engine
+                    // has begun waiting for the new level's tick numbers.
+                    if (req_name[0])
+                    {
+                        g->load_level(req_name);
+                        req_name[0] = 0;
+                        g->draw(g->state == SCENE_STATE);
+                    }
+
                     net_send();
                 }
                 else
+                {
                     demo_man.do_inputs();
+
+                    if (req_name[0])
+                    {
+                        g->load_level(req_name);
+                        req_name[0] = 0;
+                        g->draw(g->state == SCENE_STATE);
+                    }
+                }
 
                 service_net_request();
 
@@ -2561,19 +2609,21 @@ int main(int argc, char *argv[])
                 g->Step(); // AR there are loops inside, it doesn't leave the menu loop, until menu says so!
             }
 
-            // server_check();
-
             // see if a request for a level load was made during the last tick
             if (!req_name[0])
                 g->update_screen(
                     static_cast<uint32_t>(SDL_GetTicks() - lastFixedUpdate)); // redraw the screen with any changes
 
-            auto frameTime = static_cast<uint32_t>(SDL_GetTicks() - frameStart);
-            if (static_cast<float>(frameTime) < targetFrameTime)
-            {
-                SDL_Delay(1);
-            }
+            const Uint64 now = SDL_GetTicksNS();
+            if (now < frame_deadline)
+                SDL_DelayPrecise(frame_deadline - now);
+            else
+                frame_deadline = now;
+            frame_deadline += target_frame_time;
         }
+
+        if (demo_man.is_automatic_recording())
+            demo_man.set_state(demo_manager::NORMAL);
 
         net_uninit();
 
@@ -2591,8 +2641,7 @@ int main(int argc, char *argv[])
 
         if (current_song)
             current_song->stop();
-        delete current_song;
-        current_song = NULL;
+        current_song.reset();
 
         cache.empty();
 
@@ -2600,11 +2649,10 @@ int main(int argc, char *argv[])
         dev_console = NULL;
         delete dev_menu;
         dev_menu = NULL;
+        delete stat_man;
+        stat_man = NULL;
         delete g;
         g = NULL;
-        delete old_pal;
-        old_pal = NULL;
-
         compiled_uninit();
         delete_all_lights();
         free(white_light_initial);
@@ -2615,8 +2663,6 @@ int main(int argc, char *argv[])
         dev_cleanup();
         delete dev_cont;
         dev_cont = NULL;
-        delete stat_man;
-        stat_man = new text_status_manager();
 
         if (!(main_net_cfg && main_net_cfg->restart_state()))
         {
@@ -2632,20 +2678,13 @@ int main(int argc, char *argv[])
 
     while (main_net_cfg && main_net_cfg->restart_state());
 
-    delete stat_man;
     delete main_net_cfg;
     main_net_cfg = NULL;
 
     set_filename_prefix(NULL); // dealloc this mem if there was any
     set_save_filename_prefix(NULL);
 
-    delete stat_man;
-    delete main_net_cfg;
-    main_net_cfg = NULL;
-
-    set_filename_prefix(NULL); // dealloc this mem if there was any
-    set_save_filename_prefix(NULL);
-
+    close_graphics();
     sound_uninit();
 
     return 0;

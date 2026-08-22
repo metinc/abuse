@@ -103,7 +103,16 @@ enum
     SCMD_EXT_KEYPRESS, // Extended key press
     SCMD_EXT_KEYRELEASE, // Extended key release
     SCMD_CHAT_KEYPRESS, // Chat input
-    SCMD_SYNC // Synchronization check
+    SCMD_SYNC, // Synchronization check
+    SCMD_SET_DIFFICULTY // Host-authoritative difficulty for deterministic simulation
+};
+
+enum
+{
+    NET_DIFFICULTY_EASY,
+    NET_DIFFICULTY_MEDIUM,
+    NET_DIFFICULTY_HARD,
+    NET_DIFFICULTY_EXTREME
 };
 
 struct join_struct

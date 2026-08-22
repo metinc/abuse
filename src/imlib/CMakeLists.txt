@@ -20,13 +20,25 @@ add_library(imlib STATIC
     guistat.cpp guistat.h
     sprite.cpp sprite.h
     jwindow.cpp jwindow.h
-    video.cpp video.h
-    event.cpp event.h
+    video.h
+    event.h
     timing.h jdir.h visobj.h
+    ../sdlport/video.cpp
+    ../sdlport/event.cpp
+    ../sdlport/sound.cpp ../sdlport/sound.h
+    ../sdlport/timing.cpp
+    ../sdlport/jdir.cpp
+    ../sdlport/joystick.cpp ../sdlport/joy.h
+    ../sdlport/setup.cpp ../sdlport/setup.h
+    ../sdlport/errorui.cpp ../sdlport/errorui.h
 )
 
-include_directories(${abuse_SOURCE_DIR}/src)
+include_directories(
+    ${abuse_SOURCE_DIR}/src
+    ${abuse_SOURCE_DIR}/src/imlib
+)
 add_definitions(-DNO_CHECK)
+target_link_libraries(imlib SDL3::SDL3 SDL3_mixer::SDL3_mixer toml11::toml11)
 #INCLUDES = -I$(srcdir) -I$(srcdir)/.. $(SDL3_CFLAGS)
 
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK

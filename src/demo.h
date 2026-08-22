@@ -14,11 +14,19 @@
 #include "lisp.h"
 #include "jwindow.h"
 
+#include <string>
+
 class demo_manager
 {
-    LSymbol *initial_difficulty;
+    LObject *initial_difficulty;
+    int initial_game_mode;
     bFILE *record_file;
     int skip_next;
+    bool automatic_recording;
+    bool game_mode_overridden;
+    std::string playback_checkpoint_path;
+
+    void clear_playback_checkpoint();
 
   public:
     enum demo_state
@@ -27,7 +35,7 @@ class demo_manager
         RECORDING,
         PLAYING
     } state;
-    int set_state(demo_state new_state, char *filename = NULL);
+    int set_state(demo_state new_state, char const *filename = NULL);
     demo_state current_state()
     {
         return state;
@@ -35,8 +43,15 @@ class demo_manager
     int save_packet(void *packet, int packet_size); // returns non 0 if actually saved
     int get_packet(void *packet, int &packet_size); // returns non 0 if actually loaded
 
-    int start_playing(char *filename);
-    int start_recording(char *filename);
+    int start_playing(char const *filename);
+    int start_recording(char const *filename);
+    int start_automatic_recording();
+    bool save_playback_checkpoint();
+    bool load_playback_checkpoint();
+    bool is_automatic_recording() const
+    {
+        return automatic_recording;
+    }
     void reset_game();
     int demo_skip()
     {
@@ -52,6 +67,11 @@ class demo_manager
     {
         state = NORMAL;
         skip_next = 0;
+        record_file = NULL;
+        initial_difficulty = NULL;
+        initial_game_mode = 0;
+        automatic_recording = false;
+        game_mode_overridden = false;
     }
     void do_inputs();
 };
@@ -59,7 +79,7 @@ class demo_manager
 extern demo_manager demo_man;
 
 extern void get_event(Event &ev);
-extern int event_waiting();
+extern bool event_waiting();
 
 extern ivec2 last_demo_mpos;
 extern int last_demo_mbut;

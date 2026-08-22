@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <time.h>
 #include <errno.h>
+#include <string>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -36,7 +37,7 @@
 #include "demo.h"
 #include "pcxread.h"
 #include "profile.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "cop.h"
 #include "nfserver.h"
 #include "lisp_gc.h"
@@ -196,7 +197,10 @@ void level::unactivate_all()
     all_block_total = 0;
 
     for (; o; o = o->next)
+    {
         o->active = 0;
+        o->interpolation_valid = false;
+    }
 }
 
 void level::pull_actives(game_object *o, game_object *&last_active, int &t)
@@ -469,10 +473,13 @@ void level::interpolate_object_positions(float interpolation_ratio)
     {
         o->x_interpolation_copy = o->x;
         o->y_interpolation_copy = o->y;
-        int32_t distance_x = o->x - o->last_x;
-        int32_t distance_y = o->y - o->last_y;
-        o->x = o->last_x + std::round(distance_x * interpolation_ratio);
-        o->y = o->last_y + std::round(distance_y * interpolation_ratio);
+        if (o->interpolation_valid)
+        {
+            int32_t distance_x = o->x - o->last_x;
+            int32_t distance_y = o->y - o->last_y;
+            o->x = o->last_x + std::round(distance_x * interpolation_ratio);
+            o->y = o->last_y + std::round(distance_y * interpolation_ratio);
+        }
     }
 }
 
@@ -505,6 +512,7 @@ void level::tick()
         // Remember x and y so the movement of the object can be interpolated.
         cur->last_x = cur->x;
         cur->last_y = cur->y;
+        cur->interpolation_valid = true;
         o = o->next_active;
         l = o;
     }
@@ -1220,7 +1228,8 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
         the_game->show_help("Warning foreground map missing");
         no_fg = 1;
     }
-    stat_man->update(5);
+    if (stat_man)
+        stat_man->update(5);
 
     e = sd->find("bgmap");
     if (e)
@@ -1260,7 +1269,8 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
         map_bg = (uint16_t *)malloc(2 * bg_width * bg_height);
         memset(map_bg, 0, 2 * bg_width * bg_height);
     }
-    stat_man->update(10);
+    if (stat_man)
+        stat_man->update(10);
 
     /***************** Check map for non existsant tiles **************************/
     int32_t i, w;
@@ -1283,11 +1293,13 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
     }
 
     load_options(sd, fp);
-    stat_man->update(15);
+    if (stat_man)
+        stat_man->update(15);
 
     //  first=first_active=last=NULL;
     load_objects(sd, fp);
-    stat_man->update(25);
+    if (stat_man)
+        stat_man->update(25);
 
     object_node *players, *objs;
     players = make_player_onodes();
@@ -1398,9 +1410,9 @@ void level::level_loaded_notify()
         char nm[100];
 
         if (i < 10)
-            sprintf(nm, "music/abuse%c%d.hmi", '0', i);
+            sprintf(nm, "music/abuse%c%d.mid", '0', i);
         else
-            sprintf(nm, "music/abuse%d.hmi", i);
+            sprintf(nm, "music/abuse%d.mid", i);
 
         bFILE *fp = open_file(nm, "rb");
         if (fp->open_failure())
@@ -1415,11 +1427,11 @@ void level::level_loaded_notify()
             if (current_song)
             {
                 current_song->stop();
-                delete current_song;
+                current_song.reset();
             }
 
             delete fp;
-            current_song = new song(nm);
+            current_song = std::make_unique<song>(nm);
             current_song->play(music_volume);
 
             return;
@@ -1548,22 +1560,67 @@ bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, o
 
 void scale_put(image *im, image *screen, int x, int y, short new_width, short new_height);
 
+namespace
+{
+std::string level_display_name(const char *path)
+{
+    if (!path)
+        return {};
+
+    std::string name(path);
+    const std::size_t separator = name.find_last_of("/\\");
+    if (separator != std::string::npos)
+        name.erase(0, separator + 1);
+
+    const std::size_t extension = name.find_last_of('.');
+    if (extension != std::string::npos)
+        name.erase(extension);
+    return name;
+}
+
+void scale_center_crop(image *source, image *destination, ivec2 position, ivec2 size)
+{
+    const ivec2 source_size = source->Size();
+    ivec2 crop_size = source_size;
+    if (static_cast<int64_t>(source_size.x) * size.y > static_cast<int64_t>(source_size.y) * size.x)
+        crop_size.x = std::max(1, source_size.y * size.x / size.y);
+    else
+        crop_size.y = std::max(1, source_size.x * size.y / size.x);
+
+    const ivec2 crop_position = (source_size - crop_size) / 2;
+    image cropped(crop_size);
+    cropped.PutPart(source, ivec2(0), crop_position, crop_position + crop_size);
+    scale_put(&cropped, destination, position.x, position.y, size.x, size.y);
+}
+}
+
 void level::write_thumb_nail(bFILE *fp, image *im)
 {
     image *i = new image(ivec2(160, 100 + the_game->save_game_font->Size().y * 2));
     i->clear();
-    scale_put(im, i, 0, 0, 160, 100);
-    if (first_name)
-        the_game->save_game_font->PutString(
-            i, ivec2(80 - strlen(first_name) * the_game->save_game_font->Size().x / 2, 100), first_name);
+    scale_center_crop(im, i, ivec2(0), ivec2(160, 100));
 
-    time_t t;
-    t = time(NULL);
-    char buf[80];
+    const time_t timestamp = time(nullptr);
+    const tm *local_time = localtime(&timestamp);
+    char time_text[16] = {};
+    char date_text[80] = {};
+    if (local_time)
+    {
+        strftime(time_text, sizeof(time_text), "%H:%M:%S", local_time);
+        strftime(date_text, sizeof(date_text), "%A %B %d %Y", local_time);
+    }
 
-    strftime(buf, 80, "%H:%M:%S %A %B %d", localtime(&t));
-    the_game->save_game_font->PutString(
-        i, ivec2(80, 100) + ivec2(-strlen(buf), 2) * the_game->save_game_font->Size() / ivec2(2), buf);
+    std::string level_and_time = level_display_name(first_name);
+    if (!level_and_time.empty() && time_text[0])
+        level_and_time += ' ';
+    level_and_time += time_text;
+
+    const ivec2 font_size = the_game->save_game_font->Size();
+    auto draw_centered = [&](const char *text, int y) {
+        the_game->save_game_font->PutString(i, ivec2(80 - static_cast<int>(strlen(text)) * font_size.x / 2, y), text);
+    };
+    draw_centered(level_and_time.c_str(), 100);
+    draw_centered(date_text, 100 + font_size.y);
 
     fp->write_uint16(i->Size().x);
     fp->write_uint16(i->Size().y);
@@ -2129,7 +2186,7 @@ void level::load_cache_info(spec_directory *sd, bFILE *fp)
     }
 }
 
-int level::save(char const *filename, int save_all)
+int level::save(char const *filename, int save_all, char const *first_name_override, bool create_backup)
 {
     //AR clisp.case 223 saves the game in game
 
@@ -2137,7 +2194,8 @@ int level::save(char const *filename, int save_all)
 
     sprintf(name, "%s", filename);
     // sprintf( bkname, "%slevsave.bak", get_save_filename_prefix() );
-    if (!save_all && DEFINEDP(symbol_value(l_keep_backup)) && symbol_value(l_keep_backup)) // make a backup
+    if (!save_all && create_backup && DEFINEDP(symbol_value(l_keep_backup)) &&
+        symbol_value(l_keep_backup)) // make a backup
     {
         bFILE *fp = open_file(name, "rb"); // does file already exist?
         if (!fp->open_failure())
@@ -2173,7 +2231,7 @@ int level::save(char const *filename, int save_all)
     {
         if (first_name)
             free(first_name);
-        first_name = strdup(name);
+        first_name = strdup(first_name_override ? first_name_override : name);
     }
 
     object_node *players, *objs;
@@ -2507,7 +2565,10 @@ void level::to_front(game_object *o) // move to end of list, so we are drawn las
 {
     if (o == last)
         return;
-    first_active = NULL; // make sure nothing goes screwy with the active list
+
+    // Keep the active list stable for the remainder of this physics tick.
+    // Game::Step() rebuilds it from the reordered master list before the next
+    // tick, so the new render order takes effect without interrupting physics.
 
     if (o == first)
         first = first->next;
@@ -2530,7 +2591,9 @@ void level::to_back(game_object *o) // to make the character drawn in back, put 
 {
     if (o == first)
         return;
-    first_active = NULL; // make sure nothing goes screwy with the active list
+
+    // Do not invalidate the active list while objects are being simulated.
+    // It is rebuilt from the master list at the start of the next tick.
 
     game_object *w = first;
     for (; w && w->next != o; w = w->next)

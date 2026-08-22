@@ -1,5 +1,13 @@
 {
   "name": "abuse",
   "version": "1.0.5",
-  "dependencies": ["sdl3", "sdl3-mixer", "sdl3-net"]
+  "dependencies": [
+    "sdl3",
+    {
+      "name": "sdl3-mixer",
+      "features": ["fluidsynth"]
+    },
+    "sdl3-net",
+    "toml11"
+  ]
 }

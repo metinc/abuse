@@ -35,6 +35,13 @@ namespace
 std::unordered_map<SDL_JoystickID, SDL_Gamepad *> gamepads;
 bool shutdown_registered = false;
 
+void shutdown_gamepads()
+{
+    for (const auto &entry : gamepads)
+        SDL_CloseGamepad(entry.second);
+    gamepads.clear();
+}
+
 const char *gamepad_name(SDL_JoystickID id)
 {
     const char *name = SDL_GetGamepadNameForID(id);
@@ -55,39 +62,40 @@ bool open_gamepad(SDL_JoystickID id)
 
     gamepads.emplace(id, gamepad);
     const char *name = SDL_GetGamepadName(gamepad);
-    std::printf("Gamepad connected: %d (%s)\n", id, name ? name : "Unknown gamepad");
+    std::printf("Gamepad connected: %" SDL_PRIu32 " (%s)\n", id, name ? name : "Unknown gamepad");
     return true;
 }
 }
 
-int joy_init(int argc, char **argv)
+bool joy_init()
 {
-    (void)argc;
-    (void)argv;
-
     if (!shutdown_registered)
     {
-        std::atexit(joy_shutdown);
+        std::atexit(shutdown_gamepads);
         shutdown_registered = true;
     }
 
     int count = 0;
     SDL_JoystickID *ids = SDL_GetGamepads(&count);
+    if (!ids)
+    {
+        std::fprintf(stderr, "Warning: Unable to enumerate gamepads: %s\n", SDL_GetError());
+        return false;
+    }
     std::printf("%d gamepads on system\n", count);
     for (int i = 0; i < count; ++i)
         open_gamepad(ids[i]);
     SDL_free(ids);
 
-    return joy_gamepad_count() > 0;
+    return !gamepads.empty();
 }
 
-int joy_handle_added(SDL_JoystickID id)
+void joy_handle_added(SDL_JoystickID id)
 {
     open_gamepad(id);
-    return joy_gamepad_count() > 0;
 }
 
-int joy_handle_removed(SDL_JoystickID id)
+void joy_handle_removed(SDL_JoystickID id)
 {
     auto found = gamepads.find(id);
     if (found != gamepads.end())
@@ -96,30 +104,6 @@ int joy_handle_removed(SDL_JoystickID id)
         const std::string name = raw_name ? raw_name : "Unknown gamepad";
         SDL_CloseGamepad(found->second);
         gamepads.erase(found);
-        std::printf("Gamepad disconnected: %d (%s)\n", id, name.c_str());
+        std::printf("Gamepad disconnected: %" SDL_PRIu32 " (%s)\n", id, name.c_str());
     }
-
-    return joy_gamepad_count() > 0;
-}
-
-int joy_gamepad_count()
-{
-    return static_cast<int>(gamepads.size());
-}
-
-void joy_shutdown()
-{
-    for (const auto &entry : gamepads)
-        SDL_CloseGamepad(entry.second);
-    gamepads.clear();
-}
-
-void joy_status(int &b1, int &b2, int &b3, int &xv, int &yv)
-{
-    /* Do Nothing */
-}
-
-void joy_calibrate()
-{
-    /* Do Nothing */
 }

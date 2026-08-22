@@ -55,42 +55,53 @@ Available cheats:
 
 ## Configuration
 
-Configuration is stored in `config.txt` in the user folder. It will be created if it doesn't exist at launch. Lines starting with `;` are comments. Use `1` to enable and `0` to disable options.
+Configuration is stored in `settings.toml` in the user folder. See [`data/user/settings.toml`](data/user/settings.toml) for a complete example.
 
-### Config File Options
+### Settings File Options
 
 #### Display Settings
 
-- `fullscreen` - Fullscreen mode (`0` - window, `1` - fullscreen window, `2` - fullscreen)
-- `borderless` - Enable borderless window mode
-- `vsync` - Enable vertical sync
-- `virtual_width` - Internal game resolution width
-- `virtual_height` - Internal game resolution height (calculated from aspect ratio if not specified)
-- `screen_width` - Game window width
-- `screen_height` - Game window height
+- `fullscreen` - Enable borderless desktop fullscreen
+- `borderless` - Remove window decorations in windowed mode
+- `widescreen_support` - Expand the framebuffer to match the desktop aspect ratio; when disabled, use the configured framebuffer size exactly
+- `framebuffer_width` - Internal game framebuffer width when widescreen support is disabled (minimum `320`)
+- `framebuffer_height` - Internal game framebuffer height when widescreen support is disabled (minimum `200`)
+- `editor_framebuffer_width` - Editor baseline framebuffer width (default `640`, minimum `320`)
+- `editor_framebuffer_height` - Editor baseline framebuffer height (default `400`, minimum `200`)
+- `window_scale` - Integer window scale used in windowed mode
 - `linear_filter` - Use linear texture filter (nearest is default)
 - `hires` - Enable high resolution menu and screens (`2` for Bungie logo)
 - `big_font` - Enable big font
-- `mouse_scale` - Mouse to game scaling (`0` - match desktop, `1` - match game screen)
+- `gamma` - Display gamma (`0.5`-`2.0`; `1.0` is neutral)
 
-The game is designed to be played at an internal resolution of 320×200 (`virtual_width`×`virtual_height`). Using a higher resolution may reveal some hidden areas. However, when using the editor, a higher resolution is recommended for better visibility and usability.
+The game is designed for a 320×200 framebuffer displayed with the original VGA pixel aspect ratio. With widescreen support enabled, one framebuffer dimension expands to match the desktop without changing the baseline gameplay zoom. For example, a 16:9 desktop uses a 427×200 framebuffer. With widescreen support disabled, `framebuffer_width` and `framebuffer_height` are used exactly.
+
+The editor uses `editor_framebuffer_width` and `editor_framebuffer_height` as its independent zoom baseline. With widescreen support enabled, one dimension expands to match the desktop; for example, a `640×400` baseline becomes `853×400` on a 16:9 desktop. With widescreen support disabled, the editor dimensions are used exactly. Entering or leaving the editor resizes the existing display in place.
 
 #### Audio Settings
 
-- `volume_sound` - Sound effects volume (0-127)
-- `volume_music` - Music volume (0-127)
+- `sound_volume` - Sound effects gain (`0.0`-`1.0`)
+- `music_volume` - Music gain (`0.0`-`1.0`)
 - `mono` - Use mono audio only
-- `no_music` - Disable music
-- `no_sound` - Disable sound effects
-- `soundfont` - Path to custom soundfont file. Custom or bundled `AWE64 Gold Presets.sf2` or `Roland SC-55 Presets.sf2`
+- `music_enabled` - Enable music
+- `sound_enabled` - Enable sound effects
+- `soundfont` - SoundFont filename from `data/soundfonts`, or an absolute path to a custom `.sf2`/`.sf3` file
+
+The in-game Audio Settings window lists available SoundFonts from `data/soundfonts` and applies a selection without
+restarting the game. Changes apply as soon as a SoundFont is selected while preserving the current music position.
+
+The build converts every HMI song in `data/music` to Standard MIDI. Only the generated `.mid` files are installed and
+packaged; HMI conversion is not part of the game's runtime audio path. The C++ converter is also available manually as
+`abuse-tool hmi2mid <input.hmi> <output.mid>`.
 
 #### Game Settings
 
-- `local_save` - Save config and files locally
-- `grab_input` - Grab mouse to window
-- `editor` - Enable editor mode
-- `physics_update` - Physics update time in ms (65ms/15FPS original)
-- `language` - Game language (`english`, `german`, `french`)
+- `[gameplay].difficulty` - Difficulty (`"easy"`, `"medium"`, `"hard"`, or `"extreme"`)
+- `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
+- `[gameplay].max_fps` - Frame-rate limit
+- `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
+- `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
+- `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
 
 ### Key Bindings
 
@@ -107,7 +118,7 @@ Default control scheme:
 | Fire        | <kbd>Mouse Left</kbd>                    |
 | Special     | <kbd>Mouse Right</kbd>                   |
 
-Special key codes for config file:
+Keyboard bindings are arrays, allowing two keys for movement, for example `left = ["a", "LEFT"]`. Special key names include:
 
 - `LEFT`, `RIGHT`, `UP`, `DOWN` - Cursor keys and keypad
 - `CTRL_L`, `CTRL_R` - Left and right Ctrl
@@ -128,7 +139,6 @@ Hardcoded Keys:
 - <kbd>F1</kbd> - Show help/controls screen
 - <kbd>F5</kbd> - Quick save on save consoles (slot 1/"save0001.spe")
 - <kbd>F6</kbd> - Toggle window input grab
-- <kbd>F7</kbd> - Toggle mouse scale type
 - <kbd>F8</kbd> - Toggle gamepad use
 - <kbd>F9</kbd> - Quick load
 - <kbd>F10</kbd> - Toggle window/fullscreen mode
@@ -136,28 +146,46 @@ Hardcoded Keys:
 
 Default Controller Bindings:
 
-- D-pad, left stick - Move in all directions (game and menus)
-- Home - Show help/controls screen
+- D-pad, left stick - Move in all directions
+- Right stick - Aim
+- South face button - Jump; confirm in menus
+- East face button - Down/use; cancel in menus
+- West face button - Use the active special ability
+- Left/right shoulder - Previous/next weapon
+- Left/right trigger - Special ability/fire
+- Guide/Home - Show help/controls screen
 - Back - Acts as <kbd>Escape</kbd> key
 - Start - Acts as <kbd>Enter</kbd> key
 
 ### Gamepad Support
 
-Gamepad options:
+Options in `[input.gamepad]` include:
 
-- `ctr_aim` - Enable right stick aiming
-- `ctr_cd` - Crosshair distance from player
-- `ctr_rst_s` - Right stick/aiming sensitivity
-- `ctr_rst_dz` - Right stick/aiming dead zone
-- `ctr_lst_dzx` - Left stick horizontal dead zone
-- `ctr_lst_dzy` - Left stick vertical dead zone
+- `enabled` - Accept gamepad input; <kbd>F8</kbd> toggles and saves this setting
+- `aim_invert_y` - Invert the right stick's vertical aiming axis
+- `aim_correction_x` - Horizontal crosshair correction
+- `crosshair_distance` - Crosshair distance from player
+- `aim_sensitivity` - Right stick/aiming sensitivity (1-100)
+- `aim_dead_zone` - Radial right stick/aiming dead zone (1-32766)
+- `move_dead_zone_x` - Left stick horizontal dead zone
+- `move_dead_zone_y` - Left stick vertical dead zone
+- `trigger_threshold` - Trigger activation threshold (1-32767)
+- `trigger_hysteresis` - Required trigger release movement below its activation threshold
+- `menu_confirm`, `menu_cancel` - Buttons used to confirm and cancel in the main menu
+- `quick_save`, `quick_load` - Optional buttons for quick save and quick load
 
 Button binding names:
 
-- `ctr_a`, `ctr_b`, `ctr_x`, `ctr_y` - Face buttons
-- `ctr_left_shoulder`, `ctr_right_shoulder` - Shoulder buttons
-- `ctr_left_trigger`, `ctr_right_trigger` - Triggers
-- `ctr_left_stick`, `ctr_right_stick` - Stick clicks
+- `south`, `east`, `west`, `north` - Face buttons
+- `left_shoulder`, `right_shoulder` - Shoulder buttons
+- `left_trigger`, `right_trigger` - Triggers
+- `left_stick`, `right_stick` - Stick clicks
+- `dpad_up`, `dpad_down`, `dpad_left`, `dpad_right` - D-pad directions
+- `start`, `back`, `guide` - System/menu buttons
+
+Each configurable button or trigger maps to `"up"`, `"down"`, `"left"`, `"right"`, `"special"`, `"fire"`,
+`"weapon_prev"`, `"weapon_next"`, `"confirm"`, `"cancel"`, `"help"`, or `"none"`.
+The first gamepad used becomes active; other connected gamepads are ignored until the active one disconnects.
 
 ### Command Line Arguments
 
@@ -187,25 +215,38 @@ Button binding names:
 
 | Argument        | Description                 |
 | --------------- | --------------------------- |
-| `-edit`         | Launch editor mode          |
 | `-fwin`         | Open foreground editor      |
 | `-bwin`         | Open background editor      |
 | `-owin`         | Open objects window         |
 | `-no_autolight` | Disable auto lighting       |
 | `-nolight`      | Disable all lighting        |
 | `-bastard`      | Bypass filename security    |
-| `-size`         | Custom window size (editor) |
+| `-size`         | Custom framebuffer size     |
 | `-lisp`         | Start LISP interpreter      |
 | `-ec`           | Empty cache                 |
 | `-t <filename>` | Insert tiles from file      |
 | `-cprint`       | Enable console printing     |
 
-#### Audio Settings
+### Colored Lights
 
-| Argument                 | Description                  |
-| ------------------------ | ---------------------------- |
-| `-sfx_volume <number>`   | Sound effects volume (0-127) |
-| `-music_volume <number>` | Music volume (0-127)         |
+Light sources support these palette-aware color values:
+
+| Value | Color  | Value | Color |
+| ----- | ------ | ----- | ----- |
+| 0     | White  | 4     | Gray  |
+| 1     | Red    | 5     | Green |
+| 2     | Yellow | 6     | Blue  |
+| 3     | Purple | 7     | Cyan  |
+
+The level editor exposes the value as `Color 0-7` when creating or editing a light. Lisp code can pass the color as
+the optional eighth argument to `(add_light type x y r1 r2 xshift yshift [color])`, change it with
+`(set_light_color light color)`, and read it with `(light_color light)`. Omitting the color keeps the traditional
+white light. Runtime effects can fade a light with `(set_light_intensity light value)`, where the value ranges from
+0 to 63; `(light_intensity light)` returns its current value.
+
+Line lights are available as `(add_line_light x1 y1 x2 y2 r1 r2 [color])`. The light has full strength within `r1`
+pixels of the segment and fades out at `r2`; `(set_light_line light x1 y1 x2 y2)` moves both endpoints. Weapons 1,
+5, and 6 use this shape for red, white, and cyan glows respectively.
 
 ## Resources
 

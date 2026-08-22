@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <stdio.h>
 
 #include <SDL3/SDL_timer.h>
@@ -166,9 +167,9 @@ int net_init(int argc, char **argv)
     prot = usable;
     prot->set_debug_printing((net_protocol::debug_type)db_level);
 
-    if (main_net_cfg->state == net_configuration::SERVER)
+    if (main_net_cfg->state == net_configuration::SERVER || main_net_cfg->state == net_configuration::CLIENT)
     {
-        DEBUG_LOG("Initializing as server");
+        DEBUG_LOG("Using configured player name: %s", main_net_cfg->name);
         set_login(main_net_cfg->name);
     }
 
@@ -482,8 +483,17 @@ int request_server_entry()
         }
         printf("Joining game in progress, hang on....\n");
 
-        DEBUG_LOG("Creating game socket on port %d", main_net_cfg->port + 2);
-        game_sock = prot->create_listen_socket(main_net_cfg->port + 2, net_socket::SOCKET_FAST);
+        // SDL3_net normally allows UDP sockets to share an address. That made
+        // several clients on one machine all bind to the same port, so game
+        // packets could be delivered to the wrong process. Use the first free
+        // port in the client range and advertise the selected port below.
+        int client_port = main_net_cfg->port + 2;
+        const int last_client_port = std::min(65535, client_port + MAX_JOINERS - 1);
+        for (; !game_sock && client_port <= last_client_port; ++client_port)
+        {
+            DEBUG_LOG("Creating game socket on port %d", client_port);
+            game_sock = prot->create_listen_socket(client_port, net_socket::SOCKET_FAST);
+        }
         if (!game_sock)
         {
             DEBUG_LOG("Failed to create game socket");
@@ -493,6 +503,7 @@ int request_server_entry()
             prot = NULL;
             return 0;
         }
+        --client_port;
         game_sock->read_selectable();
 
         DEBUG_LOG("Connecting to server");
@@ -505,7 +516,7 @@ int request_server_entry()
         }
 
         uint8_t ctype = CLIENT_ABUSE;
-        uint16_t port = lstl(main_net_cfg->port + 2), cnum;
+        uint16_t port = lstl(client_port), cnum;
         uint8_t reg;
 
         // Send client registration with debug ID
@@ -544,7 +555,7 @@ int request_server_entry()
         else
             strcpy(uname, "unknown");
         uint8_t len = strlen(uname) + 1;
-        uint16_t our_port = lstl(main_net_cfg->port + 2), cport;
+        uint16_t our_port = lstl(client_port), cport;
         int16_t nkills;
 
         DEBUG_LOG("Sending client info - username: %s", uname);

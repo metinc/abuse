@@ -8,10 +8,6 @@
 
 (load "demo.lsp")
 
-(local_load "gamma.lsp")              ;; load gamma correction values if they have been saved
-
-(if (not (load "hardness.lsp"))       ;; load hardness, if no file set to hard
-    (setf difficulty        'normal))
 (setq load_warn T)
 
 ; *********** Defaults **************************
@@ -72,11 +68,10 @@
 			(seq "pipe" 1 9)))))
 
 
-(setf demos        '("levels/demo1.dat" "levels/demo3.dat" "levels/demo4.dat" "levels/demo5.dat"))
+(setf demos        '("replays/demo1.dat" "replays/demo3.dat" "replays/demo4.dat" "replays/demo5.dat"))
 
 (if (not (get_option "-f"))
     (progn
       (if skip_trainer_level
 	  (set_first_level "addon/twist/levels/l01s01.lvl")
 	(set_first_level "addon/twist/levels/l01s01.lvl"))))
-

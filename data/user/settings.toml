@@ -1,0 +1,103 @@
+# Abuse configuration file
+schema_version = 6
+
+[video]
+# Borderless desktop fullscreen
+fullscreen = true
+borderless = false
+# Expand the framebuffer to match the desktop aspect ratio
+widescreen_support = true
+framebuffer_width = 320
+framebuffer_height = 200
+# The editor uses this larger zoom baseline and expands it when widescreen support is enabled.
+editor_framebuffer_width = 640
+editor_framebuffer_height = 400
+# Integer scale from 1 to 20
+window_scale = 2
+linear_filter = false
+# 0 = original artwork, 1 = high-resolution artwork, 2 = high-resolution artwork and logo
+hires = 0
+big_font = false
+# Display gamma (0.5-2.0); 1.0 is neutral.
+gamma = 1.00
+
+[audio]
+sound_enabled = true
+music_enabled = true
+# 0.0 = silent, 1.0 = full volume
+sound_volume = 1.00
+music_volume = 1.00
+mono = false
+# Filename from data/soundfonts, or an absolute .sf2/.sf3 path
+soundfont = "MuseScore.sf3"
+
+[gameplay]
+# easy, medium, hard, or extreme
+difficulty = "hard"
+# 65 ms is the original 15 FPS game tick
+physics_tick_ms = 65
+max_fps = 300
+skip_intro = false
+# Play recorded demos after the main menu has been idle.
+menu_demos = false
+# Record every game as a timestamped replay under the save path's replays folder.
+record_replays = false
+
+[general]
+# english, german, or french
+language = "english"
+# Confine the mouse to the rendered game area in windowed mode
+grab_input = false
+local_save = false
+
+[input.keyboard]
+# Movement accepts one or two key names; other actions accept one
+left = ["a", "LEFT"]
+right = ["d", "RIGHT"]
+up = ["w", "UP"]
+down = ["s", "DOWN"]
+special = ["SHIFT_L"]
+fire = ["f"]
+weapon_prev = ["q"]
+weapon_next = ["e"]
+
+[input.gamepad]
+enabled = true
+aim_invert_y = false
+aim_correction_x = 0
+crosshair_distance = 90
+aim_sensitivity = 10
+# Dead zones range from 1 to 32766
+aim_dead_zone = 5000
+move_dead_zone_x = 10000
+move_dead_zone_y = 10000
+# Trigger threshold ranges from 1 to 32767
+trigger_threshold = 10000
+# Amount the trigger must move back below its threshold before release
+trigger_hysteresis = 1000
+# up, down, left, right, special, fire, weapon_prev, weapon_next,
+# confirm, cancel, help, or none
+south = "up"
+east = "down"
+west = "special"
+north = "none"
+left_stick = "none"
+right_stick = "none"
+left_shoulder = "weapon_prev"
+right_shoulder = "weapon_next"
+left_trigger = "special"
+right_trigger = "fire"
+dpad_up = "up"
+dpad_down = "down"
+dpad_left = "left"
+dpad_right = "right"
+start = "confirm"
+back = "cancel"
+guide = "help"
+# Physical buttons used to confirm and cancel in menus. These override the
+# gameplay action for those buttons while the main menu is active.
+menu_confirm = "south"
+menu_cancel = "east"
+# Any named button above, or none
+quick_save = "none"
+quick_load = "none"

@@ -18,6 +18,8 @@ extern WindowManager *wm; /* FIXME: get rid of this if possible */
 class button : public ifield
 {
     int up, act;
+    bool momentary = true;
+    bool press_active = false;
     char *text;
     image *visual, *pressed, *act_pict;
     int act_id;
@@ -39,6 +41,10 @@ class button : public ifield
             free(text);
     }
     void push();
+    void set_momentary(bool enabled = true)
+    {
+        momentary = enabled;
+    }
     virtual char *read()
     {
         return (char *)&up;
@@ -61,7 +67,6 @@ class button_box : public ifield
   public:
     button_box(int X, int Y, int ID, int MaxDown, button *Buttons, ifield *Next);
     void add_button(button *b);
-    void press_button(int id); // if button box doesn't contain id, nothing happens
     virtual void remap(Filter *f);
     virtual void Move(ivec2 pos);
     virtual void area(int &x1, int &y1, int &x2, int &y2);

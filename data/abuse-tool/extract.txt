@@ -1,17 +1,10 @@
-;OpenCV supported image file formats (! - see more info online):
-;Windows bitmaps			- bmp, dib
-;JPEG files					- jpeg, jpg, jpe	(!)
-;JPEG 2000 files			- jp2				(!)
-;Portable Network Graphics	- png				(!)
-;Portable image format		- pbm, pgm, ppm
-;Sun rasters				- sr, ras
-;TIFF files					- tiff, tif			(!)
+;Supported image formats: png, jpeg, jpg, jpe, bmp, dib, tga
 image_format=png
 
 ;higher value means a smaller size and longer compression time [0-9]
 png_compression=9
 
-;higher is better [0-100]
+;higher is better [1-100]
 jpeg_quality=100
 
 ;alpha values:

@@ -81,13 +81,13 @@ void scroller::area(int &x1, int &y1, int &x2, int &y2)
     y1 = m_pos.y - 1;
     if (vert)
     {
-        x2 = m_pos.x + l + bw();
+        x2 = m_pos.x + l + (scrollbar_visible() ? bw() : 0);
         y2 = m_pos.y + h;
     }
     else
     {
         x2 = m_pos.x + l;
-        y2 = m_pos.y + h + bh();
+        y2 = m_pos.y + h + (scrollbar_visible() ? bh() : 0);
     }
 }
 
@@ -144,21 +144,24 @@ uint8_t *scroller::b2()
 
 void scroller::draw_first(image *screen)
 {
-    if (sx >= t)
-        sx = t - 1;
+    if (sx > max_scroll_position())
+        sx = max_scroll_position();
     draw(0, screen);
-    screen->WidgetBar(ivec2(b1x(), b1y()), ivec2(b1x() + bw() - 1, b1y() + bh() - 1), wm->bright_color(),
-                      wm->medium_color(), wm->dark_color());
-    screen->WidgetBar(ivec2(b2x(), b2y()), ivec2(b2x() + bw() - 1, b2y() + bh() - 1), wm->bright_color(),
-                      wm->medium_color(), wm->dark_color());
-    show_icon(screen, b1x() + 2, b1y() + 2, bw() - 4, bh() - 4, b1());
-    show_icon(screen, b2x() + 2, b2y() + 2, bw() - 4, bh() - 4, b2());
+    if (scrollbar_visible())
+    {
+        screen->WidgetBar(ivec2(b1x(), b1y()), ivec2(b1x() + bw() - 1, b1y() + bh() - 1), wm->bright_color(),
+                          wm->medium_color(), wm->dark_color());
+        screen->WidgetBar(ivec2(b2x(), b2y()), ivec2(b2x() + bw() - 1, b2y() + bh() - 1), wm->bright_color(),
+                          wm->medium_color(), wm->dark_color());
+        show_icon(screen, b1x() + 2, b1y() + 2, bw() - 4, bh() - 4, b1());
+        show_icon(screen, b2x() + 2, b2y() + 2, bw() - 4, bh() - 4, b2());
 
-    int x1, y1, x2, y2;
-    dragger_area(x1, y1, x2, y2);
-    screen->Bar(ivec2(x1, y1), ivec2(x2, y2), wm->black());
-    screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
-    draw_widget(screen, 0);
+        int x1, y1, x2, y2;
+        dragger_area(x1, y1, x2, y2);
+        screen->Bar(ivec2(x1, y1), ivec2(x2, y2), wm->black());
+        screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
+        draw_widget(screen, 0);
+    }
     scroll_event(sx, screen);
 }
 
@@ -169,17 +172,17 @@ void scroller::wig_area(int &x1, int &y1, int &x2, int &y2)
     if (vert)
     {
         x1 = m_pos.x + l + 1;
-        if (t < 2)
+        if (max_scroll_position() == 0)
             y1 = m_pos.y + bh() + 1;
         else
-            y1 = m_pos.y + bh() + 1 + sx * (sy2 - sy1 + 1 - bh()) / (t - 1);
+            y1 = m_pos.y + bh() + 1 + sx * (sy2 - sy1 + 1 - bh()) / max_scroll_position();
     }
     else
     {
-        if (t < 2)
+        if (max_scroll_position() == 0)
             x1 = m_pos.x + bw() + 1;
         else
-            x1 = m_pos.x + bw() + 1 + sx * (sx2 - sx1 + 1 - bw()) / (t - 1);
+            x1 = m_pos.x + bw() + 1 + sx * (sx2 - sx1 + 1 - bw()) / max_scroll_position();
         y1 = m_pos.y + h + 1;
     }
     x2 = x1 + bw() - 3;
@@ -211,7 +214,9 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
     case EV_MOUSE_BUTTON: {
         if (ev.mouse_button && drag == -1)
         {
-            if (mx >= b1x() && mx < b1x() + bw() && my >= b1y() - 2 && my < b1y() + bh())
+            if (!scrollbar_visible())
+                handle_inside_event(ev, screen, inm);
+            else if (mx >= b1x() && mx < b1x() + bw() && my >= b1y() - 2 && my < b1y() + bh())
             {
                 if (sx > 0)
                 {
@@ -223,7 +228,7 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
             }
             else if (mx >= b2x() && mx < b2x() + bw() && my >= b2y() && my <= b2y() + bh())
             {
-                if (sx < t - 1)
+                if (sx < max_scroll_position())
                 {
                     draw_widget(screen, 1);
                     sx++;
@@ -247,7 +252,7 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
                     else if (t > 1)
                     {
                         int nx = mouse_to_drag(mx, my);
-                        if (nx != sx && nx >= 0 && nx < t)
+                        if (nx != sx && nx >= 0 && nx <= max_scroll_position())
                         {
                             draw_widget(screen, 1);
                             sx = nx;
@@ -274,8 +279,8 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
             int nx = mouse_to_drag(mx, my);
             if (nx < 0)
                 nx = 0;
-            else if (nx >= t)
-                nx = t - 1;
+            else if (nx > max_scroll_position())
+                nx = max_scroll_position();
             if (nx != sx)
             {
                 draw_widget(screen, 1);
@@ -294,6 +299,26 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
     }
     break;
     case EV_KEY: {
+        if (ev.mouse_wheel)
+        {
+            int new_position = sx - ev.mouse_wheel;
+            if (new_position < 0)
+                new_position = 0;
+            else if (new_position > max_scroll_position())
+                new_position = max_scroll_position();
+
+            if (new_position != sx)
+            {
+                if (scrollbar_visible())
+                    draw_widget(screen, 1);
+                sx = new_position;
+                if (scrollbar_visible())
+                    draw_widget(screen, 0);
+                scroll_event(sx, screen);
+            }
+            break;
+        }
+
         switch (ev.key)
         {
         case JK_LEFT: {
@@ -323,7 +348,7 @@ void scroller::handle_event(Event &ev, image *screen, InputManager *inm)
 
 void scroller::handle_right(image *screen, InputManager *inm)
 {
-    if (!vert && sx < t - 1)
+    if (!vert && sx < max_scroll_position())
     {
         draw_widget(screen, 1);
         sx++;
@@ -334,7 +359,7 @@ void scroller::handle_right(image *screen, InputManager *inm)
 
 void scroller::handle_left(image *screen, InputManager *inm)
 {
-    if (!vert && sx > 1)
+    if (!vert && sx > 0)
     {
         draw_widget(screen, 1);
         sx--;
@@ -345,7 +370,7 @@ void scroller::handle_left(image *screen, InputManager *inm)
 
 void scroller::handle_up(image *screen, InputManager *inm)
 {
-    if (vert && sx > 1)
+    if (vert && sx > 0)
     {
         draw_widget(screen, 1);
         sx--;
@@ -356,7 +381,7 @@ void scroller::handle_up(image *screen, InputManager *inm)
 
 void scroller::handle_down(image *screen, InputManager *inm)
 {
-    if (vert && sx < t - 1)
+    if (vert && sx < max_scroll_position())
     {
         draw_widget(screen, 1);
         sx++;
@@ -369,8 +394,8 @@ void scroller::set_x(int x, image *screen)
 {
     if (x < 0)
         x = 0;
-    if (x >= t)
-        x = t - 1;
+    if (x > max_scroll_position())
+        x = max_scroll_position();
     if (x != sx)
     {
         draw_widget(screen, 1);
@@ -389,7 +414,7 @@ int scroller::mouse_to_drag(int mx, int my)
     {
         int h = (y2 - y1 + 1 - bh());
         if (h)
-            return (my - m_pos.y - bh() - bh() / 2) * (t - 1) / h;
+            return (my - m_pos.y - bh() - bh() / 2) * max_scroll_position() / h;
         else
             return 0;
     }
@@ -397,7 +422,7 @@ int scroller::mouse_to_drag(int mx, int my)
     {
         int w = (x2 - x1 + 1 - bw());
         if (w)
-            return (mx - m_pos.x - bw() - bw() / 2) * (t - 1) / w;
+            return (mx - m_pos.x - bw() - bw() / 2) * max_scroll_position() / w;
         else
             return 0;
     }
@@ -431,12 +456,6 @@ void scroller::scroll_event(int newx, image *screen)
     }
 }
 
-void pick_list::area_config()
-{
-    l = wid * wm->font()->Size().x;
-    h = th * (wm->font()->Size().y + 1);
-}
-
 int lis_sort(void const *a, void const *b)
 {
     pick_list_item *a1 = (pick_list_item *)a;
@@ -445,14 +464,10 @@ int lis_sort(void const *a, void const *b)
 }
 
 pick_list::pick_list(int X, int Y, int ID, int height, char **List, int num_entries, int start_yoffset, ifield *Next,
-                     image *texture)
-    : scroller(X, Y, ID, 2, 2, 1, 0, Next)
+                     image *texture, bool sort_entries)
+    : spicker(X, Y, ID, height, 1, 1, 0, Next), entries(num_entries), wid(0), lis(nullptr), key_hist_total(0),
+      tex(texture)
 {
-    th = height;
-    tex = texture;
-    t = num_entries;
-    wid = 0;
-    key_hist_total = 0;
     lis = (pick_list_item *)malloc(sizeof(pick_list_item) * num_entries);
     int i = 0;
     for (; i < num_entries; i++)
@@ -460,41 +475,59 @@ pick_list::pick_list(int X, int Y, int ID, int height, char **List, int num_entr
         lis[i].name = List[i];
         lis[i].number = i;
     }
-    qsort((void *)lis, num_entries, sizeof(pick_list_item), lis_sort);
+    if (sort_entries)
+        qsort((void *)lis, num_entries, sizeof(pick_list_item), lis_sort);
 
-    for (i = 0; i < t; i++)
+    for (i = 0; i < entries; i++)
         if ((int)strlen(List[i]) > wid)
             wid = strlen(List[i]);
-    cur_sel = sx = start_yoffset;
+
+    reconfigure();
+    if (entries > 0)
+    {
+        cur_sel = start_yoffset < 0 ? 0 : start_yoffset >= entries ? entries - 1 : start_yoffset;
+        sx = cur_sel > max_scroll_position() ? max_scroll_position() : cur_sel;
+    }
+}
+
+void pick_list::draw_background(image *screen)
+{
+    if (!tex)
+    {
+        screen->Bar(m_pos, m_pos + ivec2(l - 1, h - 1), wm->black());
+        return;
+    }
+
+    ivec2 caa, cbb;
+    screen->GetClip(caa, cbb);
+    screen->SetClip(m_pos, m_pos + ivec2(l, h));
+    int tile_columns = (l + tex->Size().x - 1) / tex->Size().x;
+    int tile_rows = (h + tex->Size().y - 1) / tex->Size().y;
+    int dy = m_pos.y;
+    for (int row = 0; row < tile_rows; row++, dy += tex->Size().y)
+        for (int column = 0, dx = m_pos.x; column < tile_columns; column++, dx += tex->Size().x)
+            screen->PutImage(tex, ivec2(dx, dy));
+    screen->SetClip(caa, cbb);
+}
+
+void pick_list::draw_item(image *screen, int x, int y, int num, int active)
+{
+    if (active)
+        screen->Bar(ivec2(x, y), ivec2(x + item_width() - 1, y + item_height() - 1), wm->dark_color());
+    wm->font()->PutString(screen, ivec2(x, y), lis[num].name, wm->bright_color());
+}
+
+void pick_list::note_selection(image *screen, InputManager *inm, int x)
+{
+    wm->PushMessage(id, this);
 }
 
 void pick_list::handle_inside_event(Event &ev, image *screen, InputManager *inm)
 {
-    if (ev.type == EV_MOUSE_MOVE && activate_on_mouse_move())
+    if (ev.type == EV_KEY && ev.key == JK_ENTER)
     {
-        int sel = last_sel + (ev.mouse_move.y - m_pos.y) / (wm->font()->Size().y + 1);
-        if (sel != cur_sel && sel < t && sel >= 0)
-        {
-            cur_sel = sel;
-            scroll_event(last_sel, screen);
-        }
+        wm->PushMessage(id, this);
     }
-    else if (ev.type == EV_MOUSE_BUTTON)
-    {
-        int sel = last_sel + (ev.mouse_move.y - m_pos.y) / (wm->font()->Size().y + 1);
-        if (sel < t && sel >= 0)
-        {
-            if (sel == cur_sel)
-                wm->Push(new Event(id, (char *)this));
-            else
-            {
-                cur_sel = sel;
-                scroll_event(last_sel, screen);
-            }
-        }
-    }
-    else if (ev.type == EV_KEY && ev.key == JK_ENTER)
-        wm->Push(new Event(id, (char *)this));
     else if (ev.type == EV_TEXT_INPUT)
     {
         int found = -1;
@@ -508,74 +541,13 @@ void pick_list::handle_inside_event(Event &ev, image *screen, InputManager *inm)
                 found = i;
         }
         if (found != -1)
-        {
-            sx = found;
-            cur_sel = found;
-            scroll_event(sx, screen);
-        }
+            set_x(found, screen);
         else
             key_hist_total = 0;
     }
-}
-
-void pick_list::handle_up(image *screen, InputManager *inm)
-{
-    if (cur_sel > 0)
-        cur_sel--;
     else
-        return;
-    if (cur_sel < sx)
     {
-        draw_widget(screen, 1);
-        sx = cur_sel;
-        draw_widget(screen, 0);
-    }
-    scroll_event(sx, screen);
-}
-
-void pick_list::handle_down(image *screen, InputManager *inm)
-{
-    if (cur_sel < t - 1)
-        cur_sel++;
-    else
-        return;
-    if (cur_sel > sx + th - 1)
-    {
-        draw_widget(screen, 1);
-        sx = cur_sel - th + 1;
-        draw_widget(screen, 0);
-    }
-    scroll_event(sx, screen);
-}
-
-void pick_list::scroll_event(int newx, image *screen)
-{
-    last_sel = newx;
-    if (tex)
-    {
-        ivec2 caa, cbb;
-        screen->GetClip(caa, cbb);
-        screen->SetClip(m_pos, m_pos + ivec2(l, h));
-        int tw = (l + tex->Size().x - 1) / tex->Size().x;
-        int th = (h + tex->Size().y - 1) / tex->Size().y;
-        int dy = m_pos.y;
-        for (int j = 0; j < th; j++, dy += tex->Size().y)
-            for (int i = 0, dx = m_pos.x; i < tw; i++, dx += tex->Size().x)
-                screen->PutImage(tex, ivec2(dx, dy));
-
-        screen->SetClip(caa, cbb);
-    }
-    else
-        screen->Bar(m_pos, m_pos + ivec2(l - 1, h - 1), wm->black());
-
-    int dy = m_pos.y;
-    for (int i = 0; i < th; i++, dy += wm->font()->Size().y + 1)
-    {
-        if (i + newx == cur_sel)
-            screen->Bar(ivec2(m_pos.x, dy), ivec2(m_pos.x + wid * wm->font()->Size().x - 1, dy + wm->font()->Size().y),
-                        wm->dark_color());
-        if (i + newx < t)
-            wm->font()->PutString(screen, ivec2(m_pos.x, dy), lis[i + newx].name, wm->bright_color());
+        spicker::handle_inside_event(ev, screen, inm);
     }
 }
 
@@ -631,8 +603,8 @@ void spicker::reconfigure()
     select = NULL;
 
     t = total();
-    if (sx > t)
-        sx = t - 1;
+    if (sx > max_scroll_position())
+        sx = max_scroll_position();
     if (m)
     {
         select = (uint8_t *)malloc((t + 7) / 8);
@@ -656,12 +628,17 @@ void spicker::area_config()
 void spicker::set_x(int x, image *screen)
 {
     cur_sel = x;
-    sx = x;
-    scroll_event(x, screen);
+    sx = x > max_scroll_position() ? max_scroll_position() : x;
+    scroll_event(sx, screen);
 }
 
 void spicker::scroll_event(int newx, image *screen)
 {
+    if (newx < 0)
+        newx = 0;
+    else if (newx > max_scroll_position())
+        newx = max_scroll_position();
+    sx = newx;
     last_sel = newx;
     int xa, ya, xo, yo;
     xo = m_pos.x + 2;

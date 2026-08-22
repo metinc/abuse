@@ -199,14 +199,19 @@ enum class CFunc
     SetLightR2,
     SetLightX,
     SetLightY,
+    SetLightLine,
     SetLightXShift,
     SetLightYShift,
+    SetLightColor,
+    SetLightIntensity,
     LightR1,
     LightR2,
     LightX,
     LightY,
     LightXShift,
     LightYShift,
+    LightColor,
+    LightIntensity,
     Xacel,
     Yacel,
     DeleteLight,
@@ -355,8 +360,8 @@ enum class CFunc
     GetOption,
     SetDelayOn, // T or nil
     EnableChatting,
-    DemoBreakEnable,
     AmAClient,
+    Cooperative,
     TimeForNextLevel,
     ResetKills,
     SetGameName, // server game name
@@ -383,7 +388,8 @@ enum class LispFunc
     GetObject,
     GetLight,
     WithObjects,
-    AddLight, // type, x, y, r1, r2, xshift, yshift
+    AddLight, // type, x, y, r1, r2, xshift, yshift, [color]
+    AddLineLight, // x1, y1, x2, y2, r1, r2, [color]
     FindEnemy, // exclude
     UserFun, // calls anobject's user function
     Time, // returns a fixed point (times and operation)
@@ -416,7 +422,6 @@ enum class LispFunc
     LastSavegameName,
     NextSavegameName,
     Argv,
-    JoyStat, // xm ym b1 b2 b3
     MouseStat, // mx my b1 b2 b3
     MouseToGame, // pass in x,y -> x,y
     GameToMouse, // pass in x,y -> x,y

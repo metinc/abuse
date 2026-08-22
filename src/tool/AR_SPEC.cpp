@@ -1,5 +1,5 @@
 /*
- * Extracting PCX images stored in Abuse SPEC files to modern image formats using OpenCV
+ * Extracting PCX images stored in Abuse SPEC files to modern image formats
  *	Copyright (c) 2016 Antonio Radojkovic <antonior.software@gmail.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -18,10 +18,48 @@
  */
 
 #include "AR_SPEC.h"
+#include <algorithm>
+#include <cctype>
 #include <errno.h>
+#include <limits>
 #include <string.h>
 
-using namespace cv;
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#define STBIW_WINDOWS_UTF8
+#include "third_party/stb_image_write.h"
+
+namespace
+{
+std::string normalize_image_format(std::string format)
+{
+    if (!format.empty() && format.front() == '.')
+        format.erase(format.begin());
+    std::transform(format.begin(), format.end(), format.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return format;
+}
+
+bool supported_image_format(const std::string &format)
+{
+    return format == "png" || format == "jpeg" || format == "jpg" || format == "jpe" || format == "bmp" ||
+           format == "dib" || format == "tga";
+}
+
+bool resize_pixel_buffer(std::vector<uint8_t> &pixels, int width, int height, int channels)
+{
+    if (width <= 0 || height <= 0 || (channels != 3 && channels != 4))
+        return false;
+
+    if (static_cast<std::size_t>(width) > std::numeric_limits<std::size_t>::max() / channels)
+        return false;
+    const std::size_t row_size = static_cast<std::size_t>(width) * channels;
+    if (static_cast<std::size_t>(height) > std::numeric_limits<std::size_t>::max() / row_size)
+        return false;
+
+    pixels.resize(row_size * height);
+    return true;
+}
+}
 
 AR_SPEC::AR_SPEC()
 {
@@ -33,17 +71,17 @@ AR_SPEC::AR_SPEC()
     this->png_compression = 9;
     this->jpeg_quality = 100;
 
-    this->alpha = AR_OCV_KEEPCOLOR;
+    this->alpha = AR_IMAGE_KEEPCOLOR;
     this->alpha_r = alpha_g = alpha_b = 0;
 
-    this->output_tilemap = AR_OCV_FILEPERSPEC;
+    this->output_tilemap = AR_IMAGE_FILEPERSPEC;
     this->tilemap_rows = 20;
     this->tilemap_columns = 5;
     this->tilemap_padding = 1;
     this->tilemap_fill = 'r';
     this->tilemap_palette;
 
-    this->output_animation = AR_OCV_FILEPERSPEC;
+    this->output_animation = AR_IMAGE_FILEPERSPEC;
     this->outline_r = outline_g = outline_b = 128; //default gray
 
     this->pal_shift = 0;
@@ -95,7 +133,17 @@ int AR_SPEC::AR_ParseConfig(std::string file_path)
         try
         {
             if (attr == "image_format")
+            {
+                value = normalize_image_format(value);
+                if (!supported_image_format(value))
+                {
+                    this->log->Write("ERROR - Unsupported image format \"" + value +
+                                     "\"; expected png, jpeg, jpg, jpe, bmp, dib or tga");
+                    filein.close();
+                    return EXIT_FAILURE;
+                }
                 this->image_format = value;
+            }
             else if (attr == "png_compression")
                 this->png_compression = std::stoi(value);
             else if (attr == "jpeg_quality")
@@ -307,7 +355,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
             {
                 if (!this->pong_the_bong)
                 {
-                    if (this->output_tilemap == AR_OCV_FILEPERPCX)
+                    if (this->output_tilemap == AR_IMAGE_FILEPERPCX)
                     {
                         if (!in_tiles)
                         {
@@ -340,7 +388,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
             }
             else if (se->type == SPEC_IMAGE || se->type == SPEC_CHARACTER || se->type == SPEC_CHARACTER2)
             {
-                if (this->output_animation == AR_OCV_FILEPERPCX)
+                if (this->output_animation == AR_IMAGE_FILEPERPCX)
                 {
                     if (!in_images)
                     {
@@ -359,7 +407,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
 
                     in_images = true;
                 }
-                else if (this->output_animation == AR_OCV_FILEPERGROUP || this->output_animation == AR_OCV_FILEPERSPEC)
+                else if (this->output_animation == AR_IMAGE_FILEPERGROUP || this->output_animation == AR_IMAGE_FILEPERSPEC)
                 {
                     if (this->group_max > 0)
                     {
@@ -423,7 +471,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
     {
         //SPEC_FORETILE, SPEC_BACKTILE - save all to one tilemap, tilemaps have no hires or tint palettes
 
-        if (this->output_tilemap == AR_OCV_FILEPERSPEC)
+        if (this->output_tilemap == AR_IMAGE_FILEPERSPEC)
         {
             std::stringstream tiles;
 
@@ -552,7 +600,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
     {
         //form animation groups
 
-        if (this->output_animation == AR_OCV_FILEPERGROUP || this->output_animation == AR_OCV_FILEPERSPEC)
+        if (this->output_animation == AR_IMAGE_FILEPERGROUP || this->output_animation == AR_IMAGE_FILEPERSPEC)
         {
             //count the number of images and groups
             int g_num = 0, im_num = 0;
@@ -567,7 +615,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
             }
 
             std::stringstream stream;
-            if (this->output_animation == AR_OCV_FILEPERSPEC)
+            if (this->output_animation == AR_IMAGE_FILEPERSPEC)
             {
                 if (pal_custom)
                     stream << "out="
@@ -624,7 +672,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                 std::vector<image *> images = groups[i].images; //readibility
 
                 fpg << "group=" << groups[i].name << std::endl;
-                if (this->output_animation == AR_OCV_FILEPERGROUP)
+                if (this->output_animation == AR_IMAGE_FILEPERGROUP)
                 {
                     if (pal_custom)
                         fpg << "out="
@@ -648,7 +696,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                 //posy and posy is the position where the top-left corner of the frame will be positioned in the group output
                 int posx = 0, posy = 0;
 
-                if (this->output_animation == AR_OCV_FILEPERSPEC)
+                if (this->output_animation == AR_IMAGE_FILEPERSPEC)
                 {
                     //add 1 pixel for group outline, and 1 for gap/padding
                     posx = posy = 2;
@@ -703,7 +751,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                     posx += im->Size().x + this->tilemap_padding;
                 }
 
-                if (this->output_animation == AR_OCV_FILEPERGROUP)
+                if (this->output_animation == AR_IMAGE_FILEPERGROUP)
                 {
                     if (!AR_CreateImage(matrix, width, height,
                                         file_path.substr(0, file_path.size() - 4) + "_" + groups[i].name, pal,
@@ -713,7 +761,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                     this->tx_info.Write(fpg.str());
                     this->tx_info.Write(fpg2.str());
                 }
-                else if (this->output_animation == AR_OCV_FILEPERSPEC)
+                else if (this->output_animation == AR_IMAGE_FILEPERSPEC)
                 {
                     AR_Node *result = node.Insert(width, height);
                     if (result)
@@ -745,7 +793,7 @@ bool AR_SPEC::AR_ConvertSPEC(std::string file_path)
                 }
             }
 
-            if (this->output_animation == AR_OCV_FILEPERSPEC)
+            if (this->output_animation == AR_IMAGE_FILEPERSPEC)
             {
                 if (!AR_CreateImage(matrix_one, width_fin, height_fin, file_path.substr(0, file_path.size() - 4), pal,
                                     pal_hires, pal_custom))
@@ -822,7 +870,7 @@ void AR_SPEC::AR_PrepareGroups(std::vector<AR_ImageGroup> &groups, int &surface,
             if (images[j]->Size().y > height)
                 height = images[j]->Size().y;
 
-        if (this->output_animation == AR_OCV_FILEPERSPEC)
+        if (this->output_animation == AR_IMAGE_FILEPERSPEC)
         {
             //add 1 pixel for group outline, and 1 for gap/padding
             groups[i].w = width + 4;
@@ -872,13 +920,11 @@ image *AR_SPEC::AR_GetImageByName(std::string name, std::vector<AR_ImageGroup> &
 }
 
 //////////
-////////// OpenCV
+////////// IMAGE OUTPUT
 //////////
 
 bool AR_SPEC::AR_CreateTile(image *im, std::string path, palette *pal, palette *pal_custom)
 {
-    Mat ocv;
-
     palette *pal_fin = pal;
     if (pal_custom)
     {
@@ -891,50 +937,52 @@ bool AR_SPEC::AR_CreateTile(image *im, std::string path, palette *pal, palette *
     if (im->ar_type == SPEC_IMAGE || im->ar_type == SPEC_BACKTILE)
         pixel_alpha = false;
 
-    //only png supports this->alpha channel
-    if (this->image_format == "png" && this->alpha == AR_OCV_COLORTOALPHA)
-        ocv = Mat(Size(im->Size().x, im->Size().y), CV_8UC4);
-    else
-        ocv = Mat(Size(im->Size().x, im->Size().y), CV_8UC3);
+    const int width = im->Size().x;
+    const int height = im->Size().y;
+    const int channels = (this->image_format == "png" && this->alpha == AR_IMAGE_COLORTOALPHA) ? 4 : 3;
+    std::vector<uint8_t> pixels;
+    if (!resize_pixel_buffer(pixels, width, height, channels))
+    {
+        this->log->Write("ERROR - Invalid output image dimensions");
+        return false;
+    }
 
     int k = 0;
-    for (int i = 0; i < ocv.rows; i++)
+    for (int i = 0; i < height; i++)
     {
-        uchar *row = ocv.ptr<uchar>(i);
+        uint8_t *row = pixels.data() + static_cast<std::size_t>(i) * width * channels;
 
-        for (int j = 0; j < ocv.cols; j++)
+        for (int j = 0; j < width; j++)
         {
-            k = i * im->Size().x + j;
+            k = i * width + j;
 
-            //OpenCV uses BGRA (not ARGB or RGBA)
-
-            if (im->AR_GetPixels()[k] == 0 && this->alpha == AR_OCV_NEWCOLOR && pixel_alpha)
+            if (im->AR_GetPixels()[k] == 0 && this->alpha == AR_IMAGE_NEWCOLOR && pixel_alpha)
             {
                 //animated image, transparent pixel, change transparent pixel color enabled
-                row[j * ocv.channels() + 0] = this->alpha_b;
-                row[j * ocv.channels() + 1] = this->alpha_g;
-                row[j * ocv.channels() + 2] = this->alpha_r;
+                row[j * channels + 0] = this->alpha_r;
+                row[j * channels + 1] = this->alpha_g;
+                row[j * channels + 2] = this->alpha_b;
             }
             else
             {
                 //keep original color
-                row[j * ocv.channels() + 0] = pal_fin->blue(im->AR_GetPixels()[k]);
-                row[j * ocv.channels() + 1] = pal_fin->green(im->AR_GetPixels()[k]);
-                row[j * ocv.channels() + 2] = pal_fin->red(im->AR_GetPixels()[k]);
+                row[j * channels + 0] = pal_fin->red(im->AR_GetPixels()[k]);
+                row[j * channels + 1] = pal_fin->green(im->AR_GetPixels()[k]);
+                row[j * channels + 2] = pal_fin->blue(im->AR_GetPixels()[k]);
             }
 
             //animated image, this->alpha channel enabled, png
-            if (this->alpha == AR_OCV_COLORTOALPHA && this->image_format == "png")
+            if (this->alpha == AR_IMAGE_COLORTOALPHA && this->image_format == "png")
             {
                 if (im->AR_GetPixels()[k] == 0 && pixel_alpha)
-                    row[j * ocv.channels() + 3] = 0; //transparent
+                    row[j * channels + 3] = 0; //transparent
                 else
-                    row[j * ocv.channels() + 3] = 255; //solid
+                    row[j * channels + 3] = 255; //solid
             }
         }
     }
 
-    if (AR_SaveImage(ocv, path))
+    if (AR_SaveImage(pixels, width, height, channels, path))
     {
         //original name in SPEC, output name, w, h
         std::stringstream stream;
@@ -952,26 +1000,22 @@ bool AR_SPEC::AR_CreateTile(image *im, std::string path, palette *pal, palette *
 bool AR_SPEC::AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std::string name, palette *pal,
                              palette *pal_hires, palette *pal_custom)
 {
-    //convert image to modern formats using OpenCV
-
-    Mat ocv;
-
     palette *pal_fin = NULL;
 
-    //only png supports this->alpha channel
-    if (this->image_format == "png" && this->alpha == AR_OCV_COLORTOALPHA)
-        ocv = Mat(Size(w, h), CV_8UC4);
-    else
-        ocv = Mat(Size(w, h), CV_8UC3);
-
-    for (int i = 0; i < ocv.rows; i++)
+    const int channels = (this->image_format == "png" && this->alpha == AR_IMAGE_COLORTOALPHA) ? 4 : 3;
+    std::vector<uint8_t> pixels;
+    if (!resize_pixel_buffer(pixels, w, h, channels))
     {
-        uchar *row = ocv.ptr<uchar>(i);
+        this->log->Write("ERROR - Invalid output image dimensions");
+        return false;
+    }
 
-        for (int j = 0; j < ocv.cols; j++)
+    for (int i = 0; i < h; i++)
+    {
+        uint8_t *row = pixels.data() + static_cast<std::size_t>(i) * w * channels;
+
+        for (int j = 0; j < w; j++)
         {
-            //OpenCV uses BGRA (not ARGB or RGBA)
-
             int pixel = m[i][j];
             bool pixel_alpha = true;
 
@@ -1001,33 +1045,33 @@ bool AR_SPEC::AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std
 
             if (pixel == -1)
             {
-                //-1 value marks colored outline
-                row[j * ocv.channels() + 0] = this->outline_b; //blue
-                row[j * ocv.channels() + 1] = this->outline_g; //green
-                row[j * ocv.channels() + 2] = this->outline_r; //red
+                // -1 marks the colored outline.
+                row[j * channels + 0] = this->outline_r;
+                row[j * channels + 1] = this->outline_g;
+                row[j * channels + 2] = this->outline_b;
             }
-            else if (pixel == 0 && this->alpha == AR_OCV_NEWCOLOR && pixel_alpha)
+            else if (pixel == 0 && this->alpha == AR_IMAGE_NEWCOLOR && pixel_alpha)
             {
                 //animated image, transparent pixel, change transparent pixel color enabled
-                row[j * ocv.channels() + 0] = this->alpha_b;
-                row[j * ocv.channels() + 1] = this->alpha_g;
-                row[j * ocv.channels() + 2] = this->alpha_r;
+                row[j * channels + 0] = this->alpha_r;
+                row[j * channels + 1] = this->alpha_g;
+                row[j * channels + 2] = this->alpha_b;
             }
             else
             {
                 //keep original color
-                row[j * ocv.channels() + 0] = pal_fin->blue(pixel);
-                row[j * ocv.channels() + 1] = pal_fin->green(pixel);
-                row[j * ocv.channels() + 2] = pal_fin->red(pixel);
+                row[j * channels + 0] = pal_fin->red(pixel);
+                row[j * channels + 1] = pal_fin->green(pixel);
+                row[j * channels + 2] = pal_fin->blue(pixel);
             }
 
             //animated image, this->alpha channel enabled, png
-            if (this->alpha == AR_OCV_COLORTOALPHA && this->image_format == "png")
+            if (this->alpha == AR_IMAGE_COLORTOALPHA && this->image_format == "png")
             {
                 if (pixel == 0 && pixel_alpha)
-                    row[j * ocv.channels() + 3] = 0; //transparent
+                    row[j * channels + 3] = 0; //transparent
                 else
-                    row[j * ocv.channels() + 3] = 255; //solid
+                    row[j * channels + 3] = 255; //solid
             }
         }
     }
@@ -1035,41 +1079,37 @@ bool AR_SPEC::AR_CreateImage(std::vector<std::vector<int>> &m, int w, int h, std
     if (pal_custom)
         name += "_" + pal_custom->ar_name;
 
-    return AR_SaveImage(ocv, name);
+    return AR_SaveImage(pixels, w, h, channels, name);
 }
 
-bool AR_SPEC::AR_SaveImage(cv::Mat &ocv, std::string path)
+bool AR_SPEC::AR_SaveImage(const std::vector<uint8_t> &pixels, int width, int height, int channels,
+                           const std::string &path)
 {
-    //set parameters and save image
-
-    bool result = false;
-
     std::string path_fin = path + "." + this->image_format;
+    int result = 0;
+    errno = 0;
 
     if (this->image_format == "png")
     {
-        std::vector<int> parameters;
-        parameters.push_back(IMWRITE_PNG_COMPRESSION);
-        parameters.push_back(this->png_compression);
-
-        result = imwrite(path_fin, ocv, parameters);
+        stbi_write_png_compression_level = std::clamp(this->png_compression, 0, 9);
+        result = stbi_write_png(path_fin.c_str(), width, height, channels, pixels.data(), width * channels);
     }
-    else if (this->image_format == "jpeg" || this->image_format == "jpg" | this->image_format == "jpe" ||
-             this->image_format == "jp2")
+    else if (this->image_format == "jpeg" || this->image_format == "jpg" || this->image_format == "jpe")
     {
-        std::vector<int> parameters;
-        parameters.push_back(IMWRITE_JPEG_QUALITY);
-        parameters.push_back(this->jpeg_quality);
-
-        result = imwrite(path_fin, ocv, parameters);
+        result = stbi_write_jpg(path_fin.c_str(), width, height, channels, pixels.data(),
+                                std::clamp(this->jpeg_quality, 1, 100));
     }
-    else
-        result = imwrite(path_fin, ocv);
+    else if (this->image_format == "bmp" || this->image_format == "dib")
+        result = stbi_write_bmp(path_fin.c_str(), width, height, channels, pixels.data());
+    else if (this->image_format == "tga")
+        result = stbi_write_tga(path_fin.c_str(), width, height, channels, pixels.data());
 
     if (result)
         this->log->Write("Saved to \"" + path_fin + "\"");
+    else if (errno)
+        this->log->Write("ERROR - image writer failed \"" + path_fin + "\": " + strerror(errno));
     else
-        this->log->Write("ERROR - imwrite() failed \"" + path_fin + "\": " + strerror(errno) + "");
+        this->log->Write("ERROR - image writer failed \"" + path_fin + "\"");
 
-    return result;
+    return result != 0;
 }

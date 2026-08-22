@@ -24,6 +24,8 @@
 #include "filter.h"
 #include "fonts.h"
 
+#include <array>
+
 class ifield;
 class WindowManager;
 class Jwindow;
@@ -118,7 +120,6 @@ class Jwindow
     Jwindow *next;
     int backg;
     InputManager *inm;
-    void *local_info; // pointer to info block for local system (may support windows)
 
     Jwindow(char const *name = NULL);
     Jwindow(ivec2 pos, ivec2 size, ifield *f, char const *name = NULL);
@@ -219,7 +220,7 @@ class WindowManager : public EventHandler
     Jwindow *m_first, *m_grab;
     image *mouse_pic, *mouse_save;
     int hi, med, low, bk; // bright, medium, dark and black colors
-    int key_state[512];
+    std::array<uint8_t, JK_KEY_COUNT> key_state{};
     enum
     {
         inputing,
@@ -256,6 +257,18 @@ class WindowManager : public EventHandler
     {
         return bk;
     }
+    int close_bright_color()
+    {
+        return close_hi;
+    }
+    int close_medium_color()
+    {
+        return close_med;
+    }
+    int close_dark_color()
+    {
+        return close_low;
+    }
     void set_colors(int Hi, int Med, int Low)
     {
         hi = Hi;
@@ -267,9 +280,9 @@ class WindowManager : public EventHandler
         return fnt;
     }
 
-    int key_pressed(int x)
+    bool key_pressed(int key) const
     {
-        return key_state[x];
+        return key_is_valid(key) && key_state[key] != 0;
     }
     void hide_windows();
     void show_windows();
@@ -281,6 +294,7 @@ class WindowManager : public EventHandler
   private:
     palette *m_pal;
     image *m_surf;
+    int close_hi, close_med, close_low;
 };
 
 #endif

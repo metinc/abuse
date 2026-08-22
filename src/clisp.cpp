@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -22,23 +23,21 @@
 
 #include "common.h"
 
-#include "sdlport/joy.h"
-
 #include "ant.h"
 #include "lisp.h"
 #include "game.h"
 #include "jrand.h"
 #include "dev.h"
 #include "pcxread.h"
-#include "menu.h"
+#include "ui/menu.h"
 #include "clisp.h"
 #include "chars.h"
 #include "lisp_gc.h"
 #include "cop.h"
-#include "loadgame.h"
+#include "ui/loadgame.h"
 #include "nfserver.h"
 #include "demo.h"
-#include "chat.h"
+#include "ui/chat.h"
 #include "jdir.h"
 #include "netcfg.h"
 #include "funcs.h"
@@ -48,15 +47,10 @@
 extern Settings settings;
 //
 
-//AR
-#include "sdlport/setup.h"
-extern Settings settings;
-//
-
 #define ENGINE_MAJOR 1
 #define ENGINE_MINOR 20
 
-extern int has_joystick;
+constexpr double ABUSE_PI = 3.14159265358979323846;
 
 // the following are references to lisp symbols
 LSymbol *l_chat_input, *l_post_render;
@@ -83,8 +77,14 @@ void *l_statbar_ammo_x, *l_statbar_ammo_y, *l_statbar_ammo_w, *l_statbar_ammo_h,
 
     *l_statbar_logo_x, *l_statbar_logo_y;
 uint8_t chatting_enabled = 0;
+constexpr uint32_t CHAT_MESSAGE_HOLD_MS = 3000;
 
 extern void show_end();
+
+static float lisp_audio_gain(int volume)
+{
+    return static_cast<float>(std::clamp(volume, 0, 127)) / 127.0f;
+}
 
 static view *lget_view(void *arg, char const *msg)
 {
@@ -135,7 +135,14 @@ void clisp_init()
     l_FIRE = LSymbol::FindOrCreate("FIRE");
     l_fire_object = LSymbol::FindOrCreate("fire_object");
     l_cop_dead_parts = LSymbol::FindOrCreate("cop_dead_parts");
-    l_difficulty->SetValue(l_hard);
+    if (settings.difficulty == "easy")
+        l_difficulty->SetValue(l_easy);
+    else if (settings.difficulty == "medium")
+        l_difficulty->SetValue(l_medium);
+    else if (settings.difficulty == "extreme")
+        l_difficulty->SetValue(l_extreme);
+    else
+        l_difficulty->SetValue(l_hard);
     l_restart_player = LSymbol::FindOrCreate("restart_player");
     l_help_screens = LSymbol::FindOrCreate("help_screens");
     l_save_order = LSymbol::FindOrCreate("save_order");
@@ -208,7 +215,7 @@ void *l_caller(LispFunc number, void *args)
     switch (number)
     {
     case LispFunc::GoState: {
-        current_object->set_aistate(lnumber_value(CAR(args)->Eval()));
+        current_object->set_aistate(lnumber_value(leval(CAR(args))));
         current_object->set_aistate_time(0);
         void *ai = figures[current_object->otype]->get_fun(OFUN_AI);
         if (!ai)
@@ -222,7 +229,7 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::WithObject: {
         game_object *old_cur = current_object;
-        current_object = (game_object *)lpointer_value(CAR(args)->Eval());
+        current_object = (game_object *)lpointer_value(leval(CAR(args)));
         void *ret = eval_block(CDR(args));
         current_object = old_cur;
         return ret;
@@ -233,7 +240,7 @@ void *l_caller(LispFunc number, void *args)
         int collision;
         game_object *o;
         if (args)
-            o = (game_object *)lpointer_value(CAR(args)->Eval());
+            o = (game_object *)lpointer_value(leval(CAR(args)));
         else
             o = current_object;
         game_object *hit = current_object->bmove(collision, o);
@@ -258,28 +265,28 @@ void *l_caller(LispFunc number, void *args)
     break;
     case LispFunc::FindClosest:
         return LPointer::Create(current_level->find_closest(current_object->x, current_object->y,
-                                                            lnumber_value(CAR(args)->Eval()), current_object));
+                                                            lnumber_value(leval(CAR(args))), current_object));
         break;
     case LispFunc::FindXClosest:
         return LPointer::Create(current_level->find_xclosest(current_object->x, current_object->y,
-                                                             lnumber_value(CAR(args)->Eval()), current_object));
+                                                             lnumber_value(leval(CAR(args))), current_object));
         break;
     case LispFunc::FindXRange: {
-        long n1 = lnumber_value(CAR(args)->Eval());
-        long n2 = lnumber_value(CAR(CDR(args))->Eval());
+        long n1 = lnumber_value(leval(CAR(args)));
+        long n2 = lnumber_value(leval(CAR(CDR(args))));
         return LPointer::Create(current_level->find_xrange(current_object->x, current_object->y, n1, n2));
     }
     break;
     case LispFunc::AddObject: {
-        int type = lnumber_value(CAR(args)->Eval());
+        int type = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x = lnumber_value(CAR(args)->Eval());
+        long x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y = lnumber_value(CAR(args)->Eval());
+        long y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         game_object *o;
         if (args)
-            o = create(type, x, y, 0, lnumber_value(CAR(args)->Eval()));
+            o = create(type, x, y, 0, lnumber_value(leval(CAR(args))));
         else
             o = create(type, x, y);
         if (current_level)
@@ -288,15 +295,15 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::AddObjectAfter: {
-        int type = lnumber_value(CAR(args)->Eval());
+        int type = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x = lnumber_value(CAR(args)->Eval());
+        long x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y = lnumber_value(CAR(args)->Eval());
+        long y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         game_object *o;
         if (args)
-            o = create(type, x, y, 0, lnumber_value(CAR(args)->Eval()));
+            o = create(type, x, y, 0, lnumber_value(leval(CAR(args))));
         else
             o = create(type, x, y);
         if (current_level)
@@ -309,7 +316,7 @@ void *l_caller(LispFunc number, void *args)
         return LPointer::Create(the_game->first_view->m_focus);
         break;
     case LispFunc::NextFocus: {
-        view *v = ((game_object *)lpointer_value(CAR(args)->Eval()))->controller()->next;
+        view *v = ((game_object *)lpointer_value(leval(CAR(args))))->controller()->next;
         if (v)
             return LPointer::Create(v->m_focus);
         else
@@ -317,11 +324,11 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GetObject: {
-        return LPointer::Create((void *)current_object->get_object(lnumber_value(CAR(args)->Eval())));
+        return LPointer::Create((void *)current_object->get_object(lnumber_value(leval(CAR(args)))));
     }
     break;
     case LispFunc::GetLight: {
-        return LPointer::Create((void *)current_object->get_light(lnumber_value(CAR(args)->Eval())));
+        return LPointer::Create((void *)current_object->get_light(lnumber_value(leval(CAR(args)))));
     }
     break;
     case LispFunc::WithObjects: {
@@ -330,27 +337,46 @@ void *l_caller(LispFunc number, void *args)
         for (int i = 0; i < old_cur->total_objects(); i++)
         {
             current_object = old_cur->get_object(i);
-            ret = CAR(args)->Eval();
+            ret = leval(CAR(args));
         }
         current_object = old_cur;
         return ret;
     }
     break;
     case LispFunc::AddLight: {
-        int t = lnumber_value(CAR(args)->Eval());
+        int t = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r1 = lnumber_value(CAR(args)->Eval());
+        int r1 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int r2 = lnumber_value(CAR(args)->Eval());
+        int r2 = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int xs = lnumber_value(CAR(args)->Eval());
+        int xs = lnumber_value(leval(CAR(args)));
         args = lcdr(args);
-        int ys = lnumber_value(CAR(args)->Eval());
-        return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys));
+        int ys = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int tint = args ? lnumber_value(leval(CAR(args))) : LIGHT_TINT_WHITE;
+        return LPointer::Create(add_light_source(t, x, y, r1, r2, xs, ys, tint));
+    }
+    break;
+    case LispFunc::AddLineLight: {
+        int x1 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int y1 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int x2 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int y2 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int r1 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int r2 = lnumber_value(leval(CAR(args)));
+        args = lcdr(args);
+        int tint = args ? lnumber_value(leval(CAR(args))) : LIGHT_TINT_WHITE;
+        return LPointer::Create(add_line_light_source(x1, y1, x2, y2, r1, r2, tint));
     }
     break;
     case LispFunc::FindEnemy: {
@@ -365,13 +391,13 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Time: {
-        long trials = lnumber_value(CAR(args)->Eval());
+        long trials = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         time_marker start;
         for (int x = 0; x < trials; x++)
         {
             LSpace::Tmp.Clear();
-            CAR(args)->Eval();
+            leval(CAR(args));
         }
         time_marker end;
         return LFixedPoint::Create((long)(end.diff_time(&start) * (1 << 16)));
@@ -386,16 +412,16 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::FindObjectInArea: {
-        long x1 = lnumber_value(CAR(args)->Eval());
+        long x1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y1 = lnumber_value(CAR(args)->Eval());
+        long y1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long x2 = lnumber_value(CAR(args)->Eval());
+        long x2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long y2 = lnumber_value(CAR(args)->Eval());
+        long y2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
-        void *list = CAR(args)->Eval();
+        void *list = leval(CAR(args));
         game_object *find = current_level->find_object_in_area(current_object->x, current_object->y, x1, y1, x2, y2,
                                                                list, current_object);
         if (find)
@@ -406,12 +432,12 @@ void *l_caller(LispFunc number, void *args)
     break;
 
     case LispFunc::FindObjectInAngle: {
-        long a1 = lnumber_value(CAR(args)->Eval());
+        long a1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long a2 = lnumber_value(CAR(args)->Eval());
+        long a2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
-        void *list = CAR(args)->Eval();
+        void *list = leval(CAR(args));
         PtrRef r1(list);
         game_object *find =
             current_level->find_object_in_angle(current_object->x, current_object->y, a1, a2, list, current_object);
@@ -451,13 +477,13 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::SeeDist: {
-        int32_t x1 = lnumber_value(CAR(args)->Eval());
+        int32_t x1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t y1 = lnumber_value(CAR(args)->Eval());
+        int32_t y1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t x2 = lnumber_value(CAR(args)->Eval());
+        int32_t x2 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int32_t y2 = lnumber_value(CAR(args)->Eval());
+        int32_t y2 = lnumber_value(leval(CAR(args)));
         current_level->foreground_intersect(x1, y1, x2, y2);
         void *ret = NULL;
         push_onto_list(LNumber::Create(y2), ret);
@@ -466,14 +492,14 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Platform: {
-#ifdef __linux__
+#if defined(__linux__)
         return LSymbol::FindOrCreate("LINUX");
-#endif
-#ifdef __sgi
-        return LSymbol::FindOrCreate("IRIX");
-#endif
-#ifdef __WIN32
+#elif defined(_WIN32)
         return LSymbol::FindOrCreate("WIN32");
+#elif defined(__APPLE__)
+        return LSymbol::FindOrCreate("MACOS");
+#else
+        return LSymbol::FindOrCreate("UNKNOWN");
 #endif
     }
     break;
@@ -567,24 +593,7 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::Argv: {
-        return LString::Create(start_argv[lnumber_value(CAR(args)->Eval())]);
-    }
-    break;
-    case LispFunc::JoyStat: {
-        int xv, yv, b1, b2, b3;
-        if (has_joystick)
-            joy_status(b1, b2, b3, xv, yv);
-        else
-            b1 = b2 = b3 = xv = yv = 0;
-
-        void *ret = NULL;
-        PtrRef r1(ret);
-        push_onto_list(LNumber::Create(b3), ret);
-        push_onto_list(LNumber::Create(b2), ret);
-        push_onto_list(LNumber::Create(b1), ret);
-        push_onto_list(LNumber::Create(yv), ret);
-        push_onto_list(LNumber::Create(xv), ret);
-        return ret;
+        return LString::Create(start_argv[lnumber_value(leval(CAR(args)))]);
     }
     break;
     case LispFunc::MouseStat: {
@@ -601,9 +610,9 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::MouseToGame: {
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
         ivec2 pos = the_game->MouseToGame(ivec2(x, y));
@@ -617,9 +626,9 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GameToMouse: {
-        int x = lnumber_value(CAR(args)->Eval());
+        int x = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        int y = lnumber_value(CAR(args)->Eval());
+        int y = lnumber_value(leval(CAR(args)));
         args = CDR(args);
 
         ivec2 pos = the_game->GameToMouse(ivec2(x, y), current_view);
@@ -644,29 +653,22 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::GetCwd: {
-#if defined __CELLOS_LV2__
-        /* FIXME: retrieve the PS3 account name */
-        char const *cd = "Player";
-#else
         char cd[150];
         getcwd(cd, 100);
-#endif
         return LString::Create(cd);
     }
     break;
     case LispFunc::System:
-#if !defined __CELLOS_LV2__
         /* FIXME: this looks rather dangerous */
-        system(lstring_value(CAR(args)->Eval()));
-#endif
+        system(lstring_value(leval(CAR(args))));
         break;
     case LispFunc::ConvertSlashes: {
-        void *fn = CAR(args)->Eval();
+        void *fn = leval(CAR(args));
         args = CDR(args);
         char tmp[200];
         {
             PtrRef r1(fn);
-            char *slash = lstring_value(CAR(args)->Eval());
+            char *slash = lstring_value(leval(CAR(args)));
             char *filename = lstring_value(fn);
 
             char *s = filename, *tp;
@@ -687,7 +689,7 @@ void *l_caller(LispFunc number, void *args)
         char **files, **dirs;
         int tfiles, tdirs, i;
 
-        get_directory(lstring_value(CAR(args)->Eval()), files, tfiles, dirs, tdirs);
+        get_directory(lstring_value(leval(CAR(args))), files, tfiles, dirs, tdirs);
         void *fl = NULL, *dl = NULL, *rl = NULL;
         {
             PtrRef r1(fl), r2(dl);
@@ -724,17 +726,17 @@ void *l_caller(LispFunc number, void *args)
         break;
     case LispFunc::MkPtr: {
         long x;
-        sscanf(lstring_value(CAR(args)->Eval()), "%lx", &x);
+        sscanf(lstring_value(leval(CAR(args))), "%lx", &x);
         return LPointer::Create((void *)(intptr_t)x);
     }
     break;
     case LispFunc::Seq: {
         char name[256], name2[256];
-        strcpy(name, lstring_value(CAR(args)->Eval()));
+        strcpy(name, lstring_value(leval(CAR(args))));
         args = CDR(args);
-        long first = lnumber_value(CAR(args)->Eval());
+        long first = lnumber_value(leval(CAR(args)));
         args = CDR(args);
-        long last = lnumber_value(CAR(args)->Eval());
+        long last = lnumber_value(leval(CAR(args)));
         long i;
         void *ret = NULL;
         PtrRef r1(ret);
@@ -1011,9 +1013,15 @@ long c_caller(CFunc number, void *args)
         the_game->zoom = lnumber_value(CAR(args));
         the_game->draw();
         break;
-    case CFunc::ShowHelp:
-        the_game->show_help(lstring_value(CAR(args)));
-        break;
+    case CFunc::ShowHelp: {
+        const char *message = lstring_value(CAR(args));
+        args = CDR(args);
+        if (args)
+            the_game->show_message(message, std::max(0, lnumber_value(CAR(args))));
+        else
+            the_game->show_help(message);
+    }
+    break;
 
     case CFunc::Direction:
         return current_object->direction;
@@ -1188,7 +1196,7 @@ long c_caller(CFunc number, void *args)
         int32_t x1 = current_object->x;
         int32_t y1 = current_object->y;
 
-        double angle_rad = angle_deg * (M_PI / 180.0);
+        double angle_rad = angle_deg * (ABUSE_PI / 180.0);
 
         int32_t dx = x1 - origin_x;
         int32_t dy = y1 - origin_y;
@@ -1201,6 +1209,21 @@ long c_caller(CFunc number, void *args)
 
         int32_t x2 = x1 - std::lround(dist * cos(angle_rad));
         int32_t y2 = y1 + std::lround(dist * sin(angle_rad));
+
+        // A laser may own a line light. Keep its endpoints identical to the
+        // visible, length-limited beam before the lighting pass runs.
+        for (int i = 0; i < current_object->total_lights(); ++i)
+        {
+            light_source *light = current_object->get_light(i);
+            if (light->type == LIGHT_TYPE_LINE)
+            {
+                light->x = x1;
+                light->y = y1;
+                light->xshift = x2;
+                light->yshift = y2;
+                light->calc_range();
+            }
+        }
 
         ivec2 pos1 = the_game->GameToMouse(ivec2(x1, y1 - 1), current_view);
         ivec2 pos2 = the_game->GameToMouse(ivec2(x2, y2 - 1), current_view);
@@ -1284,6 +1307,20 @@ long c_caller(CFunc number, void *args)
         return 1;
     }
     break;
+    case CFunc::SetLightLine: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        args = lcdr(args);
+        l->x = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->y = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->xshift = lnumber_value(CAR(args));
+        args = lcdr(args);
+        l->yshift = lnumber_value(CAR(args));
+        l->calc_range();
+        return 1;
+    }
+    break;
     case CFunc::SetLightXShift: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->xshift = lnumber_value(CAR(CDR(args)));
@@ -1295,6 +1332,18 @@ long c_caller(CFunc number, void *args)
         light_source *l = (light_source *)lpointer_value(CAR(args));
         l->yshift = lnumber_value(CAR(CDR(args)));
         l->calc_range();
+        return 1;
+    }
+    break;
+    case CFunc::SetLightColor: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        l->tint = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_TINT_COUNT - 1);
+        return 1;
+    }
+    break;
+    case CFunc::SetLightIntensity: {
+        light_source *l = (light_source *)lpointer_value(CAR(args));
+        l->strength = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_STRENGTH_MAX);
         return 1;
     }
     break;
@@ -1315,6 +1364,12 @@ long c_caller(CFunc number, void *args)
         break;
     case CFunc::LightYShift:
         return ((light_source *)lpointer_value(CAR(args)))->yshift;
+        break;
+    case CFunc::LightColor:
+        return ((light_source *)lpointer_value(CAR(args)))->tint;
+        break;
+    case CFunc::LightIntensity:
+        return ((light_source *)lpointer_value(CAR(args)))->strength;
         break;
     case CFunc::Xacel:
         return current_object->xacel();
@@ -1387,7 +1442,7 @@ long c_caller(CFunc number, void *args)
             return 0;
         a = CDR(a);
         if (!a)
-            cache.sfx(id)->play(127);
+            cache.sfx(id)->play(1.0f);
         else
         {
             int vol = lnumber_value(lcar(a));
@@ -1403,10 +1458,14 @@ long c_caller(CFunc number, void *args)
                     exit(EXIT_FAILURE);
                 }
                 int32_t y = lnumber_value(lcar(a));
-                the_game->play_sound(id, vol, x, y);
+                a = CDR(a);
+                float frequency_ratio = 1.0f;
+                if (a)
+                    frequency_ratio = lnumber_value(lcar(a)) / 100.0f;
+                the_game->play_sound(id, lisp_audio_gain(vol), x, y, frequency_ratio);
             }
             else
-                cache.sfx(id)->play(vol);
+                cache.sfx(id)->play(lisp_audio_gain(vol));
         }
     }
     break;
@@ -2045,11 +2104,19 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::SaveGame: {
         char *fn = lstring_value(CAR(args));
-        current_level->save(fn, 1);
+        if (demo_man.current_state() == demo_manager::PLAYING)
+        {
+            if (!demo_man.save_playback_checkpoint())
+                std::fprintf(stderr, "Unable to update the replay checkpoint\n");
+        }
+        else
+        {
+            current_level->save(fn, 1);
 
-        //AR
-        settings.quick_load = get_save_filename_prefix();
-        settings.quick_load += fn;
+            //AR
+            settings.quick_load = get_save_filename_prefix();
+            settings.quick_load += fn;
+        }
     }
     break;
     case CFunc::SetHp: {
@@ -2057,15 +2124,23 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::RequestLevelLoad: {
+        char const *requested_name = lstring_value(CAR(args));
+        if (demo_man.current_state() == demo_manager::PLAYING && strncmp(requested_name, "save", 4) == 0)
+        {
+            if (!demo_man.load_playback_checkpoint())
+                std::fprintf(stderr, "Unable to load the replay checkpoint\n");
+            break;
+        }
+
         char fn[255];
         // If a save filename is requested, prepend the savegame directory.
-        if (strncmp(lstring_value(CAR(args)), "save", 4) == 0)
+        if (strncmp(requested_name, "save", 4) == 0)
         {
-            sprintf(fn, "%s%s", get_save_filename_prefix(), lstring_value(CAR(args)));
+            sprintf(fn, "%s%s", get_save_filename_prefix(), requested_name);
         }
         else
         {
-            strcpy(fn, lstring_value(CAR(args)));
+            strcpy(fn, requested_name);
         }
         the_game->request_level_load(fn);
 
@@ -2273,26 +2348,25 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::PlaySong: {
-        if ((sound_avail & MUSIC_INITIALIZED))
+        if (sound_is_initialized())
         {
             char *fn = lstring_value(CAR(args));
             if (current_song)
             {
                 if (current_song->playing())
                     current_song->stop();
-                delete current_song;
+                current_song.reset();
             }
-            current_song = new song(fn);
+            current_song = std::make_unique<song>(fn);
             current_song->play(music_volume);
-            printf("Playing %s at volume %d\n", fn, music_volume);
+            printf("Playing %s at gain %.2f\n", fn, music_volume);
         }
     }
     break;
     case CFunc::StopSong: {
         if (current_song && current_song->playing())
             current_song->stop();
-        delete current_song;
-        current_song = NULL;
+        current_song.reset();
     }
     break;
     case CFunc::Targetable:
@@ -2398,6 +2472,9 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::GetSaveSlot: {
         the_game->reset_keymap();
+        if (demo_man.current_state() == demo_manager::PLAYING)
+            return 1;
+
         return load_game(1, symbol_str("SAVE"));
     }
     break;
@@ -2482,10 +2559,14 @@ long c_caller(CFunc number, void *args)
     case CFunc::FontHeight:
         return ((JCFont *)lpointer_value(CAR(args)))->Size().y;
         break;
-    case CFunc::ChatPrint:
+    case CFunc::ChatPrint: {
+        char *message = lstring_value(CAR(args));
         if (chat)
-            chat->put_all(lstring_value(CAR(args)));
-        break;
+            chat->put_all(message);
+        if (the_game)
+            the_game->show_message(message, CHAT_MESSAGE_HOLD_MS);
+    }
+    break;
     case CFunc::SetPlayerName: {
         view *v = current_object->controller();
         if (!v)
@@ -2540,14 +2621,13 @@ long c_caller(CFunc number, void *args)
         chatting_enabled = 1;
     }
     break;
-    case CFunc::DemoBreakEnable: {
-        demo_start = 1;
-    }
-    break;
     case CFunc::AmAClient: {
         if (main_net_cfg && main_net_cfg->state == net_configuration::CLIENT)
             return 1;
     }
+    break;
+    case CFunc::Cooperative:
+        return main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
     break;
     case CFunc::TimeForNextLevel: {
         if (main_net_cfg &&

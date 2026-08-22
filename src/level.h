@@ -128,7 +128,9 @@ class level // contain map info and objects
     level(spec_directory *sd, bFILE *fp, char const *lev_name);
     void load_fail();
     level(int width, int height, char const *name);
-    int save(char const *filename, int save_all); // save_all includes player and view information (1 = success)
+    int save(char const *filename, int save_all,
+             char const *first_name_override = NULL,
+             bool create_backup = true); // save_all includes player and view information (1 = success)
     void set_name(char const *name)
     {
         Name = strcpy((char *)realloc(Name, strlen(name) + 1), name);

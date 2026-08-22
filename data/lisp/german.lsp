@@ -160,13 +160,14 @@
 	 (setq edit_top           "Bearbeiten")
 	 (setq window_top         "Fenster")
 	 (setq menu1_load         "Level laden")
+	 (setq menu1_replay       "Replay abspielen")
 	 (setq menu1_save         "Level speichern          (S)")
 	 (setq menu1_saveas       "Level speichern als")
 	 (setq menu1_savegame     "Spiel speichern")
 	 (setq menu1_new          "Neues Level")
 	 (setq menu1_resize       "Kartengröße ändern")
 	 (setq menu1_suspend      "Nicht-Spieler Lähmung an/aus")
-	 (setq menu1_toggle       "Spiel Modus an/aus     (TAB)")
+	 (setq menu1_toggle       "Level spielen          (TAB)")
 	 (setq menu1_savepal      "Paletten speichern")
 	 (setq menu1_startc       "Cache-Profil starten")
 	 (setq menu1_endc         "Cache-Profil beenden")
@@ -186,6 +187,7 @@
 	 (setq menu2_map          "Karte an/aus           (M)")
 	 (setq menu2_view         "Blickwinkel ausschalten")
 	 (setq menu2_fps          "Bildrate/Objektzahl zeigen")
+	 (setq replay_filename    "Replay-Datei")
 
 	 (setq menu3_fore         "Vordergrund      (F)")
 	 (setq menu3_back         "Hintergrund      (B)")
@@ -216,7 +218,13 @@
 	 (setq secured " gesichert!")   ; V-A added
 	 (setq loading "Lädt %s")  ; V-A added
 
-         (setq gamma_msg "Klicken Sie die dunkelste Farbe \nauf Ihrem Monitor an, und klicken Sie OK.")
+         (setq gamma_msg "Helligkeit")
+         (setq gamma_darker "Dunkler")
+         (setq gamma_default "Standard")
+         (setq gamma_brighter "Heller")
+         (setq video_mode_msg "Anzeigemodus")
+         (setq video_windowed "Fenster")
+         (setq video_fullscreen "Vollbild")
          (setq telep_msg "Pfeiltaste  (unten) drücken, um zu teleportieren.")
 
          (defun get_train_msg (message_num)
@@ -232,7 +240,8 @@
                    (8 "Für nächsten Level Pfeiltaste (unten) drücken.")
                    (9 "Auf versteckte Wände schießen, um sie zu zerstören.")
                    (10 "Kugel anschießen, um zu aktivieren.")
-                   (11 "Pfeiltaste (unten) drücken, um zu teleportieren.")))
+                   (11 "Pfeiltaste (unten) drücken, um zu teleportieren.")
+                   (12 "Kontrollpunkt aktualisiert")))
 
  (setq not_there       "Spiel läuft nicht mehr ")
  (setq max_error       "Max Spielerzahl sollte gleich oder mehr als Min Spielerzahl sein ") ; V-C changed
@@ -287,8 +296,8 @@
 
          (setq ic_return       "Zurück ins Spiel")
          (setq ic_quit         "Abuse abbrechen")
-         (setq ic_volume       "Lautstärkeregler")
-         (setq ic_gamma        "Kontrastregler")
+         (setq ic_volume       "Audioeinstellungen")
+         (setq ic_gamma        "Videoeinstellungen")
          (setq ic_easy         "Schwierigkeitsgrad: Niete")
          (setq ic_medium   "Schwierigkeitsgrad: Leicht")
          (setq ic_hard         "Schwierigkeitsgrad: Normal")
@@ -297,14 +306,15 @@
          (setq ic_start        "Neues Spiel")
          (setq ic_sell         "Beteiligte")
 	 (setq ic_multiplayer    "Mehrspieler")
+	 (setq ic_editor         "Level-Editor")
          (setq no_file         "Datei '%s' nicht auffindbar")
          (setq SFXv            "SFX")
          (setq MUSICv          "Musik")
+         (setq soundfont       "SoundFont")
+         (setq soundfont_none  "Keine SoundFonts gefunden")
 
          (setq to_be_continued "Fortsetzung folgt.....")
          (setq no_edit         "Diese Abuse-Version hat keine Edit-Funktionen")
-         (setq no_hirez        "High-Res. gibt es nur im Edit-Modus (-edit)")
-         (setq no2             "-2 kann nicht mit -edit zusammen benutzt werden")
          (setq no_pals         "Paletten sind nicht definiert")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : size width height\n")
@@ -397,4 +407,3 @@
                             "vorgedrungen. Sie haben den Schalter umgelegt, somit die Wasserversorgung "
 			    "umgeleitet und der Verbreitung von Abuse Einhalt geboten! ")))
 )
-

@@ -9,7 +9,8 @@
 (defun hp_up ()
 	(next_picture)
 
-	(if (and (touching_bg) (with_object (bg) (give_player_health 20)))
+	(if (and (touching_bg)
+		 (apply_player_pickup (bg) (list 'give_player_health 20)))
 	   (progn
 	     (play_sound HEALTH_UP_SND 127 (x) (y))
 	     nil)
@@ -22,10 +23,14 @@
   (states "art/ball.spe" (stopped "heart" )))
 
 
+(defun give_compass_pickup ()
+  (setq has_compass 1)
+  T)
+
 (defun compass_ai ()
   (if (touching_bg)
       (progn
-	(with_object (bg) (setq has_compass 1))
+	(apply_player_pickup (bg) '(give_compass_pickup))
 	nil)
     T))
 
@@ -36,13 +41,16 @@
   (states "art/compass.spe" (stopped "compass" )))
 
 
+(defun give_special_power_pickup (power)
+  (setq special_power power)
+  T)
+
 (defun fast_ai ()
   (next_picture)
   (if (touching_bg)
-      (progn (with_object (bg)
-			  (progn
-			    (setq special_power FAST_POWER)
-	        (play_sound AMMO_SND 127 (x) (y))))
+	  (progn
+	    (apply_player_pickup (bg) (list 'give_special_power_pickup FAST_POWER))
+	    (play_sound AMMO_SND 127 (x) (y))
 	     nil) T))
 
 (defun fast_cache (type) (list nil (list fast_image)))
@@ -59,7 +67,8 @@
   (next_picture)
   (if (touching_bg)
       (progn
-	(with_object (bg) (setq special_power SNEAKY_POWER) (play_sound AMMO_SND 127 (x) (y)))
+	(apply_player_pickup (bg) (list 'give_special_power_pickup SNEAKY_POWER))
+	(play_sound AMMO_SND 127 (x) (y))
 	nil)
     T))
 
@@ -74,7 +83,8 @@
   (next_picture)
   (if (touching_bg)
       (progn
-	(with_object (bg) (setq special_power FLY_POWER) (play_sound AMMO_SND 127 (x) (y)))
+	(apply_player_pickup (bg) (list 'give_special_power_pickup FLY_POWER))
+	(play_sound AMMO_SND 127 (x) (y))
 	nil)
     T))
 
@@ -89,15 +99,17 @@
   (states "art/misc.spe" (stopped "fly")))
 
 
+(defun give_health_power_pickup ()
+  (setq special_power HEALTH_POWER)
+  (give_player_health 100)
+  T)
+
 (defun health_power_ai ()
   (next_picture)
   (if (touching_bg)
       (progn
-	(with_object (bg)
-		     (progn
-		       (setq special_power HEALTH_POWER)
-           (play_sound HEALTH_UP_SND 127 (x) (y))
-		       (give_player_health 100)))
+	(apply_player_pickup (bg) '(give_health_power_pickup))
+	(play_sound HEALTH_UP_SND 127 (x) (y))
 	nil)
     T))
 
@@ -106,4 +118,3 @@
   (flags (add_front T))
   (range 20 20)
   (states "art/misc.spe" (stopped "b_check")))
-

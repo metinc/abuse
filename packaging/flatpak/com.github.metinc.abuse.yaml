@@ -1,0 +1,156 @@
+app-id: com.github.metinc.abuse
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: abuse
+
+finish-args:
+  # Graphics and window-system access.
+  - --device=dri
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+
+  # Audio, game controllers, and multiplayer networking.
+  - --socket=pulseaudio
+  - --device=input
+  - --share=network
+
+cleanup:
+  - /bin/fluidsynth
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/aclocal
+  - /share/man
+
+modules:
+  # The 25.08 runtime provides SDL 3.2, while Abuse and SDL_mixer require
+  # SDL 3.4. Build the matching SDL release into the application instead.
+  - name: SDL3
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DSDL_SHARED=ON
+      - -DSDL_STATIC=OFF
+      - -DSDL_TEST_LIBRARY=OFF
+      - -DSDL_TESTS=OFF
+      - -DSDL_INSTALL_TESTS=OFF
+      - -DSDL_EXAMPLES=OFF
+      - -DSDL_INSTALL_DOCS=OFF
+    sources:
+      - type: git
+        url: https://github.com/libsdl-org/SDL.git
+        tag: release-3.4.0
+        commit: a962f40bbba175e9716557a25d5d7965f134a3d3
+
+  # SDL_mixer uses FluidSynth to play the game's build-generated MIDI music
+  # with the bundled SoundFonts. Only the synthesizer library is needed;
+  # audio-device and command-line integrations are handled by SDL_mixer.
+  - name: fluidsynth
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - -DBUILD_SHARED_LIBS=ON
+      - -Dosal=cpp11
+      - -Denable-alsa=OFF
+      - -Denable-aufile=OFF
+      - -Denable-dbus=OFF
+      - -Denable-jack=OFF
+      - -Denable-ladspa=OFF
+      - -Denable-libinstpatch=OFF
+      - -Denable-libsndfile=ON
+      - -Denable-native-dls=OFF
+      - -Denable-network=OFF
+      - -Denable-openmp=OFF
+      - -Denable-oss=OFF
+      - -Denable-pipewire=OFF
+      - -Denable-pulseaudio=OFF
+      - -Denable-readline=OFF
+      - -Denable-sdl3=OFF
+      - -Denable-systemd=OFF
+    sources:
+      - type: git
+        url: https://github.com/FluidSynth/fluidsynth.git
+        tag: v2.5.4
+        commit: 57c19522838331da5aeae95433b0d776734907d8
+        disable-submodules: true
+      - type: git
+        url: https://github.com/kthohr/gcem.git
+        commit: 012ae73c6d0a2cb09ffe86475f5c6fba3926e200
+        dest: gcem
+
+  - name: SDL3_mixer
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+      - -DSDLMIXER_INSTALL=ON
+      - -DSDLMIXER_TESTS=OFF
+      - -DSDLMIXER_EXAMPLES=OFF
+      - -DSDLMIXER_STRICT=ON
+      - -DSDLMIXER_DEPS_SHARED=OFF
+      - -DSDLMIXER_AIFF=OFF
+      - -DSDLMIXER_AU=OFF
+      - -DSDLMIXER_FLAC=OFF
+      - -DSDLMIXER_GME=OFF
+      - -DSDLMIXER_MOD=OFF
+      - -DSDLMIXER_MP3=OFF
+      - -DSDLMIXER_OPUS=OFF
+      - -DSDLMIXER_VOC=OFF
+      - -DSDLMIXER_VORBIS_STB=OFF
+      - -DSDLMIXER_VORBIS_VORBISFILE=OFF
+      - -DSDLMIXER_WAVPACK=OFF
+      - -DSDLMIXER_WAVE=ON
+      - -DSDLMIXER_MIDI=ON
+      - -DSDLMIXER_MIDI_FLUIDSYNTH=ON
+      - -DSDLMIXER_MIDI_FLUIDSYNTH_SHARED=OFF
+      - -DSDLMIXER_MIDI_TIMIDITY=OFF
+    sources:
+      - type: git
+        url: https://github.com/libsdl-org/SDL_mixer.git
+        tag: release-3.2.0
+        commit: cedfeef30e93db35eee6b25759117da63f8e5a4f
+        disable-submodules: true
+
+  - name: SDL3_net
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+      - -DSDLNET_INSTALL=ON
+      - -DSDLNET_INSTALL_MAN=OFF
+      - -DSDLNET_SAMPLES=OFF
+    sources:
+      - type: git
+        url: https://github.com/libsdl-org/SDL_net.git
+        tag: release-3.2.0
+        commit: 1a84a2a6b9663572f77e2eb5348d42845bac0053
+
+  - name: toml11
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_TESTING=OFF
+    sources:
+      - type: git
+        url: https://github.com/ToruNiina/toml11.git
+        tag: v4.4.0
+        commit: be08ba2be2a964edcdb3d3e3ea8d100abc26f286
+        disable-submodules: true
+
+  - name: abuse
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DABUSE_BUILD_TOOLS=OFF
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - .flatpak-builder
+          - build
+          - flatpak-build
+          - flatpak-repo

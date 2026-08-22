@@ -1,3 +1,3 @@
-(play_song "music/zerp.hmi")
+(play_song "music/zerp.mid")
 (break)
 (quit)

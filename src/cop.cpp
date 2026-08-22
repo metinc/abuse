@@ -20,9 +20,11 @@
 #include "game_object.h"
 #include "level.h"
 #include "game.h"
+#include "demo.h"
 #include "jrand.h"
 #include "clisp.h"
 #include "ant.h"
+#include "cop.h"
 #include "dev.h"
 #include <SDL3/SDL_timer.h>
 
@@ -54,26 +56,6 @@ signed char small_fire_off[24 * 2] = // x & y offset from character to end of gu
 signed char large_fire_off[24 * 2] = {18, 25, 17,  30, 15,  34, 14,  36, 10,  39, 7,   41, 4,   42, -3,  41,
                                       -8, 39, -11, 37, -14, 33, -16, 30, -18, 25, -17, 21, -14, 17, -11, 15,
                                       -7, 13, -4,  12, 3,   12, 9,   12, 12,  15, 14,  16, 15,  18, 16,  21};
-
-enum
-{
-    in_climbing_area,
-    disable_top_draw,
-    just_hit,
-    ship_pan_x,
-    special_power,
-    used_special_power,
-    last1_x,
-    last1_y,
-    last2_x,
-    last2_y,
-    has_saved_this_level,
-    r_ramp,
-    g_ramp,
-    b_ramp,
-    is_teleporting,
-    just_fired
-};
 
 enum
 {
@@ -154,7 +136,7 @@ void *top_aim(bool check_local)
 
                 int pointer_x = v->pointer_x;
                 int pointer_y = v->pointer_y;
-                if (v->local_player() && check_local)
+                if (v->local_player() && check_local && demo_man.current_state() != demo_manager::PLAYING)
                 {
                     ivec2 mouse_pos = wm->GetMousePos();
                     mouse_pos = the_game->MouseToGame(mouse_pos);
@@ -273,7 +255,7 @@ void *laser_ufun(void *args)
     {
         if (!o->lvars[fire_delay1]) // make sure we are not waiting of previous fire
         {
-            int32_t value = lnumber_value(CAR(args)->Eval());
+            int32_t value = lnumber_value(leval(CAR(args)));
             if (value) // do we have ammo ?
             {
                 o->lvars[fire_delay1] = 3;
@@ -319,7 +301,7 @@ void *top_ufun(void *args) // generic top character ai GRENADE && FIREBOMB
     {
         if (!o->lvars[fire_delay1]) // make sure we are not waiting of previous fire
         {
-            int32_t value = lnumber_value(CAR(args)->Eval());
+            int32_t value = lnumber_value(leval(CAR(args)));
             if (value) // do we have ammo ?
             {
                 o->lvars[fire_delay1] = 6;
@@ -352,7 +334,7 @@ void *plaser_ufun(void *args)
     {
         if (!o->lvars[fire_delay1]) // make sure we are not waiting of previous fire
         {
-            int32_t value = lnumber_value(CAR(args)->Eval());
+            int32_t value = lnumber_value(leval(CAR(args)));
             if (value) // do we have ammo ?
             {
                 o->lvars[fire_delay1] = 2;
@@ -382,7 +364,7 @@ void *lsaber_ufun(void *args)
     {
         if (!o->lvars[fire_delay1]) // make sure we are not waiting of previous fire
         {
-            int32_t value = lnumber_value(CAR(args)->Eval());
+            int32_t value = lnumber_value(leval(CAR(args)));
             if (value) // do we have ammo ?
             {
                 o->lvars[fire_delay1] = 1;
@@ -413,7 +395,7 @@ void *player_rocket_ufun(void *args)
     {
         if (!o->lvars[fire_delay1]) // make sure we are not waiting of previous fire
         {
-            int32_t value = lnumber_value(CAR(args)->Eval());
+            int32_t value = lnumber_value(leval(CAR(args)));
             if (value) // do we have ammo ?
             {
                 o->lvars[fire_delay1] = 6;
@@ -503,12 +485,12 @@ static void do_special_power(game_object *o, int xm, int ym, int but, game_objec
             o->set_yvel(o->yvel() - 3);
         else
             o->set_yvel(o->yvel() - 2);
-        the_game->play_sound(S_FLY_SND, 32, o->x, o->y);
+        the_game->play_sound(S_FLY_SND, 0.25f, o->x, o->y);
     }
     break;
     case FAST_POWER: {
         if ((current_level->tick_counter() % 16) == 0)
-            the_game->play_sound(S_SPEED_SND, 100, o->x, o->y);
+            the_game->play_sound(S_SPEED_SND, 0.79f, o->x, o->y);
 
         o->lvars[used_special_power] = 1;
         o->lvars[last1_x] = o->x;
@@ -704,11 +686,11 @@ void *cop_mover(int xm, int ym, int but)
             else
             {
                 if (o->hp() < 40 && (current_level->tick_counter() % 16) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
                 else if (o->hp() < 15 && (current_level->tick_counter() % 8) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
                 else if (o->hp() < 7 && (current_level->tick_counter() % 4) == 0) // if low on health play heart beat
-                    the_game->play_sound(S_LOW_HEALTH_SND, 127, o->x, o->y);
+                    the_game->play_sound(S_LOW_HEALTH_SND, 1.0f, o->x, o->y);
 
                 if (but & 1)
                     do_special_power(o, xm, ym, but, top);
@@ -1025,7 +1007,18 @@ void *sgun_ai()
     game_object *o = current_object;
 
     if (o->lvars[sgb_lifetime] == 0)
+    {
+        for (int i = 0; i < o->total_lights();)
+        {
+            light_source *light = o->get_light(i);
+            if (light->type == LIGHT_TYPE_LINE)
+                current_level->remove_light(light);
+            else
+                ++i;
+        }
         return NULL;
+    }
+
     o->lvars[sgb_lifetime]--;
 
     o->lvars[sgb_speed] = o->lvars[sgb_speed] * 6 / 5;
@@ -1051,7 +1044,7 @@ void *sgun_ai()
         int32_t y = o->y + jrand() % 4;
         game_object *n = create(S_EXPLODE5, x, y);
         current_level->add_object(n);
-        the_game->play_sound(S_LPING_SND, 50, x, y);
+        the_game->play_sound(S_LPING_SND, 0.39f, x, y);
     }
     else if (who && figures[who->otype]->get_cflag(CFLAG_HURTABLE))
     {
@@ -1131,6 +1124,10 @@ static int compare_players(const void *a, const void *b)
 
 void *score_draw()
 {
+    float visibility = the_game ? the_game->transient_message_visibility() : 1.0f;
+    if (visibility <= 0.0f)
+        return NULL;
+
     view *sorted_players[16], *local = NULL;
     int tp = 0;
     view *f = player_list;
@@ -1155,6 +1152,12 @@ void *score_draw()
         {
             int color = lnumber_value(
                 ((LArray *)((LSymbol *)l_player_text_color)->GetValue())->Get(sorted_players[i]->get_tint()));
+            if (visibility < 1.0f)
+            {
+                color = pal->find_closest(static_cast<uint8_t>(pal->red(color) * visibility),
+                                          static_cast<uint8_t>(pal->green(color) * visibility),
+                                          static_cast<uint8_t>(pal->blue(color) * visibility));
+            }
             sprintf(msg, "%3ld %s", (long)sorted_players[i]->kills, sorted_players[i]->name);
             if (sorted_players[i] == local)
                 strcat(msg, " <<");

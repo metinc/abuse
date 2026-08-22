@@ -384,7 +384,7 @@ int pmenu_item::handle_event(Jwindow *parent, int x, int y, int w, int top, Even
         else
         {
             if (ev.type == EV_MOUSE_BUTTON && n)
-                wm->Push(new Event(id, (char *)this));
+                wm->PushMessage(id, this);
             return 1;
         }
     }
@@ -468,7 +468,7 @@ int pmenu::handle_event(Event &ev, image *screen)
             pmenu_item *r = p->find_key(ev.key);
             if (r)
             {
-                wm->Push(new Event(r->id, (char *)r));
+                wm->PushMessage(r->id, r);
                 return 1;
             }
         }

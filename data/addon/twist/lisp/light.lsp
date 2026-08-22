@@ -6,11 +6,13 @@
   (select (aistate)
 	  (0 (progn (link_light (add_light 0 (x) (y) 1 (aitype) 0 0))
 		    (go_state 1)))
-	  (1 (if (>= (state_time) 1)
-		 (let ((l (get_light 0)))
-		   (delete_light l)
-		   nil)
-	       T))))
+	  (1 (let ((l (get_light 0))
+		   (intensity (- 63 (* (state_time) 9))))
+	       (if (<= intensity 0)
+		   (progn (delete_light l)
+			  nil)
+		 (progn (set_light_intensity l intensity)
+			T))))))
 
 (def_char QUICK_EXP_LIGHT
   (funs (ai_fun   quick_explo_light)

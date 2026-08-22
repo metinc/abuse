@@ -301,7 +301,7 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
     return 1;
 }
 
-extern int start_running, demo_start, start_edit;
+extern int start_running, start_edit;
 
 void net_configuration::error(char const *message)
 {
@@ -513,6 +513,14 @@ int net_configuration::get_options(int server)
                 {
                 case GAMEMODE_DEATHMATCH:
                 case GAMEMODE_COOP: {
+                    // Rebuilding the dialog must not discard text the user
+                    // entered before changing the game mode.
+                    if (ifield *name_field = inm.get(NET_NAME))
+                    {
+                        strncpy(name, name_field->read(), sizeof(name) - 1);
+                        name[sizeof(name) - 1] = '\0';
+                    }
+
                     // Game mode changed - update the mode and restart dialog
                     if (ev.message.id == GAMEMODE_COOP)
                         game_mode = COOP;
@@ -530,7 +538,6 @@ int net_configuration::get_options(int server)
                     }
                     else
                     {
-                        ((button *)inm.get(NET_OK))->push();
                         inm.redraw();
                     }
                 }

@@ -260,22 +260,27 @@ sdl_datagram_socket::sdl_datagram_socket(const uint16_t port, const bool allow_b
                                          NET_Address *local_address)
     : socket(nullptr), default_peer(peer ? static_cast<ip_address *>(peer->copy()) : nullptr)
 {
-    SDL_PropertiesID props = 0;
+    SDL_PropertiesID props = SDL_CreateProperties();
+    if (!props || !SDL_SetBooleanProperty(props, NET_PROP_DATAGRAM_SOCKET_REUSEADDR_BOOLEAN, false))
+    {
+        if (props)
+            SDL_DestroyProperties(props);
+        failed = true;
+        return;
+    }
+
     if (allow_broadcast)
     {
-        props = SDL_CreateProperties();
-        if (!props || !SDL_SetBooleanProperty(props, NET_PROP_DATAGRAM_SOCKET_ALLOW_BROADCAST_BOOLEAN, true))
+        if (!SDL_SetBooleanProperty(props, NET_PROP_DATAGRAM_SOCKET_ALLOW_BROADCAST_BOOLEAN, true))
         {
-            if (props)
-                SDL_DestroyProperties(props);
+            SDL_DestroyProperties(props);
             failed = true;
             return;
         }
     }
 
     socket = NET_CreateDatagramSocket(local_address, port, props);
-    if (props)
-        SDL_DestroyProperties(props);
+    SDL_DestroyProperties(props);
     failed = socket == nullptr;
 }
 
@@ -337,15 +342,32 @@ int sdl_datagram_socket::read(void *buf, const int size, net_address **addr)
 
 tcpip_protocol::~tcpip_protocol()
 {
+    shutdown();
+}
+
+void tcpip_protocol::shutdown_at_exit()
+{
+    tcpip.shutdown();
+}
+
+void tcpip_protocol::shutdown()
+{
     cleanup();
     if (initialized)
+    {
         NET_Quit();
+        initialized = false;
+    }
 }
 
 bool tcpip_protocol::ensure_initialized()
 {
     if (!initialized)
+    {
         initialized = NET_Init();
+        if (initialized && !shutdown_registered)
+            shutdown_registered = std::atexit(shutdown_at_exit) == 0;
+    }
     return initialized;
 }
 

@@ -68,9 +68,12 @@ class tcpip_protocol final : public net_protocol
     std::vector<DiscoveryResponder> responders;
 
     bool initialized{false};
+    bool shutdown_registered{false};
     std::vector<sdl_net_socket *> sockets;
 
     bool ensure_initialized();
+    void shutdown();
+    static void shutdown_at_exit();
     int handle_notification() const;
     int handle_responder();
     int handle_responder(net_socket *responder);

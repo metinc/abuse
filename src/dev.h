@@ -13,18 +13,18 @@
 
 #include "game.h"
 #include "light.h"
-#include "console.h"
+#include "ui/console.h"
 #include "timing.h"
 
 /* Cleaned-up externs */
 extern int confirm_quit();
 
 extern int scale_mult, scale_div;
+extern int start_edit;
 extern char level_file[100];
 extern image *small_render;
 
 void dev_init(int argc, char **argv);
-void AR_dev_init();
 
 void dev_cleanup();
 void toggle_edit_mode();
@@ -86,9 +86,11 @@ class dev_controll
     int area_x1, area_y1, area_x2, area_y2;
     area_controller *current_area;
     time_marker last_area_click;
+    bool mouse_panning;
+    ivec2 mouse_pan_last;
 
   public:
-    Jwindow *backw, *forew, *commandw, *modew, *omenu, *oedit, *ledit, *music_window, *pmenu, *show_menu, *lightw, *aiw,
+    Jwindow *backw, *forew, *commandw, *modew, *omenu, *oedit, *ledit, *pmenu, *show_menu, *lightw, *aiw,
         *ambw, *tbw, *area_win, *search_window;
 
     int fg_w, bg_w, fg_scale, bg_scale, yellow;
@@ -100,7 +102,6 @@ class dev_controll
     void toggle_fgw();
     void toggle_bgw();
     void toggle_omenu();
-    void toggle_music_window();
     void toggle_pmenu();
     void toggle_show_menu();
     void toggle_light_window();

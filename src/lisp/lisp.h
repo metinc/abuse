@@ -272,6 +272,7 @@ long lfixed_point_value(void *c);
 void *lisp_atom(void *i);
 LObject *lcdr(void *c);
 LObject *lcar(void *c);
+LObject *leval(LObject *object);
 void *lisp_eq(void *n1, void *n2);
 void *lisp_equal(void *n1, void *n2);
 void *eval_block(void *list);

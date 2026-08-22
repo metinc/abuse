@@ -8,6 +8,5 @@ Justin
 # Run the game with this addon:
 abuse -lsf addon/pong/pong.lsp
 
-# Run the editor with this addon:
-abuse -lsf addon/pong/pong.lsp -edit
-
+# To edit this addon, start it with the command above and select Level Editor
+# from the main menu.

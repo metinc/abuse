@@ -28,7 +28,7 @@ extern LSymbol *l_difficulty, *l_easy, *l_hard, *l_medium, *l_extreme, *l_max_hp
 
 // FIXME: port these to LSymbol
 extern void *l_main_menu, *l_logo, *l_state_art, *l_default_abilities, *l_abilities, *l_default_ai_function,
-    *l_state_sfx, *l_morph, *l_song_list, *l_filename, *l_sfx_directory, *l_default_font, *l_range, *l_joy_file,
+    *l_state_sfx, *l_morph, *l_song_list, *l_filename, *l_sfx_directory, *l_default_font, *l_range,
     *l_death_handler, *l_title_screen, *l_console_font, *l_fields, *l_FIRE, *l_fire_object, *l_cop_dead_parts,
     *l_restart_player, *l_help_screens, *l_save_order;
 

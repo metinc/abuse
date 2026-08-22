@@ -159,13 +159,14 @@ plan \n"
 	 (setq edit_top           "Editer")
 	 (setq window_top         "Fenêtres")
 	 (setq menu1_load         "Lancer niveau")
+	 (setq menu1_replay       "Lire le replay")
 	 (setq menu1_save         "Sauvegarder niveau (S)")
 	 (setq menu1_saveas       "Enregistrer sous")
 	 (setq menu1_savegame     "Sauvegarder jeu")
 	 (setq menu1_new          "Nouveau niveau")
 	 (setq menu1_resize       "Taille de la carte")
 	 (setq menu1_suspend      "Découple toutes les fonctions")
-	 (setq menu1_toggle       "Activer/désactiver mode jeu  (TAB)")
+	 (setq menu1_toggle       "Jouer au niveau (TAB)")
 	 (setq menu1_savepal      "Sauvegarder palettes         ")
 	 (setq menu1_startc       "Début de l'antémémoire   ")
 	 (setq menu1_endc         "Fin de l'antémémoire     ")
@@ -185,6 +186,7 @@ plan \n"
 	 (setq menu2_map          "Activer/désactiver carte        (?)")
 	 (setq menu2_view         "Activer/désactiver changement de vue")
 	 (setq menu2_fps          "Afficher nombre d'objets")
+	 (setq replay_filename    "Fichier replay")
 
 	 (setq menu3_fore         "Premier plan     (f)")
 	 (setq menu3_back         "Arrière-plan     (b)")
@@ -215,7 +217,13 @@ plan \n"
 	 (setq secured " Terminé !")   ; V-A added
 	 (setq loading "En train de charger %s")  ; V-A added
 
-         (setq gamma_msg "Sélectionnez la couleur la plus sombre visible\nsur l'écran, puis cliquez sur la case à cocher")
+         (setq gamma_msg "Luminosité")
+         (setq gamma_darker "Plus sombre")
+         (setq gamma_default "Par défaut")
+         (setq gamma_brighter "Plus clair")
+         (setq video_mode_msg "Mode d'affichage")
+         (setq video_windowed "Fenêtre")
+         (setq video_fullscreen "Plein écran")
 
 
 (setq telep_msg "Appuyez sur la flèche bas pour vous téléporter")
@@ -234,6 +242,7 @@ plan \n"
                    (9 "Tirez sur les parois destructibles pour les démolir")
                    (10 "Tirez sur l'interrupteur sphérique pour l'activer")
                    (11 "Appuyez sur la flèche bas pour vous téléporter")
+                   (12 "Point de contrôle mis à jour")
                    ))
 	 (setq not_there       "Ce jeu s'est arrêté")
 	 (setq max_error       "Nombre max. de joueurs doit être supérieur ou égal au nombre min. de joueurs") ; V-C changed
@@ -284,8 +293,8 @@ plan \n"
 
          (setq ic_return       "Retourner au jeu")
          (setq ic_quit         "Sortir du jeu")
-         (setq ic_volume       "Contrôle du volume")
-         (setq ic_gamma        "Luminosité")
+         (setq ic_volume       "Paramètres audio")
+         (setq ic_gamma        "Paramètres vidéo")
          (setq ic_easy         "Difficulté : Mauviette")
          (setq ic_medium       "Difficulté : Pas de problème")
          (setq ic_hard         "Difficulté : C'est pas gagné")
@@ -294,14 +303,15 @@ plan \n"
          (setq ic_start        "Démarrer nouveau jeu")
          (setq ic_sell         "Générique")
          (setq ic_multiplayer  "Multijoueur")
+	 (setq ic_editor       "Éditeur de niveaux")
          (setq no_file         "Fichier introuvable '%s'")
          (setq SFXv            "Son")
          (setq MUSICv          "Volume")
+         (setq soundfont       "Banque de sons")
+         (setq soundfont_none  "Aucune banque de sons trouvée")
 
          (setq to_be_continued "A suivre.....")
          (setq no_edit         "Cette version du jeu est dépourvue de l'éditeur")
-         (setq no_hirez        "La haute résolution n'est disponible qu'avec le mode éditer (-edit)")
-         (setq no2             "Ne peut pas utiliser -2 avec -edit")
          (setq no_pals         "Aucune palette définie")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : taille largeur hauteur\n")
@@ -400,6 +410,3 @@ plan \n"
 			    "VOUS L'AVEZ ECHAPPÉ BELLE !"))
 	 )
 )
-
-
-

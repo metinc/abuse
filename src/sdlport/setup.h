@@ -15,14 +15,21 @@
 
 #include <string>
 
+inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
+inline constexpr int GAMEPAD_BINDING_LEFT_TRIGGER = 1000;
+inline constexpr int GAMEPAD_BINDING_RIGHT_TRIGGER = 1001;
+
 class Settings
 {
   public:
     //screen
-    int fullscreen; //0 - window, 1 - borderless desktop fullscreen, 2 - exclusive fullscreen
-    bool borderless; //borderless window
+    bool fullscreen; //borderless desktop fullscreen
+    bool borderless; //remove decorations in windowed mode
     short xres; //game screen resolution
     short yres;
+    short editor_xres; //editor framebuffer resolution
+    short editor_yres;
+    bool widescreen_support; //expand the framebuffer to the desktop aspect ratio
     short scale; //windows scale
     bool linear_filter; //"antialias"
     int hires; //enable hires screens and icons
@@ -31,17 +38,15 @@ class Settings
     bool mono;
     bool no_sound;
     bool no_music;
-    int volume_sound; //0-127
-    int volume_music; //0-127
-    std::string soundfont; // Path to custom soundfont file
+    double volume_sound; //0.0-1.0
+    double volume_music; //0.0-1.0
+    std::string soundfont; // SoundFont filename or path
 
     //random
     bool local_save;
-    bool grab_input; //lock the input to the window
-    bool editor; //enable editor mode
+    bool grab_input; //confine the mouse to the rendered game area in windowed mode
     short physics_update; //custom pysics update time in miliseconds
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
-    short mouse_scale; //mouse scaling in fullscreen, 0 - match desktop, 1 - match game screen
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     std::string language;
     //
@@ -49,6 +54,13 @@ class Settings
     std::string quick_load; //quick load
     bool player_touching_console; //only allow quicksave if player is touching the console
     bool skip_intro;
+    bool menu_demos;
+    bool record_replays;
+
+    double gamma;
+
+    //settings shared with the Lisp game layer
+    std::string difficulty;
 
     //cheats
     bool cheat_god, cheat_bullettime;
@@ -62,10 +74,13 @@ class Settings
     int b4; //weapon next
 
     //controller settings
+    bool gamepad_enabled;
+    bool ctr_aim_invert_y;
     int ctr_aim_correctx; //for some reason game adds black bars on widescreen resolutions and it messes up crosshair position
     int ctr_cd; //crosshair distance from player
     int ctr_rst_s; //right stick sensitivity
-    int ctr_rst_dz, ctr_lst_dzx, ctr_lst_dzy; //dead zones
+    int ctr_rst_dz, ctr_lst_dzx, ctr_lst_dzy; //stick dead zones
+    int ctr_trigger_threshold, ctr_trigger_hysteresis;
     //
     float ctr_aim_x, ctr_aim_y; //state of right stick
     float ctr_mouse_x, ctr_mouse_y; //use left stick to move mouse...gave up
@@ -75,15 +90,33 @@ class Settings
     std::string ctr_lst, ctr_rst; //stick buttons
     std::string ctr_lsr, ctr_rsr; //shoulder buttons
     std::string ctr_ltg, ctr_rtg; //trigger buttons
+    std::string ctr_dpad_up, ctr_dpad_down, ctr_dpad_left, ctr_dpad_right;
+    std::string ctr_start, ctr_back, ctr_guide;
 
+    int ctr_menu_confirm, ctr_menu_cancel;
     int ctr_f5, ctr_f9;
 
     Settings();
 
-    bool CreateConfigFile();
+    bool ApplyWidescreen();
+    bool GetEditorFramebufferSize(short &width, short &height) const;
+    bool Load();
+    bool Save() const;
+    void BeginCommandLineOverrides();
+    void SetFullscreen(bool enabled);
+    void SetSoundFont(const std::string &path);
 
-    bool ControllerButton(std::string c, std::string b);
-    bool ReadConfigFile();
+  private:
+    bool ReadTomlFile();
+    void Validate();
+
+    bool command_line_overrides = false;
+    bool file_fullscreen = true;
+    short file_xres = 320, file_yres = 200;
+    short file_editor_xres = 640, file_editor_yres = 400;
+    bool file_widescreen_support = true;
+    bool file_no_sound = false, file_linear_filter = false, file_mono = false;
+    bool file_local_save = false;
 };
 
 #endif // _SETUP_H_

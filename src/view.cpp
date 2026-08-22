@@ -17,7 +17,8 @@
 #include <unistd.h>
 #endif
 #ifdef WIN32
-#include <Windows.h>
+#include <winsock2.h>
+#include <windows.h>
 // Windows preprocessor magic shadows JWindowManager's CreateWindow function.
 #undef CreateWindow
 #endif
@@ -33,10 +34,11 @@
 #include "dev.h"
 #include "jrand.h"
 #include "clisp.h"
+#include "cop.h"
 #include "demo.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "nfserver.h"
-#include "chat.h"
+#include "ui/chat.h"
 #include <SDL3/SDL_timer.h>
 #include "netcfg.h"
 
@@ -131,10 +133,8 @@ int32_t view::xoff()
     int32_t distance = pan_x - pan_x_last;
     int32_t pan_x_interpolated = pan_x_last + std::round(distance * this->interpolation_ratio);
 
-    if (!m_focus)
-        return pan_x_interpolated;
-
-    return std::max(0, m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan_x_interpolated);
+    const int32_t offset = unclamped_xoff(pan_x_interpolated);
+    return m_focus ? std::max(0, offset) : offset;
 }
 
 int32_t view::yoff()
@@ -142,10 +142,59 @@ int32_t view::yoff()
     int32_t distance = pan_y - pan_y_last;
     int32_t pan_y_interpolated = pan_y_last + std::round(distance * this->interpolation_ratio);
 
-    if (!m_focus)
-        return pan_y_interpolated;
+    const int32_t offset = unclamped_yoff(pan_y_interpolated);
+    return m_focus ? std::max(0, offset) : offset;
+}
 
-    return std::max(0, m_lastpos.y - (m_bb.y - m_aa.y + 1) / 2 - m_shift.y + pan_y_interpolated);
+int32_t view::unclamped_xoff(int32_t pan) const
+{
+    if (!m_focus)
+        return pan;
+
+    return m_lastpos.x - (m_bb.x - m_aa.x + 1) / 2 + m_shift.x + pan;
+}
+
+int32_t view::unclamped_yoff(int32_t pan) const
+{
+    if (!m_focus)
+        return pan;
+
+    const int rendered_height = m_bb.y - m_aa.y + 1;
+    const int camera_height = sbar.camera_view_height(rendered_height, m_aa.y);
+    return m_lastpos.y - camera_height / 2 - m_shift.y + pan;
+}
+
+void view::pan_editor(int32_t x, int32_t y)
+{
+    const int32_t raw_xoff = unclamped_xoff(pan_x);
+    const int32_t raw_yoff = unclamped_yoff(pan_y);
+
+    // The rendered offsets stop at zero, but the camera calculation can still
+    // be negative near the top or left level edge. Base the drag on what is
+    // actually visible so that hidden distance does not consume mouse motion.
+    const int32_t current_xoff = std::max(0, raw_xoff);
+    const int32_t current_yoff = std::max(0, raw_yoff);
+    const int32_t target_xoff = std::max(0, current_xoff + x);
+    const int32_t target_yoff = std::max(0, current_yoff + y);
+
+    pan_x += target_xoff - raw_xoff;
+    pan_y += target_yoff - raw_yoff;
+    pan_x_last = pan_x;
+    pan_y_last = pan_y;
+}
+
+void view::reset_camera()
+{
+    pan_x = 0;
+    pan_y = 0;
+    pan_x_last = 0;
+    pan_y_last = 0;
+    no_xleft = 0;
+    no_xright = 0;
+    no_ytop = 0;
+    no_ybottom = 0;
+    interpolation_ratio = 1.0f;
+    m_lastpos = m_focus ? ivec2(m_focus->x, m_focus->y) : ivec2(0);
 }
 
 // updates the camera position to follow the player
@@ -167,28 +216,16 @@ void view::update_scroll(float interpolation_ratio)
         m_lastpos.y = std::min(m_lastpos.y, m_focus->y + no_ytop);
 }
 
-static char cur_user_name[20] = {0};
+static char cur_user_name[100] = {0};
 
 char const *get_login()
 {
     if (cur_user_name[0])
         return cur_user_name;
 
-#if defined __CELLOS_LV2__
-    /* FIXME: retrieve login name */
-    return "Player";
-#elif defined WIN32
-    DWORD bufferSize = 120;
-    TCHAR *login;
-    login = (TCHAR *)malloc(bufferSize * sizeof(TCHAR));
-    if (GetUserName(login, &bufferSize))
-    {
-        return (char *)login;
-    }
-    else
-    {
-        return "unknown";
-    }
+#if defined WIN32
+    DWORD buffer_size = sizeof(cur_user_name);
+    return GetUserNameA(cur_user_name, &buffer_size) ? cur_user_name : "unknown";
 #else
     char const *login = getlogin();
     return login ? login : "unknown";
@@ -197,7 +234,8 @@ char const *get_login()
 
 void set_login(char const *name)
 {
-    strncpy(cur_user_name, name, 20);
+    strncpy(cur_user_name, name, sizeof(cur_user_name) - 1);
+    cur_user_name[sizeof(cur_user_name) - 1] = '\0';
 }
 
 view::view(game_object *focus, view *Next, int number)
@@ -324,17 +362,25 @@ uint16_t make_sync()
 
 void view::get_input()
 {
-    int sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4;
+    int sug_x = 0, sug_y = 0, sug_b1 = 0, sug_b2 = 0, sug_b3 = 0, sug_b4 = 0;
     ivec2 sug_p(0, 0);
 
-    get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
-    if (m_focus)
+    if (chat && chat->showing())
     {
-        sug_p = the_game->MouseToGame(last_demo_mpos);
-        if (last_demo_mbut & 1)
-            sug_b2 = 1;
-        if (last_demo_mbut & 2)
-            sug_b1 = 1;
+        // Keep the aim fixed while the pointer is being used by the chat UI.
+        sug_p = ivec2(pointer_x, pointer_y);
+    }
+    else
+    {
+        get_movement(0, sug_x, sug_y, sug_b1, sug_b2, sug_b3, sug_b4);
+        if (m_focus)
+        {
+            sug_p = the_game->MouseToGame(last_demo_mpos);
+            if (last_demo_mbut & 1)
+                sug_b2 = 1;
+            if (last_demo_mbut & 2)
+                sug_b1 = 1;
+        }
     }
 
     if (view_changed())
@@ -412,9 +458,21 @@ void view::add_chat_key(int key) // return string if buf is complete
         //AR cheats - tmp console solution
         std::string chat_text = m_chat_buf;
 
-        if (chat_text.empty() || chat_text == "exit" || chat_text == "quit")
+        if (chat_text.empty())
         {
-            chat->toggle();
+            // Enter on an empty input only closes this player's local chat UI.
+            // It is not a chat message and must not affect another peer's window.
+            if (local_player() && chat && chat->showing())
+                chat->toggle();
+            m_chat_buf[0] = 0;
+            if (local_player() && chat)
+                chat->draw_user(m_chat_buf);
+            return;
+        }
+        else if (chat_text == "exit" || chat_text == "quit")
+        {
+            if (local_player() && chat && chat->showing())
+                chat->toggle();
         }
         else if (chat_text == "god")
         {
@@ -581,15 +639,21 @@ int view::process_input(char cmd, uint8_t *&pk) // return 0 if something went wr
         return 1;
     }
     break;
-    case SCMD_KEYPRESS:
-        set_key_down(*(pk++), 1);
-        break;
+    case SCMD_KEYPRESS: {
+        const int key = *(pk++);
+        if (demo_man.current_state() != demo_manager::PLAYING || key != JK_ESC)
+            set_key_down(key, 1);
+    }
+    break;
     case SCMD_EXT_KEYPRESS:
         set_key_down(*(pk++) + 256, 1);
         break;
-    case SCMD_KEYRELEASE:
-        set_key_down(*(pk++), 0);
-        break;
+    case SCMD_KEYRELEASE: {
+        const int key = *(pk++);
+        if (demo_man.current_state() != demo_manager::PLAYING || key != JK_ESC)
+            set_key_down(key, 0);
+    }
+    break;
     case SCMD_EXT_KEYRELEASE:
         set_key_down(*(pk++) + 256, 0);
         break;
@@ -768,7 +832,8 @@ void recalc_local_view_space()
                     f->suggest.cx2 = Xres - 2;
 
                 f->suggest.cy1 = y;
-                f->suggest.cy2 = h - (total_weapons ? 33 : 0);
+                f->suggest.cy2 = !sbar.is_visible() || sbar.overlays_view() ? h - 1
+                                                                           : h - (total_weapons ? 33 : 0);
 
                 f->suggest.shift = f->m_shift;
                 f->suggest.pan_x = f->pan_x;
@@ -856,9 +921,21 @@ void view::reset_player()
 {
     if (m_focus)
     {
+        const bool use_coop_checkpoint =
+            main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP &&
+            figures[m_focus->otype]->tv > coop_checkpoint_y && m_focus->lvars[coop_checkpoint_active];
+        const ivec2 checkpoint = use_coop_checkpoint
+                                    ? ivec2(m_focus->lvars[coop_checkpoint_x], m_focus->lvars[coop_checkpoint_y])
+                                    : ivec2(0);
+
         game_object *start = current_level ? current_level->get_random_start(320, m_focus->controller()) : 0;
         m_focus->defaults();
-        if (start)
+        if (use_coop_checkpoint)
+        {
+            m_focus->x = checkpoint.x;
+            m_focus->y = checkpoint.y;
+        }
+        else if (start)
         {
             m_focus->x = start->x;
             m_focus->y = start->y;
@@ -883,6 +960,13 @@ void view::reset_player()
             current_object = m_focus;
             ((LSymbol *)figures[m_focus->otype]->get_fun(OFUN_CONSTRUCTOR))->EvalUserFunction(NULL);
             current_object = o;
+        }
+
+        if (use_coop_checkpoint)
+        {
+            m_focus->lvars[coop_checkpoint_active] = 1;
+            m_focus->lvars[coop_checkpoint_x] = checkpoint.x;
+            m_focus->lvars[coop_checkpoint_y] = checkpoint.y;
         }
         sbar.redraw(main_screen);
 
@@ -1434,21 +1518,44 @@ void process_packet_commands(uint8_t *pk, int size)
         }
         break;
 
+        case SCMD_SET_DIFFICULTY: {
+            const uint8_t difficulty = *(pk++);
+            LObject *host_difficulty = l_hard;
+            if (difficulty == NET_DIFFICULTY_EASY)
+                host_difficulty = l_easy;
+            else if (difficulty == NET_DIFFICULTY_MEDIUM)
+                host_difficulty = l_medium;
+            else if (difficulty == NET_DIFFICULTY_EXTREME)
+                host_difficulty = l_extreme;
+
+            if (l_difficulty->GetValue() != host_difficulty)
+            {
+                DEBUG_LOG("Applying host difficulty %d", difficulty);
+                l_difficulty->SetValue(host_difficulty);
+            }
+        }
+        break;
+
         case SCMD_SYNC: {
             uint16_t x;
             memcpy(&x, pk, 2);
             pk += 2;
             x = lstl(x);
+
+            // Demo files can outlive changes to the simulation that produced
+            // their sync markers. They cannot resynchronize from the network,
+            // so consume the marker without treating it as a network error.
             if (demo_man.current_state() == demo_manager::PLAYING)
-                sync_uint16 = make_sync();
+                break;
 
             if (sync_uint16 == -1)
                 sync_uint16 = x;
             else if (x != sync_uint16 && !already_reloaded)
             {
                 printf("out of sync %d (packet=%d, calced=%d)\n", current_level->tick_counter(), x, sync_uint16);
-                if (demo_man.current_state() == demo_manager::NORMAL)
-                    net_reload();
+                // Playback packets were handled above. A live network game
+                // must also resynchronize while a replay is being recorded.
+                net_reload();
                 already_reloaded = 1;
             }
         }

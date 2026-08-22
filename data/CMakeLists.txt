@@ -271,8 +271,7 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/levels)
 
 INSTALL(FILES
-    levels/mac/demo1.spe levels/mac/demo2.spe levels/mac/demo4.spe
-    levels/mac/demo5.spe levels/mac/end.spe levels/mac/flevel12.spe
+    levels/mac/end.spe levels/mac/flevel12.spe
     levels/mac/level00.spe levels/mac/level01.spe levels/mac/level02.spe
     levels/mac/level05.spe levels/mac/level07.spe levels/mac/level08.spe
     levels/mac/level09.spe levels/mac/level12.spe levels/mac/level13.spe
@@ -319,12 +318,10 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/addon/twist/levels)
 
 INSTALL(FILES
-    levels/demo1.dat
-DESTINATION ${ASSETDIR}/levels)
-
-INSTALL(FILES levels/mac/demo1.dat levels/mac/demo2.dat
-    levels/mac/demo3.dat levels/mac/demo4.dat levels/mac/demo5.dat
-DESTINATION ${ASSETDIR}/levels/mac)
+    replays/demo1.dat replays/demo2.dat replays/demo3.dat
+    replays/demo4.dat replays/demo5.dat
+    replays/demo1.spe replays/demo2.spe replays/demo4.spe replays/demo5.spe
+DESTINATION ${ASSETDIR}/replays)
 
 INSTALL(FILES
     addon/aliens/aliens.txt
@@ -355,24 +352,57 @@ INSTALL(FILES
     user/defaults.prp
 DESTINATION ${ASSETDIR})
 
-# Check if we have the non-free data
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/soundfonts)
-    message(WARNING "Non-free soundfonts found. Build will include non-free data!")
-    INSTALL(FILES
-        soundfonts/AWE64\ Gold\ Presets.sf2  soundfonts/Roland\ SC-55\ Presets.sf2
-    DESTINATION ${ASSETDIR}/soundfonts)
-else()
-    message(WARNING "Non-free soundfonts not found, sound will not be enabled.")
-endif()
+INSTALL(FILES
+    user/settings.toml
+DESTINATION ${ASSETDIR}/user)
+
+INSTALL(FILES
+    soundfonts/FluidR3\ GM.sf2
+    soundfonts/MuseScore.sf3
+    soundfonts/TimGM.sf2
+    soundfonts/LICENSES.md
+    ../COPYING.GPL
+DESTINATION ${ASSETDIR}/soundfonts)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/music)
     message(WARNING "Non-free music found. Build will include non-free data!")
-    INSTALL(FILES
-        music/intro.hmi music/victory.hmi
-        music/abuse00.hmi music/abuse01.hmi music/abuse02.hmi music/abuse03.hmi
-        music/abuse04.hmi music/abuse06.hmi music/abuse08.hmi music/abuse09.hmi
-        music/abuse11.hmi music/abuse13.hmi music/abuse15.hmi music/abuse17.hmi
-    DESTINATION ${ASSETDIR}/music)
+    if(CMAKE_CROSSCOMPILING)
+        if(NOT ABUSE_HMI2MID_EXECUTABLE OR NOT EXISTS "${ABUSE_HMI2MID_EXECUTABLE}")
+            message(FATAL_ERROR
+                "Cross-compiling music requires a native abuse-hmi2mid executable; "
+                "set ABUSE_HMI2MID_EXECUTABLE to its path")
+        endif()
+        set(HMI2MID_COMMAND "${ABUSE_HMI2MID_EXECUTABLE}")
+        set(HMI2MID_DEPENDENCY "${ABUSE_HMI2MID_EXECUTABLE}")
+    else()
+        set(HMI2MID_COMMAND "$<TARGET_FILE:abuse-hmi2mid>")
+        set(HMI2MID_DEPENDENCY abuse-hmi2mid)
+    endif()
+    set(HMI_MUSIC_FILES
+        intro.hmi victory.hmi
+        abuse00.hmi abuse01.hmi abuse02.hmi abuse03.hmi
+        abuse04.hmi abuse06.hmi abuse08.hmi abuse09.hmi
+        abuse11.hmi abuse13.hmi abuse15.hmi abuse17.hmi)
+    set(MIDI_MUSIC_FILES)
+    foreach(HMI_MUSIC_FILE IN LISTS HMI_MUSIC_FILES)
+        get_filename_component(MUSIC_NAME "${HMI_MUSIC_FILE}" NAME_WE)
+        set(MIDI_MUSIC_FILE "${CMAKE_CURRENT_BINARY_DIR}/music/${MUSIC_NAME}.mid")
+        add_custom_command(
+            OUTPUT "${MIDI_MUSIC_FILE}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/music"
+            COMMAND ${HMI2MID_COMMAND}
+                "${CMAKE_CURRENT_SOURCE_DIR}/music/${HMI_MUSIC_FILE}"
+                "${MIDI_MUSIC_FILE}"
+            DEPENDS
+                "${CMAKE_CURRENT_SOURCE_DIR}/music/${HMI_MUSIC_FILE}"
+                ${HMI2MID_DEPENDENCY}
+            COMMENT "Converting ${HMI_MUSIC_FILE} to Standard MIDI"
+            VERBATIM)
+        list(APPEND MIDI_MUSIC_FILES "${MIDI_MUSIC_FILE}")
+    endforeach()
+    add_custom_target(abuse-midi ALL DEPENDS ${MIDI_MUSIC_FILES})
+    add_dependencies(abuse abuse-midi)
+    INSTALL(FILES ${MIDI_MUSIC_FILES} DESTINATION ${ASSETDIR}/music)
 else()
     message(WARNING "Non-free music not found, it will not be included.")
 endif()

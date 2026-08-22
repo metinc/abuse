@@ -296,19 +296,20 @@ int game_server::process_client_command(player_client *c)
         if (reload_state)
         {
             DEBUG_LOG("Client %d requesting reload while reload in progress", c->client_id);
+            const uint8_t ack = SRVCMD_RELOAD_START_OK;
+            if (c->comm->write(/* server_command */ &ack, 1) != 1)
+            {
+                DEBUG_LOG("Failed to acknowledge reload to client %d", c->client_id);
+                c->set_delete_me(1);
+                return 0;
+            }
         }
         else
         {
-            DEBUG_LOG("Client %d marked for reload start", c->client_id);
+            // The snapshot does not exist yet. start_reload() sends the ACK
+            // after the server has saved the authoritative level state.
+            DEBUG_LOG("Client %d waiting for server reload to start", c->client_id);
             c->set_need_reload_start_ok(1);
-        }
-
-        uint8_t ack = SRVCMD_RELOAD_START_OK;
-        if (c->comm->write(/* server_command */ &ack, 1) != 1)
-        {
-            DEBUG_LOG("Failed to acknowledge reload to client %d", c->client_id);
-            c->set_delete_me(1);
-            return 0;
         }
 
         return 1;
@@ -364,7 +365,11 @@ int game_server::process_net()
                     player_client *f = player_list, *found = NULL;
                     for (; !found && f; f = f->next)
                     {
-                        if (f->has_joined() && from->equal(f->data_address))
+                        // More than one client can legitimately have the same
+                        // IP address. The UDP source port is part of the game
+                        // endpoint and distinguishes those clients.
+                        if (f->has_joined() && from->equal(f->data_address) &&
+                            from->get_port() == f->data_address->get_port())
                             found = f;
                     }
 

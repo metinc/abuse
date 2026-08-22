@@ -26,6 +26,9 @@
 #include "view.h"
 #include "id.h"
 
+#include <string>
+#include <vector>
+
 #define MAPFW 100
 #define MAPFH 100
 #define MAPBW 100
@@ -36,7 +39,6 @@
 #define HELP_STATE 2
 #define INTRO_START_STATE 3
 #define INTRO_MORPH_STATE 4
-#define JOY_CALB_STATE 5
 #define MENU_STATE 6
 #define SCENE_STATE 7
 #define START_STATE 8
@@ -55,7 +57,6 @@ extern char **start_argv;
 extern int start_argc;
 extern int32_t current_vxadd, current_vyadd;
 extern int frame_panic, massive_frame_panic;
-extern int demo_start, idle_ticks;
 
 class Game
 {
@@ -74,8 +75,17 @@ class Game
     char mapname[100], command[200], help_text[200];
     int refresh, mousex, mousey;
 
-    // Timestamp when show_help() was called.
+    struct pending_input_event
+    {
+        uint8_t command;
+        uint8_t value;
+    };
+
+    // Timestamp when the current transient message was shown.
     uint64_t help_start_time = 0;
+
+    // How long the current transient message remains fully visible.
+    uint32_t help_hold_time = 0;
 
     // Whether or not a help text is currently active
     bool help_active = false;
@@ -85,9 +95,16 @@ class Game
 
     int no_delay;
 
-    Jwindow *top_menu, *joy_win, *last_input;
+    Jwindow *top_menu, *last_input;
     JCFont *game_font;
-    uint8_t keymap[512 / 8];
+    uint8_t keymap[JK_KEY_COUNT / 8];
+    bool suppress_chat_activation_text = false;
+    std::vector<pending_input_event> pending_input_events;
+    std::string editor_level_name;
+    bool editor_playtest_available = false;
+
+    void discard_editor_playtest();
+    void collect_drawables();
 
   public:
     JCFont *save_game_font; //AR
@@ -96,11 +113,13 @@ class Game
 
     int key_down(int key)
     {
-        return keymap[key / 8] & (1 << (key % 8));
+        return key_is_valid(key) && (keymap[key / 8] & (1 << (key % 8)));
     }
     //AR x=1 -> key pressed, x=0 key released
     void set_key_down(int key, int x)
     {
+        if (!key_is_valid(key))
+            return;
         if (x)
             keymap[key / 8] |= (1 << (key % 8));
         else
@@ -109,6 +128,7 @@ class Game
     void reset_keymap()
     {
         memset(keymap, 0, sizeof(keymap));
+        reset_input_sources();
     }
 
     int nplayers;
@@ -116,9 +136,12 @@ class Game
     int state, zoom;
 
     void Step();
+    void pan_editor_view(int32_t x, int32_t y);
     void UpdateViews(float interpolation_ratio);
     void show_help(const std::string &msg);
     void show_help(char const *st);
+    void show_message(char const *st, uint32_t hold_time);
+    float transient_message_visibility() const;
     void draw_value(image *screen, int x, int y, int w, int h, int val, int max);
     unsigned char get_color(int x)
     {
@@ -191,6 +214,8 @@ class Game
         return current_level->GetFg(pos);
     }
     void end_session();
+    bool set_editor_mode(bool enabled);
+    void start_editor_playtest();
     void need_refresh()
     {
         refresh = 1;
@@ -202,14 +227,14 @@ class Game
 
     void update_screen(uint32_t elapsedMsFixed = 0);
     void get_input();
-    void joy_calb(Event &ev);
+    void flush_pending_input();
     void menu_select(Event &ev2);
     int can_morph_into(int type);
     void morph_into(int type);
     void set_state(int new_state);
     int game_over();
     void grow_views(int amount);
-    void play_sound(int id, int vol, int32_t x, int32_t y);
+    void play_sound(int id, float gain, int32_t x, int32_t y, float frequency_ratio = 1.0f);
     void request_level_load(char *name);
     void request_level_load(std::string name); //AR
     void request_end();

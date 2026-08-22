@@ -1,0 +1,62 @@
+.TH ABUSE 6 "August 2026" "Abuse 1.0.5" "Games Manual"
+.SH NAME
+abuse \- dark 2D side-scrolling run-and-gun game
+.SH SYNOPSIS
+.B abuse
+.RI [ options ]
+.SH DESCRIPTION
+.B Abuse
+is an SDL port of the 1995 run-and-gun game. The package includes the
+original campaign, multiplayer levels, add-ons, music, and sound effects.
+.SH OPTIONS
+.TP
+.BI \-size " width height"
+Set the framebuffer size.
+.TP
+.BI \-a " addon"
+Use the named add-on.
+.TP
+.BI \-f " map"
+Load the named map file.
+.TP
+.B \-lisp
+Start in Lisp interpreter mode.
+.TP
+.B \-nodelay
+Run at maximum speed.
+.TP
+.BI \-datadir " directory"
+Use the specified game-data directory.
+.TP
+.B \-fullscreen
+Enable borderless desktop fullscreen mode.
+.TP
+.B \-widescreen
+Expand the framebuffer to the desktop aspect ratio.
+.TP
+.B \-no-widescreen
+Use the configured framebuffer size exactly.
+.TP
+.B \-antialias
+Enable linear texture filtering.
+.TP
+.B \-mono
+Disable stereo sound.
+.TP
+.B \-nosound
+Disable sound.
+.TP
+.BI \-scale " factor"
+Scale the display by the specified factor.
+.TP
+.BR \-h , " " \-\-help
+Show command-line help and exit.
+.SH FILES
+.TP
+.I ~/.config/abuse/settings.toml
+Per-user settings.
+.TP
+.I /usr/share/abuse
+Game data installed by the package.
+.SH HOMEPAGE
+https://github.com/metinc/abuse

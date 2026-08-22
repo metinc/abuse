@@ -89,10 +89,6 @@
 (setq keep_backup T)                  ;; determines if Save
 (setq load_warn nil)
 
-(local_load "gamma.lsp")              ;; load gamma correction values if they have been saved
-
-(if (not (load "hardness.lsp"))       ;; load hardness, if no file set to hard
-    (setf difficulty        'hard))
 (setq load_warn T)
 
 ; *********** Defaults **************************
@@ -152,4 +148,3 @@
 (setf title_screen      '("art/title.spe" . "title_screen"))
 (setf logo              '("art/title.spe" . "cdc_logo"))
 ;(setq help_screens '("art/help.spe" "sell1" "sell2" "sell4"))
-

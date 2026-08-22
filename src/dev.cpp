@@ -13,8 +13,11 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <ctype.h>
+#include <filesystem>
 #include <string.h>
+#include <string>
 
 #include "common.h"
 
@@ -34,9 +37,9 @@
 #include "lisp_gc.h"
 #include "demo.h"
 #include "profile.h"
-#include "sbar.h"
+#include "ui/sbar.h"
 #include "compiled.h"
-#include "chat.h"
+#include "ui/chat.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -63,10 +66,10 @@ char const *symbol_str(char const *name)
     char prog[50];
     char const *cs = prog;
     strcpy(prog, "(setq section 'game_section)\n");
-    LObject::Compile(cs)->Eval();
+    leval(LObject::Compile(cs));
     strcpy(prog, "(load \"lisp/english.lsp\")\n");
     cs = prog;
-    if (!LObject::Compile(cs)->Eval())
+    if (!leval(LObject::Compile(cs)))
     {
         printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);
@@ -88,6 +91,26 @@ char const *symbol_str(char const *name)
 }
 
 static game_object *copy_object = NULL;
+static constexpr int editor_level_dialog_width = 56;
+
+static std::string editor_levels_directory()
+{
+    const char *data_directory = get_filename_prefix();
+    return std::string(data_directory ? data_directory : "") + "levels";
+}
+
+static std::string editor_replays_directory()
+{
+    const char *save_directory = get_save_filename_prefix();
+    const std::filesystem::path user_replays =
+        std::filesystem::path(save_directory ? save_directory : "") / "replays";
+    std::error_code error;
+    if (std::filesystem::is_directory(user_replays, error))
+        return user_replays.string();
+
+    const char *data_directory = get_filename_prefix();
+    return (std::filesystem::path(data_directory ? data_directory : "") / "replays").string();
+}
 
 pmenu *dev_menu = NULL;
 Jwindow *mess_win = NULL, *warn_win = NULL;
@@ -664,21 +687,27 @@ void dev_controll::toggle_show_menu()
     button *lnb, *lb, *cb, *bb, *bdb, *fb;
 
     lnb = new button(0, 100, SHOW_LINKS, symbol_str("l_links"), NULL);
+    lnb->set_momentary(false);
     if (dev & DRAW_LINKS)
         lnb->push();
     lb = new button(0, 80, SHOW_LIGHT, symbol_str("l_light"), lnb);
+    lb->set_momentary(false);
     if (dev & DRAW_LIGHTS)
         lb->push();
     cb = new button(0, 60, SHOW_CHARACTERS, symbol_str("l_char"), lb);
+    cb->set_momentary(false);
     if (dev & DRAW_PEOPLE_LAYER)
         cb->push();
     bb = new button(0, 40, SHOW_BACKGROUND, symbol_str("l_back"), cb);
+    bb->set_momentary(false);
     if (dev & DRAW_BG_LAYER)
         bb->push();
     bdb = new button(0, 20, SHOW_FOREGROUND_BOUND, symbol_str("l_bound"), bb);
+    bdb->set_momentary(false);
     if (dev & DRAW_FG_BOUND_LAYER)
         bdb->push();
     fb = new button(0, 0, SHOW_FOREGROUND, symbol_str("l_fore"), bdb);
+    fb->set_momentary(false);
     if (dev & DRAW_FG_LAYER)
         fb->push();
 
@@ -787,20 +816,6 @@ void dev_controll::toggle_fgw()
                              symbol_str("l_fg"));
 }
 
-void dev_controll::toggle_music_window()
-{
-    /*  if (!music_window)
-  {
-    music_window=wm->CreateWindow(ivec2(-1, 30), ivec2(0, 0),
-             new pick_list(0,0,DEV_MUSIC_PICKLIST,10,song_list,total_songs,0,NULL));
-    wm->fnt->put_string(music_window->m_surf,0,1,"songs");
-  } else
-  {
-    wm->close_window(music_window);
-    music_window=NULL;
-  }*/
-}
-
 void dev_controll::toggle_bgw()
 {
     if (backw)
@@ -860,6 +875,9 @@ void dev_init(int argc, char **argv)
     scale_mult = 1;
     scale_div = 1;
     dev = 0;
+    start_edit = 0;
+    start_running = 0;
+    disable_autolight = 0;
     int i;
     prop = new property_manager;
 
@@ -867,15 +885,7 @@ void dev_init(int argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-        if (!strcmp(argv[i], "-edit"))
-        {
-            dev |= EDIT_MODE;
-            start_edit = 1;
-            start_running = 1;
-            disable_autolight = 1;
-            settings.editor = true;
-        }
-        else if (!strcmp(argv[i], "-fwin"))
+        if (!strcmp(argv[i], "-fwin"))
             open_fwin = 1;
         else if (!strcmp(argv[i], "-bwin"))
             open_bwin = 1;
@@ -898,42 +908,10 @@ void dev_init(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "-2"))
             start_doubled = 1;
-        else if (!strcmp(argv[i], "-demo"))
-            demo_start = 1;
     }
 
     if (get_option("-no_autolight"))
         disable_autolight = 0;
-
-    if ((get_option("-size")) && !start_edit)
-    {
-        printf("%s\n", symbol_str("no_hirez"));
-        exit(EXIT_SUCCESS);
-    }
-
-    fg_reversed = prop->getd("fg_reversed", 0);
-    mouse_scrolling = prop->getd("mouse_scrolling", 0);
-    palettes_locked = prop->getd("palettes_locked", 0);
-    view_shift_disabled = prop->getd("view_shift_disabled", 0);
-    fps_on = prop->getd("fps_on", 0);
-    show_names = prop->getd("show_names", 0);
-    raise_all = prop->getd("raise_all", 0);
-}
-
-void AR_dev_init()
-{
-    //TODO...enbale command line options via config
-    scale_mult = 1;
-    scale_div = 1;
-    dev = 0;
-    prop = new property_manager;
-
-    prop->load("defaults.prp");
-
-    dev |= EDIT_MODE;
-    start_edit = 1;
-    start_running = 1;
-    disable_autolight = 1;
 
     fg_reversed = prop->getd("fg_reversed", 0);
     mouse_scrolling = prop->getd("mouse_scrolling", 0);
@@ -948,6 +926,8 @@ static pmenu *make_menu(int x, int y);
 
 dev_controll::dev_controll()
 {
+    mouse_panning = false;
+    mouse_pan_last = ivec2(0, 0);
     area_win = NULL;
     current_area = NULL;
     fg_w = bg_w = 1;
@@ -976,7 +956,6 @@ dev_controll::dev_controll()
     lightw = NULL;
     search_window = NULL;
     show_menu = NULL;
-    music_window = NULL;
     ambw = NULL;
     load_dev_icons();
 
@@ -1019,7 +998,7 @@ void dev_controll::load_stuff()
         cs = prog;
         LObject *p = LObject::Compile(cs);
         l_user_stack.push(p);
-        p->Eval();
+        leval(p);
         l_user_stack.pop(1);
         for (int i = 0; i < total_pals; i++)
             pal_wins[i]->close_window();
@@ -1033,7 +1012,7 @@ void dev_controll::do_command(char const *command, Event &ev)
     int l, h, x, y, i;
     if (command[0] == '(') // is this a lisp command?
     {
-        LObject::Compile(command)->Eval();
+        leval(LObject::Compile(command));
         return;
     }
 
@@ -1196,7 +1175,7 @@ void dev_controll::do_command(char const *command, Event &ev)
                 {
                     current_level->delete_object(selected_object);
                     if (S_DELETE_SND > 0)
-                        cache.sfx(S_DELETE_SND)->play(sfx_volume / 2);
+                        cache.sfx(S_DELETE_SND)->play(sfx_volume * 0.5f);
                     selected_object = NULL;
                 }
             }
@@ -1209,7 +1188,7 @@ void dev_controll::do_command(char const *command, Event &ev)
                 {
                     current_level->remove_light(selected_light);
                     if (S_DELETE_SND > 0)
-                        cache.sfx(S_DELETE_SND)->play(sfx_volume / 2);
+                        cache.sfx(S_DELETE_SND)->play(sfx_volume * 0.5f);
                 }
                 else
                     delete_light(selected_light);
@@ -1435,6 +1414,7 @@ void dev_controll::toggle_light_window()
         prop->setd("light create h", atoi(lightw->read(DEV_LIGHTH)));
         prop->setd("light create r1", atoi(lightw->read(DEV_LIGHTR1)));
         prop->setd("light create r2", atoi(lightw->read(DEV_LIGHTR2)));
+        prop->setd("light create tint", atoi(lightw->read(DEV_LIGHT_TINT)));
         wm->close_window(lightw);
         lightw = NULL;
         return;
@@ -1470,12 +1450,14 @@ void dev_controll::toggle_light_window()
                                                                                            cache.img(light_buttons[11]),
                                                                                            NULL))))))))))),
             new text_field(0, bh * 4, DEV_LIGHTW, "W ", "******", prop->getd("light create w", 0),
-                           new text_field(0, bh * 4 + th * 1, DEV_LIGHTH, "H ", "******",
-                                          prop->getd("light create h", 0),
-                                          new text_field(0, bh * 4 + th * 2, DEV_LIGHTR1, "R1", "******",
-                                                         prop->getd("light create r1", 1),
-                                                         new text_field(0, bh * 4 + th * 3, DEV_LIGHTR2, "R2", "******",
-                                                                        prop->getd("light create r2", 100), NULL))))),
+                           new text_field(
+                               0, bh * 4 + th * 1, DEV_LIGHTH, "H ", "******", prop->getd("light create h", 0),
+                               new text_field(
+                                   0, bh * 4 + th * 2, DEV_LIGHTR1, "R1", "******", prop->getd("light create r1", 1),
+                                   new text_field(0, bh * 4 + th * 3, DEV_LIGHTR2, "R2", "******",
+                                                  prop->getd("light create r2", 100),
+                                                  new text_field(0, bh * 4 + th * 4, DEV_LIGHT_TINT, "Color 0-7", "*",
+                                                                 prop->getd("light create tint", 0), NULL)))))),
         symbol_str("l_light"));
 }
 
@@ -1803,6 +1785,38 @@ void dev_controll::handle_event(Event &ev)
         last_link_x = dlast.x;
         last_link_y = dlast.y;
         the_game->need_refresh();
+    }
+
+    // Mouse 3 drags the level beneath the pointer. Consume the gesture before
+    // editor tools can interpret the middle button as a draw or select action.
+    if (mouse_panning)
+    {
+        if (!(ev.mouse_button & MIDDLE_BUTTON))
+        {
+            mouse_panning = false;
+            wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1, 1));
+            ev.type = EV_SPURIOUS;
+            return;
+        }
+
+        if (ev.type == EV_MOUSE_MOVE)
+        {
+            ivec2 delta = last_demo_mpos - mouse_pan_last;
+            mouse_pan_last = last_demo_mpos;
+            the_game->pan_editor_view(-delta.x, -delta.y);
+        }
+
+        ev.type = EV_SPURIOUS;
+        return;
+    }
+
+    if ((dev & EDIT_MODE) && ev.window == NULL && ev.type == EV_MOUSE_BUTTON && (ev.mouse_button & MIDDLE_BUTTON))
+    {
+        mouse_panning = true;
+        mouse_pan_last = last_demo_mpos;
+        wm->SetMouseShape(cache.img(c_target)->copy(), ivec2(4, 4));
+        ev.type = EV_SPURIOUS;
+        return;
     }
 
     if (dev_menu && dev_menu->handle_event(ev, main_screen))
@@ -2169,10 +2183,12 @@ void dev_controll::handle_event(Event &ev)
                                 0, bh, DEV_LEDIT_W, "W ", "******", edit_light->xshift,
                                 new text_field(
                                     0, bh + th * 1, DEV_LEDIT_H, "H ", "******", edit_light->yshift,
-                                    new text_field(0, bh + th * 2, DEV_LEDIT_R1, "R1", "******",
-                                                   (int)(edit_light->inner_radius),
-                                                   new text_field(0, bh + th * 3, DEV_LEDIT_R2, "R2", "******",
-                                                                  (int)(edit_light->outer_radius), NULL))))));
+                                    new text_field(
+                                        0, bh + th * 2, DEV_LEDIT_R1, "R1", "******", (int)(edit_light->inner_radius),
+                                        new text_field(0, bh + th * 3, DEV_LEDIT_R2, "R2", "******",
+                                                       (int)(edit_light->outer_radius),
+                                                       new text_field(0, bh + th * 4, DEV_LEDIT_TINT, "Color 0-7", "*",
+                                                                      edit_light->tint, NULL)))))));
                 }
                 else if (ev.window == NULL)
                 {
@@ -2250,9 +2266,11 @@ void dev_controll::handle_event(Event &ev)
         case ID_LEVEL_LOAD: {
             if (!mess_win)
             {
+                const std::string levels_directory = editor_levels_directory();
                 mess_win = file_dialog(symbol_str("level_name"), current_level ? current_level->name() : "",
                                        ID_LEVEL_LOAD_OK, symbol_str("ok_button"), ID_CANCEL,
-                                       symbol_str("cancel_button"), symbol_str("FILENAME"), ID_MESS_STR1);
+                                       symbol_str("cancel_button"), symbol_str("FILENAME"), ID_MESS_STR1,
+                                       levels_directory.c_str(), editor_level_dialog_width);
                 wm->grab_focus(mess_win);
             }
         }
@@ -2261,7 +2279,7 @@ void dev_controll::handle_event(Event &ev)
             char cmd[100];
             sprintf(cmd, "load %s", mess_win->read(ID_MESS_STR1));
             dev_cont->do_command(cmd, ev);
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
         case ID_GAME_SAVE: {
@@ -2288,10 +2306,12 @@ void dev_controll::handle_event(Event &ev)
         case ID_LEVEL_SAVEAS: {
             if (!mess_win)
             {
+                const std::string levels_directory = editor_levels_directory();
                 mess_win =
                     file_dialog(symbol_str("saveas_name"), current_level ? current_level->name() : "untitled.spe",
                                 ID_LEVEL_SAVEAS_OK, symbol_str("ok_button"), ID_CANCEL, symbol_str("cancel_button"),
-                                symbol_str("FILENAME"), ID_MESS_STR1);
+                                symbol_str("FILENAME"), ID_MESS_STR1, levels_directory.c_str(),
+                                editor_level_dialog_width);
                 wm->grab_focus(mess_win);
             }
         }
@@ -2300,8 +2320,8 @@ void dev_controll::handle_event(Event &ev)
             if (current_level)
             {
                 current_level->set_name(mess_win->read(ID_MESS_STR1));
-                wm->Push(new Event(ID_CANCEL, NULL)); // close window after save
-                wm->Push(new Event(ID_LEVEL_SAVE, NULL));
+                wm->PushMessage(ID_CANCEL); // close window after save
+                wm->PushMessage(ID_LEVEL_SAVE);
             }
         }
         break;
@@ -2347,7 +2367,7 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
         case ID_LEVEL_NEW_OK: {
-            wm->Push(new Event(ID_CANCEL, NULL)); // close_window
+            wm->PushMessage(ID_CANCEL); // close_window
             if (current_level)
                 delete current_level;
             current_level = new level(100, 100, "untitled.spe");
@@ -2377,7 +2397,7 @@ void dev_controll::handle_event(Event &ev)
             }
             else
                 the_game->show_help("Create a level first!");
-            wm->Push(new Event(ID_CANCEL, NULL)); // close_window
+            wm->PushMessage(ID_CANCEL); // close_window
         }
         break;
 
@@ -2390,13 +2410,14 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
         case ID_PLAY_MODE: {
-            dev ^= EDIT_MODE;
+            the_game->start_editor_playtest();
         }
         break;
         case ID_QUIT: {
             if (confirm_quit())
                 do_command("quit", ev);
-        };
+        }
+        break;
         case ID_TOGGLE_MAP: {
             if (dev & MAP_MODE)
                 dev -= MAP_MODE;
@@ -2426,27 +2447,28 @@ void dev_controll::handle_event(Event &ev)
 
         case ID_RECORD_DEMO_OK: {
             demo_man.set_state(demo_manager::RECORDING, mess_win->read(ID_RECORD_DEMO_FILENAME));
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
 
         case ID_PLAY_DEMO: {
             if (!mess_win)
             {
-                int h = wm->font()->Size().y + 8;
-                mess_win = wm->CreateWindow(
-                    ivec2(xres / 2, yres / 2), ivec2(-1),
-                    new text_field(0, h * 0, ID_PLAY_DEMO_FILENAME, "demo filename", "*******************", "demo.dat",
-                                   new button(10, h * 2, ID_PLAY_DEMO_OK, symbol_str("ok_button"),
-                                              new button(40, h * 2, ID_CANCEL, symbol_str("cancel_button"), NULL))));
+                const std::string replays_directory = editor_replays_directory();
+                mess_win = file_dialog(symbol_str("replay_filename"), "replays/demo1.dat", ID_PLAY_DEMO_OK,
+                                       symbol_str("ok_button"), ID_CANCEL, symbol_str("cancel_button"),
+                                       symbol_str("FILENAME"), ID_MESS_STR1, replays_directory.c_str(),
+                                       editor_level_dialog_width, ".dat");
+                wm->grab_focus(mess_win);
             }
         }
         break;
 
         case ID_PLAY_DEMO_OK: {
-            demo_man.set_state(demo_manager::PLAYING, mess_win->read(ID_PLAY_DEMO_FILENAME));
+            const std::string filename = mess_win->read(ID_MESS_STR1);
             wm->close_window(mess_win);
             mess_win = NULL;
+            demo_man.set_state(demo_manager::PLAYING, filename.c_str());
         }
         break;
 
@@ -2491,13 +2513,13 @@ void dev_controll::handle_event(Event &ev)
                 wm->grab_focus(warn_win);
             }
             else
-                wm->Push(new Event(ID_SET_SCROLL_OK, NULL));
+                wm->PushMessage(ID_SET_SCROLL_OK);
         }
         break;
         case ID_WARN_CANCEL: {
             wm->close_window(warn_win);
             warn_win = NULL;
-            wm->Push(new Event(ID_CANCEL, NULL));
+            wm->PushMessage(ID_CANCEL);
         }
         break;
         case ID_SET_SCROLL_OK: {
@@ -2510,7 +2532,7 @@ void dev_controll::handle_event(Event &ev)
             bg_xdiv = atoi(mess_win->read(ID_MESS_STR2));
             bg_ymul = atoi(mess_win->read(ID_MESS_STR3));
             bg_ydiv = atoi(mess_win->read(ID_MESS_STR4));
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
 
@@ -2548,8 +2570,8 @@ void dev_controll::handle_event(Event &ev)
             sprintf(name, "(add_palette \"%s\" %d %d)", mess_win->read(ID_MESS_STR3),
                     atoi(mess_win->read(ID_MESS_STR1)), atoi(mess_win->read(ID_MESS_STR2)));
             char const *s = name;
-            LObject::Compile(s)->Eval();
-            wm->Push(new Event(ID_CANCEL, NULL)); // close window
+            leval(LObject::Compile(s));
+            wm->PushMessage(ID_CANCEL); // close window
         }
         break;
         case ID_TOGGLE_DELAY: {
@@ -2719,6 +2741,7 @@ void dev_controll::handle_event(Event &ev)
             edit_light->yshift = atoi(ledit->read(DEV_LEDIT_H));
             edit_light->inner_radius = atoi(ledit->read(DEV_LEDIT_R1));
             edit_light->outer_radius = atoi(ledit->read(DEV_LEDIT_R2));
+            edit_light->tint = std::clamp(atoi(ledit->read(DEV_LEDIT_TINT)), 0, LIGHT_TINT_COUNT - 1);
             if (edit_light->outer_radius <= edit_light->inner_radius)
             {
                 edit_light->inner_radius = edit_light->outer_radius - 1;
@@ -2769,7 +2792,8 @@ void dev_controll::handle_event(Event &ev)
             ivec2 pos = the_game->MouseToGame(last_demo_mpos);
             edit_light = add_light_source(ev.message.id - DEV_LIGHT0, snap_x(pos.x), snap_y(pos.y),
                                           atoi(lightw->read(DEV_LIGHTR1)), atoi(lightw->read(DEV_LIGHTR2)),
-                                          atoi(lightw->read(DEV_LIGHTW)), atoi(lightw->read(DEV_LIGHTH)));
+                                          atoi(lightw->read(DEV_LIGHTW)), atoi(lightw->read(DEV_LIGHTH)),
+                                          atoi(lightw->read(DEV_LIGHT_TINT)));
             state = DEV_MOVE_LIGHT;
         }
         break;
@@ -2850,6 +2874,7 @@ void dev_controll::handle_event(Event &ev)
         break;
         case DEV_QUIT:
             the_game->end_session();
+            ev.type = EV_SPURIOUS;
             break;
         case DEV_EDIT_FG:
             dev = 1;
@@ -2895,7 +2920,7 @@ void dev_controll::handle_event(Event &ev)
         break;
 
         case DEV_CREATE: {
-            int val = get_omenu_item(((pick_list *)ev.message.data)->get_selection());
+            int val = get_omenu_item(static_cast<pick_list *>(ev.message.data)->get_selection());
             char cmd[100];
             sprintf(cmd, "create %s", object_names[val]);
             do_command(cmd, ev);
@@ -2905,16 +2930,8 @@ void dev_controll::handle_event(Event &ev)
         break;
 
         case DEV_PALETTE: {
-            int val = ((pick_list *)ev.message.data)->get_selection();
+            int val = static_cast<pick_list *>(ev.message.data)->get_selection();
             pal_wins[val]->open_window();
-        }
-        break;
-
-        case DEV_MUSIC_PICKLIST: {
-            /*        int *val=((int *)((pick_list *)ev.message.data)->read());
-        if (current_song) delete current_song;
-        current_song=new song(song_list[*val]);
-        current_song->play();        */
         }
         break;
 
@@ -3000,7 +3017,7 @@ void dev_controll::handle_event(Event &ev)
             {
                 link_object->add_object(selected_object);
                 if (S_LINK_SND > 0)
-                    cache.sfx(S_LINK_SND)->play(sfx_volume / 2);
+                    cache.sfx(S_LINK_SND)->play(sfx_volume * 0.5f);
                 the_game->need_refresh();
             }
 
@@ -3092,10 +3109,6 @@ void dev_controll::handle_event(Event &ev)
             case 'f':
                 toggle_fgw();
                 break;
-            case 'M':
-                toggle_music_window();
-                break;
-
             case 'b':
                 toggle_bgw();
                 break;
@@ -3106,7 +3119,7 @@ void dev_controll::handle_event(Event &ev)
                 if (selected_object)
                 {
                     if (oedit)
-                        wm->Push(new Event(DEV_OEDIT_OK, NULL));
+                        wm->PushMessage(DEV_OEDIT_OK);
                     make_ai_window(selected_object);
                 }
             }
@@ -3190,7 +3203,7 @@ void dev_controll::handle_event(Event &ev)
                 if (selected_object && selected_object->controller() == NULL)
                 {
                     copy_object = selected_object;
-                    wm->Push(new Event(DEV_OEDIT_COPY, NULL));
+                    wm->PushMessage(DEV_OEDIT_COPY);
                 }
                 break;
 
@@ -3841,6 +3854,7 @@ struct pmi
 };
 
 static pmi filemenu[] = {{"menu1_load", ID_LEVEL_LOAD, NULL, -1},
+                         {"menu1_replay", ID_PLAY_DEMO, NULL, -1},
                          {NULL, 0, NULL, -1},
                          {"menu1_save", ID_LEVEL_SAVE, NULL, -1},
                          {"menu1_saveas", ID_LEVEL_SAVEAS, NULL, -1},
@@ -3877,9 +3891,6 @@ static pmi editmenu[] = {{"menu2_light", ID_TOGGLE_LIGHT, NULL, -1},
                          {"menu2_view", ID_DISABLE_VIEW_SHIFT, &view_shift_disabled, -1},
                          {"menu2_alight", ID_DISABLE_AUTOLIGHT, &disable_autolight, 'A'},
                          {"menu2_fps", ID_SHOW_FPS, &fps_on, -1},
-                         //  { NULL,0,NULL,-1},
-                         //  { "Record demo",                ID_RECORD_DEMO,NULL,-1},
-                         //  { "Play demo",                  ID_PLAY_DEMO,NULL,-1},
                          {NULL, -1, NULL, -1}};
 
 // Window Menus
@@ -3907,7 +3918,7 @@ static pmi filemenu[]={
       { "Resize map",         ID_LEVEL_RESIZE,NULL,-1},
       { NULL,0,NULL,-1},
       { "Suspend non-players",ID_SUSPEND,NULL,-1},
-      { "Play mode toggle (TAB)",ID_PLAY_MODE,NULL,-1},
+      { "Play level (TAB)",ID_PLAY_MODE,NULL,-1},
       { NULL,0,NULL,-1},
       { "Save Palettes         ",ID_EDIT_SAVE,NULL,-1},
       { "Start cache profile   ",ID_CACHE_PROFILE,NULL,-1},
