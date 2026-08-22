@@ -9,16 +9,20 @@
  */
 
 #include "netcfg.h"
+#include "player_name.h"
+#include "sdlport/setup.h"
 
 #include <cstring>
 
-extern char const *get_login();
-
 net_configuration *main_net_cfg = nullptr;
+extern Settings settings;
+extern char game_name[50];
 
 net_configuration::net_configuration()
 {
-    strcpy(name, get_login());
+    copy_player_name(name, sizeof(name), settings.player_name.c_str());
+    strncpy(game_name, settings.server_name.c_str(), sizeof(game_name) - 1);
+    game_name[sizeof(game_name) - 1] = '\0';
     server_host[0] = '\0';
     room_code[0] = '\0';
     online = false;

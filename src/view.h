@@ -13,6 +13,7 @@
 
 #include "light.h"
 #include "jwindow.h"
+#include "player_name.h"
 
 class object_node;
 class game_object;
@@ -31,6 +32,8 @@ class view;
 class view
 {
   public:
+    static constexpr int MAX_CHAT_INPUT_LENGTH = 40;
+
     view(game_object *Focus, view *Next, int number);
     ~view();
 
@@ -52,6 +55,10 @@ class view
         memset(m_keymap, 0, sizeof(m_keymap));
     }
     void add_chat_key(int key);
+    int chat_input_length() const
+    {
+        return strlen(m_chat_buf);
+    }
 
     char name[100];
     struct suggest_struct suggest;

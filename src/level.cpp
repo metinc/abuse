@@ -1795,7 +1795,9 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
             for (v = player_list; v; v = v->next)
             {
                 uint8_t len = fp->read_uint8();
-                fp->read(v->name, len);
+                char saved_name[256] = {};
+                fp->read(saved_name, len);
+                copy_player_name(v->name, sizeof(v->name), saved_name);
             }
         }
 

@@ -98,7 +98,6 @@ class Game
     Jwindow *top_menu, *last_input;
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
-    bool suppress_chat_activation_text = false;
     std::vector<pending_input_event> pending_input_events;
     std::string editor_level_name;
     bool editor_playtest_available = false;

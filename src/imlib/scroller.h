@@ -65,6 +65,11 @@ class scroller : public ifield
     {
         return t > 0 ? t - 1 : 0;
     }
+    virtual int visible_scroll_items() const
+    {
+        return 1;
+    }
+    int slider_length(int track_length) const;
     virtual bool scrollbar_visible() const
     {
         return true;
@@ -116,6 +121,10 @@ class spicker : public scroller
     {
         int maximum = t - vis();
         return maximum > 0 ? maximum : 0;
+    }
+    int visible_scroll_items() const override
+    {
+        return vis();
     }
     bool scrollbar_visible() const override
     {

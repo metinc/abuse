@@ -33,11 +33,16 @@
 #include <cctype>
 #include "imlib/scroller.h"
 #include "file_utils.h"
+#include "sdlport/setup.h"
 
 // Static storage for available network levels (single-level selection UI)
 static std::vector<std::string> g_net_levels; // filenames only (e.g. "2play1.spe")
 static std::vector<std::string> g_net_levels_display; // display names (no extension, fixed width)
 static std::vector<char *> g_net_levels_c; // c_str pointers for pick_list
+static constexpr char PLAYER_NAME_FORMAT[] = "******************";
+static constexpr char SERVER_NAME_FORMAT[] = "******************";
+static_assert(sizeof(PLAYER_NAME_FORMAT) - 1 == MAX_PLAYER_NAME_LENGTH);
+static_assert(sizeof(SERVER_NAME_FORMAT) - 1 == MAX_SERVER_NAME_LENGTH);
 
 static void build_level_list(bool is_coop)
 {
@@ -78,7 +83,6 @@ static void build_level_list(bool is_coop)
     g_net_levels_c.reserve(g_net_levels_display.size());
     for (auto &disp : g_net_levels_display)
         g_net_levels_c.push_back(const_cast<char *>(disp.c_str()));
-
 }
 
 extern char lsf[256];
@@ -86,6 +90,7 @@ extern char lsf[256];
 extern net_protocol *prot;
 
 extern char game_name[50];
+extern Settings settings;
 
 enum
 {
@@ -130,8 +135,7 @@ enum
 class MultiplayerUI
 {
   public:
-    explicit MultiplayerUI(net_configuration &config)
-      : config(config)
+    explicit MultiplayerUI(net_configuration &config) : config(config)
     {
     }
 
@@ -220,7 +224,7 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             error(symbol_str("name_error"));
             return 0;
         }
-        strcpy(config.name, nm);
+        copy_player_name(config.name, sizeof(config.name), nm);
 
         config.min_players = ((ifield *)(i->get(NET_MIN)->read()))->id - MIN_1 + 1;
         config.max_players = ((ifield *)(i->get(NET_MAX)->read()))->id - MAX_2 + 2;
@@ -237,7 +241,8 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             return 0;
         }
 
-        strcpy(game_name, s_nm);
+        strncpy(game_name, s_nm, MAX_SERVER_NAME_LENGTH);
+        game_name[MAX_SERVER_NAME_LENGTH] = '\0';
 
         if (config.game_mode == net_configuration::DEATHMATCH)
         {
@@ -273,12 +278,12 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
     else
     {
         char *nm = i->get(NET_NAME)->read();
-        if (strstr(nm, "\""))
+        if (!*nm || strstr(nm, "\""))
         {
             error(symbol_str("name_error"));
             return 0;
         }
-        strcpy(config.name, nm);
+        copy_player_name(config.name, sizeof(config.name), nm);
 
         if (online_join)
         {
@@ -299,6 +304,12 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             config.online = false;
         }
     }
+
+    settings.player_name = config.name;
+    if (server)
+        settings.server_name = game_name;
+    if (!settings.Save())
+        fprintf(stderr, "Unable to save multiplayer names to settings.toml\n");
 
     return 1;
 }
@@ -392,7 +403,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
         int gap = 7;
 
         // Right column positioning
-        int right_x = x + ns_w / 3 * 2 - 5;
+        int right_x = x + ns_w / 3 * 2 - 9;
         int right_y = y + 30;
 
         // Connection type selection
@@ -437,11 +448,10 @@ int MultiplayerUI::get_options(int server, bool online_join)
         left_y = by2 + gap;
 
         // Left column fields
-        list = new text_field(left_x, left_y, NET_NAME, symbol_str("your_name"), "*******************", config.name,
-                              list);
+        list = new text_field(left_x, left_y, NET_NAME, symbol_str("your_name"), PLAYER_NAME_FORMAT, config.name, list);
         left_y += fnt->Size().y + gap;
-        list = new text_field(left_x, left_y, NET_SERVER_NAME, symbol_str("server_name"), "*******************",
-                              game_name, list);
+        list = new text_field(left_x, left_y, NET_SERVER_NAME, symbol_str("server_name"), SERVER_NAME_FORMAT, game_name,
+                              list);
         left_y += fnt->Size().y + 5;
 
         // Min players label & buttons
@@ -509,20 +519,18 @@ int MultiplayerUI::get_options(int server, bool online_join)
         if (online_join)
         {
             ifield *name_field = center_ifield(
-                new text_field(x, y + 65, NET_NAME, symbol_str("your_name"), "********************", config.name,
-                               list),
-                x, x + ns_w, NULL);
+                new text_field(x, y + 65, NET_NAME, symbol_str("your_name"), PLAYER_NAME_FORMAT, config.name, list), x,
+                x + ns_w, NULL);
             list = name_field;
             list = center_ifield(
-                new text_field(x, y + 95, NET_ROOM_CODE, symbol_str("room_code"), "******", config.room_code, list),
-                x, x + ns_w, NULL);
+                new text_field(x, y + 95, NET_ROOM_CODE, symbol_str("room_code"), "******", config.room_code, list), x,
+                x + ns_w, NULL);
         }
         else
         {
             list = center_ifield(
-                new text_field(x, y + 80, NET_NAME, symbol_str("your_name"), "************************", config.name,
-                               list),
-                x, x + ns_w, NULL);
+                new text_field(x, y + 80, NET_NAME, symbol_str("your_name"), PLAYER_NAME_FORMAT, config.name, list), x,
+                x + ns_w, NULL);
         }
     }
 
@@ -569,8 +577,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
                     // entered before changing the game mode.
                     if (ifield *name_field = inm.get(NET_NAME))
                     {
-                        strncpy(config.name, name_field->read(), sizeof(config.name) - 1);
-                        config.name[sizeof(config.name) - 1] = '\0';
+                        copy_player_name(config.name, sizeof(config.name), name_field->read());
                     }
                     if (ifield *connection_field = inm.get(NET_CONNECTION))
                     {
@@ -634,8 +641,8 @@ int MultiplayerUI::run()
         char const *server_str = symbol_str("server");
         button *sb = new button(x + 40, y + ns_h - 23 - fnt->Size().y, NET_SERVER, server_str, NULL);
 
-        if (main_net_cfg && (main_net_cfg->state == net_configuration::CLIENT ||
-                             main_net_cfg->state == net_configuration::SERVER))
+        if (main_net_cfg &&
+            (main_net_cfg->state == net_configuration::CLIENT || main_net_cfg->state == net_configuration::SERVER))
             sb = new button(x + 40, y + ns_h - 9 - fnt->Size().y, NET_SINGLE, symbol_str("single_play"), sb);
         else
             sb = new button(x + 40, y + ns_h - 9 - fnt->Size().y, NET_ONLINE_JOIN, symbol_str("join_online"), sb);
@@ -650,9 +657,8 @@ int MultiplayerUI::run()
         auto redraw_browser = [&]() {
             main_screen->PutImage(ns, ivec2(x, y));
             fnt->PutString(main_screen,
-                           ivec2(x + ns_w / 2 - strlen(nw_s) * fnt->Size().x / 2,
-                                 y + 21 / 2 - fnt->Size().y / 2),
-                           nw_s, wm->medium_color());
+                           ivec2(x + ns_w / 2 - strlen(nw_s) * fnt->Size().x / 2, y + 21 / 2 - fnt->Size().y / 2), nw_s,
+                           wm->medium_color());
             inm.redraw();
         };
 
@@ -725,8 +731,8 @@ int MultiplayerUI::run()
             {
                 search_animation.get_time();
                 search_dots = (search_dots + 1) % 4;
-                snprintf(search_text, sizeof(search_text), "%s%.*s", symbol_str("searching_local_games"),
-                         search_dots, "...");
+                snprintf(search_text, sizeof(search_text), "%s%.*s", symbol_str("searching_local_games"), search_dots,
+                         "...");
                 search_status->change_text(search_text);
                 redraw_browser();
             }

@@ -2574,7 +2574,7 @@ long c_caller(CFunc number, void *args)
             lbreak("get_player_name : object has no view!\n");
         }
         else
-            strcpy(v->name, lstring_value(CAR(args)));
+            copy_player_name(v->name, sizeof(v->name), lstring_value(CAR(args)));
     }
     break;
     case CFunc::DrawBar: {

@@ -1211,7 +1211,7 @@ void *show_kills()
     {
         enum
         {
-            NAME_LEN = 18
+            NAME_LEN = MAX_PLAYER_NAME_LENGTH + 1
         };
         int color = lnumber_value(((LArray *)((LSymbol *)l_player_text_color)->GetValue())->Get(v->get_tint()));
         char max_name[NAME_LEN];
@@ -1219,7 +1219,8 @@ void *show_kills()
         max_name[NAME_LEN - 1] = 0;
         char msg[100];
 
-        sprintf(msg, "%-17s %3ld  %3ld", max_name, (long)v->kills, (long)(v->tkills + v->kills));
+        sprintf(msg, "%-*s %3ld  %3ld", MAX_PLAYER_NAME_LENGTH, max_name, (long)v->kills,
+                (long)(v->tkills + v->kills));
         fnt->PutString(main_screen, ivec2(x, y), msg, color);
 
         y += fnt->Size().y;

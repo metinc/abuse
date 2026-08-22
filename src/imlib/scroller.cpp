@@ -15,6 +15,9 @@
 #include "common.h"
 
 #include "scroller.h"
+
+#include <algorithm>
+
 #define HS_ICON_W 10
 #define HS_ICON_H 8
 
@@ -171,22 +174,44 @@ void scroller::wig_area(int &x1, int &y1, int &x2, int &y2)
     dragger_area(sx1, sy1, sx2, sy2);
     if (vert)
     {
+        const int track_length = std::max(1, sy2 - sy1 - 1);
+        const int thumb_length = slider_length(track_length);
+        const int travel = track_length - thumb_length;
         x1 = m_pos.x + l + 1;
         if (max_scroll_position() == 0)
             y1 = m_pos.y + bh() + 1;
         else
-            y1 = m_pos.y + bh() + 1 + sx * (sy2 - sy1 + 1 - bh()) / max_scroll_position();
+            y1 = m_pos.y + bh() + 1 + sx * travel / max_scroll_position();
+        x2 = x1 + bw() - 3;
+        y2 = y1 + thumb_length - 1;
     }
     else
     {
+        const int track_length = std::max(1, sx2 - sx1 - 1);
+        const int thumb_length = slider_length(track_length);
+        const int travel = track_length - thumb_length;
         if (max_scroll_position() == 0)
             x1 = m_pos.x + bw() + 1;
         else
-            x1 = m_pos.x + bw() + 1 + sx * (sx2 - sx1 + 1 - bw()) / max_scroll_position();
+            x1 = m_pos.x + bw() + 1 + sx * travel / max_scroll_position();
         y1 = m_pos.y + h + 1;
+        x2 = x1 + thumb_length - 1;
+        y2 = y1 + bh() - 3;
     }
-    x2 = x1 + bw() - 3;
-    y2 = y1 + bh() - 3;
+}
+
+int scroller::slider_length(int track_length) const
+{
+    if (track_length <= 0)
+        return 0;
+    if (max_scroll_position() == 0)
+        return track_length;
+
+    const int visible_items = std::max(1, visible_scroll_items());
+    const int total_items = std::max(t, visible_items);
+    const int maximum = std::max(1, track_length - 1);
+    const int minimum = std::min(4, maximum);
+    return std::clamp(track_length * visible_items / total_items, minimum, maximum);
 }
 
 void scroller::draw_widget(image *screen, int erase)
@@ -412,17 +437,21 @@ int scroller::mouse_to_drag(int mx, int my)
 
     if (vert)
     {
-        int h = (y2 - y1 + 1 - bh());
-        if (h)
-            return (my - m_pos.y - bh() - bh() / 2) * max_scroll_position() / h;
+        const int track_length = std::max(1, y2 - y1 - 1);
+        const int thumb_length = slider_length(track_length);
+        const int travel = track_length - thumb_length;
+        if (travel)
+            return (my - m_pos.y - bh() - 1 - thumb_length / 2) * max_scroll_position() / travel;
         else
             return 0;
     }
     else
     {
-        int w = (x2 - x1 + 1 - bw());
-        if (w)
-            return (mx - m_pos.x - bw() - bw() / 2) * max_scroll_position() / w;
+        const int track_length = std::max(1, x2 - x1 - 1);
+        const int thumb_length = slider_length(track_length);
+        const int travel = track_length - thumb_length;
+        if (travel)
+            return (mx - m_pos.x - bw() - 1 - thumb_length / 2) * max_scroll_position() / travel;
         else
             return 0;
     }

@@ -27,9 +27,9 @@ class console
     {
         return con_win != NULL;
     }
-    void show();
-    void hide();
-    void redraw();
+    virtual void show();
+    virtual void hide();
+    virtual void redraw();
     void put_char(char ch);
     void do_cr();
     int screen_w()
@@ -59,7 +59,7 @@ class console
             show();
     }
     void print_f(char const *format, ...);
-    ~console();
+    virtual ~console();
 };
 
 class shell_term : public console

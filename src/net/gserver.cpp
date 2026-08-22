@@ -638,6 +638,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
             DEBUG_LOG("Failed to exchange connection data");
             return 0;
         }
+        name[len] = '\0';
 
         cport = lstl(cport);
         DEBUG_LOG("Client connection data - Name: %s, Port: %d", name, cport);
@@ -680,7 +681,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         join_array[client_id].next = base->join_list;
         base->join_list = &join_array[client_id];
         join_array[client_id].client_id = client_id;
-        strcpy(join_array[client_id].name, name);
+        copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
         player_list = new player_client(f, sock, from, player_list);
 
         DEBUG_LOG("Client %d successfully added", client_id);

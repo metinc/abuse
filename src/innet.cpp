@@ -59,8 +59,6 @@ game_handler *game_face = NULL; // Interface for game networking
 extern char lsf[256]; // Level file name
 int local_client_number = 0; // Client ID (0 = server)
 join_struct *join_array = NULL; // Array of joining clients
-extern char const *get_login();
-extern void set_login(char const *name);
 
 int net_init(int argc, char **argv)
 {
@@ -741,7 +739,7 @@ void net_reload()
 
                 DEBUG_LOG("Creating new view for player %d", join_list->client_id);
                 f->next = new view(o, NULL, join_list->client_id);
-                strcpy(f->next->name, join_list->name);
+                copy_player_name(f->next->name, sizeof(f->next->name), join_list->name);
                 o->set_controller(f->next);
                 f->next->set_tint(f->next->player_number);
                 if (start)

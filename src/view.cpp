@@ -218,24 +218,36 @@ void view::update_scroll(float interpolation_ratio)
 
 static char cur_user_name[100] = {0};
 
+void copy_player_name(char *destination, std::size_t destination_size, char const *source)
+{
+    if (!destination || destination_size == 0)
+        return;
+
+    const std::size_t limit =
+        std::min(destination_size - 1, static_cast<std::size_t>(MAX_PLAYER_NAME_LENGTH));
+    strncpy(destination, source ? source : "unknown", limit);
+    destination[limit] = '\0';
+}
+
 char const *get_login()
 {
     if (cur_user_name[0])
         return cur_user_name;
 
 #if defined WIN32
-    DWORD buffer_size = sizeof(cur_user_name);
-    return GetUserNameA(cur_user_name, &buffer_size) ? cur_user_name : "unknown";
+    char login[100];
+    DWORD buffer_size = sizeof(login);
+    set_login(GetUserNameA(login, &buffer_size) ? login : "unknown");
 #else
     char const *login = getlogin();
-    return login ? login : "unknown";
+    set_login(login ? login : "unknown");
 #endif
+    return cur_user_name;
 }
 
 void set_login(char const *name)
 {
-    strncpy(cur_user_name, name, sizeof(cur_user_name) - 1);
-    cur_user_name[sizeof(cur_user_name) - 1] = '\0';
+    copy_player_name(cur_user_name, sizeof(cur_user_name), name);
 }
 
 view::view(game_object *focus, view *Next, int number)
@@ -259,7 +271,7 @@ view::view(game_object *focus, view *Next, int number)
     ambient = 32;
     current_weapon = 0;
 
-    strcpy(name, get_login());
+    copy_player_name(name, sizeof(name), get_login());
     suggest.send_view = 0;
     suggest.send_weapon_change = 0;
 
@@ -445,7 +457,7 @@ void view::add_chat_key(int key) // return string if buf is complete
                 chat->draw_user(m_chat_buf);
         }
     }
-    else if (key != JK_ENTER)
+    else if (key != JK_ENTER && len < MAX_CHAT_INPUT_LENGTH)
     {
         m_chat_buf[len] = key;
         m_chat_buf[len + 1] = 0;
@@ -453,7 +465,7 @@ void view::add_chat_key(int key) // return string if buf is complete
             chat->draw_user(m_chat_buf);
     }
 
-    if (len > 38 || key == JK_ENTER)
+    if (key == JK_ENTER)
     {
         //AR cheats - tmp console solution
         std::string chat_text = m_chat_buf;
@@ -474,10 +486,11 @@ void view::add_chat_key(int key) // return string if buf is complete
             if (local_player() && chat && chat->showing())
                 chat->toggle();
         }
-        else if (chat_text == "god")
+        else if (chat_text == "/god")
         {
             settings.cheat_god = !settings.cheat_god;
 
+            chat_text = "god";
             if (settings.cheat_god)
                 chat_text += " ENABLED";
             else
@@ -485,9 +498,9 @@ void view::add_chat_key(int key) // return string if buf is complete
 
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "giveall")
+        else if (chat_text == "/giveall")
         {
-            chat_text += " DONE";
+            chat_text = "giveall DONE";
 
             for (int i = 0; i < total_weapons - 1; i++)
                 weapons[i] = 999;
@@ -495,39 +508,39 @@ void view::add_chat_key(int key) // return string if buf is complete
 
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "nopower")
+        else if (chat_text == "/nopower")
         {
             this->m_focus->lvars[4] = 0; //NO_POWER
 
-            chat_text += " ENABLED";
+            chat_text = "nopower ENABLED";
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "fastpower")
+        else if (chat_text == "/fastpower")
         {
             this->m_focus->lvars[4] = 1; //FAST_POWER
 
-            chat_text += " ENABLED";
+            chat_text = "fastpower ENABLED";
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "flypower")
+        else if (chat_text == "/flypower")
         {
             this->m_focus->lvars[4] = 2; //FLY_POWER
 
-            chat_text += " ENABLED";
+            chat_text = "flypower ENABLED";
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "sneakypower")
+        else if (chat_text == "/sneakypower")
         {
             this->m_focus->lvars[4] = 3; //SNEAKY_POWER
 
-            chat_text += " ENABLED";
+            chat_text = "sneakypower ENABLED";
             strcpy(m_chat_buf, chat_text.c_str());
         }
-        else if (chat_text == "healthpower")
+        else if (chat_text == "/healthpower")
         {
             this->m_focus->lvars[4] = 4; //HEALTH_POWER
 
-            chat_text += " ENABLED";
+            chat_text = "healthpower ENABLED";
             strcpy(m_chat_buf, chat_text.c_str());
         }
         //

@@ -57,6 +57,10 @@ class Settings
     bool menu_demos;
     bool record_replays;
 
+    //multiplayer
+    std::string player_name;
+    std::string server_name;
+
     double gamma;
 
     //settings shared with the Lisp game layer

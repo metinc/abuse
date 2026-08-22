@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include "common.h"
 
@@ -1610,7 +1612,7 @@ Game::Game(int argc, char **argv)
 
     stat_man = new gui_status_manager();
 
-    chat = new chat_console(console_font, 50, 6);
+    chat = new chat_console(console_font, 60, 6);
 
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
 
@@ -1722,8 +1724,39 @@ void Game::get_input()
         last_demo_mbut = 0;
     };
 
-    auto send_chat_key = [this](int key) {
+    int pending_chat_length = 0;
+    for (view *v = first_view; v; v = v->next)
+        if (v->local_player())
+        {
+            pending_chat_length = v->chat_input_length();
+            break;
+        }
+    for (const pending_input_event &event : pending_input_events)
+        if (event.command == SCMD_CHAT_KEYPRESS)
+        {
+            if (event.value == JK_BACKSPACE && pending_chat_length > 0)
+                pending_chat_length--;
+            else if (event.value == JK_ENTER)
+                pending_chat_length = 0;
+            else if (event.value >= ' ' && event.value <= '~' &&
+                     pending_chat_length < view::MAX_CHAT_INPUT_LENGTH)
+                pending_chat_length++;
+        }
+
+    auto send_chat_key = [this, &pending_chat_length](int key) {
+        if (key >= ' ' && key <= '~')
+        {
+            if (pending_chat_length >= view::MAX_CHAT_INPUT_LENGTH)
+                return false;
+            pending_chat_length++;
+        }
+        else if (key == JK_BACKSPACE && pending_chat_length > 0)
+            pending_chat_length--;
+        else if (key == JK_ENTER)
+            pending_chat_length = 0;
+
         pending_input_events.push_back({SCMD_CHAT_KEYPRESS, static_cast<uint8_t>(key)});
+        return true;
     };
 
     while (event_waiting())
@@ -1741,37 +1774,43 @@ void Game::get_input()
 
             if (ev.type == EV_TEXT_INPUT)
             {
-                const bool activation_text = suppress_chat_activation_text && (ev.text == "t" || ev.text == "T");
-                suppress_chat_activation_text = false;
-                if (!activation_text)
-                    for (unsigned char ch : ev.text)
-                        if (ch >= ' ' && ch <= '~')
-                            send_chat_key(ch);
+                for (unsigned char ch : ev.text)
+                    if (ch >= ' ' && ch <= '~')
+                        send_chat_key(ch);
             }
             else if (ev.type == EV_KEY)
             {
-                if (ev.key == JK_BACKSPACE || ev.key == JK_ENTER)
+                if ((ev.key == 'v' || ev.key == 'V') &&
+                    (wm->key_pressed(JK_CTRL_L) || wm->key_pressed(JK_CTRL_R)))
+                {
+                    char *clipboard = SDL_GetClipboardText();
+                    for (const unsigned char *ch = reinterpret_cast<unsigned char *>(clipboard);
+                         ch && *ch; ++ch)
+                    {
+                        if (*ch >= ' ' && *ch <= '~' && !send_chat_key(*ch))
+                            break;
+                    }
+                    SDL_free(clipboard);
+                }
+                else if (ev.key == JK_BACKSPACE || ev.key == JK_ENTER)
                     send_chat_key(ev.key);
                 else if (ev.key == JK_ESC)
                 {
-                    suppress_chat_activation_text = false;
                     chat->toggle();
                     clear_player_input();
                 }
             }
             else if (ev.type == EV_CLOSE_WINDOW && chat->chat_event(ev))
             {
-                suppress_chat_activation_text = false;
                 chat->toggle();
                 clear_player_input();
             }
             continue;
         }
 
-        if (state == RUN_STATE && ev.window == nullptr && ev.type == EV_KEY && (ev.key == 't' || ev.key == 'T') &&
+        if (state == RUN_STATE && ev.window == nullptr && ev.type == EV_KEY && ev.key == JK_ENTER &&
             chatting_enabled && !(dev & EDIT_MODE) && chat)
         {
-            suppress_chat_activation_text = true;
             chat->toggle();
             clear_player_input();
             continue;

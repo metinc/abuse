@@ -53,7 +53,7 @@ add_executable(abuse
     fnt6x13.cpp
     morpher.cpp morpher.h
     director.cpp director.h
-    view.cpp view.h
+    view.cpp view.h player_name.h
     configuration.cpp configuration.h
     game.cpp game.h
     light.cpp light.h

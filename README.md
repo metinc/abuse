@@ -41,17 +41,17 @@ For custom content, there are three types to consider:
 
 ### Cheats
 
-To use cheats, press <kbd>c</kbd> to open the console and type the desired cheat command. The mouse cursor must be inside the console window for input. Press enter when done, or type "quit"/"exit" to close the console.
+To use cheats, press <kbd>Enter</kbd> to open the console and type the desired slash-prefixed cheat command. The mouse cursor must be inside the console window for input. Press Enter when done, or type "quit"/"exit" to close the console. Use the scrollbar, mouse wheel, or arrow keys to browse the chat history.
 
 Available cheats:
 
-- `god` - Makes you invulnerable to all damage
-- `giveall` - Gives all weapons and maximum ammunition
-- `flypower` - Grants Anti-Gravity Boots effect
-- `sneakypower` - Grants Cloak effect
-- `fastpower` - Grants Flash Speed effect
-- `healthpower` - Grants Ultra-Health effect
-- `nopower` - Removes all active special abilities
+- `/god` - Makes you invulnerable to all damage
+- `/giveall` - Gives all weapons and maximum ammunition
+- `/flypower` - Grants Anti-Gravity Boots effect
+- `/sneakypower` - Grants Cloak effect
+- `/fastpower` - Grants Flash Speed effect
+- `/healthpower` - Grants Ultra-Health effect
+- `/nopower` - Removes all active special abilities
 
 ## Configuration
 
@@ -102,6 +102,8 @@ packaged; HMI conversion is not part of the game's runtime audio path. The C++ c
 - `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
 - `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
+- `[multiplayer].player_name` - Player name used in multiplayer games (maximum 18 characters)
+- `[multiplayer].server_name` - Default name used when hosting a multiplayer game (maximum 18 characters)
 
 ### Key Bindings
 
@@ -133,9 +135,10 @@ Keyboard bindings are arrays, allowing two keys for movement, for example `left 
 Hardcoded Keys:
 
 - <kbd>1-7</kbd> - Direct weapon selection
-- <kbd>Escape/Space/Enter</kbd> - Reset level on death
+- <kbd>Escape/Space</kbd> - Reset level on death
 - <kbd>P</kbd> - Pause game
-- <kbd>C</kbd> - Cheat/chat console
+- <kbd>Enter</kbd> - Open the cheat/chat console
+- <kbd>Ctrl+V</kbd> - Paste text into the open chat console
 - <kbd>F1</kbd> - Show help/controls screen
 - <kbd>F5</kbd> - Quick save on save consoles (slot 1/"save0001.spe")
 - <kbd>F6</kbd> - Toggle window input grab

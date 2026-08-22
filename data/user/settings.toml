@@ -1,5 +1,5 @@
 # Abuse configuration file
-schema_version = 6
+schema_version = 7
 
 [video]
 # Borderless desktop fullscreen
@@ -49,6 +49,12 @@ language = "english"
 # Confine the mouse to the rendered game area in windowed mode
 grab_input = false
 local_save = false
+
+[multiplayer]
+# Player names are limited to 18 characters. Empty uses the operating-system username.
+player_name = ""
+# Default name shown when hosting a multiplayer game; limited to 18 characters.
+server_name = "Abuse Game"
 
 [input.keyboard]
 # Movement accepts one or two key names; other actions accept one
