@@ -272,6 +272,8 @@ plan \n"
 	 (setq online_join_error "Impossible de rejoindre la partie en ligne.\nVérifiez le code et réessayez.")
 
 (setq max_players     "Ce serveur est complet.\nVeuillez réessayer plus tard.")
+	 (setq connection_lost "Connexion interrompue")
+	 (setq host_ended_server "L’hôte a fermé le serveur.")
          (setq net_not_reg     "Désolé, vous ne pouvez pas jouer au jeu sur le réseau avec une version démo\n")
          (setq min_wait        "Veuillez attendre pour %d participant(s) !")
          (setq online_min_wait "Partagez le code %s\npour permettre aux joueurs de participer.\nEncore %d joueur(s) attendu(s) !")

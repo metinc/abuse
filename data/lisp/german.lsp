@@ -272,6 +272,8 @@
 
          (setq min_error       "Min. Spielerzahl 1-8")
          (setq max_players     "Dieser Server ist voll.\nBitte versuche es später erneut.")
+	 (setq connection_lost "Verbindung getrennt")
+	 (setq host_ended_server "Der Host hat den Server beendet.")
          (setq net_not_reg     "Demoversion auf diesem Server nicht spielbar.\n")
          (setq min_wait        "Wartet auf %d zusätzliche Spieler!")
          (setq online_min_wait "Teile den Raumcode %s,\ndamit Spieler beitreten können.\nWarte auf %d weitere Spieler!")

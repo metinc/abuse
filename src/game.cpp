@@ -2572,6 +2572,14 @@ int main(int argc, char *argv[])
             show_multiplayer_error(symbol_str(server_full ? "max_players" : "online_join_error"));
         }
 
+        if (main_net_cfg && main_net_cfg->host_ended_server)
+        {
+            main_net_cfg->host_ended_server = false;
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+            show_multiplayer_error(symbol_str("host_ended_server"), symbol_str("connection_lost"));
+        }
+
         g->get_input(); // prime the net
 
         for (int i = 1; i + 1 < argc; i++)

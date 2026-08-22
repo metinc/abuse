@@ -36,6 +36,7 @@ extern int start_running;
 
 void game_client::restart_single_player()
 {
+    main_net_cfg->host_ended_server = true;
     main_net_cfg->state = net_configuration::RESTART_SINGLE;
     start_running = 0;
     strcpy(lsf, "abuse.lsp");

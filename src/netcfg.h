@@ -35,6 +35,7 @@ class net_configuration
     bool online;
     bool join_failed;
     bool server_full;
+    bool host_ended_server;
     bool streamer_mode;
 
     char min_players, max_players;

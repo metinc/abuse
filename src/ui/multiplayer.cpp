@@ -153,12 +153,13 @@ class MultiplayerUI
     net_configuration &config;
 };
 
-void show_multiplayer_error(char const *msg)
+void show_multiplayer_error(char const *msg, char const *title)
 {
     Jwindow *j =
-        wm->CreateWindow(ivec2(-1, 0), ivec2(-1),
+        wm->CreateWindow(ivec2(0), ivec2(-1),
                          new info_field(0, 0, 0, msg, new button(0, 30, CFG_ERR_OK, symbol_str("ok_button"), NULL)),
-                         symbol_str("input_error"));
+                         title ? title : symbol_str("input_error"));
+    wm->move_window(j, std::max(0, (xres - j->m_size.x) / 2), std::max(0, (yres - j->m_size.y) / 2));
     Event ev;
     do
     {

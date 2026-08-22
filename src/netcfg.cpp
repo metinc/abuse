@@ -28,6 +28,7 @@ net_configuration::net_configuration()
     online = false;
     join_failed = false;
     server_full = false;
+    host_ended_server = false;
     streamer_mode = settings.streamer_mode;
 
     min_players = 2;
