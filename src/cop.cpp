@@ -1144,7 +1144,7 @@ void *score_draw()
         ivec2 pos = local->m_aa;
         char msg[100];
 
-        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0])
+        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0] && !main_net_cfg->streamer_mode)
         {
             snprintf(msg, sizeof(msg), "%s: %s", symbol_str("room_code"), main_net_cfg->room_code);
             fnt->PutString(main_screen, pos, msg, wm->bright_color());

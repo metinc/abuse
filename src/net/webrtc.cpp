@@ -9,6 +9,7 @@
 #endif
 
 #include "common.h"
+#include "netcfg.h"
 #include "webrtc.h"
 
 #include <rtc/rtc.hpp>
@@ -1179,7 +1180,7 @@ net_socket *webrtc_protocol::create_listen_socket(const int port, const net_sock
             if (data->requested_mode == impl::mode::host)
                 room_code = data->room;
         }
-        if (!room_code.empty())
+        if (!room_code.empty() && (!main_net_cfg || !main_net_cfg->streamer_mode))
         {
             std::printf("Online room code: %s\n", room_code.c_str());
             std::fflush(stdout);

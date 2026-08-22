@@ -138,6 +138,7 @@ Settings::Settings()
     this->record_replays = false;
     this->player_name = get_login();
     this->server_name = "Abuse Game";
+    this->streamer_mode = false;
     this->gamma = 1.0;
     this->difficulty = "hard";
 
@@ -704,7 +705,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 7)
+        if (version && version->is_integer() && version->as_integer() > 8)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -754,6 +755,7 @@ bool Settings::ReadTomlFile()
         const settings_document *multiplayer = find_table(document, "multiplayer");
         read_string(multiplayer, "multiplayer", "player_name", player_name);
         read_string(multiplayer, "multiplayer", "server_name", server_name);
+        read_boolean(multiplayer, "multiplayer", "streamer_mode", streamer_mode);
 
         const settings_document *input = find_table(document, "input");
         const settings_document *keyboard = input ? find_table(*input, "keyboard") : nullptr;
@@ -855,7 +857,7 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 7);
+        set_value(document, "schema_version", 8);
 
         settings_document &video = ensure_table(document, "video");
         const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -903,6 +905,7 @@ bool Settings::Save() const
         settings_document &multiplayer = ensure_table(document, "multiplayer");
         set_value(multiplayer, "player_name", player_name);
         set_value(multiplayer, "server_name", server_name);
+        set_value(multiplayer, "streamer_mode", streamer_mode);
 
         settings_document &input = ensure_table(document, "input");
         input.as_table().erase("mouse_scale");

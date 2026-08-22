@@ -84,6 +84,7 @@ class text_field : public ifield
 {
     int cur;
     char *prompt, *data, *format;
+    bool masked = false;
     int xstart()
     {
         return m_pos.x + wm->font()->Size().x * (strlen(prompt) + 1) + 3;
@@ -107,7 +108,11 @@ class text_field : public ifield
     void draw_text(image *screen)
     {
         screen->Bar(ivec2(xstart() + 1, m_pos.y + 1), ivec2(xend() - 1, yend() - 1), wm->dark_color());
-        wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3), data);
+        if (masked)
+            wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3),
+                                  std::string(static_cast<size_t>(last_spot()), '*'));
+        else
+            wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3), data);
     }
     void insert_text(char const *text, image *screen);
 
@@ -127,6 +132,12 @@ class text_field : public ifield
         free(data);
     }
     virtual char *read();
+    void set_masked(bool enabled, image *screen = NULL)
+    {
+        masked = enabled;
+        if (screen)
+            draw_text(screen);
+    }
     void change_data(char const *new_data, int new_cursor, // cursor==-1, does not change it.
                      int active, image *screen);
 };

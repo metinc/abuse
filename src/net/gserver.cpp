@@ -79,17 +79,20 @@ int game_server::total_players()
     return total;
 }
 
-// Wait for minimum number of players to join before starting game
+// Wait for players and, for online games, explicit host confirmation.
 void game_server::game_start_wait()
 {
-    DEBUG_LOG("Waiting for minimum players (%d needed)", main_net_cfg->min_players);
+    DEBUG_LOG("Opening game start lobby (%d minimum players)", main_net_cfg->min_players);
 
     int last_count = 0;
     Jwindow *stat = NULL;
     Event ev;
-    int abort = 0;
+    int done = 0;
+    const bool online_lobby = main_net_cfg->online;
 
-    while (!abort && total_players() < main_net_cfg->min_players)
+    // Online hosts explicitly start the game from the lobby, even when the
+    // configured minimum player count has already been reached.
+    while (!done && (online_lobby || total_players() < main_net_cfg->min_players))
     {
         if (last_count != total_players())
         {
@@ -97,32 +100,44 @@ void game_server::game_start_wait()
                 wm->close_window(stat);
             char msg[256];
             const bool show_room = main_net_cfg->online && main_net_cfg->room_code[0];
-            if (show_room)
-                snprintf(msg, sizeof(msg), symbol_str("online_min_wait"), main_net_cfg->room_code,
-                         main_net_cfg->min_players - total_players());
+            const int players_needed = std::max(0, main_net_cfg->min_players - total_players());
+            if (show_room && players_needed == 0 && main_net_cfg->streamer_mode)
+                snprintf(msg, sizeof(msg), "%s", symbol_str("online_ready_streamer"));
+            else if (show_room && players_needed == 0)
+                snprintf(msg, sizeof(msg), symbol_str("online_ready"), main_net_cfg->room_code);
+            else if (show_room && main_net_cfg->streamer_mode)
+                snprintf(msg, sizeof(msg), symbol_str("online_min_wait_streamer"),
+                         players_needed);
+            else if (show_room)
+                snprintf(msg, sizeof(msg), symbol_str("online_min_wait"), main_net_cfg->room_code, players_needed);
             else
-                snprintf(msg, sizeof(msg), symbol_str("min_wait"), main_net_cfg->min_players - total_players());
+                snprintf(msg, sizeof(msg), symbol_str("min_wait"), players_needed);
 
             ifield *controls;
             if (show_room)
             {
                 char const *copy_text = symbol_str("copy_room_code");
-                char const *cancel_text = symbol_str("cancel_button");
+                char const *action_text = symbol_str(online_lobby ? "start_game_button" : "cancel_button");
+                const int action_id = online_lobby ? ID_START_GAME : ID_CANCEL;
                 const int font_width = wm->font()->Size().x;
                 const int button_y = wm->font()->Size().y * 4;
                 const int copy_width = strlen(copy_text) * font_width + 6;
-                const int controls_width = (strlen(cancel_text) + strlen(copy_text)) * font_width + 18;
+                const int controls_width = (strlen(action_text) + strlen(copy_text)) * font_width + 18;
                 int x1, y1, message_width, y2;
                 info_field message_bounds(0, 0, ID_NULL, msg, NULL);
                 message_bounds.area(x1, y1, message_width, y2);
                 if (message_width < controls_width)
                     message_width = controls_width;
                 const int copy_x = message_width - copy_width;
-                controls = new button(0, button_y, ID_CANCEL, cancel_text,
+                controls = new button(0, button_y, action_id, action_text,
                                       new button(copy_x, button_y, ID_COPY_ROOM_CODE, copy_text, NULL));
             }
             else
-                controls = new button(0, wm->font()->Size().y * 2, ID_CANCEL, symbol_str("cancel_button"), NULL);
+            {
+                const int action_id = online_lobby ? ID_START_GAME : ID_CANCEL;
+                controls = new button(0, wm->font()->Size().y * 2, action_id,
+                                      symbol_str(online_lobby ? "start_game_button" : "cancel_button"), NULL);
+            }
 
             stat = wm->CreateWindow(
                 ivec2(100, 50), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls));
@@ -138,11 +153,11 @@ void game_server::game_start_wait()
                 wm->get_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             wm->flush_screen();
-            if ((ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL) ||
+            if ((ev.type == EV_MESSAGE && (ev.message.id == ID_CANCEL || ev.message.id == ID_START_GAME)) ||
                 (ev.type == EV_CLOSE_WINDOW && ev.window == stat))
             {
-                DEBUG_LOG("Game start wait canceled by user");
-                abort = 1;
+                DEBUG_LOG("Game start wait ended by host");
+                done = 1;
             }
             else if (ev.type == EV_MESSAGE && ev.message.id == ID_COPY_ROOM_CODE)
             {

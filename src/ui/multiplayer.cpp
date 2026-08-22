@@ -108,6 +108,7 @@ enum
     NET_GAMEMODE,
     NET_CONNECTION,
     NET_ROOM_CODE,
+    NET_STREAMER_MODE,
     NET_LOCAL_SEARCH,
     NET_GAME = 400,
     MIN_1,
@@ -129,6 +130,8 @@ enum
     GAMEMODE_COOP,
     CONNECTION_LOCAL,
     CONNECTION_ONLINE,
+    STREAMER_MODE_OFF,
+    STREAMER_MODE_ON,
     LEVEL_BOX
 };
 
@@ -186,8 +189,33 @@ static bool normalize_room_code(char const *input, char *output, size_t output_s
     return length == 6;
 }
 
+static void read_streamer_mode(InputManager *input, net_configuration &config)
+{
+    ifield *streamer_if = input->get(NET_STREAMER_MODE);
+    ifield *selected = streamer_if ? (ifield *)streamer_if->read() : NULL;
+    if (selected)
+        config.streamer_mode = selected->id == STREAMER_MODE_ON;
+}
+
+static button_box *make_streamer_mode_box(int x, int y, bool enabled, ifield *next)
+{
+    button_box *box = new button_box(x, y, NET_STREAMER_MODE, 1, NULL, next);
+    button *on = new button(0, 0, STREAMER_MODE_ON, symbol_str("YES"), NULL);
+    if (enabled)
+        on->push();
+    box->add_button(on);
+    button *off = new button(0, 0, STREAMER_MODE_OFF, symbol_str("NO"), NULL);
+    if (!enabled)
+        off->push();
+    box->add_button(off);
+    box->arrange_left_right();
+    return box;
+}
+
 int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
 {
+    read_streamer_mode(i, config);
+
     if (server)
     {
         ifield *connection_if = i->get(NET_CONNECTION);
@@ -306,6 +334,7 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
     }
 
     settings.player_name = config.name;
+    settings.streamer_mode = config.streamer_mode;
     if (server)
         settings.server_name = game_name;
     if (!settings.Save())
@@ -426,6 +455,15 @@ int MultiplayerUI::get_options(int server, bool online_join)
         connection_box->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + gap;
 
+        info_field *streamer_lbl = new info_field(right_x, right_y, 0, symbol_str("streamer_mode"), list);
+        list = streamer_lbl;
+        streamer_lbl->area(cx1, cy1, cx2, cy2);
+        right_y = cy2 + 1;
+        button_box *streamer_box = make_streamer_mode_box(right_x, right_y, config.streamer_mode, list);
+        list = streamer_box;
+        streamer_box->area(cx1, cy1, cx2, cy2);
+        right_y = cy2 + gap;
+
         // Game mode selection
         info_field *mode_lbl = new info_field(left_x, left_y, 0, symbol_str("game_mode"), list);
         list = mode_lbl;
@@ -508,7 +546,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
         {
             list = new info_field(right_x, right_y, 0, symbol_str("select_level"), list);
             right_y += fnt->Size().y + 4;
-            constexpr int visible_level_rows = 11;
+            // Leave room for the local privacy controls above the list.
+            constexpr int visible_level_rows = 7;
             pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, visible_level_rows, g_net_levels_c.data(),
                                           (int)g_net_levels_c.size(), 0, list, cache.img(window_texture));
             list = pl;
@@ -522,9 +561,19 @@ int MultiplayerUI::get_options(int server, bool online_join)
                 new text_field(x, y + 65, NET_NAME, symbol_str("your_name"), PLAYER_NAME_FORMAT, config.name, list), x,
                 x + ns_w, NULL);
             list = name_field;
-            list = center_ifield(
-                new text_field(x, y + 95, NET_ROOM_CODE, symbol_str("room_code"), "******", config.room_code, list), x,
-                x + ns_w, NULL);
+            text_field *room_code_field =
+                new text_field(x, y + 95, NET_ROOM_CODE, symbol_str("room_code"), "******", config.room_code, list);
+            room_code_field->set_masked(config.streamer_mode);
+            list = center_ifield(room_code_field, x, x + ns_w, NULL);
+
+            info_field *streamer_label = static_cast<info_field *>(
+                center_ifield(new info_field(x, y + 117, 0, symbol_str("streamer_mode"), list), x, x + ns_w, NULL));
+            list = streamer_label;
+            button_box *streamer_box = make_streamer_mode_box(0, 0, config.streamer_mode, list);
+            int sx1, sy1, sx2, sy2;
+            streamer_box->area(sx1, sy1, sx2, sy2);
+            streamer_box->Move(ivec2(x + ns_w / 2 - (sx2 - sx1) / 2, y + 129));
+            list = streamer_box;
         }
         else
         {
@@ -558,6 +607,12 @@ int MultiplayerUI::get_options(int server, bool online_join)
             {
                 switch (ev.message.id)
                 {
+                case STREAMER_MODE_OFF:
+                case STREAMER_MODE_ON: {
+                    if (text_field *field = static_cast<text_field *>(inm.get(NET_ROOM_CODE)))
+                        field->set_masked(ev.message.id == STREAMER_MODE_ON, main_screen);
+                }
+                break;
                 case NET_ROOM_CODE: {
                     text_field *field = static_cast<text_field *>(ev.message.data);
                     if (field)
@@ -584,6 +639,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
                         ifield *selected = (ifield *)connection_field->read();
                         config.online = selected && selected->id == CONNECTION_ONLINE;
                     }
+                    read_streamer_mode(&inm, config);
 
                     // Game mode changed - update the mode and restart dialog
                     if (ev.message.id == GAMEMODE_COOP)
