@@ -884,24 +884,21 @@ void Game::draw_map(view *v, bool interpolate, uint32_t elapsedMsFixed)
         xinc = btile_width();
         yinc = btile_height();
 
-        int bh = current_level->background_height(), bw = current_level->background_width();
-        uint16_t *bl;
+        const int legacy_view_width = small_render ? 160 : 320;
+        const int view_width = v->m_bb.x - v->m_aa.x + 1;
+        const int repeat_columns = (legacy_view_width + xinc - 1) / xinc;
         for (draw_y = yo, y = y1; y <= y2; y++, draw_y += yinc)
         {
-            if (y >= bh)
-                bl = NULL;
-            else
-                bl = current_level->get_bgline(y) + x1;
-
             for (x = x1, draw_x = xo; x <= x2; x++, draw_x += xinc)
             {
-                if (x < bw && y < bh)
+                uint16_t tile = current_level->GetBg(ivec2(x, y));
+                if (tile == 0 && view_width > legacy_view_width &&
+                    draw_x >= v->m_aa.x + legacy_view_width)
                 {
-                    bt = get_bg(*bl);
-                    bl++;
+                    const int repeat_x = x1 + (x - x1) % repeat_columns;
+                    tile = current_level->GetBg(ivec2(repeat_x, y));
                 }
-                else
-                    bt = get_bg(0);
+                bt = get_bg(tile);
 
                 main_screen->PutImage(bt->im, ivec2(draw_x, draw_y));
                 //        if(!(dev & EDIT_MODE) && bt->next)
