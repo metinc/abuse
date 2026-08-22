@@ -531,7 +531,7 @@ void Game::load_level(char const *name)
 
 int Game::done()
 {
-    return finished || (main_net_cfg && main_net_cfg->restart_state());
+    return finished || application_quit_requested() || (main_net_cfg && main_net_cfg->restart_state());
 }
 
 void Game::end_session()
@@ -1780,6 +1780,13 @@ void Game::get_input()
     {
         get_event(ev);
 
+        if (ev.type == EV_QUIT)
+        {
+            finished = true;
+            clear_player_input();
+            return;
+        }
+
         if (chat && chat->showing())
         {
             // The chat window is modal. WindowManager has already handled
@@ -2580,11 +2587,12 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (main_net_cfg)
+        if (!g->done() && main_net_cfg)
             wait_min_players();
 
-        net_send(1);
-        if (net_start())
+        if (!g->done())
+            net_send(1);
+        if (!g->done() && net_start())
         {
             g->Step(); // process all the objects in the world
             g->update_screen(); // redraw the screen with any changes
@@ -2619,6 +2627,8 @@ int main(int argc, char *argv[])
 
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
+            if (g->done())
+                break;
 
             // make sure physics process gets called every 65 ms
             if (SDL_GetTicks() - lastFixedUpdate >= settings.physics_update)
@@ -2741,7 +2751,7 @@ int main(int argc, char *argv[])
         base->packet.packet_reset();
     }
 
-    while (main_net_cfg && main_net_cfg->restart_state());
+    while (!application_quit_requested() && main_net_cfg && main_net_cfg->restart_state());
 
     delete main_net_cfg;
     main_net_cfg = NULL;

@@ -167,8 +167,9 @@ void show_multiplayer_error(char const *msg)
         {
             wm->get_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
-    } while (ev.type != EV_MESSAGE || ev.message.id != CFG_ERR_OK || ev.type == EV_CLOSE_WINDOW ||
-             (ev.type == EV_KEY && ev.key == JK_ESC));
+    } while (!application_quit_requested() &&
+             (ev.type != EV_MESSAGE || ev.message.id != CFG_ERR_OK || ev.type == EV_CLOSE_WINDOW ||
+              (ev.type == EV_KEY && ev.key == JK_ESC)));
     wm->close_window(j);
     wm->flush_screen();
 }
@@ -391,7 +392,7 @@ void MultiplayerUI::error(char const *message)
             inm.handle_event(ev, NULL);
             if ((ev.type == EV_KEY && (ev.key == JK_ESC || ev.key == JK_ENTER)) || ev.type == EV_MESSAGE)
                 done = 1;
-        } while (!done);
+        } while (!done && !application_quit_requested());
     }
 
     main_screen->PutImage(screen_backup, ivec2(0, 0));
@@ -670,7 +671,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
             if (ev.type == EV_KEY && ev.key == JK_ESC)
                 done = 1;
 
-        } while (!done);
+        } while (!done && !application_quit_requested());
     }
     delete ok_image;
     delete cancel_image;
@@ -815,7 +816,7 @@ int MultiplayerUI::run()
                 }
             }
 
-        } while (!done);
+        } while (!done && !application_quit_requested());
 
         prot->reset_find_list();
 
@@ -850,7 +851,7 @@ int MultiplayerUI::run()
                         delete find;
                     }
 
-                } while (now.diff_time(&start) < 3 && !still_there);
+                } while (!application_quit_requested() && now.diff_time(&start) < 3 && !still_there);
 
                 if (still_there)
                 {

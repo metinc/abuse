@@ -92,7 +92,8 @@ void game_server::game_start_wait()
 
     // Online hosts explicitly start the game from the lobby, even when the
     // configured minimum player count has already been reached.
-    while (!done && (online_lobby || total_players() < main_net_cfg->min_players))
+    while (!done && !application_quit_requested() &&
+           (online_lobby || total_players() < main_net_cfg->min_players))
     {
         if (last_count != total_players())
         {
@@ -153,6 +154,11 @@ void game_server::game_start_wait()
                 wm->get_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             wm->flush_screen();
+            if (ev.type == EV_QUIT)
+            {
+                done = 1;
+                continue;
+            }
             if ((ev.type == EV_MESSAGE && (ev.message.id == ID_CANCEL || ev.message.id == ID_START_GAME)) ||
                 (ev.type == EV_CLOSE_WINDOW && ev.window == stat))
             {

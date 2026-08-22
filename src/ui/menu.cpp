@@ -707,10 +707,10 @@ void main_menu()
         }
         //
 
-    } while (!stop_menu);
+    } while (!stop_menu && !application_quit_requested());
 
     delete inm;
 
-    if (ev.type == EV_MESSAGE && ev.message.id == ID_QUIT) // propogate the quit message
+    if (application_quit_requested() || (ev.type == EV_MESSAGE && ev.message.id == ID_QUIT)) // propagate quit
         the_game->end_session();
 }
