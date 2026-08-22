@@ -1743,7 +1743,12 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
             else
             {
                 for (v = player_list; v; v = v->next)
-                    v->set_view_var_value(i, 0);
+                {
+                    if (!strcmp(find_name, "view.tint"))
+                        v->set_tint(v->local_player() ? settings.player_skin : v->player_number);
+                    else
+                        v->set_view_var_value(i, 0);
+                }
             }
         }
 

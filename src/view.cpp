@@ -23,6 +23,7 @@
 #undef CreateWindow
 #endif
 
+#include <algorithm>
 #include <string>
 
 #include "common.h"
@@ -311,7 +312,7 @@ view::view(game_object *focus, view *Next, int number)
         weapons[0] = 0;
     if (local_player())
         sbar.associate(this);
-    set_tint(number);
+    set_tint(local_player() ? settings.player_skin : number);
     if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
         set_team(0);
     else
@@ -1072,10 +1073,11 @@ enum
     V_POINTER_Y,
     V_LAST_LAST_X,
     V_LAST_LAST_Y,
-    V_FREEZE_TIME
+    V_FREEZE_TIME,
+    V_TINT
 };
 
-#define TVV (V_FREEZE_TIME + 1)
+#define TVV (V_TINT + 1)
 
 static char const *vv_names[TVV] = {"view.cx1",
                                     "view.cy1",
@@ -1120,7 +1122,8 @@ static char const *vv_names[TVV] = {"view.cx1",
                                     "view.pointer_y",
                                     "view.last_last_x",
                                     "view.last_last_y",
-                                    "view.freeze_time"};
+                                    "view.freeze_time",
+                                    "view.tint"};
 
 int total_view_vars()
 {
@@ -1265,6 +1268,9 @@ int32_t view::get_view_var_value(int num)
     case V_FREEZE_TIME:
         return freeze_time;
         break;
+    case V_TINT:
+        return get_tint();
+        break;
     }
     return 0;
 }
@@ -1298,7 +1304,6 @@ int32_t view::set_view_var_value(int num, int32_t x)
         player_number = x;
         if (local_player())
             sbar.associate(this);
-        set_tint(x);
     }
     break;
 
@@ -1403,6 +1408,14 @@ int32_t view::set_view_var_value(int num, int32_t x)
         break;
     case V_POINTER_Y:
         pointer_y = x;
+        break;
+    case V_TINT:
+        if (local_player() &&
+            (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+             main_net_cfg->state == net_configuration::RESTART_SINGLE))
+            set_tint(settings.player_skin);
+        else
+            set_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_LAST_LAST_X:
         break;

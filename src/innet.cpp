@@ -33,6 +33,7 @@
 #include "net/gclient.h"
 #include "netcfg.h"
 #include "net/webrtc.h"
+#include "sdlport/setup.h"
 
 #include <string>
 
@@ -59,6 +60,7 @@ game_handler *game_face = NULL; // Interface for game networking
 extern char lsf[256]; // Level file name
 int local_client_number = 0; // Client ID (0 = server)
 join_struct *join_array = NULL; // Array of joining clients
+extern Settings settings;
 
 int net_init(int argc, char **argv)
 {
@@ -614,12 +616,14 @@ int request_server_entry()
         else
             strcpy(uname, "unknown");
         uint8_t len = strlen(uname) + 1;
+        uint8_t skin = static_cast<uint8_t>(settings.player_skin);
         uint16_t our_port = lstl(client_port), cport;
         int16_t nkills;
 
         DEBUG_LOG("Sending client info - username: %s", uname);
         if (sock->write(/* client_name_length */ &len, 1) != 1 ||
-            sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_port */ &our_port, 2) != 2 ||
+            sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_skin */ &skin, 1) != 1 ||
+            sock->write(/* client_port */ &our_port, 2) != 2 ||
             sock->read(/* server_port */ &port, 2) != 2 || sock->read(/* server_kills */ &nkills, 2) != 2 ||
             sock->read(/* server_game_mode */ &ctype, 1) != 1 || sock->read(/* server_client_id */ &cnum, 2) != 2 ||
             cnum == 0)
@@ -741,7 +745,7 @@ void net_reload()
                 f->next = new view(o, NULL, join_list->client_id);
                 copy_player_name(f->next->name, sizeof(f->next->name), join_list->name);
                 o->set_controller(f->next);
-                f->next->set_tint(f->next->player_number);
+                f->next->set_tint(join_list->skin);
                 if (start)
                     current_level->add_object_after(o, start);
                 else

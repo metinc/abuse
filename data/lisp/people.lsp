@@ -2,27 +2,33 @@
 ;; See licensing information for more details on usage rights
 
 (setq bright_tint (def_tint "art/tints/cop/bright.spe"))  ;; used when the player fires a weapon
-(setq player_tints (make-array 8 :initial-contents (list
-						    0                                      ; 0 this is not used
-						    (def_tint "art/tints/cop/blue.spe")    ; 1 bright blue
-						    (def_tint "art/tints/cop/yellow.spe")  ; 2 yellow
-						    (def_tint "art/tints/cop/fire.spe")    ; 3 red-yellow
-						    (def_tint "art/tints/cop/olive.spe")   ; 4 green
-						    (def_tint "art/tints/cop/pinkish.spe") ; 5 pink
-						    (def_tint "art/tints/cop/darkblue.spe") ; 6 darkblue
-						    (def_tint "art/tints/cop/purple.spe")  ; 7 purple
+(setq player_tints (make-array 11 :initial-contents (list
+							    0                                      ; 0 this is not used
+							    (def_tint "art/tints/cop/blue.spe")    ; 1 bright blue
+							    (def_tint "art/tints/cop/yellow.spe")  ; 2 yellow
+							    (def_tint "art/tints/cop/fire.spe")    ; 3 red-yellow
+							    (def_tint "art/tints/cop/olive.spe")   ; 4 green
+							    (def_tint "art/tints/cop/pinkish.spe") ; 5 pink
+							    (def_tint "art/tints/cop/darkblue.spe") ; 6 darkblue
+							    (def_tint "art/tints/cop/purple.spe")  ; 7 purple
+							    (def_tint "art/tints/cop/africa.spe")  ; 8 africa
+							    (def_tint "art/tints/cop/gold.spe")    ; 9 gold
+							    (def_tint "art/tints/cop/land.spe")    ; 10 land
 
 )))
 
-(setq player_text_color (make-array 8 :initial-contents (list
-							 43       ; 0 brown
-							 216      ; 1 blue
-							 76       ; 2 yellow
-							 82       ; 3 orange
-							 148      ; 4 green2
-							 90       ; 5 red
-							 231      ; 6 darkblue
-							 192)))   ; 7 purple
+(setq player_text_color (make-array 11 :initial-contents (list
+								 43       ; 0 brown
+								 216      ; 1 blue
+								 76       ; 2 yellow
+								 82       ; 3 orange
+								 148      ; 4 green2
+								 90       ; 5 red
+								 231      ; 6 darkblue
+								 192      ; 7 purple
+								 43       ; 8 africa
+								 76       ; 9 gold
+								 148)))   ; 10 land
 
 (setq cop_dead_parts (make-array (* 4 3) :initial-contents
 			       ;       head           arm            leg

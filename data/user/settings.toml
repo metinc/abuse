@@ -46,6 +46,8 @@ record_replays = false
 [general]
 # english, german, or french
 language = "english"
+# Player appearance, from 0 (standard) to 10
+player_skin = 0
 # Confine the mouse to the rendered game area in windowed mode
 grab_input = false
 local_save = false

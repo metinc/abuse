@@ -118,6 +118,7 @@ enum
 struct join_struct
 {
     int client_id;
+    uint8_t skin;
     char name[100];
     join_struct *next;
 };

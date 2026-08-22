@@ -128,6 +128,7 @@ Settings::Settings()
     this->max_fps = 300;
     this->big_font = false;
     this->language = "english";
+    this->player_skin = 0;
     //
     this->player_touching_console = false;
 
@@ -655,6 +656,7 @@ void Settings::Validate()
     validate_gain(volume_music, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
     clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
+    clamp(player_skin, 0, PLAYER_SKIN_COUNT - 1, "general.player_skin");
     clamp(ctr_aim_correctx, -1000, 1000, "input.gamepad.aim_correction_x");
     clamp(ctr_cd, 1, 1000, "input.gamepad.crosshair_distance");
     clamp(ctr_rst_s, 1, 100, "input.gamepad.aim_sensitivity");
@@ -745,6 +747,7 @@ bool Settings::ReadTomlFile()
 
         const settings_document *general = find_table(document, "general");
         read_string(general, "general", "language", language);
+        read_integer(general, "general", "player_skin", player_skin);
         read_boolean(general, "general", "grab_input", grab_input);
         read_boolean(general, "general", "local_save", local_save);
 
@@ -892,6 +895,7 @@ bool Settings::Save() const
 
         settings_document &general = ensure_table(document, "general");
         set_value(general, "language", language);
+        set_value(general, "player_skin", player_skin);
         general.as_table().erase("editor");
         set_value(general, "grab_input", grab_input);
         set_value(general, "local_save", command_line_overrides ? file_local_save : local_save);

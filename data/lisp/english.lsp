@@ -325,6 +325,18 @@
 	 (setq language_english "English")
 	 (setq language_german  "German")
 	 (setq language_french  "French")
+	 (setq player_skin      "Player skin")
+	 (setq skin_standard    "Standard")
+	 (setq skin_blue        "Blue")
+	 (setq skin_yellow      "Yellow")
+	 (setq skin_fire        "Fire")
+	 (setq skin_olive       "Olive")
+	 (setq skin_pink        "Pink")
+	 (setq skin_darkblue    "Dark blue")
+	 (setq skin_purple      "Purple")
+	 (setq skin_africa      "Africa")
+	 (setq skin_gold        "Gold")
+	 (setq skin_land        "Land")
 
 
 	 (setq no_file         "Could not find file '%s'")

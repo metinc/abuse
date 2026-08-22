@@ -18,6 +18,7 @@
 inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
 inline constexpr int GAMEPAD_BINDING_LEFT_TRIGGER = 1000;
 inline constexpr int GAMEPAD_BINDING_RIGHT_TRIGGER = 1001;
+inline constexpr int PLAYER_SKIN_COUNT = 11;
 
 class Settings
 {
@@ -49,6 +50,7 @@ class Settings
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     std::string language;
+    int player_skin;
     //
 
     std::string quick_load; //quick load

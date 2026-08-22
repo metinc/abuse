@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -32,6 +33,7 @@
 #include "input.h"
 #include "dev.h"
 #include "game.h"
+#include "sdlport/setup.h"
 #include <SDL3/SDL_clipboard.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_timer.h>
@@ -627,12 +629,13 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         // Exchange initial connection data
         uint16_t our_port = lstl(main_net_cfg->port + 1), cport;
         char name[256];
-        uint8_t len;
+        uint8_t len, skin;
         int16_t nkills = lstl(main_net_cfg->kills);
         uint8_t gmode = (uint8_t)main_net_cfg->game_mode;
 
         if (sock->read(/* client_name_length */ &len, 1) != 1 || sock->read(/* client_name_data */ name, len) != len ||
-            sock->read(/* client_port */ &cport, 2) != 2 || sock->write(/* server_port */ &our_port, 2) != 2 ||
+            sock->read(/* client_skin */ &skin, 1) != 1 || sock->read(/* client_port */ &cport, 2) != 2 ||
+            sock->write(/* server_port */ &our_port, 2) != 2 ||
             sock->write(/* server_kills */ &nkills, 2) != 2 || sock->write(/* server_game_mode */ &gmode, 1) != 1)
         {
             DEBUG_LOG("Failed to exchange connection data");
@@ -681,6 +684,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         join_array[client_id].next = base->join_list;
         base->join_list = &join_array[client_id];
         join_array[client_id].client_id = client_id;
+        join_array[client_id].skin = static_cast<uint8_t>(std::clamp<int>(skin, 0, PLAYER_SKIN_COUNT - 1));
         copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
         player_list = new player_client(f, sock, from, player_list);
 
