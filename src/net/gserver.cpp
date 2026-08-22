@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -32,7 +33,15 @@
 #include "input.h"
 #include "dev.h"
 #include "game.h"
+#include "sdlport/setup.h"
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_timer.h>
+
+namespace
+{
+constexpr int ID_COPY_ROOM_CODE = 0x7f00;
+}
 
 extern base_memory_struct *base;
 extern net_socket *comm_sock, *game_sock;
@@ -86,12 +95,37 @@ void game_server::game_start_wait()
         {
             if (stat)
                 wm->close_window(stat);
-            char msg[100];
-            sprintf(msg, symbol_str("min_wait"), main_net_cfg->min_players - total_players());
+            char msg[256];
+            const bool show_room = main_net_cfg->online && main_net_cfg->room_code[0];
+            if (show_room)
+                snprintf(msg, sizeof(msg), symbol_str("online_min_wait"), main_net_cfg->room_code,
+                         main_net_cfg->min_players - total_players());
+            else
+                snprintf(msg, sizeof(msg), symbol_str("min_wait"), main_net_cfg->min_players - total_players());
+
+            ifield *controls;
+            if (show_room)
+            {
+                char const *copy_text = symbol_str("copy_room_code");
+                char const *cancel_text = symbol_str("cancel_button");
+                const int font_width = wm->font()->Size().x;
+                const int button_y = wm->font()->Size().y * 4;
+                const int copy_width = strlen(copy_text) * font_width + 6;
+                const int controls_width = (strlen(cancel_text) + strlen(copy_text)) * font_width + 18;
+                int x1, y1, message_width, y2;
+                info_field message_bounds(0, 0, ID_NULL, msg, NULL);
+                message_bounds.area(x1, y1, message_width, y2);
+                if (message_width < controls_width)
+                    message_width = controls_width;
+                const int copy_x = message_width - copy_width;
+                controls = new button(0, button_y, ID_CANCEL, cancel_text,
+                                      new button(copy_x, button_y, ID_COPY_ROOM_CODE, copy_text, NULL));
+            }
+            else
+                controls = new button(0, wm->font()->Size().y * 2, ID_CANCEL, symbol_str("cancel_button"), NULL);
+
             stat = wm->CreateWindow(
-                ivec2(100, 50), ivec2(-1),
-                new info_field(0, 0, ID_NULL, msg,
-                               new button(0, wm->font()->Size().y * 2, ID_CANCEL, symbol_str("cancel_button"), NULL)));
+                ivec2(100, 50), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls));
             wm->flush_screen();
             last_count = total_players();
             DEBUG_LOG("Updated player count to %d", last_count);
@@ -104,10 +138,16 @@ void game_server::game_start_wait()
                 wm->get_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             wm->flush_screen();
-            if (ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL)
+            if ((ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL) ||
+                (ev.type == EV_CLOSE_WINDOW && ev.window == stat))
             {
                 DEBUG_LOG("Game start wait canceled by user");
                 abort = 1;
+            }
+            else if (ev.type == EV_MESSAGE && ev.message.id == ID_COPY_ROOM_CODE)
+            {
+                if (!SDL_SetClipboardText(main_net_cfg->room_code))
+                    DEBUG_LOG("Unable to copy room code: %s", SDL_GetError());
             }
         }
 
@@ -296,19 +336,20 @@ int game_server::process_client_command(player_client *c)
         if (reload_state)
         {
             DEBUG_LOG("Client %d requesting reload while reload in progress", c->client_id);
+            const uint8_t ack = SRVCMD_RELOAD_START_OK;
+            if (c->comm->write(/* server_command */ &ack, 1) != 1)
+            {
+                DEBUG_LOG("Failed to acknowledge reload to client %d", c->client_id);
+                c->set_delete_me(1);
+                return 0;
+            }
         }
         else
         {
-            DEBUG_LOG("Client %d marked for reload start", c->client_id);
+            // The snapshot does not exist yet. start_reload() sends the ACK
+            // after the server has saved the authoritative level state.
+            DEBUG_LOG("Client %d waiting for server reload to start", c->client_id);
             c->set_need_reload_start_ok(1);
-        }
-
-        uint8_t ack = SRVCMD_RELOAD_START_OK;
-        if (c->comm->write(/* server_command */ &ack, 1) != 1)
-        {
-            DEBUG_LOG("Failed to acknowledge reload to client %d", c->client_id);
-            c->set_delete_me(1);
-            return 0;
         }
 
         return 1;
@@ -364,7 +405,11 @@ int game_server::process_net()
                     player_client *f = player_list, *found = NULL;
                     for (; !found && f; f = f->next)
                     {
-                        if (f->has_joined() && from->equal(f->data_address))
+                        // More than one client can legitimately have the same
+                        // IP address. The UDP source port is part of the game
+                        // endpoint and distinguishes those clients.
+                        if (f->has_joined() && from->equal(f->data_address) &&
+                            from->get_port() == f->data_address->get_port())
                             found = f;
                     }
 
@@ -584,17 +629,19 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         // Exchange initial connection data
         uint16_t our_port = lstl(main_net_cfg->port + 1), cport;
         char name[256];
-        uint8_t len;
+        uint8_t len, skin;
         int16_t nkills = lstl(main_net_cfg->kills);
         uint8_t gmode = (uint8_t)main_net_cfg->game_mode;
 
         if (sock->read(/* client_name_length */ &len, 1) != 1 || sock->read(/* client_name_data */ name, len) != len ||
-            sock->read(/* client_port */ &cport, 2) != 2 || sock->write(/* server_port */ &our_port, 2) != 2 ||
+            sock->read(/* client_skin */ &skin, 1) != 1 || sock->read(/* client_port */ &cport, 2) != 2 ||
+            sock->write(/* server_port */ &our_port, 2) != 2 ||
             sock->write(/* server_kills */ &nkills, 2) != 2 || sock->write(/* server_game_mode */ &gmode, 1) != 1)
         {
             DEBUG_LOG("Failed to exchange connection data");
             return 0;
         }
+        name[len] = '\0';
 
         cport = lstl(cport);
         DEBUG_LOG("Client connection data - Name: %s, Port: %d", name, cport);
@@ -637,7 +684,8 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         join_array[client_id].next = base->join_list;
         base->join_list = &join_array[client_id];
         join_array[client_id].client_id = client_id;
-        strcpy(join_array[client_id].name, name);
+        join_array[client_id].skin = static_cast<uint8_t>(std::clamp<int>(skin, 0, PLAYER_SKIN_COUNT - 1));
+        copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
         player_list = new player_client(f, sock, from, player_list);
 
         DEBUG_LOG("Client %d successfully added", client_id);

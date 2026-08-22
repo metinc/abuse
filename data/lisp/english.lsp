@@ -162,13 +162,14 @@
 	 (setq edit_top           "Edit")
 	 (setq window_top         "Windows")
 	 (setq menu1_load         "Load Level")
+	 (setq menu1_replay       "Play replay")
 	 (setq menu1_save         "Save Level         (S)")
 	 (setq menu1_saveas       "Save level as")
 	 (setq menu1_savegame     "Save game")
 	 (setq menu1_new          "New level")
 	 (setq menu1_resize       "Resize map")
 	 (setq menu1_suspend      "Suspend non-players")
-	 (setq menu1_toggle       "Play mode toggle (TAB)")
+	 (setq menu1_toggle       "Play level (TAB)")
 	 (setq menu1_savepal      "Save Palettes         ")
 	 (setq menu1_startc       "Start cache profile   ")
 	 (setq menu1_endc         "End cache profile     ")
@@ -189,6 +190,7 @@
 	 (setq menu2_view         "Disable view shifts")
 	 (setq menu2_alight       "Disable Autolight (A)")
 	 (setq menu2_fps          "Show FPS/Obj count")
+	 (setq replay_filename    "Replay file")
 
 	 (setq menu3_fore         "Foreground  (F)")
 	 (setq menu3_back         "Background  (B)")
@@ -219,7 +221,13 @@
 	 (setq secured " secured!")   ; V-A added
 	 (setq loading "loading %s")  ; V-A added
 
-         (setq gamma_msg "Select the darkest grey visible on your\nmonitor then click the check mark")
+         (setq gamma_msg "Brightness")
+         (setq gamma_darker "Darker")
+         (setq gamma_default "Default")
+         (setq gamma_brighter "Brighter")
+         (setq video_mode_msg "Display mode")
+         (setq video_windowed "Window")
+         (setq video_fullscreen "Fullscreen")
 	 (setq telep_msg "Press down to teleport")
 
 	 (defun get_train_msg (message_num)
@@ -243,6 +251,7 @@
 		   (9 "Shoot hidden walls to destroy them")
 		   (10 "Shoot switch ball to activate")
 		   (11 "Press down to teleport")
+		   (12 "Checkpoint updated")
 		   ))
 
 	 (setq not_there       "This game has stopped running")
@@ -264,9 +273,18 @@
 	 (setq use_port        "Game number")
 	 (setq your_name       "Your name")
 	 (setq game_mode       "Game mode")
+	 (setq connection_type "Connection")
+	 (setq local_game      "Local")
+	 (setq online_game     "Online")
+	 (setq room_code       "Room code")
+	 (setq room_code_error "Room code: exactly 6 characters")
+	 (setq online_join_error "Unable to join online game.\nCheck the room code and try again.")
          (setq max_players     "The server already has its maximum number players, try again later\n  Get back to work!!\n")
 	 (setq net_not_reg     "Sorry you cannot play against this server with a demo version\n")
 	 (setq min_wait        "Waiting for %d more player(s) to join!")
+	 (setq online_min_wait "Share room code %s,\nso players can join.\nWaiting for %d more player(s)!")
+	 (setq copy_room_code  "Copy room code")
+	 (setq searching_local_games "Searching for local games")
 	 (setq lev_complete    "Level Completed!")
 	 ;(setq lev_complete    "Level %d Completed!") XXX: Mac Abuse
 	 (setq no_low_mem      "Not enough low memory")
@@ -281,14 +299,16 @@
 	 (setq multiplayer         "Multiplayer")
          (setq server          " Start New Net Game  ")
          (setq client          " Join Existing Game  ")
+         (setq join_online     "  Join Online Game   ")
          (setq single_play     "    Exit Net Game    ")  ; V-A
 	 (setq cancel_net      "      Cancel         ")
 
 
          (setq ic_return       "Return to Game")        ; ----
          (setq ic_quit         "Quit Abuse")            ;  |
-	 (setq ic_volume       "Volume Control")        ;  |
-	 (setq ic_gamma        "Gamma Correction")      ;  |
+	 (setq ic_general      "General Settings")      ;  |
+	 (setq ic_volume       "Audio Settings")        ;  |
+	 (setq ic_gamma        "Video Settings")        ;  |
 	 (setq ic_easy         "Difficulty : Wimp")     ;  |
 	 (setq ic_medium       "Difficulty : Easy")     ;  |
 	 (setq ic_hard         "Difficulty : Normal")   ;  \/
@@ -300,16 +320,33 @@
 	 ;(setq ic_mackeys      "Setup Keys")
 	 ;(setq ic_macconf      "Screen Options")
 	 (setq ic_multiplayer   "Multiplayer")            ; ----
+	 (setq ic_editor        "Level Editor")
+	 (setq language         "Language")
+	 (setq language_english "English")
+	 (setq language_german  "German")
+	 (setq language_french  "French")
+	 (setq player_skin      "Player skin")
+	 (setq skin_standard    "Standard")
+	 (setq skin_blue        "Blue")
+	 (setq skin_yellow      "Yellow")
+	 (setq skin_fire        "Fire")
+	 (setq skin_olive       "Olive")
+	 (setq skin_pink        "Pink")
+	 (setq skin_darkblue    "Dark blue")
+	 (setq skin_purple      "Purple")
+	 (setq skin_africa      "Africa")
+	 (setq skin_gold        "Gold")
+	 (setq skin_land        "Land")
 
 
 	 (setq no_file         "Could not find file '%s'")
 	 (setq SFXv            "Sound")  ; this needs to be <=6 characters!!
 	 (setq MUSICv          "Music")  ; this needs to be <=6 characters!!
+	 (setq soundfont       "SoundFont")
+	 (setq soundfont_none  "No SoundFonts found")
 
 	 (setq to_be_continued "To be continued.....")
          (setq no_edit         "This version of ABUSE does not have editing features")
-         (setq no_hirez        "Hi-rez is only available for edit mode (-edit)")
-	 (setq no2             "Cannot use -2 with -edit")
 	 (setq no_pals         "No palettes defined")
          (setq unchop1         "usage : unchop xsize ysize\n")
          (setq size1           "usage : size width height\n")

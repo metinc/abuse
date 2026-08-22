@@ -5,12 +5,13 @@
   (select (aistate)
 	  (0 (progn (link_light (add_light 0 (x) (y) 1 (aitype) 0 0))
 		    (go_state 1)))
-	  (1 (if (> (state_time) 3)
-		 (let ((l (get_light 0)))
-		   (delete_light l)
-		   nil)
-
-	       T))))
+	  (1 (let ((l (get_light 0))
+		   (intensity (- 63 (* (state_time) 9))))
+	       (if (<= intensity 0)
+		   (progn (delete_light l)
+			  nil)
+		 (progn (set_light_intensity l intensity)
+			T))))))
 
 (defun do_small_explo (radius amount)
   (add_object EXPLODE3 (+ (x) (random 5)) (+ (y) (random 5)) 0)
@@ -90,10 +91,6 @@
 (def_explo 'CLOUD "art/cloud.spe" "cloud"             5)
 (def_explo 'SMALL_DARK_CLOUD "art/cloud.spe" "smo2"   5)
 (def_explo 'SMALL_LIGHT_CLOUD "art/cloud.spe" "smo1"  5)
-
-
-
-
 
 
 

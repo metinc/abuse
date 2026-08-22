@@ -117,6 +117,7 @@ simple_object::simple_object()
 
     x = y = 0;
     direction = 1;
+    interpolation_valid = false;
     otype = 0;
     state = stopped;
     current_frame = 0;

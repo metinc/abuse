@@ -1,0 +1,16 @@
+{
+  "name": "abuse-windows-container-dependencies",
+  "version": "1.0.5",
+  "dependencies": [
+    {
+      "name": "fluidsynth",
+      "features": ["sndfile"]
+    },
+    {
+      "name": "libdatachannel",
+      "features": ["ws"]
+    },
+    "nlohmann-json",
+    "toml11"
+  ]
+}

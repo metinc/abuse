@@ -25,214 +25,391 @@
 
 #include <SDL3/SDL.h>
 
+#include <algorithm>
+#include <unordered_map>
+#include <vector>
+
 #include "common.h"
 
 #include "image.h"
 #include "palette.h"
+#include "filter.h"
 #include "video.h"
 #include "event.h"
-#include "timing.h"
 #include "sprite.h"
 #include "game.h"
 #include "joy.h"
 #include "setup.h"
 
-extern SDL_Window *window;
-extern SDL_Surface *surface;
-extern SDL_Renderer *renderer;
-extern bool fullscreen;
-
 extern Settings settings;
-extern int has_joystick;
 extern int get_key_binding(char const *dir, int i);
-extern std::string get_ctr_binding(std::string c);
 
-short mouse_buttons[5] = {0, 0, 0, 0, 0};
-// From setup.cpp:
-void video_change_settings(int scale_add, bool toggle_fullscreen);
-
-static ivec2 window_to_game(float window_x, float window_y)
+namespace
 {
-    float game_x;
-    float game_y;
+constexpr int GAMEPAD_SOURCE_BASE = 10000;
+constexpr int GAMEPAD_AXIS_SOURCE_BASE = GAMEPAD_SOURCE_BASE + SDL_GAMEPAD_BUTTON_COUNT;
+constexpr int LEFT_X_NEGATIVE = GAMEPAD_AXIS_SOURCE_BASE;
+constexpr int LEFT_X_POSITIVE = GAMEPAD_AXIS_SOURCE_BASE + 1;
+constexpr int LEFT_Y_NEGATIVE = GAMEPAD_AXIS_SOURCE_BASE + 2;
+constexpr int LEFT_Y_POSITIVE = GAMEPAD_AXIS_SOURCE_BASE + 3;
+constexpr int LEFT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 4;
+constexpr int RIGHT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 5;
 
-    if (fullscreen && settings.mouse_scale == 0)
+struct CombinedInputState
+{
+    SDL_JoystickID active_gamepad = 0;
+    bool trigger_pressed[2] = {false, false};
+    std::unordered_map<int, int> source_keys;
+    std::unordered_map<int, int> key_counts;
+
+    void emit(EventHandler &handler, Event &primary, EventType type, int key)
     {
-        int window_w;
-        int window_h;
-        SDL_GetWindowSize(window, &window_w, &window_h);
-        game_x = window_x * main_screen->Size().x / window_w;
-        game_y = window_y * main_screen->Size().y / window_h;
-    }
-    else
-    {
-        int logical_w;
-        int logical_h;
-        SDL_RendererLogicalPresentation mode;
-        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-        SDL_RenderCoordinatesFromWindow(renderer, window_x, window_y, &game_x, &game_y);
-        game_x *= static_cast<float>(main_screen->Size().x) / logical_w;
-        game_y *= static_cast<float>(main_screen->Size().y) / logical_h;
+        Event event;
+        event.type = type;
+        event.key = key;
+        event.mouse_move = primary.mouse_move;
+        event.mouse_button = primary.mouse_button;
+        if (primary.type == EV_SPURIOUS)
+            primary = std::move(event);
+        else
+            handler.Push(std::move(event));
     }
 
-    const int x = std::max(0, std::min(static_cast<int>(std::round(game_x)), main_screen->Size().x - 1));
-    const int y = std::max(0, std::min(static_cast<int>(std::round(game_y)), main_screen->Size().y - 1));
-    return ivec2(x, y);
+    void change(EventHandler &handler, Event &primary, int source, bool pressed, int key, bool allow_repeat = false)
+    {
+        auto held = source_keys.find(source);
+        if (pressed)
+        {
+            if (held != source_keys.end())
+            {
+                if (allow_repeat && held->second == key && key_is_valid(key))
+                    emit(handler, primary, EV_KEY, key);
+                return;
+            }
+            if (!key_is_valid(key))
+                return;
+
+            source_keys.emplace(source, key);
+            int &count = key_counts[key];
+            if (count++ == 0)
+                emit(handler, primary, EV_KEY, key);
+            return;
+        }
+
+        if (held == source_keys.end())
+            return;
+        key = held->second;
+        source_keys.erase(held);
+        auto count = key_counts.find(key);
+        if (count != key_counts.end() && --count->second == 0)
+        {
+            key_counts.erase(count);
+            emit(handler, primary, EV_KEYRELEASE, key);
+        }
+    }
+
+    void release_gamepad(EventHandler &handler)
+    {
+        std::vector<int> sources;
+        for (const auto &entry : source_keys)
+            if (entry.first >= GAMEPAD_SOURCE_BASE)
+                sources.push_back(entry.first);
+
+        for (int source : sources)
+        {
+            Event release;
+            change(handler, release, source, false, JK_NONE);
+            if (release.type != EV_SPURIOUS)
+                handler.Push(std::move(release));
+        }
+        trigger_pressed[0] = false;
+        trigger_pressed[1] = false;
+    }
+
+    bool accepts(SDL_JoystickID id, bool activate)
+    {
+        if (!active_gamepad && activate)
+            active_gamepad = id;
+        return active_gamepad == id;
+    }
+};
+
+CombinedInputState combined_input;
+
+int gamepad_action_key(const std::string &action)
+{
+    if (action == "none")
+        return JK_NONE;
+    if (action == "confirm")
+        return JK_ENTER;
+    if (action == "cancel")
+        return JK_ESC;
+    if (action == "help")
+        return JK_F1;
+    return get_key_binding(action.c_str(), 0);
 }
 
-static void game_to_window(ivec2 pos, float &window_x, float &window_y)
+const std::string &gamepad_button_action(int button)
 {
-    if (fullscreen && settings.mouse_scale == 0)
+    switch (button)
     {
-        int window_w;
-        int window_h;
-        SDL_GetWindowSize(window, &window_w, &window_h);
-        window_x = static_cast<float>(pos.x) * window_w / main_screen->Size().x;
-        window_y = static_cast<float>(pos.y) * window_h / main_screen->Size().y;
-    }
-    else
-    {
-        int logical_w;
-        int logical_h;
-        SDL_RendererLogicalPresentation mode;
-        SDL_GetRenderLogicalPresentation(renderer, &logical_w, &logical_h, &mode);
-        const float logical_x = static_cast<float>(pos.x) * logical_w / main_screen->Size().x;
-        const float logical_y = static_cast<float>(pos.y) * logical_h / main_screen->Size().y;
-        SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y);
+    case SDL_GAMEPAD_BUTTON_SOUTH:
+        return settings.ctr_a;
+    case SDL_GAMEPAD_BUTTON_EAST:
+        return settings.ctr_b;
+    case SDL_GAMEPAD_BUTTON_WEST:
+        return settings.ctr_x;
+    case SDL_GAMEPAD_BUTTON_NORTH:
+        return settings.ctr_y;
+    case SDL_GAMEPAD_BUTTON_LEFT_STICK:
+        return settings.ctr_lst;
+    case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
+        return settings.ctr_rst;
+    case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
+        return settings.ctr_lsr;
+    case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
+        return settings.ctr_rsr;
+    case SDL_GAMEPAD_BUTTON_DPAD_UP:
+        return settings.ctr_dpad_up;
+    case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+        return settings.ctr_dpad_down;
+    case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
+        return settings.ctr_dpad_left;
+    case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
+        return settings.ctr_dpad_right;
+    case SDL_GAMEPAD_BUTTON_START:
+        return settings.ctr_start;
+    case SDL_GAMEPAD_BUTTON_BACK:
+        return settings.ctr_back;
+    case SDL_GAMEPAD_BUTTON_GUIDE:
+        return settings.ctr_guide;
+    default:
+        static const std::string none = "none";
+        return none;
     }
 }
 
-//AR on my brand new Xbox360 controller using the D-pad would trigger left stick movement events... best controller of all time they say...sigh
-//so I disable it if the user uses a D-pad, and enable it if the user uses the stick and passes the dead zone
-bool use_left_stick = false;
-
-void EventHandler::SysInit()
+void perform_quick_save()
 {
-    if (!SDL_StartTextInput(window))
+    if (current_level && settings.player_touching_console && current_level->save("save0001.spe", 1) == 1)
+    {
+        the_game->show_help("Station secured!");
+        cache.sfx(1031)->play(1.0f);
+        settings.quick_load = get_save_path(1);
+    }
+}
+
+void perform_quick_load()
+{
+    if (!settings.quick_load.empty())
+        the_game->request_level_load(settings.quick_load);
+}
+}
+
+void reset_input_sources()
+{
+    combined_input.source_keys.clear();
+    combined_input.key_counts.clear();
+    combined_input.trigger_pressed[0] = false;
+    combined_input.trigger_pressed[1] = false;
+}
+
+EventHandler::EventHandler(image *screen, palette *pal)
+{
+    m_ignore_wheel_events = false;
+    m_button = 0;
+    m_center = ivec2(0, 0);
+    m_cursor = nullptr;
+
+    CHECK(screen && pal);
+    m_screen = screen;
+
+    uint8_t mouse_sprite[] = {0, 2, 0, 0, 0, 0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1,
+                              1, 2, 0, 0, 0, 2, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 1, 1, 1, 2, 0, 0, 2, 1, 1, 2, 2,
+                              0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 2, 1, 1, 2, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0};
+
+    Filter f;
+    f.Set(1, pal->brightest(1));
+    f.Set(2, pal->darkest(1));
+    image *im = new image(ivec2(8, 10), mouse_sprite);
+    f.Apply(im);
+
+    m_sprite = new Sprite(screen, im, ivec2(100, 100));
+    RefreshMouseCursor();
+
+    float mouse_x, mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    m_pos = video_window_to_game(mouse_x, mouse_y);
+
+    if (!video_start_text_input())
         fprintf(stderr, "Warning: Unable to start text input: %s\n", SDL_GetError());
 }
 
-void EventHandler::SysUninit()
+EventHandler::~EventHandler()
 {
-    if (window && SDL_TextInputActive(window))
-        SDL_StopTextInput(window);
+    video_stop_text_input();
+    if (m_cursor)
+    {
+        SDL_SetCursor(SDL_GetDefaultCursor());
+        SDL_DestroyCursor(m_cursor);
+    }
+    delete m_sprite;
 }
 
-void EventHandler::SysWarpMouse(ivec2 pos)
+void EventHandler::RefreshMouseCursor()
 {
-    float window_x;
-    float window_y;
-    game_to_window(pos, window_x, window_y);
-    //AR this repositions the system mouse based on in game values, so I turned it off for controller aiming
-    SDL_WarpMouseInWindow(window, window_x, window_y);
+    const auto use_software_cursor = [this]() {
+        if (m_cursor)
+        {
+            SDL_SetCursor(SDL_GetDefaultCursor());
+            SDL_DestroyCursor(m_cursor);
+            m_cursor = nullptr;
+        }
+        SDL_HideCursor();
+    };
+
+    image *visual = m_sprite->m_visual;
+    palette *colors = last_loaded();
+    if (!visual || !colors)
+    {
+        use_software_cursor();
+        return;
+    }
+
+    const ivec2 source_size = visual->Size();
+    SDL_Surface *source = SDL_CreateSurface(source_size.x, source_size.y, SDL_PIXELFORMAT_RGBA32);
+    if (!source)
+    {
+        fprintf(stderr, "Warning: Unable to create mouse cursor surface: %s\n", SDL_GetError());
+        use_software_cursor();
+        return;
+    }
+
+    auto *pixels = static_cast<Uint32 *>(source->pixels);
+    const int pitch = source->pitch / static_cast<int>(sizeof(Uint32));
+    for (int y = 0; y < source_size.y; y++)
+    {
+        const uint8_t *indices = visual->scan_line(y);
+        for (int x = 0; x < source_size.x; x++)
+        {
+            const uint8_t index = indices[x];
+            pixels[y * pitch + x] = SDL_MapSurfaceRGBA(source, colors->red(index), colors->green(index),
+                                                       colors->blue(index), index == 0 ? 0 : 255);
+        }
+    }
+
+    const ivec2 cursor_size = video_game_to_window_size(source_size);
+    SDL_Surface *scaled = source;
+    if (cursor_size != source_size)
+    {
+        scaled = SDL_ScaleSurface(source, cursor_size.x, cursor_size.y, SDL_SCALEMODE_NEAREST);
+        if (!scaled)
+        {
+            fprintf(stderr, "Warning: Unable to scale mouse cursor: %s\n", SDL_GetError());
+            SDL_DestroySurface(source);
+            use_software_cursor();
+            return;
+        }
+    }
+
+    const int hot_x = std::clamp(m_center.x * cursor_size.x / source_size.x, 0, cursor_size.x - 1);
+    const int hot_y = std::clamp(m_center.y * cursor_size.y / source_size.y, 0, cursor_size.y - 1);
+    SDL_Cursor *cursor = SDL_CreateColorCursor(scaled, hot_x, hot_y);
+    if (!cursor)
+    {
+        fprintf(stderr, "Warning: Unable to create mouse cursor: %s\n", SDL_GetError());
+        use_software_cursor();
+    }
+    else if (!SDL_SetCursor(cursor))
+    {
+        fprintf(stderr, "Warning: Unable to activate mouse cursor: %s\n", SDL_GetError());
+        SDL_DestroyCursor(cursor);
+        cursor = nullptr;
+        use_software_cursor();
+    }
+
+    if (scaled != source)
+        SDL_DestroySurface(scaled);
+    SDL_DestroySurface(source);
+
+    if (cursor)
+    {
+        SDL_Cursor *old_cursor = m_cursor;
+        m_cursor = cursor;
+        if (old_cursor)
+            SDL_DestroyCursor(old_cursor);
+        SDL_ShowCursor();
+    }
+}
+
+void EventHandler::SetMouseShape(image *im, ivec2 center)
+{
+    m_sprite->SetVisual(im, 1);
+    m_center = center;
+    RefreshMouseCursor();
+}
+
+void EventHandler::SetMousePos(ivec2 pos)
+{
+    m_pos = ivec2(std::clamp(pos.x, 0, m_screen->Size().x - 1), std::clamp(pos.y, 0, m_screen->Size().y - 1));
+
+    video_warp_mouse(m_pos);
 }
 
 //
 // IsPending()
 // Are there any events in the queue?
 //
-int EventHandler::IsPending()
+bool EventHandler::IsPending()
 {
-    if (!m_pending)
-        m_pending = m_events.first() != NULL || SDL_PollEvent(NULL);
-    return m_pending;
+    return !m_events.empty() || SDL_PollEvent(nullptr);
 }
 
-//
-// Get and handle waiting events
-//
-void EventHandler::SysEvent(Event &ev)
+void EventHandler::Get(Event &ev)
 {
-    // No more events
-    m_pending = 0;
+    if (!m_events.empty())
+    {
+        ev = std::move(m_events.front());
+        m_events.pop_front();
+        return;
+    }
 
-    // NOTE : that the mouse status should be known
-    // even if another event has occurred.
-
-    ev.mouse_move.x = m_pos.x;
-    ev.mouse_move.y = m_pos.y;
+    ev = Event{};
+    ev.mouse_move = m_pos;
     ev.mouse_button = m_button;
 
-    // Gather next event
     SDL_Event sdlev;
-    if (!SDL_PollEvent(&sdlev))
-        return; // This should not happen
+    if (!SDL_WaitEvent(&sdlev))
+        return;
 
-    // Sort the mouse out
+    int keyboard_source = -1;
+
     float x_f, y_f;
-    SDL_MouseButtonFlags buttons = SDL_GetMouseState(&x_f, &y_f);
-    const ivec2 game_pos = window_to_game(x_f, y_f);
-
-    ev.mouse_move.x = game_pos.x;
-    ev.mouse_move.y = game_pos.y;
-    ev.type = EV_MOUSE_MOVE;
-
-    // Left button
-    if ((buttons & SDL_BUTTON_LMASK) && !mouse_buttons[1])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[1] = !mouse_buttons[1];
-        ev.mouse_button |= LEFT_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_LMASK) && mouse_buttons[1])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[1] = !mouse_buttons[1];
-        ev.mouse_button &= (0xff - LEFT_BUTTON);
-    }
-
-    // Middle button
-    if ((buttons & SDL_BUTTON_MMASK) && !mouse_buttons[2])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button |= LEFT_BUTTON;
-        ev.mouse_button |= RIGHT_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_MMASK) && mouse_buttons[2])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[2] = !mouse_buttons[2];
-        ev.mouse_button &= (0xff - LEFT_BUTTON);
-        ev.mouse_button &= (0xff - RIGHT_BUTTON);
-    }
-
-    // Right button
-    if ((buttons & SDL_BUTTON_RMASK) && !mouse_buttons[3])
-    {
-        // pressed
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[3] = !mouse_buttons[3];
-        ev.mouse_button |= RIGHT_BUTTON;
-    }
-    else if (!(buttons & SDL_BUTTON_RMASK) && mouse_buttons[3])
-    {
-        // released
-        ev.type = EV_MOUSE_BUTTON;
-        mouse_buttons[3] = !mouse_buttons[3];
-        ev.mouse_button &= (0xff - RIGHT_BUTTON);
-    }
-
-    m_pos = ivec2(ev.mouse_move.x, ev.mouse_move.y);
-    m_button = ev.mouse_button;
+    SDL_GetMouseState(&x_f, &y_f);
+    const ivec2 game_pos = video_window_to_game(x_f, y_f);
+    ev.mouse_move = game_pos;
+    m_pos = game_pos;
 
     // Sort out other kinds of events
     switch (sdlev.type)
     {
+    case SDL_EVENT_MOUSE_MOTION:
+        ev.type = EV_MOUSE_MOVE;
+        break;
     case SDL_EVENT_QUIT:
         exit(EXIT_SUCCESS);
         break;
     case SDL_EVENT_WINDOW_RESIZED:
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+        video_update_mouse_confinement();
+        RefreshMouseCursor();
         break;
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-        fullscreen = true;
-        break;
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-        fullscreen = false;
+        video_update_mouse_confinement();
+        RefreshMouseCursor();
         break;
     case SDL_EVENT_WINDOW_MAXIMIZED:
     case SDL_EVENT_WINDOW_RESTORED:
@@ -246,61 +423,73 @@ void EventHandler::SysEvent(Event &ev)
         if (sdlev.wheel.x < 0)
         {
             ev.key = get_key_binding("b4", 0);
+            ev.mouse_wheel = 1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.x > 0)
         {
             ev.key = get_key_binding("b3", 0);
+            ev.mouse_wheel = -1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.y < 0)
         {
             ev.key = get_key_binding("b4", 0);
+            ev.mouse_wheel = -1;
             ev.type = EV_KEY;
         }
         else if (sdlev.wheel.y > 0)
         {
             ev.key = get_key_binding("b3", 0);
+            ev.mouse_wheel = 1;
             ev.type = EV_KEY;
         }
         if (ev.type == EV_KEY)
         {
             // We also need to immediately queue a "release" event or this will
             // be stuck down forever.
-            Event *release_event = new Event(ev);
-            release_event->key = ev.key;
-            release_event->type = EV_KEYRELEASE;
-            Push(release_event);
+            Event release_event = ev;
+            release_event.type = EV_KEYRELEASE;
+            release_event.mouse_wheel = 0;
+            Push(std::move(release_event));
         }
         break;
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        // These were the old mouse wheel handlers, but honestly, using
-        // B4 and B5 for weapon switching works.
+    case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+        const bool pressed = sdlev.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+        int button = 0;
         switch (sdlev.button.button)
         {
-        case 4: // Mouse wheel goes up...
-            ev.key = get_key_binding("b4", 0);
-            ev.type = EV_KEYRELEASE;
+        case SDL_BUTTON_LEFT:
+            button = LEFT_BUTTON;
             break;
-        case 5: // Mouse wheel goes down...
+        case SDL_BUTTON_MIDDLE:
+            button = MIDDLE_BUTTON;
+            break;
+        case SDL_BUTTON_RIGHT:
+            button = RIGHT_BUTTON;
+            break;
+        case SDL_BUTTON_X1:
+            ev.key = get_key_binding("b4", 0);
+            ev.type = pressed ? EV_KEY : EV_KEYRELEASE;
+            break;
+        case SDL_BUTTON_X2:
             ev.key = get_key_binding("b3", 0);
-            ev.type = EV_KEYRELEASE;
+            ev.type = pressed ? EV_KEY : EV_KEYRELEASE;
             break;
         }
-        break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        switch (sdlev.button.button)
+
+        if (button)
         {
-        case 4: // Mouse wheel goes up...
-            ev.key = get_key_binding("b4", 0);
-            ev.type = EV_KEY;
-            break;
-        case 5: // Mouse wheel goes down...
-            ev.key = get_key_binding("b3", 0);
-            ev.type = EV_KEY;
-            break;
+            if (pressed)
+                m_button |= button;
+            else
+                m_button &= ~button;
+            ev.mouse_button = m_button;
+            ev.type = EV_MOUSE_BUTTON;
         }
         break;
+    }
     case SDL_EVENT_TEXT_INPUT:
         ev.type = EV_TEXT_INPUT;
         ev.text = sdlev.text.text ? sdlev.text.text : "";
@@ -308,10 +497,8 @@ void EventHandler::SysEvent(Event &ev)
 
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
-        //AR EV_SPURIOUS has the same value as JK_SPACE, so this is probably all wrong
-
-        // Default to EV_SPURIOUS
-        ev.key = EV_SPURIOUS;
+        keyboard_source = static_cast<int>(sdlev.key.scancode);
+        ev.key = JK_NONE;
 
         if (sdlev.type == SDL_EVENT_KEY_DOWN)
             ev.type = EV_KEY;
@@ -423,7 +610,7 @@ void EventHandler::SysEvent(Event &ev)
                 if (current_level->save("save0001.spe", 1) == 1)
                 {
                     the_game->show_help("Station secured!");
-                    cache.sfx(1031)->play(127); //id 1031 should be save05.wav
+                    cache.sfx(1031)->play(1.0f); //id 1031 should be save05.wav
                     settings.quick_load = get_save_path(1);
                 }
             }
@@ -433,26 +620,33 @@ void EventHandler::SysEvent(Event &ev)
         case SDLK_F6: //AR toggle window input grab
             if (ev.type == EV_KEYRELEASE)
             {
-                if (SDL_GetWindowMouseGrab(window))
-                    SDL_SetWindowMouseGrab(window, false);
-                else
-                    SDL_SetWindowMouseGrab(window, true);
+                settings.grab_input = !settings.grab_input;
+                video_update_mouse_confinement();
+                if (!settings.Save())
+                    fprintf(stderr, "Unable to save input grab setting\n");
             }
             ev.key = JK_F6;
             break;
 
-        case SDLK_F7: //AR toggle mouse scale
-            if (ev.type == EV_KEYRELEASE)
-            {
-                if (settings.mouse_scale == 0)
-                    settings.mouse_scale = 1;
-                else
-                    settings.mouse_scale = 0;
-            }
+        case SDLK_F7:
             ev.key = JK_F7;
             break;
 
         case SDLK_F8:
+            if (ev.type == EV_KEYRELEASE)
+            {
+                settings.gamepad_enabled = !settings.gamepad_enabled;
+                if (!settings.gamepad_enabled)
+                {
+                    combined_input.release_gamepad(*this);
+                    combined_input.active_gamepad = 0;
+                    settings.ctr_aim_x = 0;
+                    settings.ctr_aim_y = 0;
+                }
+                if (!settings.Save())
+                    fprintf(stderr, "Unable to save gamepad enabled setting\n");
+                the_game->show_help(settings.gamepad_enabled ? "Gamepad enabled" : "Gamepad disabled");
+            }
             ev.key = JK_F8;
             break;
 
@@ -471,22 +665,24 @@ void EventHandler::SysEvent(Event &ev)
         case SDLK_F11: //AR scale window up
             if (ev.type == EV_KEYRELEASE)
                 video_change_settings(1, false);
-            ev.key = JK_F10; //AR JK_F11 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            ev.key = JK_NONE;
             break;
 
         case SDLK_F12: //AR scale window down
             if (ev.type == EV_KEYRELEASE)
                 video_change_settings(-1, false);
-            ev.key = JK_F10; //AR JK_F12 is undefined, JK_F10 isn't used anywhere else, so it doesn't matter
+            ev.key = JK_NONE;
             break;
 
         case SDLK_PRINTSCREEN: //grab a screenshot
             if (ev.type == EV_KEYRELEASE)
             {
-                SDL_SaveBMP(surface, "screenshot.bmp");
-                the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+                if (video_save_screenshot("screenshot.bmp"))
+                    the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+                else
+                    fprintf(stderr, "Video: Unable to save screenshot: %s\n", SDL_GetError());
             }
-            ev.key = EV_SPURIOUS;
+            ev.key = JK_NONE;
             break;
 
         default:
@@ -494,242 +690,179 @@ void EventHandler::SysEvent(Event &ev)
             if (the_game->state == MENU_STATE)
                 keycode = SDL_GetKeyFromScancode(sdlev.key.scancode, sdlev.key.mod, false);
 
-            //AR this will crash in game.cpp calling key_down() which can go up to 64
-            //so I set it to a random key which shouldn't do anything in the game
-            if (keycode > JK_MAX_KEY)
-                ev.key = JK_MAX_KEY;
-            else
-                ev.key = static_cast<int>(keycode);
+            const int key = static_cast<int>(keycode);
+            ev.key = key_is_valid(key) ? key : JK_NONE;
             break;
         }
         break;
 
     case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-    case SDL_EVENT_GAMEPAD_BUTTON_UP:
-        if (settings.ctr_f5 == sdlev.gbutton.button) //AR quick save
+    case SDL_EVENT_GAMEPAD_BUTTON_UP: {
+        const bool pressed = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+        if (!settings.gamepad_enabled || !combined_input.accepts(sdlev.gbutton.which, pressed))
+            break;
+
+        if (the_game->state != MENU_STATE && settings.ctr_f5 == sdlev.gbutton.button)
         {
-            if (sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_UP)
-                if (settings.player_touching_console)
-                {
-                    if (current_level->save("save0001.spe", 1) == 1)
-                    {
-                        the_game->show_help("Station secured!");
-                        cache.sfx(1031)->play(127); //id 1031 should be save05.wav
-                        settings.quick_load = get_save_path(1);
-                    }
-                }
-            ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = EV_SPURIOUS;
-            return;
+            if (!pressed)
+                perform_quick_save();
+            break;
         }
-        else if (settings.ctr_f9 == sdlev.gbutton.button) //AR quick load
+        if (the_game->state != MENU_STATE && settings.ctr_f9 == sdlev.gbutton.button)
         {
-            if (sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_UP)
-                if (!settings.quick_load.empty())
-                    the_game->request_level_load(settings.quick_load);
-            ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
-            ev.key = EV_SPURIOUS;
-            return;
+            if (!pressed)
+                perform_quick_load();
+            break;
         }
 
-        switch (sdlev.gbutton.button)
-        {
-            //AR convert to key events
-        case SDL_GAMEPAD_BUTTON_START:
-            ev.key = JK_ENTER;
-            break; //enter
-        case SDL_GAMEPAD_BUTTON_GUIDE:
-            ev.key = JK_F1;
-            break; //help
-        case SDL_GAMEPAD_BUTTON_BACK:
-            ev.key = JK_ESC;
-            break; //go back
-            //
-        case SDL_GAMEPAD_BUTTON_SOUTH:
-            ev.key = get_key_binding(get_ctr_binding("ctr_a").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_EAST:
-            ev.key = get_key_binding(get_ctr_binding("ctr_b").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_WEST:
-            ev.key = get_key_binding(get_ctr_binding("ctr_x").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_NORTH:
-            ev.key = get_key_binding(get_ctr_binding("ctr_y").c_str(), 0);
-            break;
-            //
-        case SDL_GAMEPAD_BUTTON_LEFT_STICK:
-            ev.key = get_key_binding(get_ctr_binding("ctr_lst").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
-            ev.key = get_key_binding(get_ctr_binding("ctr_rst").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
-            ev.key = get_key_binding(get_ctr_binding("ctr_lsr").c_str(), 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
-            ev.key = get_key_binding(get_ctr_binding("ctr_rsh").c_str(), 0);
-            break;
-            //
-        case SDL_GAMEPAD_BUTTON_DPAD_UP:
-            use_left_stick = false;
-            ev.key = get_key_binding("up", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
-            use_left_stick = false;
-            ev.key = get_key_binding("down", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
-            use_left_stick = false;
-            ev.key = get_key_binding("left", 0);
-            break;
-        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
-            use_left_stick = false;
-            ev.key = get_key_binding("right", 0);
-            break;
-            //
-        default:
-            // Still want to process this as a key press if only to allow the
-            // controller to skip the intro screen.
-            ev.key = -1;
-        }
-        ev.type = sdlev.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? EV_KEY : EV_KEYRELEASE;
+        int key = JK_NONE;
+        if (the_game->state == MENU_STATE && sdlev.gbutton.button == settings.ctr_menu_confirm)
+            key = JK_ENTER;
+        else if (the_game->state == MENU_STATE && sdlev.gbutton.button == settings.ctr_menu_cancel)
+            key = JK_ESC;
+        else
+            key = gamepad_action_key(gamepad_button_action(sdlev.gbutton.button));
+
+        const int source = GAMEPAD_SOURCE_BASE + sdlev.gbutton.button;
+        combined_input.change(*this, ev, source, pressed, key);
         break;
+    }
 
     case SDL_EVENT_GAMEPAD_ADDED:
-        has_joystick = joy_handle_added(sdlev.gdevice.which);
+        joy_handle_added(sdlev.gdevice.which);
         ev.type = EV_SPURIOUS;
         break;
 
     case SDL_EVENT_GAMEPAD_REMOVED: {
-        has_joystick = joy_handle_removed(sdlev.gdevice.which);
-        use_left_stick = false;
-        settings.ctr_aim_x = 0;
-        settings.ctr_aim_y = 0;
-
-        // Release every action a disconnected gamepad may have held so the
-        // player cannot remain moving, firing, or navigating a menu.
-        const char *bindings[] = {"up", "down", "left", "right", "b1", "b2", "b3", "b4"};
-        for (const char *binding : bindings)
+        joy_handle_removed(sdlev.gdevice.which);
+        if (combined_input.active_gamepad == sdlev.gdevice.which)
         {
-            Event *release = new Event;
-            release->type = EV_KEYRELEASE;
-            release->key = get_key_binding(binding, 0);
-            Push(release);
-        }
-        const int special_keys[] = {JK_ENTER, JK_ESC, JK_F1};
-        for (int key : special_keys)
-        {
-            Event *release = new Event;
-            release->type = EV_KEYRELEASE;
-            release->key = key;
-            Push(release);
+            combined_input.release_gamepad(*this);
+            combined_input.active_gamepad = 0;
+            settings.ctr_aim_x = 0;
+            settings.ctr_aim_y = 0;
         }
         ev.type = EV_SPURIOUS;
         break;
     }
 
     case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-        switch (sdlev.gaxis.axis)
+        if (!settings.gamepad_enabled)
+            break;
+
         {
-        case SDL_GAMEPAD_AXIS_LEFTX:
-            if (abs(sdlev.gaxis.value) >= settings.ctr_lst_dzx)
-                use_left_stick = true; //enable the left stick
+            int activation_threshold = settings.ctr_rst_dz;
+            if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX)
+                activation_threshold = settings.ctr_lst_dzx;
+            else if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY)
+                activation_threshold = settings.ctr_lst_dzy;
+            else if (sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER ||
+                     sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+                activation_threshold = settings.ctr_trigger_threshold;
 
-            if (use_left_stick)
+            const bool activate = std::abs(static_cast<int>(sdlev.gaxis.value)) >= activation_threshold;
+            if (!combined_input.accepts(sdlev.gaxis.which, activate))
+                break;
+
+            switch (sdlev.gaxis.axis)
             {
-                if (sdlev.gaxis.value < 0)
+            case SDL_GAMEPAD_AXIS_LEFTX:
+                if (sdlev.gaxis.value <= -settings.ctr_lst_dzx)
                 {
-                    ev.key = get_key_binding("left", 0);
-                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-                    the_game->set_key_down(get_key_binding("right", 0), 0);
-                    the_game->set_key_down(get_key_binding("right2", 0), 0);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, true, get_key_binding("left", 0));
+                }
+                else if (sdlev.gaxis.value >= settings.ctr_lst_dzx)
+                {
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, true, get_key_binding("right", 0));
                 }
                 else
                 {
-                    ev.key = get_key_binding("right", 0);
-                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-                    the_game->set_key_down(get_key_binding("left", 0), 0);
-                    the_game->set_key_down(get_key_binding("left2", 0), 0);
+                    combined_input.change(*this, ev, LEFT_X_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_X_POSITIVE, false, JK_NONE);
+                }
+                break;
+
+            case SDL_GAMEPAD_AXIS_LEFTY:
+                if (sdlev.gaxis.value <= -settings.ctr_lst_dzy)
+                {
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, true, get_key_binding("up", 0));
+                }
+                else if (sdlev.gaxis.value >= settings.ctr_lst_dzy)
+                {
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, true, get_key_binding("down", 0));
+                }
+                else
+                {
+                    combined_input.change(*this, ev, LEFT_Y_NEGATIVE, false, JK_NONE);
+                    combined_input.change(*this, ev, LEFT_Y_POSITIVE, false, JK_NONE);
+                }
+                break;
+
+                //AR just save the values and update aim inside the game loop
+            case SDL_GAMEPAD_AXIS_RIGHTX:
+                settings.ctr_aim_x = sdlev.gaxis.value;
+                ev.type = EV_SPURIOUS;
+                break;
+
+            case SDL_GAMEPAD_AXIS_RIGHTY:
+                settings.ctr_aim_y = sdlev.gaxis.value;
+                ev.type = EV_SPURIOUS;
+                break;
+
+            case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
+            case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: {
+                const bool left = sdlev.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER;
+                const int source = left ? LEFT_TRIGGER : RIGHT_TRIGGER;
+                const int binding = left ? GAMEPAD_BINDING_LEFT_TRIGGER : GAMEPAD_BINDING_RIGHT_TRIGGER;
+                const int index = left ? 0 : 1;
+                const bool was_pressed = combined_input.trigger_pressed[index];
+                const bool pressed = sdlev.gaxis.value >= settings.ctr_trigger_threshold ||
+                                     (was_pressed && sdlev.gaxis.value > settings.ctr_trigger_threshold -
+                                                                             settings.ctr_trigger_hysteresis);
+                combined_input.trigger_pressed[index] = pressed;
+
+                if (the_game->state != MENU_STATE && (settings.ctr_f5 == binding || settings.ctr_f9 == binding))
+                {
+                    if (was_pressed && !pressed)
+                    {
+                        if (settings.ctr_f5 == binding)
+                            perform_quick_save();
+                        else
+                            perform_quick_load();
+                    }
+                    break;
                 }
 
-                if (abs(sdlev.gaxis.value) < settings.ctr_lst_dzx)
-                {
-                    ev.type = EV_KEYRELEASE;
-                    //AR stop everything
-                    the_game->set_key_down(get_key_binding("left", 0), 0);
-                    the_game->set_key_down(get_key_binding("left2", 0), 0);
-                    the_game->set_key_down(get_key_binding("right", 0), 0);
-                    the_game->set_key_down(get_key_binding("right2", 0), 0);
-                }
+                int key = JK_NONE;
+                if (the_game->state == MENU_STATE && settings.ctr_menu_confirm == binding)
+                    key = JK_ENTER;
+                else if (the_game->state == MENU_STATE && settings.ctr_menu_cancel == binding)
+                    key = JK_ESC;
                 else
-                    ev.type = EV_KEY;
+                    key = gamepad_action_key(left ? settings.ctr_ltg : settings.ctr_rtg);
+                combined_input.change(*this, ev, source, pressed, key);
+                break;
             }
-            break;
-
-        case SDL_GAMEPAD_AXIS_LEFTY:
-            if (abs(sdlev.gaxis.value) >= settings.ctr_lst_dzy)
-                use_left_stick = true; //enable the left stick
-
-            if (use_left_stick)
-            {
-                if (sdlev.gaxis.value < 0)
-                {
-                    ev.key = get_key_binding("up", 0);
-                    //AR we need to turn off both right key states when activating left movement, so it doesn't move to the right
-                    the_game->set_key_down(get_key_binding("down", 0), 0);
-                    the_game->set_key_down(get_key_binding("down2", 0), 0);
-                }
-                else
-                {
-                    ev.key = get_key_binding("down", 0);
-                    //AR we need to turn off both left key states when activating right movement, so it doesn't move to the left
-                    the_game->set_key_down(get_key_binding("up", 0), 0);
-                    the_game->set_key_down(get_key_binding("up2", 0), 0);
-                }
-
-                if (abs(sdlev.gaxis.value) < settings.ctr_lst_dzy)
-                {
-                    ev.type = EV_KEYRELEASE;
-                    //AR stop everything
-                    the_game->set_key_down(get_key_binding("up", 0), 0);
-                    the_game->set_key_down(get_key_binding("up2", 0), 0);
-                    the_game->set_key_down(get_key_binding("down", 0), 0);
-                    the_game->set_key_down(get_key_binding("down2", 0), 0);
-                }
-                else
-                    ev.type = EV_KEY;
             }
-            break;
-
-            //AR just save the values and update aim inside the game loop
-        case SDL_GAMEPAD_AXIS_RIGHTX:
-            settings.ctr_aim_x = sdlev.gaxis.value;
-            ev.type = EV_SPURIOUS;
-            break;
-
-        case SDL_GAMEPAD_AXIS_RIGHTY:
-            settings.ctr_aim_y = sdlev.gaxis.value;
-            ev.type = EV_SPURIOUS;
-            break;
-
-        case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
-            //AR convert to key events
-            ev.key = get_key_binding(get_ctr_binding("ctr_ltg").c_str(), 0);
-            if (sdlev.gaxis.value > m_dead_zone)
-                ev.type = EV_KEY;
-            else
-                ev.type = EV_KEYRELEASE;
-            break;
-
-        case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
-            //AR convert to key events
-            ev.key = get_key_binding(get_ctr_binding("ctr_rtg").c_str(), 0);
-            if (sdlev.gaxis.value > m_dead_zone)
-                ev.type = EV_KEY;
-            else
-                ev.type = EV_KEYRELEASE;
-            break;
         }
+        break;
     }
+
+    if (keyboard_source >= 0 && (ev.type == EV_KEY || ev.type == EV_KEYRELEASE))
+    {
+        const bool pressed = ev.type == EV_KEY;
+        const int key = ev.key;
+        ev.type = EV_SPURIOUS;
+        combined_input.change(*this, ev, keyboard_source, pressed, key, true);
+    }
+}
+
+void EventHandler::flush_screen()
+{
+    update_dirty(main_screen);
+    present_framebuffer();
 }

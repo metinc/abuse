@@ -11,42 +11,49 @@
 #ifndef __KEYS_HPP_
 #define __KEYS_HPP_
 
-#define JK_BACKSPACE 8
-#define JK_TAB 9
-#define JK_ENTER 13
-#define JK_ESC 27
-#define JK_SPACE 32
+constexpr int JK_NONE = -1;
+constexpr int JK_BACKSPACE = 8;
+constexpr int JK_TAB = 9;
+constexpr int JK_ENTER = 13;
+constexpr int JK_ESC = 27;
+constexpr int JK_SPACE = 32;
 
-#define JK_UP 256
-#define JK_DOWN 257
-#define JK_LEFT 258
-#define JK_RIGHT 259
-#define JK_CTRL_L 260
-#define JK_CTRL_R 261
-#define JK_ALT_L 262
-#define JK_ALT_R 263
-#define JK_SHIFT_L 264
-#define JK_SHIFT_R 265
-#define JK_CAPS 266
-#define JK_NUM_LOCK 267
-#define JK_HOME 268
-#define JK_END 269
-#define JK_DEL 270
-#define JK_F1 271
-#define JK_F2 272
-#define JK_F3 273
-#define JK_F4 274
-#define JK_F5 275
-#define JK_F6 276
-#define JK_F7 277
-#define JK_F8 278
-#define JK_F9 279
-#define JK_F10 280
-#define JK_INSERT 281
-#define JK_PAGEUP 282
-#define JK_PAGEDOWN 283
-#define JK_COMMAND 284
-#define JK_MAX_KEY 284
+constexpr int JK_UP = 256;
+constexpr int JK_DOWN = 257;
+constexpr int JK_LEFT = 258;
+constexpr int JK_RIGHT = 259;
+constexpr int JK_CTRL_L = 260;
+constexpr int JK_CTRL_R = 261;
+constexpr int JK_ALT_L = 262;
+constexpr int JK_ALT_R = 263;
+constexpr int JK_SHIFT_L = 264;
+constexpr int JK_SHIFT_R = 265;
+constexpr int JK_CAPS = 266;
+constexpr int JK_NUM_LOCK = 267;
+constexpr int JK_HOME = 268;
+constexpr int JK_END = 269;
+constexpr int JK_DEL = 270;
+constexpr int JK_F1 = 271;
+constexpr int JK_F2 = 272;
+constexpr int JK_F3 = 273;
+constexpr int JK_F4 = 274;
+constexpr int JK_F5 = 275;
+constexpr int JK_F6 = 276;
+constexpr int JK_F7 = 277;
+constexpr int JK_F8 = 278;
+constexpr int JK_F9 = 279;
+constexpr int JK_F10 = 280;
+constexpr int JK_INSERT = 281;
+constexpr int JK_PAGEUP = 282;
+constexpr int JK_PAGEDOWN = 283;
+constexpr int JK_COMMAND = 284;
+constexpr int JK_MAX_KEY = JK_COMMAND;
+constexpr int JK_KEY_COUNT = 512;
+
+constexpr bool key_is_valid(int key)
+{
+    return key >= 0 && key < JK_KEY_COUNT;
+}
 
 // returns a ASCII string describing a key, i.e. "Up Arrow"
 void key_name(int key, char *buffer);

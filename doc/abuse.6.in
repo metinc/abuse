@@ -69,73 +69,16 @@ Enable anti-aliasing. (Only with -gl)
 .SH CONFIGURATION
 .B Abuse
 can load its settings from a configuration file stored in the user's home
-directory. The file is located at ($HOME/.abuse/abuserc).  If either the
-directory or the configuration file don't exist they will be created
+directory. The file is named settings.toml in the platform-specific user
+folder. If either the directory or the configuration file doesn't exist it will be created
 automatically with default values.
 .LP
-The configuration file contains various settings for adjusting how
-.B Abuse
-behaves.  Except for key settings, most of the options have an equivalent
-command-line option. Lines starting with a semi-colon(;) are ignored as
-comments.
-.LP
-The following options are available:
-.TP
-.B fullscreen = 1 | 0
-Set starting in fullscreen mode 'on' or 'off'.
-.TP
-.B doublebuf = 1 | 0
-Turn double buffering 'on' or 'off'.
-.TP
-.B mono = 1 | 0
-Turn mono audio to 'on' or 'off'.
-.TP
-.B grabmouse = 1 | 0
-Set locking the mouse to the window 'on' or 'off'.
-.TP
-.B scale = <amount>
-Scale the game by the specified amount.
-.TP
-.B gl = 1 | 0
-Turn OpenGL support 'on' or 'off'.
-.TP
-.B antialias = 1 | 0
-Turn anti-aliasing 'on' or 'off'.
-.TP
-.B nosdlparachute = 1 | 0
-Turn SDL handling segfaults to either 'on' or 'off'.
-For debugging purposes only.
-.LP
-The following options are for setting the keys used in the game.
-Valid values are any letter of the alphabet or number.
-Special keys like the cursor-keys include:
-.IP
-LEFT, RIGHT, UP, DOWN, CTRL_L, CTRL_R, ALT_L, ALT_R, SHIFT_L, SHIFT_R,
-BACKSPACE, INSERT, DELETE, PAGEUP, PAGEDOWN, TAB
-.TP
-.B left = <key>
-Move character left.
-.TP
-.B right = <key>
-Move character right.
-.TP
-.B up = <key>
-Jump or climb up ladders.
-.TP
-.B down = <key>
-Use switches, doors, teleports or climb down ladders.
-.TP
-.B fire = <key>
-Fire currently selected weapon.
-.TP
-.B weapprev = <key>
-Switch to the previous available weapon.
-.TP
-.B weapnext = <key>
-Switch to the next available weapon.
+The TOML file groups options into video, audio, gameplay, general, input.keyboard,
+and input.gamepad sections. The example settings.toml distributed with the game
+documents all supported keys.
 
 .SH FILES
-~/.abuse/abuserc - Abuse configuration file.
+settings.toml - Abuse configuration file in the platform-specific user folder.
 
 .SH SEE ALSO
 abuse-tool(6)

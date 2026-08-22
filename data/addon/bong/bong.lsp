@@ -71,7 +71,6 @@
 (setq load_warn nil)            ; don't show a waringing if these files aren't there
 (setq section 'game_section)
 (load "lisp/english.lsp")       ; need this for various translated messages (english only pong for now!)
-(load "gamma.lsp")              ; gamma correction values (if saved)
 (setq load_warn T)
 
 (load "lisp/common.lsp")        ; grab the definition of abuse's light holder & obj mover
@@ -340,4 +339,3 @@
 (set_first_level (get_level_name current_level))
 (gc)    ; garbage collect
 (tmp-space)
-

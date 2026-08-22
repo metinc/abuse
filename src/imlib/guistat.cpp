@@ -76,13 +76,16 @@ void gui_status_manager::push(char const *name, visual_object *show)
 gui_status_manager::gui_status_manager()
 {
     first = NULL;
-    strcpy(title, "STATUS");
-    last_perc = 0;
+}
+
+gui_status_manager::~gui_status_manager()
+{
+    while (first)
+        pop();
 }
 
 void gui_status_manager::update(int percentage)
 {
-    last_perc = percentage;
     if (first)
     {
         if (!first->stat_win)
@@ -135,11 +138,6 @@ void gui_status_manager::update(int percentage)
             }
         }
     }
-}
-
-void gui_status_manager::force_display()
-{
-    update(last_perc);
 }
 
 void gui_status_manager::pop()

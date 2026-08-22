@@ -1,4 +1,4 @@
-#include <Windows.h>
+#include <windows.h>
 
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION     ${abuse_VERSION_MAJOR},${abuse_VERSION_MINOR},${abuse_VERSION_PATCH},0

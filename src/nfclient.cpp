@@ -32,11 +32,6 @@
 
 #include "net/gserver.h"
 
-void remove_client(int client_number)
-{
-    ;
-}
-
 CrcManager *net_crcs = NULL;
 extern net_protocol *prot;
 

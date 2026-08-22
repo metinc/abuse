@@ -19,8 +19,6 @@ int net_init(int argc, char **argv);
 void net_uninit();
 void service_net_request();
 void wait_min_players();
-void server_check();
-void remove_client(int client_number);
 
 int net_start();
 bFILE *open_nfs_file(char const *filename, char const *mode);
@@ -34,12 +32,10 @@ long NF_seek(int fd, long offset);
 int NF_set_file_server(net_address *addr);
 
 int request_server_entry();
-int server_entry_continue();
 void net_reload();
 int set_file_server(char const *name);
 int set_file_server(net_address *addr);
 
-int join_remote_game(char *name);
 int become_server(char *name);
 int get_remote_lsf(net_address *addr, char *filename); // filename should be 256 bytes
 

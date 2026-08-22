@@ -1,0 +1,5 @@
+abuse (@PROJECT_VERSION@-1) unstable; urgency=medium
+
+  * Package upstream release @PROJECT_VERSION@.
+
+ -- Metin Çelik <metincelik88@gmail.com>  Wed, 19 Aug 2026 00:00:00 +0200

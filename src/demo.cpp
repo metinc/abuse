@@ -12,6 +12,14 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <filesystem>
+#include <limits>
+#include <string>
+
 #include "common.h"
 
 #include "game.h"
@@ -24,22 +32,41 @@
 #include "lisp.h"
 #include "clisp.h"
 #include "net/netface.h"
+#include "netcfg.h"
+#include "file_utils.h"
 
 demo_manager demo_man;
 ivec2 last_demo_mpos;
 int last_demo_mbut;
 extern base_memory_struct *base; // points to shm_addr
-extern int idle_ticks;
 
 void get_event(Event &ev)
 {
     wm->get_event(ev);
+    if (demo_man.state == demo_manager::PLAYING)
+    {
+        if (ev.type == EV_KEY && ev.key == JK_ESC)
+        {
+            demo_man.set_state(demo_manager::NORMAL);
+            ev.type = EV_SPURIOUS;
+            return;
+        }
+
+        if (ev.type == EV_MOUSE_MOVE || ev.type == EV_MOUSE_BUTTON || ev.type == EV_KEY ||
+            ev.type == EV_KEYRELEASE || ev.type == EV_TEXT_INPUT)
+        {
+            // Replay packets own all player input. Only a physical Escape key
+            // is allowed to leave playback.
+            ev.type = EV_SPURIOUS;
+            return;
+        }
+    }
+
     switch (ev.type)
     {
     case EV_KEY: {
-        if (demo_man.state == demo_manager::PLAYING)
-            demo_man.set_state(demo_manager::NORMAL);
-        else if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING)
+        if (ev.key == JK_ENTER && demo_man.state == demo_manager::RECORDING &&
+                 !demo_man.is_automatic_recording())
         {
             demo_man.set_state(demo_manager::NORMAL);
             the_game->show_help("Finished recording");
@@ -50,33 +77,131 @@ void get_event(Event &ev)
 
     last_demo_mpos = ev.mouse_move;
     last_demo_mbut = ev.mouse_button;
-    idle_ticks = 0;
 }
 
-int event_waiting()
+bool event_waiting()
 {
     return wm->IsPending();
 }
 
-int demo_manager::start_recording(char *filename)
+namespace
 {
-    if (!current_level)
+std::filesystem::path replay_write_path(char const *filename)
+{
+    std::filesystem::path path(filename);
+    if (path.is_relative())
+    {
+        char const *prefix = get_save_filename_prefix();
+        if (prefix && prefix[0])
+            path = std::filesystem::path(prefix) / path;
+    }
+    return path;
+}
+
+std::string timestamped_replay_filename()
+{
+    using namespace std::chrono;
+    const system_clock::time_point now = system_clock::now();
+    const std::time_t time = system_clock::to_time_t(now);
+    std::tm local_time = {};
+#ifdef WIN32
+    localtime_s(&local_time, &time);
+#else
+    localtime_r(&time, &local_time);
+#endif
+    const long milliseconds = duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+
+    char filename[80];
+    std::snprintf(filename, sizeof(filename), "replays/replay-%04d%02d%02d-%02d%02d%02d-%03ld.dat",
+                  local_time.tm_year + 1900, local_time.tm_mon + 1, local_time.tm_mday, local_time.tm_hour,
+                  local_time.tm_min, local_time.tm_sec, milliseconds);
+    return filename;
+}
+
+std::filesystem::path temporary_replay_checkpoint_path()
+{
+    std::error_code error;
+    const std::filesystem::path directory = std::filesystem::temp_directory_path(error);
+    if (error)
+        return {};
+
+    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
+    return directory / ("abuse-replay-checkpoint-" + std::to_string(nonce) + ".spe");
+}
+}
+
+void demo_manager::clear_playback_checkpoint()
+{
+    if (playback_checkpoint_path.empty())
+        return;
+
+    std::error_code error;
+    std::filesystem::remove(playback_checkpoint_path, error);
+    playback_checkpoint_path.clear();
+}
+
+bool demo_manager::save_playback_checkpoint()
+{
+    if (state != PLAYING || !current_level)
+        return false;
+
+    const std::filesystem::path path = temporary_replay_checkpoint_path();
+    if (path.empty())
+        return false;
+
+    if (!current_level->save(path.string().c_str(), 1, NULL, false))
+    {
+        std::error_code error;
+        std::filesystem::remove(path, error);
+        return false;
+    }
+
+    std::error_code error;
+    if (!playback_checkpoint_path.empty())
+        std::filesystem::remove(playback_checkpoint_path, error);
+    playback_checkpoint_path = path.string();
+
+    return true;
+}
+
+bool demo_manager::load_playback_checkpoint()
+{
+    if (state != PLAYING || playback_checkpoint_path.empty())
+        return false;
+
+    the_game->request_level_load(playback_checkpoint_path.c_str());
+    return true;
+}
+
+int demo_manager::start_recording(char const *filename)
+{
+    if (!current_level || !filename || !filename[0])
         return 0;
 
     record_file = open_file(filename, "wb");
     if (record_file->open_failure())
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
 
-    char name[100];
-    strcpy(name, current_level->name());
+    std::filesystem::path snapshot_name(filename);
+    snapshot_name.replace_extension(".spe");
+    const std::string snapshot = snapshot_name.generic_string();
+    if (snapshot.size() + 1 > std::numeric_limits<uint16_t>::max() ||
+        !current_level->save(replay_write_path(snapshot.c_str()).string().c_str(), 1, NULL, false))
+    {
+        delete record_file;
+        record_file = NULL;
+        std::error_code error;
+        std::filesystem::remove(replay_write_path(filename), error);
+        return 0;
+    }
 
-    the_game->load_level(name);
-    record_file->write((void *)"DEMO,VERSION:2", 14);
-    record_file->write_uint8(strlen(name) + 1);
-    record_file->write(name, strlen(name) + 1);
+    record_file->write((void *)"DEMO,VERSION:4", 14);
+    record_file->write_uint16(static_cast<uint16_t>(snapshot.size() + 1));
+    record_file->write(snapshot.c_str(), snapshot.size() + 1);
 
     if (DEFINEDP(symbol_value(l_difficulty)))
     {
@@ -92,10 +217,27 @@ int demo_manager::start_recording(char *filename)
     else
         record_file->write_uint8(3);
 
+    const bool cooperative = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    record_file->write_uint8(cooperative ? 1 : 0);
+
     state = RECORDING;
+    std::printf("Recording replay to %s\n", replay_write_path(filename).string().c_str());
 
-    reset_game();
+    return 1;
+}
 
+int demo_manager::start_automatic_recording()
+{
+    if (state != NORMAL)
+        return 0;
+
+    const std::string filename = timestamped_replay_filename();
+    automatic_recording = true;
+    if (!start_recording(filename.c_str()))
+    {
+        automatic_recording = false;
+        return 0;
+    }
     return 1;
 }
 
@@ -156,45 +298,114 @@ void demo_manager::reset_game()
     current_level->set_tick_counter(0);
 }
 
-int demo_manager::start_playing(char *filename)
+int demo_manager::start_playing(char const *filename)
 {
     uint8_t sig[15];
     record_file = open_file(filename, "rb");
     if (record_file->open_failure())
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
-    char name[100], nsize, diff;
-    if (record_file->read(sig, 14) != 14 || memcmp(sig, "DEMO,VERSION:2", 14) != 0 ||
-        record_file->read(&nsize, 1) != 1 || record_file->read(name, nsize) != nsize ||
+    if (record_file->read(sig, 14) != 14)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    const bool mode_replay = memcmp(sig, "DEMO,VERSION:4", 14) == 0;
+    const bool snapshot_replay = mode_replay || memcmp(sig, "DEMO,VERSION:3", 14) == 0;
+    if (!snapshot_replay && memcmp(sig, "DEMO,VERSION:2", 14) != 0)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    uint16_t name_size = snapshot_replay ? record_file->read_uint16() : record_file->read_uint8();
+    if (!name_size || name_size > 4096)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    std::string name(name_size, '\0');
+    uint8_t diff;
+    if (record_file->read(name.data(), name_size) != name_size || name.back() != '\0' ||
         record_file->read(&diff, 1) != 1)
     {
         delete record_file;
+        record_file = NULL;
         return 0;
     }
+    name.pop_back();
 
-    char tname[100], *c;
-    strcpy(tname, name);
-    c = tname;
-    while (*c)
-    {
-        if (*c == '\\')
-            *c = '/';
-        c++;
-    }
-
-    bFILE *probe = open_file(tname, "rb"); // see if the level still exists?
-    if (probe->open_failure())
+    uint8_t recorded_game_mode = 0;
+    if (mode_replay && record_file->read(&recorded_game_mode, 1) != 1)
     {
         delete record_file;
-        delete probe;
+        record_file = NULL;
         return 0;
+    }
+
+    std::replace(name.begin(), name.end(), '\\', '/');
+    std::string tname(name);
+
+    bFILE *probe = open_file(tname.c_str(), "rb"); // see if the level still exists?
+    if (probe->open_failure())
+    {
+        delete probe;
+
+        // Bundled replays keep their original embedded level name for
+        // compatibility.  If that path no longer exists, look for the level
+        // snapshot beside the replay file instead.
+        std::string replay_path(filename);
+        std::replace(replay_path.begin(), replay_path.end(), '\\', '/');
+        std::string embedded_path(tname);
+        size_t replay_slash = replay_path.find_last_of('/');
+        size_t embedded_slash = embedded_path.find_last_of('/');
+
+        if (replay_slash != std::string::npos)
+        {
+            std::string adjacent_level = replay_path.substr(0, replay_slash + 1) +
+                                         embedded_path.substr(embedded_slash == std::string::npos
+                                                                  ? 0
+                                                                  : embedded_slash + 1);
+            tname = adjacent_level;
+            probe = open_file(tname.c_str(), "rb");
+        }
+        else
+            probe = NULL;
+
+        if (!probe || probe->open_failure())
+        {
+            delete record_file;
+            record_file = NULL;
+            delete probe;
+            return 0;
+        }
     }
     delete probe;
 
-    the_game->load_level(tname);
-    initial_difficulty = l_difficulty;
+    if ((dev & EDIT_MODE) && !the_game->set_editor_mode(false))
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+
+    game_mode_overridden = mode_replay && main_net_cfg;
+    if (game_mode_overridden)
+    {
+        initial_game_mode = main_net_cfg->game_mode;
+        main_net_cfg->game_mode = recorded_game_mode == 1 ? net_configuration::COOP : net_configuration::DEATHMATCH;
+    }
+
+    the_game->load_level(tname.c_str());
+    initial_difficulty = l_difficulty->GetValue();
 
     switch (diff)
     {
@@ -213,12 +424,22 @@ int demo_manager::start_playing(char *filename)
     }
 
     state = PLAYING;
-    reset_game();
+    if (snapshot_replay)
+    {
+        the_game->set_state(RUN_STATE);
+        last_demo_mpos = ivec2(0, 0);
+        last_demo_mbut = 0;
+    }
+    else
+        reset_game();
+
+    if (!save_playback_checkpoint())
+        std::fprintf(stderr, "Unable to create the replay checkpoint\n");
 
     return 1;
 }
 
-int demo_manager::set_state(demo_state new_state, char *filename)
+int demo_manager::set_state(demo_state new_state, char const *filename)
 {
     if (new_state == state)
         return 1;
@@ -227,13 +448,24 @@ int demo_manager::set_state(demo_state new_state, char *filename)
     {
     case RECORDING: {
         delete record_file;
+        record_file = NULL;
+        automatic_recording = false;
     }
     break;
     case PLAYING: {
         delete record_file;
-        l_difficulty = initial_difficulty;
+        record_file = NULL;
+        clear_playback_checkpoint();
+        l_difficulty->SetValue(initial_difficulty);
+        if (game_mode_overridden && main_net_cfg)
+            main_net_cfg->game_mode = initial_game_mode == net_configuration::COOP ? net_configuration::COOP
+                                                                                   : net_configuration::DEATHMATCH;
+        game_mode_overridden = false;
+        // Playback has ended before we return to the menu.  Game::set_state()
+        // uses this state to choose the cursor, and PLAYING selects a blank one.
+        state = NORMAL;
         the_game->set_state(MENU_STATE);
-        wm->Push(new Event(ID_NULL, NULL));
+        wm->PushMessage(ID_NULL);
 
         view *v = player_list;
         for (; v; v = v->next) // reset all the players

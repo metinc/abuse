@@ -2,6 +2,38 @@
 ;; See licensing information for more details on usage rights
 
 
+(defun flyer_explosive_damage (from)
+  (and from
+       (with_object from
+	 (or (eq (otype) GRENADE)
+	     (eq (otype) FIREBOMB)
+	     (eq (otype) ROCKET)
+	     (eq (otype) DFRIS_BULLET)
+	     (eq (otype) STRAIT_ROCKET)
+	     (eq (otype) BOMB)
+	     (eq (otype) BIG_BOMB)
+	     (eq (otype) CONC)
+	     (eq (otype) CONC_AIR)))))
+
+(defun flyer_explode ()
+  (play_sound GRENADE_SND 127 (x) (y))
+  (add_object EXPLODE1 (+ (x) (random 10)) (+ (+ (random 10) (y)) -20)     0)
+  (add_object EXPLODE1 (- (x) (random 10)) (+ (- (y) (random 10)) -20)     2)
+  (add_object EXPLODE1 (x) (+ (- (y) (random 20)) -20)                     4)
+  (with_object (bg) (set_kills (+ (kills) 1)))
+  nil)
+
+(defun flyer_fall_ai ()
+  ;; Keep spinning and smoking until the regular character physics reports
+  ;; the first collision.
+  (if (eq (mod (state_time) 2) 0)
+      (add_object SMALL_DARK_CLOUD (x) (y)))
+  (if (not (next_picture))
+      (set_state turn_around))
+  (if (eq (move 0 0 0) 0)
+      T
+    (flyer_explode)))
+
 (defun flyer_ai ()
   (if (not (eq smoke_time 0))                 ;; if we just got hit, put out some smoke
       (progn
@@ -20,14 +52,10 @@
 	  (set_targetable nil)
 	  (set_state stopped)
 	  T))
-    (if (eq (hp) 0)                          ;; if dead, make an explosion
-	(progn
-	  (play_sound GRENADE_SND 127 (x) (y))
-	  (add_object EXPLODE1 (+ (x) (random 10)) (+ (+ (random 10) (y)) -20)     0)
-	  (add_object EXPLODE1 (- (x) (random 10)) (+ (- (y) (random 10)) -20)     2)
-	  (add_object EXPLODE1 (x) (+ (- (y) (random 20)) -20)                     4)
-	  (with_object (bg) (set_kills (+ (kills) 1)))
-	  nil)
+    (if (eq (hp) 0)
+	(if (eq (aistate) 2)                   ;; non-explosive kill: fall first
+	    (flyer_fall_ai)
+	  (flyer_explode))                     ;; explosive kill: explode now
       (progn
 	(if (eq (mod (state_time) 5) 0)      ;; make flyer noise every 5 ticks
 	    (play_sound FLYER_SND 127 (x) (y)))
@@ -117,10 +145,28 @@
       nil
     (if (eq (state) stopped) nil
       (progn
-	(setq smoke_time 30)
-	(set_yvel (- (yvel) 14))
-	(set_state flinch_up)
-	(damage_fun amount from hitx hity push_xvel push_yvel)))))
+	(damage_fun amount from hitx hity push_xvel push_yvel)
+	(if (<= (hp) 0)
+	    (if (flyer_explosive_damage from)
+		(progn
+		  (setq smoke_time 0)
+		  (set_aistate 3))
+	      (progn
+		(setq smoke_time 0)
+		(set_targetable nil)
+		(set_aistate 2)
+		(set_state turn_around)
+		(set_gravity 1)
+		(set_xacel 0)
+		(set_fxacel 0)
+		(set_yacel 0)
+		(set_fyacel 0)
+		(set_yvel 1)
+		(set_fyvel 0)))
+	  (progn
+	    (setq smoke_time 30)
+	    (set_yvel (- (yvel) 14))
+	    (set_state flinch_up)))))))
 
 
 
@@ -176,4 +222,3 @@
 	  (stopped (seq "gdrp" 1 12))
 	  (flinch_up  '("ghurt" "ghurt" "ghurt"))
 	  (turn_around (seq "gspn" 1 7))))
-

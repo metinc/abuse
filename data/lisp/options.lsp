@@ -44,13 +44,3 @@
 ; will get in the way while flying.
 
 (setq mouse_can_switch false)
-
-
-
-
-; this option allows the game to exit a idle game after 1 minute
-; and go into a demo
-
-; (demo_break_enable)
-
-

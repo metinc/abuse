@@ -13,6 +13,7 @@
 
 #include "light.h"
 #include "jwindow.h"
+#include "player_name.h"
 
 class object_node;
 class game_object;
@@ -31,15 +32,19 @@ class view;
 class view
 {
   public:
+    static constexpr int MAX_CHAT_INPUT_LENGTH = 40;
+
     view(game_object *Focus, view *Next, int number);
     ~view();
 
     int key_down(int key)
     {
-        return m_keymap[key / 8] & (1 << (key % 8));
+        return key_is_valid(key) && (m_keymap[key / 8] & (1 << (key % 8)));
     }
     void set_key_down(int key, int x)
     {
+        if (!key_is_valid(key))
+            return;
         if (x)
             m_keymap[key / 8] |= (1 << (key % 8));
         else
@@ -50,6 +55,10 @@ class view
         memset(m_keymap, 0, sizeof(m_keymap));
     }
     void add_chat_key(int key);
+    int chat_input_length() const
+    {
+        return strlen(m_chat_buf);
+    }
 
     char name[100];
     struct suggest_struct suggest;
@@ -100,6 +109,8 @@ class view
     void note_downkey();
     int handle_event(Event &ev);
     void update_scroll(float interpolation_ratio);
+    void reset_camera();
+    void pan_editor(int32_t x, int32_t y);
     void draw_hp();
     void draw_ammo();
     void draw_logo();
@@ -136,7 +147,10 @@ class view
     game_object *m_focus; // object we are focusing on (player)
 
   private:
-    uint8_t m_keymap[512 / 8];
+    int32_t unclamped_xoff(int32_t pan) const;
+    int32_t unclamped_yoff(int32_t pan) const;
+
+    uint8_t m_keymap[JK_KEY_COUNT / 8];
     char m_chat_buf[60];
     float interpolation_ratio;
 };

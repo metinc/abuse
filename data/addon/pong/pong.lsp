@@ -61,7 +61,6 @@
 (setq pong_art (concatenate 'string pong_dir "pong.spe"))  ; all artwork is in this file
 
 (setq load_warn nil)            ; don't show a waringing if these files aren't there
-(load "gamma.lsp")              ; gamma correction values (if saved)
 (setq load_warn T)
 
 (load "addon/pong/common.lsp")        ; grab the definition of abuse's light holder & obj mover
@@ -328,4 +327,3 @@
 (set_first_level (get_level_name current_level))
 (gc)    ; garbage collect
 (tmp-space)
-

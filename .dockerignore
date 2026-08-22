@@ -1,0 +1,9 @@
+.git
+.agents
+.codex
+.cache
+.flatpak-builder
+build
+build-*
+flatpak-build
+flatpak-repo

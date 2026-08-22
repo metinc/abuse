@@ -12,6 +12,7 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
 #include <stdio.h>
 
 #include <SDL3/SDL_timer.h>
@@ -31,6 +32,10 @@
 #include "net/gserver.h"
 #include "net/gclient.h"
 #include "netcfg.h"
+#include "net/webrtc.h"
+#include "sdlport/setup.h"
+
+#include <string>
 
 /*
  
@@ -55,8 +60,7 @@ game_handler *game_face = NULL; // Interface for game networking
 extern char lsf[256]; // Level file name
 int local_client_number = 0; // Client ID (0 = server)
 join_struct *join_array = NULL; // Array of joining clients
-extern char const *get_login();
-extern void set_login(char const *name);
+extern Settings settings;
 
 int net_init(int argc, char **argv)
 {
@@ -73,6 +77,18 @@ int net_init(int argc, char **argv)
     }
 
     // Parse command line arguments
+    constexpr char default_signaling_url[] = "wss://abusecoop.com";
+    enum class online_mode
+    {
+        none,
+        host,
+        client
+    };
+    online_mode online = online_mode::none;
+    std::string signaling_url = ABUSE_SIGNALING_URL;
+    if (signaling_url.empty())
+        signaling_url = default_signaling_url;
+    std::string online_room;
     for (i = 1; i < argc; i++)
     {
         if (!strcmp(argv[i], "-nonet"))
@@ -101,6 +117,25 @@ int net_init(int argc, char **argv)
             DEBUG_LOG("Setting server host to %s", argv[i]);
             strncpy(main_net_cfg->server_host, argv[i], sizeof(main_net_cfg->server_host) - 1);
             main_net_cfg->server_host[sizeof(main_net_cfg->server_host) - 1] = '\0';
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+            main_net_cfg->state = net_configuration::CLIENT;
+        }
+        else if (!strcmp(argv[i], "-signal-server") && i < argc - 1)
+        {
+            signaling_url = argv[++i];
+        }
+        else if (!strcmp(argv[i], "-online-join") && i < argc - 1)
+        {
+            online_room = argv[++i];
+            if (main_net_cfg->join_failed)
+                continue;
+            online = online_mode::client;
+            strncpy(main_net_cfg->server_host, online_room.c_str(), sizeof(main_net_cfg->server_host) - 1);
+            main_net_cfg->server_host[sizeof(main_net_cfg->server_host) - 1] = '\0';
+            strncpy(main_net_cfg->room_code, online_room.c_str(), sizeof(main_net_cfg->room_code) - 1);
+            main_net_cfg->room_code[sizeof(main_net_cfg->room_code) - 1] = '\0';
+            main_net_cfg->online = true;
             main_net_cfg->state = net_configuration::CLIENT;
         }
         else if (!strcmp(argv[i], "-ndb"))
@@ -120,6 +155,8 @@ int net_init(int argc, char **argv)
         else if (!strcmp(argv[i], "-server"))
         {
             DEBUG_LOG("Setting state to SERVER");
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
             main_net_cfg->state = net_configuration::SERVER;
         }
         else if (!strcmp(argv[i], "-min_players"))
@@ -139,6 +176,30 @@ int net_init(int argc, char **argv)
         }
     }
 
+    if (online == online_mode::none && main_net_cfg->online)
+    {
+        if (main_net_cfg->state == net_configuration::SERVER)
+            online = online_mode::host;
+        else if (main_net_cfg->state == net_configuration::CLIENT)
+        {
+            online = online_mode::client;
+            online_room = main_net_cfg->room_code;
+        }
+    }
+
+    if (online != online_mode::none)
+    {
+        if (signaling_url.empty() || (signaling_url.compare(0, 5, "ws://") && signaling_url.compare(0, 6, "wss://")))
+        {
+            fprintf(stderr, "Net: Invalid signaling URL; expected ws:// or wss://\n");
+            return 0;
+        }
+        if (online == online_mode::host)
+            webrtc.configure_host(signaling_url);
+        else
+            webrtc.configure_client(signaling_url, online_room);
+    }
+
     // Find available network protocols
     DEBUG_LOG("Searching for usable network protocols");
     net_protocol *n = net_protocol::first, *usable = NULL;
@@ -151,7 +212,8 @@ int net_init(int argc, char **argv)
         if (n->installed())
         {
             total_usable++;
-            usable = n;
+            if (!webrtc.requested() || n == &webrtc)
+                usable = n;
         }
     }
 
@@ -166,9 +228,9 @@ int net_init(int argc, char **argv)
     prot = usable;
     prot->set_debug_printing((net_protocol::debug_type)db_level);
 
-    if (main_net_cfg->state == net_configuration::SERVER)
+    if (main_net_cfg->state == net_configuration::SERVER || main_net_cfg->state == net_configuration::CLIENT)
     {
-        DEBUG_LOG("Initializing as server");
+        DEBUG_LOG("Using configured player name: %s", main_net_cfg->name);
         set_login(main_net_cfg->name);
     }
 
@@ -482,8 +544,17 @@ int request_server_entry()
         }
         printf("Joining game in progress, hang on....\n");
 
-        DEBUG_LOG("Creating game socket on port %d", main_net_cfg->port + 2);
-        game_sock = prot->create_listen_socket(main_net_cfg->port + 2, net_socket::SOCKET_FAST);
+        // SDL3_net normally allows UDP sockets to share an address. That made
+        // several clients on one machine all bind to the same port, so game
+        // packets could be delivered to the wrong process. Use the first free
+        // port in the client range and advertise the selected port below.
+        int client_port = main_net_cfg->port + 2;
+        const int last_client_port = std::min(65535, client_port + MAX_JOINERS - 1);
+        for (; !game_sock && client_port <= last_client_port; ++client_port)
+        {
+            DEBUG_LOG("Creating game socket on port %d", client_port);
+            game_sock = prot->create_listen_socket(client_port, net_socket::SOCKET_FAST);
+        }
         if (!game_sock)
         {
             DEBUG_LOG("Failed to create game socket");
@@ -493,6 +564,7 @@ int request_server_entry()
             prot = NULL;
             return 0;
         }
+        --client_port;
         game_sock->read_selectable();
 
         DEBUG_LOG("Connecting to server");
@@ -505,7 +577,7 @@ int request_server_entry()
         }
 
         uint8_t ctype = CLIENT_ABUSE;
-        uint16_t port = lstl(main_net_cfg->port + 2), cnum;
+        uint16_t port = lstl(client_port), cnum;
         uint8_t reg;
 
         // Send client registration with debug ID
@@ -544,12 +616,14 @@ int request_server_entry()
         else
             strcpy(uname, "unknown");
         uint8_t len = strlen(uname) + 1;
-        uint16_t our_port = lstl(main_net_cfg->port + 2), cport;
+        uint8_t skin = static_cast<uint8_t>(settings.player_skin);
+        uint16_t our_port = lstl(client_port), cport;
         int16_t nkills;
 
         DEBUG_LOG("Sending client info - username: %s", uname);
         if (sock->write(/* client_name_length */ &len, 1) != 1 ||
-            sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_port */ &our_port, 2) != 2 ||
+            sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_skin */ &skin, 1) != 1 ||
+            sock->write(/* client_port */ &our_port, 2) != 2 ||
             sock->read(/* server_port */ &port, 2) != 2 || sock->read(/* server_kills */ &nkills, 2) != 2 ||
             sock->read(/* server_game_mode */ &ctype, 1) != 1 || sock->read(/* server_client_id */ &cnum, 2) != 2 ||
             cnum == 0)
@@ -669,9 +743,9 @@ void net_reload()
 
                 DEBUG_LOG("Creating new view for player %d", join_list->client_id);
                 f->next = new view(o, NULL, join_list->client_id);
-                strcpy(f->next->name, join_list->name);
+                copy_player_name(f->next->name, sizeof(f->next->name), join_list->name);
                 o->set_controller(f->next);
-                f->next->set_tint(f->next->player_number);
+                f->next->set_tint(join_list->skin);
                 if (start)
                     current_level->add_object_after(o, start);
                 else
@@ -873,6 +947,12 @@ int become_server(char *name)
             DEBUG_LOG("Failed to create communication socket");
             prot = NULL;
             return 0;
+        }
+        if (main_net_cfg->online && prot == &webrtc)
+        {
+            const std::string code = webrtc.room_code();
+            strncpy(main_net_cfg->room_code, code.c_str(), sizeof(main_net_cfg->room_code) - 1);
+            main_net_cfg->room_code[sizeof(main_net_cfg->room_code) - 1] = '\0';
         }
         comm_sock->read_selectable();
 

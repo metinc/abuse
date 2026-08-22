@@ -1,0 +1,28 @@
+[Unit]
+Description=Abuse online signaling
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=abuse-online
+Group=abuse-online
+WorkingDirectory=/opt/abuse-online/signaling
+EnvironmentFile=/etc/abuse-online/signaling.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=2s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

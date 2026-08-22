@@ -3,7 +3,6 @@
 (load "addon/pong/common.lsp")
 (load "lisp/english.lsp")
 (load "addon/pong/userfuns.lsp")
-(load "gamma.lsp")
 (setq chess_art (concatenate 'string chess_dir "chess.spe"))
 
 (if (not (get_option "-net"))   ;;  are we connecting to a server?
@@ -183,5 +182,4 @@
 (set_first_level start_file)
 (gc)
 (tmp-space)
-
 

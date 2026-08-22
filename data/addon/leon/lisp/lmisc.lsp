@@ -27,8 +27,7 @@
 	   (stopped (seq "lava" 1 15))))
 
 (defun Lrestart_ai ()
-  (if (eq (total_players) 1)       ;; only allow saving in single player games
-      (select (aistate)
+  (select (aistate)
 	      (0 (next_picture)
 		 (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
 		     (set_aistate 2)))
@@ -39,24 +38,25 @@
 		 (set_aistate 3))
 	      (3 (set_aistate 4))
 	      (4
-	       (let ((spot (get_save_slot)))
+	       ;; In multiplayer, activate the console without opening the save UI.
+	       (let ((spot (if (eq (total_players) 1) (get_save_slot) 0)))
 		 (set_state stopped)
 		 (set_aistate 1)
 		 (if (not (eq spot 0));; did they escape ?
 		     (progn
 		       (show_help (concatenate 'string Station (num2str (xvel)) secured))
 		       (with_object (bg)
-				    (progn
-				      (let ((old_hp (hp)))
-					(if (eq difficulty 'easy)
-					    (set_hp 100));; save the player with 100 health, if on easy
-					(play_sound SAVE_SND 127 (x) (y))
-					(setq has_saved_this_level spot)
-					(save_game (concatenate 'string "save" (digstr spot 4) ".spe"))
-					(set_hp old_hp)
-					))))))
+			    (progn
+			      (let ((old_hp (hp)))
+				(if (eq difficulty 'easy)
+				    (set_hp 100));; save the player with 100 health, if on easy
+				(play_sound SAVE_SND 127 (x) (y))
+				(setq has_saved_this_level spot)
+				(save_game (concatenate 'string "save" (digstr spot 4) ".spe"))
+				(set_hp old_hp)
+				))))))
 
-	       )))
+	       ))
   T)
 
 

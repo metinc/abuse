@@ -879,7 +879,7 @@ int CacheList::reg(char const *filename, char const *name, int type, int rm_dups
                 exit(EXIT_FAILURE);
             }
         }
-        else if (sound_avail)
+        else if (sound_is_initialized())
         {
             printf("Unable to open file '%s' for reading\n", filename);
             exit(EXIT_FAILURE);

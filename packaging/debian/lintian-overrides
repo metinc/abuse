@@ -1,0 +1,3 @@
+# CPack creates upstream binary releases, not uploads to the Debian archive,
+# so there is no Debian BTS bug for the first package revision to close.
+initial-upload-closes-no-bugs

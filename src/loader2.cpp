@@ -22,7 +22,7 @@
 #include "specs.h"
 #include "lisp.h"
 #include "jrand.h"
-#include "menu.h"
+#include "ui/menu.h"
 #include "dev.h"
 #include "director.h"
 
@@ -31,9 +31,9 @@
 #include "particle.h"
 #include "clisp.h"
 #include "compiled.h"
-#include "sbar.h"
-#include "help.h"
-#include "loadgame.h"
+#include "ui/sbar.h"
+#include "ui/help.h"
+#include "ui/loadgame.h"
 #include "nfserver.h"
 #include "specache.h"
 
@@ -44,12 +44,12 @@ property_manager *prop;
 int *backtiles;
 int *foretiles;
 JCFont *big_font, *console_font;
-int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi, total_songs = 0, sfx_volume, music_volume, sound_avail = 0;
-song *current_song = NULL;
+int nforetiles, nbacktiles, f_wid, f_hi, b_wid, b_hi;
+float sfx_volume = 1.0f, music_volume = 1.0f;
+std::unique_ptr<song> current_song;
 
 uint16_t current_start_type, start_position_type, last_start_number;
 int light_buttons[13];
-int joy_picts[2 * 9];
 palette *pal;
 
 int big_font_pict = -1, small_font_pict = -1, console_font_pict = -1, cdc_logo;
@@ -58,9 +58,8 @@ int title_screen;
 
 ColorFilter *color_table;
 
-int border_tile, window_texture, raise_volume, lower_volume, record_button, play_button, music_button, sfx_button,
-    window_colors, pause_image, damage_pict, block_pict, vmm_image, earth, earth_mask, clouds, numbers[10], ok_button,
-    cancel_button;
+int border_tile, window_texture, window_colors, pause_image, damage_pict, block_pict, vmm_image, earth, earth_mask,
+    clouds, numbers[10], ok_button, cancel_button;
 
 int start_running = 0;
 
@@ -330,7 +329,7 @@ void load_data(int argc, char **argv)
     snprintf(prog, sizeof(prog), "(load \"%s\")\n", lsf);
 
     cs = prog;
-    if (!LObject::Compile(cs)->Eval())
+    if (!leval(LObject::Compile(cs)))
     {
         printf("Unable to open file '%s'\n", lsf);
         exit(EXIT_SUCCESS);
@@ -362,12 +361,6 @@ void load_data(int argc, char **argv)
 
     //  clouds      =      cache.reg(ff,"clouds",SPEC_IMAGE);
 
-    lower_volume = cache.reg(ff, "lower_volume", SPEC_IMAGE);
-    raise_volume = cache.reg(ff, "raise_volume", SPEC_IMAGE);
-    music_button = cache.reg(ff, "music", SPEC_IMAGE);
-    sfx_button = cache.reg(ff, "sound_fx", SPEC_IMAGE);
-    record_button = cache.reg(ff, "record", SPEC_IMAGE);
-    play_button = cache.reg(ff, "play", SPEC_IMAGE);
     window_colors = cache.reg(ff, "window_colors", SPEC_IMAGE);
     pause_image = cache.reg(ff, "pause_image", SPEC_IMAGE);
     vmm_image = cache.reg(ff, "vmm", SPEC_IMAGE);

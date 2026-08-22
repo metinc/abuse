@@ -25,7 +25,8 @@ Play the game directly:
 % abuse -a twist
 
 Use the addon in the editor:
-% abuse -a twist -edit -nosound
+% abuse -a twist -nosound
+Then select Level Editor from the main menu.
 
 
 NOTES
@@ -230,4 +231,3 @@ command to load external levels, you wont need the gun to shoot anymore. Also
 note that in the original Abuse, there are no death ray ammo so if you want
 to use it, you have to cheat a little. Under the chat window, type "/give
 deathray" <enter> followed by "/give bfgcells" <enter>. There you have it!
-

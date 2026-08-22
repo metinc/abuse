@@ -111,6 +111,15 @@ ReturnType prefix_open_impl(const char *filename, const bool is_write, const boo
                     return result;
                 }
             }
+
+            // Generated assets live in the build tree. This fallback keeps an
+            // uninstalled development build usable without modifying sources.
+            const std::string generated_path = combine_paths(ABUSE_GENERATED_ASSETDIR, filename);
+            ReturnType result = opener(generated_path.c_str(), args...);
+            if (result != fail_value)
+            {
+                return result;
+            }
         }
 
         // Fall back to direct file open

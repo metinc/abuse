@@ -46,7 +46,7 @@ class tool_picker : public spicker
     }
     virtual void note_new_current(image *screen, InputManager *inm, int x)
     {
-        wm->Push(new Event(ids[x], NULL));
+        wm->PushMessage(ids[x]);
     }
 
     void remap(palette *pal, image *screen);

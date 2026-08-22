@@ -227,11 +227,22 @@
       (set_aitype 0)
     (play_sound (aref AMB_SOUNDS (aitype)))))
 
+(defun random_sound_pitch ()
+  ;; Pitch is expressed as a percentage because Abuse Lisp has no
+  ;; decimal number literals.
+  (+ 60 (random 41)))
+
+(defun amb_sound_pitch ()
+  ;; A_SCREAMS occupy AMB_SOUNDS slots 8-10.
+  (if (and (>= (aitype) 8) (<= (aitype) 10))
+      (random_sound_pitch)
+    100))
+
 (defun amb_sound_ai ()
   (if (activated)
       (if (eq (aistate) 0)
 	  (progn
-	    (play_sound (aref AMB_SOUNDS (aitype)) (yvel) (x) (y))
+	    (play_sound (aref AMB_SOUNDS (aitype)) (yvel) (x) (y) (amb_sound_pitch))
 	    (set_aistate (+ (xvel) (random (+ 1 (xacel)))))
 	    (> (xvel) 0))
 	(progn
@@ -259,7 +270,7 @@
   (states "art/misc.spe"
 	  (stopped "sfx_player")))
 
-(setq song_list '("music/abuse01.hmi" "music/abuse02.hmi"))
+(setq song_list '("music/abuse01.mid" "music/abuse02.mid"))
 (setq current_song song_list)
 
 (defun next_song ()
@@ -280,27 +291,24 @@
       (progn
 	(stop_song)                 ; stop playing the old song
 	(select (substr 12 13 name)
-		("00" (play_song "music/abuse01.hmi"))
-		("01" (play_song "music/abuse02.hmi"))
-		("02" (play_song "music/abuse04.hmi"))
-		("03" (play_song "music/abuse07.hmi"))
-		("04" (play_song "music/abuse08.hmi"))
-		("05" (play_song "music/abuse10.hmi"))
-		("06" (play_song "music/indst1.hmi"))
-		("07" (play_song "music/indst2.hmi"))
-		("08" (play_song "music/indst3.hmi"))
-		("09" (play_song "music/indst4.hmi"))
-		("10" (play_song "music/indst5.hmi"))
-		("11" (play_song "music/abuse07.hmi"))
-		("12" (play_song "music/abuse08.hmi"))
-		("13" (play_song "music/abuse10.hmi"))
-		("14" (play_song "music/indst1.hmi"))
-		("15" (play_song "music/indst2.hmi"))
-		("16" (play_song "music/indst3.hmi"))
-		("17" (play_song "music/indst4.hmi"))
-		("18" (play_song "music/indst5.hmi")))))
+		("00" (play_song "music/abuse01.mid"))
+		("01" (play_song "music/abuse02.mid"))
+		("02" (play_song "music/abuse04.mid"))
+		("03" (play_song "music/abuse07.mid"))
+		("04" (play_song "music/abuse08.mid"))
+		("05" (play_song "music/abuse10.mid"))
+		("06" (play_song "music/indst1.mid"))
+		("07" (play_song "music/indst2.mid"))
+		("08" (play_song "music/indst3.mid"))
+		("09" (play_song "music/indst4.mid"))
+		("10" (play_song "music/indst5.mid"))
+		("11" (play_song "music/abuse07.mid"))
+		("12" (play_song "music/abuse08.mid"))
+		("13" (play_song "music/abuse10.mid"))
+		("14" (play_song "music/indst1.mid"))
+		("15" (play_song "music/indst2.mid"))
+		("16" (play_song "music/indst3.mid"))
+		("17" (play_song "music/indst4.mid"))
+		("18" (play_song "music/indst5.mid")))))
   (untrace)
   (break))
-
-
-

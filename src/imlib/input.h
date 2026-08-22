@@ -18,6 +18,8 @@ extern WindowManager *wm; /* FIXME: get rid of this if possible */
 class button : public ifield
 {
     int up, act;
+    bool momentary = true;
+    bool press_active = false;
     char *text;
     image *visual, *pressed, *act_pict;
     int act_id;
@@ -39,6 +41,10 @@ class button : public ifield
             free(text);
     }
     void push();
+    void set_momentary(bool enabled = true)
+    {
+        momentary = enabled;
+    }
     virtual char *read()
     {
         return (char *)&up;
@@ -61,7 +67,6 @@ class button_box : public ifield
   public:
     button_box(int X, int Y, int ID, int MaxDown, button *Buttons, ifield *Next);
     void add_button(button *b);
-    void press_button(int id); // if button box doesn't contain id, nothing happens
     virtual void remap(Filter *f);
     virtual void Move(ivec2 pos);
     virtual void area(int &x1, int &y1, int &x2, int &y2);
@@ -104,6 +109,7 @@ class text_field : public ifield
         screen->Bar(ivec2(xstart() + 1, m_pos.y + 1), ivec2(xend() - 1, yend() - 1), wm->dark_color());
         wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3), data);
     }
+    void insert_text(char const *text, image *screen);
 
   public:
     text_field(int X, int Y, int ID, char const *Prompt, char const *Format, char const *Data, ifield *Next);
@@ -132,6 +138,7 @@ class info_field : public ifield
 
   public:
     info_field(int X, int Y, int ID, char const *info, ifield *Next);
+    void change_text(char const *new_text);
     virtual void area(int &x1, int &y1, int &x2, int &y2);
     virtual void draw_first(image *screen);
     virtual void draw(int active, image *screen)

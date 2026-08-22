@@ -211,7 +211,7 @@ class image : public linked_node
     void FlipX();
     void FlipY();
 
-    //AR need name and pixel data to save to .png file using OpenCV
+    // Metadata and pixel access used by the SPEC image extraction tool.
     std::string ar_name, ar_name_o; // removed .pcx, name in SPEC file
     uint8_t ar_type;
     uint8_t *AR_GetPixels()

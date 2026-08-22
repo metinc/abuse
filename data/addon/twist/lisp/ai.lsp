@@ -170,18 +170,18 @@
 	   (progn
 		(stop_song)
 		(select (aitype)
-		   (0  (play_song "music/intro.hmi"))
-		   (1  (play_song "music/abuse01.hmi"))
-		   (2  (play_song "music/abuse02.hmi"))
-		   (3  (play_song "music/abuse03.hmi"))
-		   (4  (play_song "music/abuse04.hmi"))
-		   (5  (play_song "music/abuse06.hmi"))
-		   (6  (play_song "music/abuse08.hmi"))
-		   (7  (play_song "music/abuse09.hmi"))
-		   (8  (play_song "music/abuse11.hmi"))
-		   (9  (play_song "music/abuse13.hmi"))
-		   (10 (play_song "music/abuse15.hmi"))
-		   (11 (play_song "music/abuse17.hmi")))
+		   (0  (play_song "music/intro.mid"))
+		   (1  (play_song "music/abuse01.mid"))
+		   (2  (play_song "music/abuse02.mid"))
+		   (3  (play_song "music/abuse03.mid"))
+		   (4  (play_song "music/abuse04.mid"))
+		   (5  (play_song "music/abuse06.mid"))
+		   (6  (play_song "music/abuse08.mid"))
+		   (7  (play_song "music/abuse09.mid"))
+		   (8  (play_song "music/abuse11.mid"))
+		   (9  (play_song "music/abuse13.mid"))
+		   (10 (play_song "music/abuse15.mid"))
+		   (11 (play_song "music/abuse17.mid")))
 		nil)
 	   T))
 
@@ -423,7 +423,7 @@
 		;; Elixir Activation
 		   (51	(if (local_key_pressed key-r) (progn (with_object (bg) (progn (setq special_power HEALTH_POWER))) (set_aistate 0))))
 		;; Outcome Activation
-		   (52	(if (local_key_pressed key-e) (progn (stop_song) (play_song "music/victory.hmi")(play_sound END_LEV_SND 127 (x) (y))(request_end_game))))
+		   (52	(if (local_key_pressed key-e) (progn (stop_song) (play_song "music/victory.mid")(play_sound END_LEV_SND 127 (x) (y))(request_end_game))))
 		) T) T))
 
 

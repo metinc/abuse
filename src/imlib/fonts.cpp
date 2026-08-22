@@ -29,9 +29,15 @@ unsigned char JCFont::MapUTF8Char(std::string_view::iterator &it, const std::str
         return ch;
     }
 
-    // Handle UTF-8 sequences
-    if (ch == 0xC3 && (it + 1) != end)
+    // Handle the two-byte UTF-8 sequences supported by the bitmap font.
+    if (ch == 0xC3)
     {
+        if ((it + 1) == end)
+        {
+            ++it;
+            return 0;
+        }
+
         unsigned char next_byte = static_cast<unsigned char>(*(it + 1));
         it += 2; // Consume both bytes
 
@@ -41,15 +47,15 @@ unsigned char JCFont::MapUTF8Char(std::string_view::iterator &it, const std::str
         case 0xA4:
             return 132; // ä
         case 0x84:
-            return 132; // Ä
+            return 142; // Ä
         case 0xB6:
             return 148; // ö
         case 0x96:
-            return 148; // Ö
+            return 153; // Ö
         case 0xBC:
             return 129; // ü
         case 0x9C:
-            return 129; // Ü
+            return 154; // Ü
         case 0x9F:
             return 225; // ß
 
@@ -100,29 +106,61 @@ unsigned char JCFont::MapUTF8Char(std::string_view::iterator &it, const std::str
             return 139; // Ï
 
         default:
-            printf("Unknown UTF-8 sequence: 0xC3 0x%02X\n", next_byte);
-            return next_byte;
+            return 0;
         }
     }
 
-    // Skip invalid UTF-8 sequences
+    // Ignore unsupported, well-formed UTF-8 characters as a whole. This keeps
+    // pasted characters such as emoji from turning into several font glyphs.
+    int sequence_length = 0;
+    if (ch >= 0xC2 && ch <= 0xDF)
+        sequence_length = 2;
+    else if (ch >= 0xE0 && ch <= 0xEF)
+        sequence_length = 3;
+    else if (ch >= 0xF0 && ch <= 0xF4)
+        sequence_length = 4;
+
+    if (sequence_length > 0)
+    {
+        ++it;
+        for (int i = 1; i < sequence_length && it != end; ++i)
+        {
+            const unsigned char continuation = static_cast<unsigned char>(*it);
+            if (continuation < 0x80 || continuation > 0xBF)
+                break;
+            ++it;
+        }
+        return 0;
+    }
+
+    // Preserve standalone bytes that have already been converted to the
+    // font's legacy encoding, as used by chat messages over the network.
     ++it;
-    return 0;
+    return ch;
+}
+
+std::string JCFont::EncodeForFont(std::string_view text)
+{
+    std::string encoded;
+    encoded.reserve(text.size());
+
+    auto it = text.begin();
+    const auto end = text.end();
+    while (it != end)
+    {
+        const unsigned char mapped = MapUTF8Char(it, end);
+        if (mapped > 0)
+            encoded.push_back(static_cast<char>(mapped));
+    }
+    return encoded;
 }
 
 void JCFont::PutString(image *screen, ivec2 pos, std::string_view text, int color)
 {
-    auto it = text.begin();
-    const auto end = text.end();
-
-    while (it != end)
+    for (const unsigned char mapped : EncodeForFont(text))
     {
-        unsigned char mapped = MapUTF8Char(it, end);
-        if (mapped > 0)
-        {
-            PutChar(screen, pos, mapped, color);
-            pos.x += m_size.x;
-        }
+        PutChar(screen, pos, mapped, color);
+        pos.x += m_size.x;
     }
 }
 

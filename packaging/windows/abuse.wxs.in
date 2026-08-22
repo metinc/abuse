@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="Abuse" Language="1033" Version="@PROJECT_VERSION@"
+           Manufacturer="Crack-Dot-Com"
+           UpgradeCode="3A89DEB1-B520-4DF5-B44D-96A0EBB27DC0">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Abuse is already installed."/>
+    <MediaTemplate EmbedCab="yes"/>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="Abuse"/>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="Abuse"/>
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="*" Win64="yes">
+        <Shortcut Id="ApplicationStartMenuShortcut" Name="Abuse"
+                  Target="[INSTALLDIR]abuse.exe" WorkingDirectory="INSTALLDIR"/>
+        <RemoveFolder Id="RemoveApplicationProgramsFolder"
+                      Directory="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKLM" Key="Software\Crack-Dot-Com\Abuse"
+                       Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="Complete" Title="Abuse" Level="1">
+      <ComponentGroupRef Id="AbuseFiles"/>
+      <ComponentRef Id="ApplicationShortcut"/>
+    </Feature>
+  </Product>
+</Wix>

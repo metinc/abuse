@@ -13,6 +13,8 @@
 #endif
 
 #include <string.h>
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include "common.h"
 
@@ -26,10 +28,6 @@ void button::remap(Filter *f)
         if (pressed)
             f->Apply(pressed);
     }
-}
-
-void button_box::press_button(int id) // if button box doesn't contain id, nothing happens
-{
 }
 
 void button_box::remap(Filter *f)
@@ -55,6 +53,8 @@ button_box::button_box(int X, int Y, int ID, int MaxDown, button *Buttons, ifiel
     next = Next;
     buttons = Buttons;
     maxdown = MaxDown;
+    for (button *b = buttons; b; b = (button *)b->next)
+        b->set_momentary(false);
     if (buttons && maxdown)
         buttons->push(); // the first button is automatically selected!
 }
@@ -101,7 +101,9 @@ void button_box::draw_first(image *screen)
 
 void button_box::draw(int active, image *screen)
 {
-    return;
+    if (!active)
+        for (button *b = buttons; b; b = (button *)b->next)
+            b->draw(0, screen);
 }
 
 void button_box::Move(ivec2 pos)
@@ -168,6 +170,7 @@ void button_box::handle_event(Event &ev, image *screen, InputManager *im)
 
 void button_box::add_button(button *b)
 {
+    b->set_momentary(false);
     b->next = buttons;
     buttons = b;
 }
@@ -280,6 +283,39 @@ char *text_field::read()
     return data;
 }
 
+void text_field::insert_text(char const *text, image *screen)
+{
+    if (!text || !*text)
+        return;
+
+    bool changed = false;
+    draw_cur(wm->dark_color(), screen);
+    const int capacity = strlen(format);
+
+    for (const unsigned char ch : std::string_view(text))
+    {
+        // Text fields use the original byte-oriented ASCII font. Ignore
+        // newlines and unsupported Unicode bytes from the clipboard or IME.
+        if (ch < ' ' || ch > '~')
+            continue;
+
+        for (int i = capacity - 1; i > cur && i > 0; --i)
+            data[i] = data[i - 1];
+        data[cur] = static_cast<char>(ch);
+        if (cur < capacity - 1)
+            cur++;
+        data[capacity] = 0;
+        changed = true;
+    }
+
+    if (changed)
+    {
+        draw_text(screen);
+        wm->PushMessage(id, this);
+    }
+    draw_cur(wm->bright_color(), screen);
+}
+
 void text_field::handle_event(Event &ev, image *screen, InputManager *im)
 {
     int xx;
@@ -331,7 +367,16 @@ void text_field::handle_event(Event &ev, image *screen, InputManager *im)
                 data[strlen(format) - 1] = ' ';
                 draw_text(screen);
                 draw_cur(wm->bright_color(), screen);
-                wm->Push(new Event(id, (char *)this));
+                wm->PushMessage(id, this);
+            }
+            break;
+        case 'v':
+        case 'V':
+            if (wm->key_pressed(JK_CTRL_L) || wm->key_pressed(JK_CTRL_R))
+            {
+                char *clipboard = SDL_GetClipboardText();
+                insert_text(clipboard, screen);
+                SDL_free(clipboard);
             }
             break;
         default:
@@ -339,34 +384,7 @@ void text_field::handle_event(Event &ev, image *screen, InputManager *im)
         }
     }
     else if (ev.type == EV_TEXT_INPUT)
-    {
-        bool changed = false;
-        draw_cur(wm->dark_color(), screen);
-
-        for (unsigned char ch : ev.text)
-        {
-            // The original font and text fields are byte-oriented ASCII.
-            // SDL still supplies the correct keyboard-layout and IME text;
-            // unsupported Unicode code points are ignored instead of split.
-            if (ch < ' ' || ch > '~')
-                continue;
-
-            for (xx = strlen(format) - 1; xx > cur && xx > 0; xx--)
-                data[xx] = data[xx - 1];
-            data[cur] = static_cast<char>(ch);
-            if (cur < (int)strlen(format) - 1)
-                cur++;
-            data[strlen(format)] = 0;
-            changed = true;
-        }
-
-        if (changed)
-        {
-            draw_text(screen);
-            wm->Push(new Event(id, (char *)this));
-        }
-        draw_cur(wm->bright_color(), screen);
-    }
+        insert_text(ev.text.c_str(), screen);
 }
 
 void text_field::draw(int active, image *screen)
@@ -429,14 +447,33 @@ void button::push()
 
 void button::handle_event(Event &ev, image *screen, InputManager *im)
 {
-    if ((ev.type == EV_KEY && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button))
+    const bool pressed_event =
+        (ev.type == EV_KEY && ev.key == JK_ENTER) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button != 0);
+    const bool released_event =
+        (ev.type == EV_KEYRELEASE && ev.key == JK_ENTER) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
+    if (!pressed_event && !released_event)
+        return;
+
+    if (pressed_event)
     {
-        int x1, y1, x2, y2;
-        area(x1, y1, x2, y2);
-        up = !up;
+        if (!press_active)
+        {
+            press_active = true;
+            draw_first(screen);
+        }
+        return;
+    }
+
+    if (press_active)
+    {
+        press_active = false;
+        if (momentary)
+            up = 1;
+        else
+            up = !up;
         draw_first(screen);
         draw(act, screen);
-        wm->Push(new Event(id, (char *)this));
+        wm->PushMessage(id, this);
     }
 }
 
@@ -445,11 +482,19 @@ void button::draw(int active, image *screen)
     int x1, y1, x2, y2, color = (active ? wm->bright_color() : wm->medium_color());
     area(x1, y1, x2, y2);
     if (active != act && act_id != -1 && active)
-        wm->Push(new Event(act_id, NULL));
+        wm->PushMessage(act_id);
 
+    // Leaving a button while holding the mouse cancels its temporary press.
+    if (!active && press_active)
+    {
+        press_active = false;
+        draw_first(screen);
+    }
+
+    const bool draw_up = up && !press_active;
     if (pressed)
     {
-        if (up)
+        if (draw_up)
         {
             if (!active)
                 screen->PutImage(visual, m_pos);
@@ -470,14 +515,21 @@ void button::draw_first(image *screen)
 {
     if (pressed)
     {
-        draw(0, screen);
+        const bool draw_up = up && !press_active;
+        if (!draw_up)
+            screen->PutImage(act_pict, m_pos);
+        else if (act)
+            screen->PutImage(pressed, m_pos);
+        else
+            screen->PutImage(visual, m_pos);
         return;
     }
 
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
 
-    if (up)
+    const bool draw_up = up && !press_active;
+    if (draw_up)
     {
         screen->Rectangle(ivec2(x1, y1), ivec2(x2, y2), wm->black());
         //      screen->widget_bar(,wm->bright_color(),wm->medium_color(),wm->dark_color());
@@ -493,12 +545,12 @@ void button::draw_first(image *screen)
         screen->Bar(ivec2(x1 + 1, y1 + 1), ivec2(x2 - 1, y2 - 1), wm->medium_color());
     }
 
-    if ((up && text) || (!up && !visual))
+    if ((draw_up && text) || (!draw_up && !visual))
     {
         wm->font()->PutString(screen, m_pos + ivec2(4, 5), text, wm->black());
         wm->font()->PutString(screen, m_pos + ivec2(3, 4), text);
     }
-    else if (up)
+    else if (draw_up)
         screen->PutImage(visual, m_pos + ivec2(3, 3), 1);
     else
         screen->PutImage(visual, ivec2(x1 + 3, y1 + 3), 1);
@@ -523,6 +575,12 @@ info_field::info_field(int X, int Y, int ID, char const *info, ifield *Next)
     id = ID;
     next = Next;
     text = info;
+    w = -1;
+}
+
+void info_field::change_text(char const *new_text)
+{
+    text = new_text ? new_text : "";
     w = -1;
 }
 

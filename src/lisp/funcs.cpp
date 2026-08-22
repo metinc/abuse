@@ -154,7 +154,7 @@ void initCFuncs()
     add_c_function("add_palette", 1, -1, CFunc::AddPalette);
     add_c_bool_fun("screen_shot", 1, 1, CFunc::ScreenShot);
     add_c_bool_fun("set_zoom", 1, 1, CFunc::SetZoom);
-    add_c_function("show_help", 1, 1, CFunc::ShowHelp);
+    add_c_function("show_help", 1, 2, CFunc::ShowHelp);
     add_c_function("direction", 0, 0, CFunc::Direction);
     add_c_function("set_direction", 1, 1, CFunc::SetDirection);
     add_c_bool_fun("freeze_player", 1, 1, CFunc::FreezePlayer);
@@ -198,14 +198,19 @@ void initCFuncs()
     add_c_bool_fun("set_light_r2", 2, 2, CFunc::SetLightR2);
     add_c_bool_fun("set_light_x", 2, 2, CFunc::SetLightX);
     add_c_bool_fun("set_light_y", 2, 2, CFunc::SetLightY);
+    add_c_bool_fun("set_light_line", 5, 5, CFunc::SetLightLine);
     add_c_bool_fun("set_light_xshift", 2, 2, CFunc::SetLightXShift);
     add_c_bool_fun("set_light_yshift", 2, 2, CFunc::SetLightYShift);
+    add_c_bool_fun("set_light_color", 2, 2, CFunc::SetLightColor);
+    add_c_bool_fun("set_light_intensity", 2, 2, CFunc::SetLightIntensity);
     add_c_function("light_r1", 1, 1, CFunc::LightR1);
     add_c_function("light_r2", 1, 1, CFunc::LightR2);
     add_c_function("light_x", 1, 1, CFunc::LightX);
     add_c_function("light_y", 1, 1, CFunc::LightY);
     add_c_function("light_xshift", 1, 1, CFunc::LightXShift);
     add_c_function("light_yshift", 1, 1, CFunc::LightYShift);
+    add_c_function("light_color", 1, 1, CFunc::LightColor);
+    add_c_function("light_intensity", 1, 1, CFunc::LightIntensity);
     add_c_function("xacel", 0, 0, CFunc::Xacel);
     add_c_function("yacel", 0, 0, CFunc::Yacel);
     add_c_bool_fun("delete_light", 1, 1, CFunc::DeleteLight);
@@ -220,7 +225,7 @@ void initCFuncs()
     add_c_bool_fun("trap", 0, 0, CFunc::Trap);
     add_c_bool_fun("platform_push", 2, 2, CFunc::PlatformPush);
     add_c_function("def_sound", 1, 2, CFunc::DefSound);
-    add_c_bool_fun("play_sound", 1, 4, CFunc::PlaySound);
+    add_c_bool_fun("play_sound", 1, 5, CFunc::PlaySound);
     add_c_function("def_particle", 2, 2, CFunc::DefParticle);
     add_c_function("add_panim", 4, 4, CFunc::AddPanim);
     add_c_function("weapon_to_type", 1, 1, CFunc::WeaponToType);
@@ -354,8 +359,8 @@ void initCFuncs()
     add_c_bool_fun("get_option", 1, 1, CFunc::GetOption);
     add_c_bool_fun("set_delay_on", 1, 1, CFunc::SetDelayOn);
     add_c_bool_fun("enable_chatting", 0, 0, CFunc::EnableChatting);
-    add_c_bool_fun("demo_break_enable", 0, 0, CFunc::DemoBreakEnable);
     add_c_bool_fun("am_a_client", 0, 0, CFunc::AmAClient);
+    add_c_bool_fun("cooperative", 0, 0, CFunc::Cooperative);
     add_c_bool_fun("time_for_next_level", 0, 0, CFunc::TimeForNextLevel);
     add_c_bool_fun("reset_kills", 0, 0, CFunc::ResetKills);
     add_c_bool_fun("set_game_name", 1, 1, CFunc::SetGameName);
@@ -382,7 +387,8 @@ void initLispFuncs()
     add_lisp_function("get_object", 1, 1, LispFunc::GetObject);
     add_lisp_function("get_light", 1, 1, LispFunc::GetLight);
     add_lisp_function("with_objects", 1, 1, LispFunc::WithObjects);
-    add_lisp_function("add_light", 7, 7, LispFunc::AddLight);
+    add_lisp_function("add_light", 7, 8, LispFunc::AddLight);
+    add_lisp_function("add_line_light", 6, 7, LispFunc::AddLineLight);
     add_lisp_function("find_enemy", 1, 1, LispFunc::FindEnemy);
     add_lisp_function("user_fun", 0, -1, LispFunc::UserFun);
     add_lisp_function("time", 2, 2, LispFunc::Time);
@@ -415,7 +421,6 @@ void initLispFuncs()
     add_lisp_function("last_savegame_name", 0, 0, LispFunc::LastSavegameName);
     add_lisp_function("next_savegame_name", 0, 0, LispFunc::NextSavegameName);
     add_lisp_function("argv", 1, 1, LispFunc::Argv);
-    add_lisp_function("joy_stat", 0, 0, LispFunc::JoyStat);
     add_lisp_function("mouse_stat", 0, 0, LispFunc::MouseStat);
     add_lisp_function("mouse_to_game", 2, 2, LispFunc::MouseToGame);
     add_lisp_function("game_to_mouse", 2, 2, LispFunc::GameToMouse);

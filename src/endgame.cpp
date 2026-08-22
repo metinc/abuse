@@ -17,22 +17,20 @@
 
 #include "common.h"
 
-#include "menu.h"
+#include "ui/menu.h"
 #include "lisp.h"
 #include "game.h"
 #include "timing.h"
 #include "game.h"
 #include "id.h"
 #include "pmenu.h"
-#include "gui.h"
+#include "ui/gui.h"
 #include "property.h"
 #include "dev.h"
 #include "clisp.h"
 #include "jrand.h"
 #include "director.h"
 #include "lisp_gc.h"
-
-extern palette *old_pal;
 
 //AR
 #include "sdlport/setup.h"
@@ -220,16 +218,8 @@ void show_end2()
         main_screen->PutPixel(ivec2(si[-3], si[-2]), si[-1]);
     }
     int32_t paddr[256];
-    if (old_pal)
-    {
-        for (i = 0; i < 256; i++)
-            paddr[i] = (old_pal->red(i) << 16) | (old_pal->green(i) << 8) | (old_pal->blue(i));
-    }
-    else
-    {
-        for (i = 0; i < 256; i++)
-            paddr[i] = (pal->red(i) << 16) | (pal->green(i) << 8) | (pal->blue(i));
-    }
+    for (i = 0; i < 256; i++)
+        paddr[i] = (pal->red(i) << 16) | (pal->green(i) << 8) | (pal->blue(i));
 
     int dx = (xres + 1) / 2 - 320 / 2, dy = (yres + 1) / 2 - 200 / 2;
 
@@ -245,8 +235,8 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+            if ((i % 10) == 0 && sound_is_initialized())
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             main_screen->clear();
@@ -272,8 +262,8 @@ void show_end2()
 
                 scale_put_trans(s, main_screen, ex - (i - 38) * 5, ey + cache.img(mask)->Size().y / 2 + t * 4, nw, nh);
                 if (i == 77)
-                    if (sound_avail & SFX_INITIALIZED)
-                        cache.sfx(zip_snd)->play(127);
+                    if (sound_is_initialized())
+                        cache.sfx(zip_snd)->play(1.0f);
             }
 
             eoff += 2;
@@ -294,8 +284,8 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+            if ((i % 10) == 0 && sound_is_initialized())
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             main_screen->clear();
@@ -320,8 +310,8 @@ void show_end2()
                 clist = new ex_char(ex + jrand() % (cache.img(mask)->Size().x - cache.img(mask)->Size().x / 3),
                                     ey + jrand() % (cache.img(mask)->Size().y - cache.img(mask)->Size().y / 3), 0, 1,
                                     clist);
-                if (sound_avail & SFX_INITIALIZED)
-                    cache.sfx(explo_snd)->play(127);
+                if (sound_is_initialized())
+                    cache.sfx(explo_snd)->play(1.0f);
             }
 
             //      clist=new ex_char(ex+jrand()%(cache.img(mask)->Size().x,
@@ -374,8 +364,8 @@ void show_end2()
         time_marker new_time;
         if (new_time.diff_time(&old_time) > 0.1)
         {
-            if ((i % 10) == 0 && (sound_avail & SFX_INITIALIZED))
-                cache.sfx(space_snd)->play(64);
+            if ((i % 10) == 0 && sound_is_initialized())
+                cache.sfx(space_snd)->play(0.5f);
 
             old_time.get_time();
             scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 256, paddr, p,
@@ -506,15 +496,15 @@ void share_end()
     fade_out(16);
     wm->SetMouseShape(blank.copy(), ivec2(0, 0)); // don't show mouse
     show_sell(1);
-    wm->Push(new Event(ID_SHOW_SELL, NULL));
+    wm->PushMessage(ID_SHOW_SELL);
 }
 
 void show_end()
 {
     //AR real end screen
-    //since there is a victory.hmi in the music folder my guess would be that it was supposed to be played during the end screen
+    // Since there is victory music, play it during the end screen.
     //you can even hear him howling in the track, it matches the on screen text
-    bFILE *fp = open_file("music/victory.hmi", "rb");
+    bFILE *fp = open_file("music/victory.mid", "rb");
     if (fp->open_failure())
         delete fp;
     else
@@ -523,10 +513,10 @@ void show_end()
         if (current_song)
         {
             current_song->stop();
-            delete current_song;
+            current_song.reset();
         }
 
-        current_song = new song("music/victory.hmi");
+        current_song = std::make_unique<song>("music/victory.mid");
         current_song->play(music_volume);
 
         delete fp;

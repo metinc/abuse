@@ -4,15 +4,20 @@
 
 ;; New Power Up objects
 
+(defun give_shlamp_pickup ()
+  (let ((player (me)))
+    (make_view_solid (find_rgb 255 255 255))
+    (setq special_power SHLAMP_POWER)
+    (with_object (add_object_after SHLMP2 (x) (y)) (link_object player))
+    (with_object (add_object_after WTW (x) (y)) (link_object player)))
+  T)
+
 (defun shlmp_ai ()
   (try_move 0 10)
   (next_picture)
   (if (touching_bg)
 	(progn
-	   (with_object (bg) (make_view_solid (find_rgb 255 255 255)))
-	   (with_object (bg) (setq special_power SHLAMP_POWER))
-	   (with_object (add_object_after SHLMP2 (x) (y)) (link_object (bg)))
-	   (with_object (add_object_after WTW (x) (y)) (link_object (bg)))
+	   (apply_player_pickup (bg) '(give_shlamp_pickup))
 	nil)
     T))
 
@@ -54,4 +59,3 @@
   (flags (unlistable T))
   (funs (draw_fun dev_draw))
   (states "art/misc.spe" (stopped "marker")))
-

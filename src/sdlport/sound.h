@@ -11,25 +11,27 @@
 #ifndef __SOUND_H__
 #define __SOUND_H__
 
+#include <string>
+
 #include <SDL3_mixer/SDL_mixer.h>
 
 #include "common.h"
 
-/* options are passed via command line */
-
-#define SFX_INITIALIZED 1
-#define MUSIC_INITIALIZED 2
-
-int sound_init(int argc, char **argv);
+bool sound_init();
 void sound_uninit();
+bool sound_is_initialized();
+bool sound_set_soundfont(const std::string &configured_soundfont);
 
 class sound_effect
 {
   public:
-    sound_effect(char const *filename);
+    explicit sound_effect(char const *filename);
     ~sound_effect();
 
-    void play(int volume = 127, int pitch = 128, int panpot = 128);
+    sound_effect(const sound_effect &) = delete;
+    sound_effect &operator=(const sound_effect &) = delete;
+
+    void play(float gain = 1.0f, float frequency_ratio = 1.0f, int panpot = 128);
 
   private:
     MIX_Audio *m_audio;
@@ -38,16 +40,25 @@ class sound_effect
 class song
 {
   public:
-    song(char const *filename);
-    void play(unsigned char volume = 127);
-    void stop(long fadeout_time = 0); // time in ms
-    int playing();
-    void set_volume(int volume);
+    explicit song(char const *filename);
+    void play(float gain = 1.0f);
+    void stop(int fadeout_time = 0); // milliseconds; zero uses a short default fade
+    bool playing() const;
+    void set_gain(float gain);
+    bool reload();
     ~song();
 
+    song(const song &) = delete;
+    song &operator=(const song &) = delete;
+
   private:
+    bool load();
+    bool start_playback(Sint64 start_milliseconds = 0);
+
+    std::string m_filename;
     MIX_Audio *m_audio;
     MIX_Track *m_track;
+    float m_gain;
 };
 
 #endif

@@ -1,0 +1,36 @@
+if(CPACK_GENERATOR MATCHES "^(DEB|RPM)$")
+    set(_abuse_host_distribution_ids "@ABUSE_HOST_DISTRIBUTION_IDS@")
+    if(NOT @ABUSE_ALLOW_FOREIGN_PACKAGE_BUILD@)
+        if(CPACK_GENERATOR STREQUAL "DEB" AND
+                NOT _abuse_host_distribution_ids MATCHES
+                    "(^| )(debian|ubuntu)( |$)")
+            message(FATAL_ERROR
+                "DEB packages must be built on their target Debian-family "
+                "distribution so dpkg-shlibdeps can generate valid ABI "
+                "requirements. ABUSE_ALLOW_FOREIGN_PACKAGE_BUILD=ON is "
+                "available only for archive-layout testing.")
+        elseif(CPACK_GENERATOR STREQUAL "RPM" AND
+                NOT _abuse_host_distribution_ids MATCHES
+                    "(^| )(fedora|rhel|centos|rocky|almalinux|suse|opensuse|mageia)( |$)")
+            message(FATAL_ERROR
+                "RPM packages must be built on their target RPM-family "
+                "distribution so generated ABI requirements match its "
+                "repositories. ABUSE_ALLOW_FOREIGN_PACKAGE_BUILD=ON is "
+                "available only for archive-layout testing.")
+        endif()
+    endif()
+
+    if("@CMAKE_CONFIGURATION_TYPES@" STREQUAL "")
+        set(_abuse_package_build_type "@CMAKE_BUILD_TYPE@")
+    else()
+        set(_abuse_package_build_type "${CPACK_BUILD_CONFIG}")
+    endif()
+
+    if(NOT _abuse_package_build_type MATCHES
+            "^(Release|RelWithDebInfo|MinSizeRel)$")
+        message(FATAL_ERROR
+            "${CPACK_GENERATOR} packages require an optimized build. "
+            "Configure with -DCMAKE_BUILD_TYPE=Release (single-config) or "
+            "invoke CPack with -C Release (multi-config).")
+    endif()
+endif()
