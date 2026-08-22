@@ -11,8 +11,6 @@
 #ifndef __NETCFG_HPP_
 #define __NETCFG_HPP_
 
-#include "jwindow.h"
-
 class net_configuration
 {
   public:
@@ -47,12 +45,6 @@ class net_configuration
     } game_mode;
 
     net_configuration();
-    int input(); // pulls up dialog box and input fileds
-    void cfg_error(char const *msg);
-    void error(char const *message);
-    int confirm_inputs(InputManager *i, int server, bool online_join = false);
-    ifield *center_ifield(ifield *i, int x1, int x2, ifield *place_below);
-    int get_options(int server, bool online_join = false);
 };
 
 extern net_configuration *main_net_cfg;

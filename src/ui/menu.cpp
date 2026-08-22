@@ -35,6 +35,7 @@
 #include "video_settings.h"
 #include "demo.h"
 #include "loadgame.h"
+#include "multiplayer.h"
 #include "scroller.h"
 #include "netcfg.h"
 
@@ -336,7 +337,7 @@ void menu_handler(Event &ev, InputManager *inm)
             if (!audio_settings_window)
             {
                 net_configuration *cfg = new net_configuration;
-                if (cfg->input())
+                if (configure_multiplayer(*cfg))
                 {
                     if (demo_man.is_automatic_recording())
                         demo_man.set_state(demo_manager::NORMAL);

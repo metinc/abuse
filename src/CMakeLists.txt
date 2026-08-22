@@ -69,6 +69,7 @@ add_executable(abuse
     ui/help.cpp ui/help.h
     ui/loadgame.cpp ui/loadgame.h
     ui/menu.cpp ui/menu.h
+    ui/multiplayer.cpp ui/multiplayer.h
     ui/statbar.cpp ui/sbar.h
     ui/video_settings.cpp ui/video_settings.h
     ${abuse_RESOURCE_FILES}

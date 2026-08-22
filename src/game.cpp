@@ -73,6 +73,7 @@
 #include "ui/chat.h"
 #include "demo.h"
 #include "netcfg.h"
+#include "ui/multiplayer.h"
 #include "file_utils.h"
 
 //AR
@@ -2508,7 +2509,7 @@ int main(int argc, char *argv[])
             main_net_cfg->join_failed = false;
             main_net_cfg->online = false;
             main_net_cfg->room_code[0] = '\0';
-            main_net_cfg->cfg_error(symbol_str("online_join_error"));
+            show_multiplayer_error(symbol_str("online_join_error"));
         }
 
         g->get_input(); // prime the net
