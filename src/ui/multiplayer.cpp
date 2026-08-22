@@ -325,6 +325,7 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             strcpy(config.server_host, normalized);
             config.online = true;
             config.join_failed = false;
+            config.server_full = false;
         }
         else
         {

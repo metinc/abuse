@@ -593,7 +593,7 @@ int request_server_entry()
         if (reg == SRVCMD_TOO_MANY)
         {
             DEBUG_LOG("Server full - max players reached");
-            fprintf(stderr, "%s", symbol_str("max_players"));
+            main_net_cfg->server_full = true;
             delete sock;
             return 0;
         }

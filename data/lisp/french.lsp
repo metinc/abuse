@@ -271,7 +271,7 @@ plan \n"
 	 (setq room_code_error "Code : exactement 6 caractères")
 	 (setq online_join_error "Impossible de rejoindre la partie en ligne.\nVérifiez le code et réessayez.")
 
-(setq max_players     "Le serveur a déjà atteint le nombre maximal de joueurs, ressayez plus tard\n")
+(setq max_players     "Ce serveur est complet.\nVeuillez réessayer plus tard.")
          (setq net_not_reg     "Désolé, vous ne pouvez pas jouer au jeu sur le réseau avec une version démo\n")
          (setq min_wait        "Veuillez attendre pour %d participant(s) !")
          (setq online_min_wait "Partagez le code %s\npour permettre aux joueurs de participer.\nEncore %d joueur(s) attendu(s) !")

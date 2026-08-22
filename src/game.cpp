@@ -1543,12 +1543,19 @@ Game::Game(int argc, char **argv)
     {
         if (!request_server_entry())
         {
-            exit(EXIT_SUCCESS);
+            net_uninit();
+            main_net_cfg->join_failed = true;
+            main_net_cfg->state = net_configuration::RESTART_SINGLE;
+            strcpy(lsf, "abuse.lsp");
+            start_running = 0;
         }
-        net_reload();
-        // dev_init() deliberately resets start_running after the network
-        // setup. Enter gameplay only after the client has loaded the level.
-        start_running = current_level != NULL;
+        else
+        {
+            net_reload();
+            // dev_init() deliberately resets start_running after the network
+            // setup. Enter gameplay only after the client has loaded the level.
+            start_running = current_level != NULL;
+        }
         //    load_level(NET_STARTFILE);
     }
 
@@ -1621,7 +1628,7 @@ Game::Game(int argc, char **argv)
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
-        if (!start_edit && !net_start() && !settings.skip_intro)
+        if (!start_edit && !net_start() && !settings.skip_intro && !(main_net_cfg && main_net_cfg->join_failed))
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
@@ -2482,6 +2489,7 @@ bool game_net_init(int argc, char **argv)
                 printf("Unable to attach to server, returning to the menu\n");
                 net_uninit();
                 main_net_cfg->join_failed = true;
+                main_net_cfg->server_full = false;
                 main_net_cfg->state = net_configuration::RESTART_SINGLE;
                 strcpy(lsf, "abuse.lsp");
                 return false;
@@ -2549,10 +2557,12 @@ int main(int argc, char *argv[])
 
         if (main_net_cfg && main_net_cfg->join_failed)
         {
+            const bool server_full = main_net_cfg->server_full;
             main_net_cfg->join_failed = false;
+            main_net_cfg->server_full = false;
             main_net_cfg->online = false;
             main_net_cfg->room_code[0] = '\0';
-            show_multiplayer_error(symbol_str("online_join_error"));
+            show_multiplayer_error(symbol_str(server_full ? "max_players" : "online_join_error"));
         }
 
         g->get_input(); // prime the net

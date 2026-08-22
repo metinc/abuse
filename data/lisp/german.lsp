@@ -271,7 +271,7 @@
 	 (setq online_join_error "Onlinespiel konnte nicht beigetreten werden.\nPrüfe den Raumcode und versuche es erneut.")
 
          (setq min_error       "Min. Spielerzahl 1-8")
-         (setq max_players     "Maximale Spielerzahl erreicht, bitte später versuchen.\n ")
+         (setq max_players     "Dieser Server ist voll.\nBitte versuche es später erneut.")
          (setq net_not_reg     "Demoversion auf diesem Server nicht spielbar.\n")
          (setq min_wait        "Wartet auf %d zusätzliche Spieler!")
          (setq online_min_wait "Teile den Raumcode %s,\ndamit Spieler beitreten können.\nWarte auf %d weitere Spieler!")

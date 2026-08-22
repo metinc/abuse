@@ -280,7 +280,7 @@
 	 (setq room_code       "Room code")
 	 (setq room_code_error "Room code: exactly 6 characters")
 	 (setq online_join_error "Unable to join online game.\nCheck the room code and try again.")
-         (setq max_players     "The server already has its maximum number players, try again later\n  Get back to work!!\n")
+         (setq max_players     "This server is full.\nPlease try again later.")
 	 (setq net_not_reg     "Sorry you cannot play against this server with a demo version\n")
 	 (setq min_wait        "Waiting for %d more player(s) to join!")
 	 (setq online_min_wait "Share room code %s,\nso players can join.\nWaiting for %d more player(s)!")
