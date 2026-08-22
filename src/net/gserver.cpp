@@ -32,7 +32,14 @@
 #include "input.h"
 #include "dev.h"
 #include "game.h"
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_timer.h>
+
+namespace
+{
+constexpr int ID_COPY_ROOM_CODE = 0x7f00;
+}
 
 extern base_memory_struct *base;
 extern net_socket *comm_sock, *game_sock;
@@ -86,12 +93,37 @@ void game_server::game_start_wait()
         {
             if (stat)
                 wm->close_window(stat);
-            char msg[100];
-            sprintf(msg, symbol_str("min_wait"), main_net_cfg->min_players - total_players());
+            char msg[256];
+            const bool show_room = main_net_cfg->online && main_net_cfg->room_code[0];
+            if (show_room)
+                snprintf(msg, sizeof(msg), symbol_str("online_min_wait"), main_net_cfg->room_code,
+                         main_net_cfg->min_players - total_players());
+            else
+                snprintf(msg, sizeof(msg), symbol_str("min_wait"), main_net_cfg->min_players - total_players());
+
+            ifield *controls;
+            if (show_room)
+            {
+                char const *copy_text = symbol_str("copy_room_code");
+                char const *cancel_text = symbol_str("cancel_button");
+                const int font_width = wm->font()->Size().x;
+                const int button_y = wm->font()->Size().y * 4;
+                const int copy_width = strlen(copy_text) * font_width + 6;
+                const int controls_width = (strlen(cancel_text) + strlen(copy_text)) * font_width + 18;
+                int x1, y1, message_width, y2;
+                info_field message_bounds(0, 0, ID_NULL, msg, NULL);
+                message_bounds.area(x1, y1, message_width, y2);
+                if (message_width < controls_width)
+                    message_width = controls_width;
+                const int copy_x = message_width - copy_width;
+                controls = new button(0, button_y, ID_CANCEL, cancel_text,
+                                      new button(copy_x, button_y, ID_COPY_ROOM_CODE, copy_text, NULL));
+            }
+            else
+                controls = new button(0, wm->font()->Size().y * 2, ID_CANCEL, symbol_str("cancel_button"), NULL);
+
             stat = wm->CreateWindow(
-                ivec2(100, 50), ivec2(-1),
-                new info_field(0, 0, ID_NULL, msg,
-                               new button(0, wm->font()->Size().y * 2, ID_CANCEL, symbol_str("cancel_button"), NULL)));
+                ivec2(100, 50), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls));
             wm->flush_screen();
             last_count = total_players();
             DEBUG_LOG("Updated player count to %d", last_count);
@@ -104,10 +136,16 @@ void game_server::game_start_wait()
                 wm->get_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             wm->flush_screen();
-            if (ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL)
+            if ((ev.type == EV_MESSAGE && ev.message.id == ID_CANCEL) ||
+                (ev.type == EV_CLOSE_WINDOW && ev.window == stat))
             {
                 DEBUG_LOG("Game start wait canceled by user");
                 abort = 1;
+            }
+            else if (ev.type == EV_MESSAGE && ev.message.id == ID_COPY_ROOM_CODE)
+            {
+                if (!SDL_SetClipboardText(main_net_cfg->room_code))
+                    DEBUG_LOG("Unable to copy room code: %s", SDL_GetError());
             }
         }
 

@@ -128,6 +128,33 @@ modules:
         tag: release-3.2.0
         commit: 1a84a2a6b9663572f77e2eb5348d42845bac0053
 
+  - name: nlohmann-json
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DJSON_BuildTests=OFF
+    sources:
+      - type: git
+        url: https://github.com/nlohmann/json.git
+        tag: v3.11.3
+        commit: 9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03
+        disable-submodules: true
+
+  - name: libdatachannel
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+      - -DNO_EXAMPLES=ON
+      - -DNO_MEDIA=ON
+      - -DNO_TESTS=ON
+      - -DUSE_SYSTEM_JSON=ON
+    sources:
+      - type: git
+        url: https://github.com/paullouisageneau/libdatachannel.git
+        tag: v0.24.5
+        commit: 61204eb447916d259eea6e90f4a50c73d2d062e8
+
   - name: toml11
     buildsystem: cmake-ninja
     config-opts:

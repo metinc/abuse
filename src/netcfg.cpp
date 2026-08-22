@@ -29,6 +29,7 @@
 #include <SDL3/SDL_timer.h>
 #include <vector>
 #include <algorithm>
+#include <cctype>
 #include "imlib/scroller.h"
 #include "file_utils.h"
 
@@ -95,6 +96,10 @@ extern net_protocol *prot;
 net_configuration::net_configuration()
 {
     strcpy(name, get_login());
+    server_host[0] = '\0';
+    room_code[0] = '\0';
+    online = false;
+    join_failed = false;
 
     min_players = 2;
     max_players = 8;
@@ -122,7 +127,10 @@ enum
     NET_SERVER,
     NET_CLIENT,
     NET_SINGLE,
+    NET_ONLINE_JOIN,
     NET_GAMEMODE,
+    NET_CONNECTION,
+    NET_ROOM_CODE,
     NET_GAME = 400,
     MIN_1,
     MIN_2,
@@ -141,6 +149,8 @@ enum
     MAX_8,
     GAMEMODE_DEATHMATCH,
     GAMEMODE_COOP,
+    CONNECTION_LOCAL,
+    CONNECTION_ONLINE,
     LVL_2,
     LVL_4,
     LVL_8,
@@ -204,10 +214,31 @@ int net_configuration::notify_reset()
     return 1;
 }
 
-int net_configuration::confirm_inputs(InputManager *i, int server)
+static bool normalize_room_code(char const *input, char *output, size_t output_size)
+{
+    constexpr char room_alphabet[] = "ABCDEFGHJKLMNPQRSTWXYZ23456789";
+    size_t length = 0;
+    for (; input && *input; ++input)
+    {
+        unsigned char c = static_cast<unsigned char>(*input);
+        c = static_cast<unsigned char>(std::toupper(c));
+        if (!strchr(room_alphabet, c) || length + 1 >= output_size)
+            return false;
+        output[length++] = static_cast<char>(c);
+    }
+    output[length] = '\0';
+    return length == 6;
+}
+
+int net_configuration::confirm_inputs(InputManager *i, int server, bool online_join)
 {
     if (server)
     {
+        ifield *connection_if = i->get(NET_CONNECTION);
+        ifield *selected_connection = connection_if ? (ifield *)connection_if->read() : NULL;
+        online = selected_connection && selected_connection->id == CONNECTION_ONLINE;
+        room_code[0] = '\0';
+
         // Get game mode selection
         ifield *gamemode_if = i->get(NET_GAMEMODE);
         if (gamemode_if)
@@ -296,6 +327,25 @@ int net_configuration::confirm_inputs(InputManager *i, int server)
             return 0;
         }
         strcpy(name, nm);
+
+        if (online_join)
+        {
+            char normalized[sizeof(room_code)];
+            if (!normalize_room_code(i->get(NET_ROOM_CODE)->read(), normalized, sizeof(normalized)))
+            {
+                error(symbol_str("room_code_error"));
+                return 0;
+            }
+            strcpy(room_code, normalized);
+            strcpy(server_host, normalized);
+            online = true;
+            join_failed = false;
+        }
+        else
+        {
+            room_code[0] = '\0';
+            online = false;
+        }
     }
 
     return 1;
@@ -370,7 +420,7 @@ ifield *net_configuration::center_ifield(ifield *i, int x1, int x2, ifield *plac
     return i;
 }
 
-int net_configuration::get_options(int server)
+int net_configuration::get_options(int server, bool online_join)
 {
     image *ns = cache.img(cache.reg("art/frame.spe", "net_screen", SPEC_IMAGE, 1));
     int ns_w = ns->Size().x, ns_h = ns->Size().y;
@@ -392,6 +442,26 @@ int net_configuration::get_options(int server)
         // Right column positioning
         int right_x = x + ns_w / 3 * 2 - 5;
         int right_y = y + 30;
+
+        // Connection type selection
+        info_field *connection_lbl = new info_field(right_x, right_y, 0, symbol_str("connection_type"), list);
+        list = connection_lbl;
+        int cx1, cy1, cx2, cy2;
+        connection_lbl->area(cx1, cy1, cx2, cy2);
+        right_y = cy2 + 1;
+        button_box *connection_box = new button_box(right_x, right_y, NET_CONNECTION, 1, NULL, list);
+        button *online_btn = new button(0, 0, CONNECTION_ONLINE, symbol_str("online_game"), NULL);
+        if (online)
+            online_btn->push();
+        connection_box->add_button(online_btn);
+        button *local_btn = new button(0, 0, CONNECTION_LOCAL, symbol_str("local_game"), NULL);
+        if (!online)
+            local_btn->push();
+        connection_box->add_button(local_btn);
+        connection_box->arrange_left_right();
+        list = connection_box;
+        connection_box->area(cx1, cy1, cx2, cy2);
+        right_y = cy2 + gap;
 
         // Game mode selection
         info_field *mode_lbl = new info_field(left_x, left_y, 0, symbol_str("game_mode"), list);
@@ -475,16 +545,30 @@ int net_configuration::get_options(int server)
         {
             list = new info_field(right_x, right_y, 0, symbol_str("select_level"), list);
             right_y += fnt->Size().y + 4;
-            pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, 15, g_net_levels_c.data(),
+            constexpr int visible_level_rows = 11;
+            pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, visible_level_rows, g_net_levels_c.data(),
                                           (int)g_net_levels_c.size(), 0, list, cache.img(window_texture));
             list = pl;
         }
     }
     else
     {
-        list = center_ifield(
-            new text_field(x, y + 80, NET_NAME, symbol_str("your_name"), "************************", name, list), x,
-            x + ns_w, NULL);
+        if (online_join)
+        {
+            ifield *name_field = center_ifield(
+                new text_field(x, y + 65, NET_NAME, symbol_str("your_name"), "********************", name, list), x,
+                x + ns_w, NULL);
+            list = name_field;
+            list = center_ifield(
+                new text_field(x, y + 95, NET_ROOM_CODE, symbol_str("room_code"), "******", room_code, list), x,
+                x + ns_w, NULL);
+        }
+        else
+        {
+            list = center_ifield(
+                new text_field(x, y + 80, NET_NAME, symbol_str("your_name"), "************************", name, list), x,
+                x + ns_w, NULL);
+        }
     }
 
     list = new button(x + 80 - 17, y + ns_h - 20 - fnt->Size().y, NET_OK, ok_image, list);
@@ -511,6 +595,19 @@ int net_configuration::get_options(int server)
             {
                 switch (ev.message.id)
                 {
+                case NET_ROOM_CODE: {
+                    text_field *field = static_cast<text_field *>(ev.message.data);
+                    if (field)
+                    {
+                        char normalized[sizeof(room_code)];
+                        strncpy(normalized, field->read(), sizeof(normalized) - 1);
+                        normalized[sizeof(normalized) - 1] = '\0';
+                        for (char *c = normalized; *c; ++c)
+                            *c = static_cast<char>(std::toupper(static_cast<unsigned char>(*c)));
+                        field->change_data(normalized, -1, 1, main_screen);
+                    }
+                }
+                break;
                 case GAMEMODE_DEATHMATCH:
                 case GAMEMODE_COOP: {
                     // Rebuilding the dialog must not discard text the user
@@ -519,6 +616,11 @@ int net_configuration::get_options(int server)
                     {
                         strncpy(name, name_field->read(), sizeof(name) - 1);
                         name[sizeof(name) - 1] = '\0';
+                    }
+                    if (ifield *connection_field = inm.get(NET_CONNECTION))
+                    {
+                        ifield *selected = (ifield *)connection_field->read();
+                        online = selected && selected->id == CONNECTION_ONLINE;
                     }
 
                     // Game mode changed - update the mode and restart dialog
@@ -531,7 +633,7 @@ int net_configuration::get_options(int server)
                 }
                 break;
                 case NET_OK: {
-                    if (confirm_inputs(&inm, server))
+                    if (confirm_inputs(&inm, server, online_join))
                     {
                         ret = 1;
                         done = 1;
@@ -579,6 +681,8 @@ int net_configuration::input() // pulls up dialog box and input fileds
 
         if (main_net_cfg && (main_net_cfg->state == CLIENT || main_net_cfg->state == SERVER))
             sb = new button(x + 40, y + ns_h - 9 - fnt->Size().y, NET_SINGLE, symbol_str("single_play"), sb);
+        else
+            sb = new button(x + 40, y + ns_h - 9 - fnt->Size().y, NET_ONLINE_JOIN, symbol_str("join_online"), sb);
 
         InputManager inm(main_screen, sb);
 
@@ -616,6 +720,9 @@ int net_configuration::input() // pulls up dialog box and input fileds
                         done = 1;
                         break;
                     case NET_SINGLE:
+                        done = 1;
+                        break;
+                    case NET_ONLINE_JOIN:
                         done = 1;
                         break;
                     default:
@@ -669,7 +776,7 @@ int net_configuration::input() // pulls up dialog box and input fileds
             int options_result;
             do
             {
-                options_result = get_options(0);
+                options_result = get_options(0, false);
                 if (options_result == -1)
                 {
                     // Game mode changed, update it and try again
@@ -710,6 +817,15 @@ int net_configuration::input() // pulls up dialog box and input fileds
                 for (int i = 0; i < total_games; i++) // delete all the addresses we found and stored
                     delete game_addr[i];
             }
+        }
+        else if (ev.type == EV_MESSAGE && ev.message.id == NET_ONLINE_JOIN)
+        {
+            if (get_options(0, true))
+            {
+                state = RESTART_CLIENT;
+                return 1;
+            }
+            return 0;
         }
         else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER)
         {

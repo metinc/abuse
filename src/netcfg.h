@@ -33,6 +33,9 @@ class net_configuration
         server_port; // if we are a server, use our_port
     char name[100];
     char server_host[100];
+    char room_code[7];
+    bool online;
+    bool join_failed;
 
     char min_players, max_players;
     short kills;
@@ -46,11 +49,10 @@ class net_configuration
     net_configuration();
     int input(); // pulls up dialog box and input fileds
     void cfg_error(char const *msg);
-    int confirm_inputs(Jwindow *j, int server);
     void error(char const *message);
-    int confirm_inputs(InputManager *i, int server);
+    int confirm_inputs(InputManager *i, int server, bool online_join = false);
     ifield *center_ifield(ifield *i, int x1, int x2, ifield *place_below);
-    int get_options(int server);
+    int get_options(int server, bool online_join = false);
 };
 
 extern net_configuration *main_net_cfg;

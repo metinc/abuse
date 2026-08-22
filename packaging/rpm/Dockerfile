@@ -26,6 +26,7 @@ RUN dnf install --assumeyes --setopt=install_weak_deps=False \
         gcc-c++ \
         git \
         gzip \
+        json-devel \
         libX11-devel \
         libXcursor-devel \
         libXext-devel \
@@ -37,6 +38,7 @@ RUN dnf install --assumeyes --setopt=install_weak_deps=False \
         libglvnd-devel \
         libglvnd-egl \
         libglvnd-opengl \
+        libdatachannel-devel \
         mingw64-gcc-c++ \
         msitools \
         ninja-build \
@@ -195,6 +197,7 @@ RUN mkdir /output \
         -DABUSE_SDL3_LICENSE_FILE=/tmp/sdl/SDL3-${SDL_VERSION}/LICENSE.txt \
         -DABUSE_SDL3_MIXER_LICENSE_FILE=/tmp/sdl/SDL3_mixer-${SDL_MIXER_VERSION}/LICENSE.txt \
         -DABUSE_SDL3_NET_LICENSE_FILE=/tmp/sdl/SDL3_net-${SDL_NET_VERSION}/LICENSE.txt \
+        -DABUSE_LIBDATACHANNEL_LICENSE_FILE=/usr/share/licenses/libdatachannel/LICENSE \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_PREFIX_PATH=/opt/abuse \
     && cmake --build /build-rpm --parallel \

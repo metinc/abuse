@@ -25,6 +25,8 @@ endif()
 
 # Options
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
+set(ABUSE_SIGNALING_URL "wss://abusecoop.com" CACHE STRING
+    "Default signaling WebSocket URL (may be overridden at runtime)")
 option(ABUSE_ALLOW_FOREIGN_PACKAGE_BUILD
     "Allow DEB/RPM creation outside their native distribution family" OFF)
 option(ABUSE_BUNDLE_SDL_RUNTIME
@@ -35,6 +37,8 @@ set(ABUSE_SDL3_MIXER_LICENSE_FILE "" CACHE FILEPATH
     "SDL3_mixer license file installed when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
 set(ABUSE_SDL3_NET_LICENSE_FILE "" CACHE FILEPATH
     "SDL3_net license file installed when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
+set(ABUSE_LIBDATACHANNEL_LICENSE_FILE "" CACHE FILEPATH
+    "libdatachannel license file installed when its runtime is bundled")
 set(ABUSE_HMI2MID_EXECUTABLE "" CACHE FILEPATH
     "Host executable used to convert HMI music while cross-compiling")
 set(ABUSE_WINDOWS_RUNTIME_DIR "" CACHE PATH
@@ -71,6 +75,9 @@ set(ABUSE_INSTALL_BINDIR "${_abuse_default_install_bindir}" CACHE STRING
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
 find_package(SDL3_net 3.0.0 REQUIRED)
+
+find_package(LibDataChannel CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # A selected SoundFont is passed to SDL_mixer's FluidSynth decoder. Some Linux
 # distributions build SDL_mixer with another MIDI backend instead; those
@@ -147,6 +154,7 @@ add_compile_definitions(
     ABUSE_DEVELOPMENT_ASSETDIR="${ABUSE_DEVELOPMENT_ASSETDIR}"
     ABUSE_GENERATED_ASSETDIR="${ABUSE_GENERATED_ASSETDIR}"
     PACKAGE_VERSION="${PROJECT_VERSION}"
+    ABUSE_SIGNALING_URL="${ABUSE_SIGNALING_URL}"
     HAVE_CONFIG_H
 )
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -180,6 +188,7 @@ if(ABUSE_BUNDLE_SDL_RUNTIME)
             list(APPEND _abuse_bundled_sdl_targets "${_abuse_sdl_target}")
         endif()
     endforeach()
+    list(APPEND _abuse_bundled_sdl_targets LibDataChannel::LibDataChannel)
     install(IMPORTED_RUNTIME_ARTIFACTS ${_abuse_bundled_sdl_targets}
         LIBRARY DESTINATION "${ABUSE_PRIVATE_LIBDIR}")
 
@@ -193,6 +202,14 @@ if(ABUSE_BUNDLE_SDL_RUNTIME)
                 "when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
         endif()
     endforeach()
+    if(NOT EXISTS "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}")
+        message(FATAL_ERROR
+            "ABUSE_LIBDATACHANNEL_LICENSE_FILE must name the libdatachannel "
+            "license when its runtime is bundled")
+    endif()
+    install(FILES "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+        RENAME libdatachannel.txt)
     install(FILES "${ABUSE_SDL3_LICENSE_FILE}"
         DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
         RENAME SDL3.txt)

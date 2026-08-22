@@ -200,32 +200,53 @@ The first gamepad used becomes active; other connected gamepads are ignored unti
 
 #### Network Settings
 
-| Argument                | Description                |
-| ----------------------- | -------------------------- |
-| `-nonet`                | Disable networking         |
-| `-port <number>`        | Set network port (1-32000) |
-| `-net <hostname>`       | Connect to host name or IP |
-| `-server <name>`        | Run as server              |
-| `-min_players <number>` | Set minimum players (1-8)  |
-| `-ndb <number>`         | Network debug level (1-3)  |
-| `-fs <address>`         | File server address        |
-| `-remote_save`          | Store saves on server      |
+| Argument                | Description                                             |
+| ----------------------- | ------------------------------------------------------- |
+| `-nonet`                | Disable networking                                      |
+| `-port <number>`        | Set network port (1-32000)                              |
+| `-net <hostname>`       | Connect to host name or IP                              |
+| `-server <name>`        | Run as server                                           |
+| `-online-join <code>`   | Join an online room by code                             |
+| `-signal-server <url>`  | Override signaling URL (default: `wss://abusecoop.com`) |
+| `-min_players <number>` | Set minimum players (1-8)                               |
+| `-ndb <number>`         | Network debug level (1-3)                               |
+| `-fs <address>`         | File server address                                     |
+| `-remote_save`          | Store saves on server                                   |
+
+#### Online Room Codes
+
+Online play uses WebRTC for encrypted direct peer-to-peer traffic. A
+self-hosted STUN service assists NAT traversal, but this release deliberately
+does not relay traffic through TURN. It does not replace the existing LAN and
+direct-IP modes. Deploy the service with the installer described in
+[`online/README.md`](online/README.md). Create the online host through the
+graphical Multiplayer menu. A client can use the same menu or optionally join
+from the command line:
+
+```sh
+abuse -online-join ABC234
+```
+
+The host displays the room code in the waiting window and above the score
+list. The graphical multiplayer menu can host either a local or online game
+and join an online room by code. `-signal-server` is only needed to override
+the default service at `wss://abusecoop.com`.
 
 #### Development/Debug
 
-| Argument        | Description                 |
-| --------------- | --------------------------- |
-| `-fwin`         | Open foreground editor      |
-| `-bwin`         | Open background editor      |
-| `-owin`         | Open objects window         |
-| `-no_autolight` | Disable auto lighting       |
-| `-nolight`      | Disable all lighting        |
-| `-bastard`      | Bypass filename security    |
-| `-size`         | Custom framebuffer size     |
-| `-lisp`         | Start LISP interpreter      |
-| `-ec`           | Empty cache                 |
-| `-t <filename>` | Insert tiles from file      |
-| `-cprint`       | Enable console printing     |
+| Argument        | Description              |
+| --------------- | ------------------------ |
+| `-fwin`         | Open foreground editor   |
+| `-bwin`         | Open background editor   |
+| `-owin`         | Open objects window      |
+| `-no_autolight` | Disable auto lighting    |
+| `-nolight`      | Disable all lighting     |
+| `-bastard`      | Bypass filename security |
+| `-size`         | Custom framebuffer size  |
+| `-lisp`         | Start LISP interpreter   |
+| `-ec`           | Empty cache              |
+| `-t <filename>` | Insert tiles from file   |
+| `-cprint`       | Enable console printing  |
 
 ### Colored Lights
 

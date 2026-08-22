@@ -7,6 +7,7 @@ FROM debian:12-slim AS builder
 ARG SDL_VERSION=3.4.0
 ARG SDL_MIXER_VERSION=3.2.4
 ARG SDL_NET_VERSION=3.2.0
+ARG LIBDATACHANNEL_VERSION=0.24.5
 ARG SDL_SHA256=082cbf5f429e0d80820f68dc2b507a94d4cc1b4e70817b119bbb8ec6a69584b8
 ARG SDL_MIXER_SHA256=182a07c745375e113dc740d43964ff21b0be29f29f59876c4dbc4db3d32f6901
 ARG SDL_NET_SHA256=098522fc26d4e302ef9348aee6e76e67fe504dfefd7f596236568f8330570c41
@@ -27,6 +28,7 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
         libfluidsynth-dev \
         libgl-dev \
         libpulse-dev \
+        libssl-dev \
         libudev-dev \
         libx11-dev \
         libxcursor-dev \
@@ -37,6 +39,7 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
         libxss-dev \
         libxtst-dev \
         ninja-build \
+        nlohmann-json3-dev \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
@@ -105,6 +108,20 @@ RUN curl --location --fail --retry 3 \
     && cmake --build build-sdl-net --parallel \
     && cmake --install build-sdl-net
 
+RUN git clone --branch "v${LIBDATACHANNEL_VERSION}" --depth 1 \
+        --recurse-submodules --shallow-submodules \
+        https://github.com/paullouisageneau/libdatachannel.git /tmp/libdatachannel \
+    && cmake -S /tmp/libdatachannel -B /tmp/build-libdatachannel -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/opt/abuse \
+        -DBUILD_SHARED_LIBS=ON \
+        -DNO_EXAMPLES=ON \
+        -DNO_MEDIA=ON \
+        -DNO_TESTS=ON \
+        -DUSE_SYSTEM_JSON=ON \
+    && cmake --build /tmp/build-libdatachannel --parallel \
+    && cmake --install /tmp/build-libdatachannel
+
 RUN curl --location --fail --retry 3 \
         --output /usr/local/bin/linuxdeploy \
         https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
@@ -122,6 +139,7 @@ RUN mkdir /output \
         -DABUSE_SDL3_LICENSE_FILE=/tmp/sdl/SDL3-${SDL_VERSION}/LICENSE.txt \
         -DABUSE_SDL3_MIXER_LICENSE_FILE=/tmp/sdl/SDL3_mixer-${SDL_MIXER_VERSION}/LICENSE.txt \
         -DABUSE_SDL3_NET_LICENSE_FILE=/tmp/sdl/SDL3_net-${SDL_NET_VERSION}/LICENSE.txt \
+        -DABUSE_LIBDATACHANNEL_LICENSE_FILE=/tmp/libdatachannel/LICENSE \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_PREFIX_PATH=/opt/abuse \
     && cmake --build /build-deb --parallel \

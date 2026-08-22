@@ -109,6 +109,7 @@ class text_field : public ifield
         screen->Bar(ivec2(xstart() + 1, m_pos.y + 1), ivec2(xend() - 1, yend() - 1), wm->dark_color());
         wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3), data);
     }
+    void insert_text(char const *text, image *screen);
 
   public:
     text_field(int X, int Y, int ID, char const *Prompt, char const *Format, char const *Data, ifield *Next);

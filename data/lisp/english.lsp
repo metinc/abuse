@@ -273,9 +273,17 @@
 	 (setq use_port        "Game number")
 	 (setq your_name       "Your name")
 	 (setq game_mode       "Game mode")
+	 (setq connection_type "Connection")
+	 (setq local_game      "Local")
+	 (setq online_game     "Online")
+	 (setq room_code       "Room code")
+	 (setq room_code_error "Room code: exactly 6 characters")
+	 (setq online_join_error "Unable to join online game.\nCheck the room code and try again.")
          (setq max_players     "The server already has its maximum number players, try again later\n  Get back to work!!\n")
 	 (setq net_not_reg     "Sorry you cannot play against this server with a demo version\n")
 	 (setq min_wait        "Waiting for %d more player(s) to join!")
+	 (setq online_min_wait "Share room code %s,\nso players can join.\nWaiting for %d more player(s)!")
+	 (setq copy_room_code  "Copy room code")
 	 (setq lev_complete    "Level Completed!")
 	 ;(setq lev_complete    "Level %d Completed!") XXX: Mac Abuse
 	 (setq no_low_mem      "Not enough low memory")
@@ -290,6 +298,7 @@
 	 (setq multiplayer         "Multiplayer")
          (setq server          " Start New Net Game  ")
          (setq client          " Join Existing Game  ")
+         (setq join_online     "  Join Online Game   ")
          (setq single_play     "    Exit Net Game    ")  ; V-A
 	 (setq cancel_net      "      Cancel         ")
 

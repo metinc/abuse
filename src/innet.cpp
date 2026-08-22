@@ -32,6 +32,9 @@
 #include "net/gserver.h"
 #include "net/gclient.h"
 #include "netcfg.h"
+#include "net/webrtc.h"
+
+#include <string>
 
 /*
  
@@ -74,6 +77,18 @@ int net_init(int argc, char **argv)
     }
 
     // Parse command line arguments
+    constexpr char default_signaling_url[] = "wss://abusecoop.com";
+    enum class online_mode
+    {
+        none,
+        host,
+        client
+    };
+    online_mode online = online_mode::none;
+    std::string signaling_url = ABUSE_SIGNALING_URL;
+    if (signaling_url.empty())
+        signaling_url = default_signaling_url;
+    std::string online_room;
     for (i = 1; i < argc; i++)
     {
         if (!strcmp(argv[i], "-nonet"))
@@ -102,6 +117,25 @@ int net_init(int argc, char **argv)
             DEBUG_LOG("Setting server host to %s", argv[i]);
             strncpy(main_net_cfg->server_host, argv[i], sizeof(main_net_cfg->server_host) - 1);
             main_net_cfg->server_host[sizeof(main_net_cfg->server_host) - 1] = '\0';
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+            main_net_cfg->state = net_configuration::CLIENT;
+        }
+        else if (!strcmp(argv[i], "-signal-server") && i < argc - 1)
+        {
+            signaling_url = argv[++i];
+        }
+        else if (!strcmp(argv[i], "-online-join") && i < argc - 1)
+        {
+            online_room = argv[++i];
+            if (main_net_cfg->join_failed)
+                continue;
+            online = online_mode::client;
+            strncpy(main_net_cfg->server_host, online_room.c_str(), sizeof(main_net_cfg->server_host) - 1);
+            main_net_cfg->server_host[sizeof(main_net_cfg->server_host) - 1] = '\0';
+            strncpy(main_net_cfg->room_code, online_room.c_str(), sizeof(main_net_cfg->room_code) - 1);
+            main_net_cfg->room_code[sizeof(main_net_cfg->room_code) - 1] = '\0';
+            main_net_cfg->online = true;
             main_net_cfg->state = net_configuration::CLIENT;
         }
         else if (!strcmp(argv[i], "-ndb"))
@@ -121,6 +155,8 @@ int net_init(int argc, char **argv)
         else if (!strcmp(argv[i], "-server"))
         {
             DEBUG_LOG("Setting state to SERVER");
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
             main_net_cfg->state = net_configuration::SERVER;
         }
         else if (!strcmp(argv[i], "-min_players"))
@@ -140,6 +176,30 @@ int net_init(int argc, char **argv)
         }
     }
 
+    if (online == online_mode::none && main_net_cfg->online)
+    {
+        if (main_net_cfg->state == net_configuration::SERVER)
+            online = online_mode::host;
+        else if (main_net_cfg->state == net_configuration::CLIENT)
+        {
+            online = online_mode::client;
+            online_room = main_net_cfg->room_code;
+        }
+    }
+
+    if (online != online_mode::none)
+    {
+        if (signaling_url.empty() || (signaling_url.compare(0, 5, "ws://") && signaling_url.compare(0, 6, "wss://")))
+        {
+            fprintf(stderr, "Net: Invalid signaling URL; expected ws:// or wss://\n");
+            return 0;
+        }
+        if (online == online_mode::host)
+            webrtc.configure_host(signaling_url);
+        else
+            webrtc.configure_client(signaling_url, online_room);
+    }
+
     // Find available network protocols
     DEBUG_LOG("Searching for usable network protocols");
     net_protocol *n = net_protocol::first, *usable = NULL;
@@ -152,7 +212,8 @@ int net_init(int argc, char **argv)
         if (n->installed())
         {
             total_usable++;
-            usable = n;
+            if (!webrtc.requested() || n == &webrtc)
+                usable = n;
         }
     }
 
@@ -884,6 +945,12 @@ int become_server(char *name)
             DEBUG_LOG("Failed to create communication socket");
             prot = NULL;
             return 0;
+        }
+        if (main_net_cfg->online && prot == &webrtc)
+        {
+            const std::string code = webrtc.room_code();
+            strncpy(main_net_cfg->room_code, code.c_str(), sizeof(main_net_cfg->room_code) - 1);
+            main_net_cfg->room_code[sizeof(main_net_cfg->room_code) - 1] = '\0';
         }
         comm_sock->read_selectable();
 

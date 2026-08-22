@@ -13,6 +13,8 @@
 #endif
 
 #include <string.h>
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_stdinc.h>
 
 #include "common.h"
 
@@ -281,6 +283,39 @@ char *text_field::read()
     return data;
 }
 
+void text_field::insert_text(char const *text, image *screen)
+{
+    if (!text || !*text)
+        return;
+
+    bool changed = false;
+    draw_cur(wm->dark_color(), screen);
+    const int capacity = strlen(format);
+
+    for (const unsigned char ch : std::string_view(text))
+    {
+        // Text fields use the original byte-oriented ASCII font. Ignore
+        // newlines and unsupported Unicode bytes from the clipboard or IME.
+        if (ch < ' ' || ch > '~')
+            continue;
+
+        for (int i = capacity - 1; i > cur && i > 0; --i)
+            data[i] = data[i - 1];
+        data[cur] = static_cast<char>(ch);
+        if (cur < capacity - 1)
+            cur++;
+        data[capacity] = 0;
+        changed = true;
+    }
+
+    if (changed)
+    {
+        draw_text(screen);
+        wm->PushMessage(id, this);
+    }
+    draw_cur(wm->bright_color(), screen);
+}
+
 void text_field::handle_event(Event &ev, image *screen, InputManager *im)
 {
     int xx;
@@ -335,39 +370,21 @@ void text_field::handle_event(Event &ev, image *screen, InputManager *im)
                 wm->PushMessage(id, this);
             }
             break;
+        case 'v':
+        case 'V':
+            if (wm->key_pressed(JK_CTRL_L) || wm->key_pressed(JK_CTRL_R))
+            {
+                char *clipboard = SDL_GetClipboardText();
+                insert_text(clipboard, screen);
+                SDL_free(clipboard);
+            }
+            break;
         default:
             break;
         }
     }
     else if (ev.type == EV_TEXT_INPUT)
-    {
-        bool changed = false;
-        draw_cur(wm->dark_color(), screen);
-
-        for (unsigned char ch : ev.text)
-        {
-            // The original font and text fields are byte-oriented ASCII.
-            // SDL still supplies the correct keyboard-layout and IME text;
-            // unsupported Unicode code points are ignored instead of split.
-            if (ch < ' ' || ch > '~')
-                continue;
-
-            for (xx = strlen(format) - 1; xx > cur && xx > 0; xx--)
-                data[xx] = data[xx - 1];
-            data[cur] = static_cast<char>(ch);
-            if (cur < (int)strlen(format) - 1)
-                cur++;
-            data[strlen(format)] = 0;
-            changed = true;
-        }
-
-        if (changed)
-        {
-            draw_text(screen);
-            wm->PushMessage(id, this);
-        }
-        draw_cur(wm->bright_color(), screen);
-    }
+        insert_text(ev.text.c_str(), screen);
 }
 
 void text_field::draw(int active, image *screen)

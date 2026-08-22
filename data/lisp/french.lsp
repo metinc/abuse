@@ -263,10 +263,18 @@ plan \n"
 	 (setq use_port        "Numéro du jeu")
 	 (setq your_name       "Votre nom")
 	 (setq game_mode       "Mode de jeu")
+	 (setq connection_type "Connexion")
+	 (setq local_game      "Locale")
+	 (setq online_game     "En ligne")
+	 (setq room_code       "Code de salon")
+	 (setq room_code_error "Code : exactement 6 caractères")
+	 (setq online_join_error "Impossible de rejoindre la partie en ligne.\nVérifiez le code et réessayez.")
 
 (setq max_players     "Le serveur a déjà atteint le nombre maximal de joueurs, ressayez plus tard\n")
          (setq net_not_reg     "Désolé, vous ne pouvez pas jouer au jeu sur le réseau avec une version démo\n")
          (setq min_wait        "Veuillez attendre pour %d participant(s) !")
+         (setq online_min_wait "Partagez le code %s\npour permettre aux joueurs de participer.\nEncore %d joueur(s) attendu(s) !")
+         (setq copy_room_code  "Copier le code")
          (setq lev_complete    "Niveau terminé !")
          (setq no_low_mem         (concatenate 'string "Gestionnaire de mémoire : Pas assez de mémoire disponible\n"
                                            "  Suggestions...\n"
@@ -288,8 +296,9 @@ plan \n"
          (setq multiplayer     "Multijoueur")
          (setq server          "Commencer nouveau jeu")
          (setq client          "Participer au jeu en cours ?")
-         (setq single_play     "    Sortir du jeu sur réseau    ")  ; V-A
-         (setq cancel_net      "      Annuler        ")
+         (setq join_online     "Rejoindre en ligne")
+         (setq single_play     "Sortir du jeu sur réseau    ")  ; V-A
+         (setq cancel_net      "       Annuler       ")
 
          (setq ic_return       "Retourner au jeu")
          (setq ic_quit         "Sortir du jeu")

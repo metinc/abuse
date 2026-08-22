@@ -2426,7 +2426,7 @@ void show_sell(int abortable);
 
 extern pmenu *dev_menu;
 
-void game_net_init(int argc, char **argv)
+bool game_net_init(int argc, char **argv)
 {
     int nonet = !net_init(argc, argv);
     if (nonet)
@@ -2438,8 +2438,12 @@ void game_net_init(int argc, char **argv)
         {
             if (!set_file_server(net_server))
             {
-                printf("Unable to attach to server, quitting\n");
-                exit(EXIT_SUCCESS);
+                printf("Unable to attach to server, returning to the menu\n");
+                net_uninit();
+                main_net_cfg->join_failed = true;
+                main_net_cfg->state = net_configuration::RESTART_SINGLE;
+                strcpy(lsf, "abuse.lsp");
+                return false;
             }
         }
         else
@@ -2451,6 +2455,7 @@ void game_net_init(int argc, char **argv)
                         printf("could not set default file server to %s\n", argv[i + 1]);
         }
     }
+    return true;
 }
 
 int main(int argc, char *argv[])
@@ -2486,7 +2491,8 @@ int main(int argc, char *argv[])
             exit(EXIT_SUCCESS);
         }
 
-        game_net_init(argc, argv);
+        if (!game_net_init(argc, argv))
+            continue;
         Lisp::Init();
 
         dev_init(argc, argv);
@@ -2499,6 +2505,14 @@ int main(int argc, char *argv[])
 
         dev_cont = new dev_controll();
         dev_cont->load_stuff();
+
+        if (main_net_cfg && main_net_cfg->join_failed)
+        {
+            main_net_cfg->join_failed = false;
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+            main_net_cfg->cfg_error(symbol_str("online_join_error"));
+        }
 
         g->get_input(); // prime the net
 

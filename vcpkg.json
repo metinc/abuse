@@ -8,6 +8,11 @@
       "features": ["fluidsynth"]
     },
     "sdl3-net",
+    {
+      "name": "libdatachannel",
+      "features": ["ws"]
+    },
+    "nlohmann-json",
     "toml11"
   ]
 }

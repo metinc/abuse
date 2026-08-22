@@ -26,6 +26,7 @@
 #include "ant.h"
 #include "cop.h"
 #include "dev.h"
+#include "netcfg.h"
 #include <SDL3/SDL_timer.h>
 
 enum
@@ -1125,8 +1126,6 @@ static int compare_players(const void *a, const void *b)
 void *score_draw()
 {
     float visibility = the_game ? the_game->transient_message_visibility() : 1.0f;
-    if (visibility <= 0.0f)
-        return NULL;
 
     view *sorted_players[16], *local = NULL;
     int tp = 0;
@@ -1142,10 +1141,20 @@ void *score_draw()
     JCFont *fnt = wm->font();
     if (local)
     {
-        qsort(sorted_players, tp, sizeof(view *), compare_players);
-
         ivec2 pos = local->m_aa;
         char msg[100];
+
+        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0])
+        {
+            snprintf(msg, sizeof(msg), "%s: %s", symbol_str("room_code"), main_net_cfg->room_code);
+            fnt->PutString(main_screen, pos, msg, wm->bright_color());
+            pos.y += fnt->Size().y;
+        }
+
+        if (visibility <= 0.0f)
+            return NULL;
+
+        qsort(sorted_players, tp, sizeof(view *), compare_players);
 
         int i;
         for (i = 0; i < tp; i++)

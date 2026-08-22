@@ -6,6 +6,11 @@
       "name": "fluidsynth",
       "features": ["sndfile"]
     },
+    {
+      "name": "libdatachannel",
+      "features": ["ws"]
+    },
+    "nlohmann-json",
     "toml11"
   ]
 }
