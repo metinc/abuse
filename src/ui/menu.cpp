@@ -433,6 +433,9 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     else
         diff_on = 3;
 
+    ico_button *general_settings = load_icon(12, ID_GENERAL_SETTINGS, x, y, h, NULL, "ic_general");
+    y += h;
+
     ico_button *start = load_icon(0, ID_START_GAME, x, y, h, NULL, "ic_start");
     y += h;
 
@@ -454,13 +457,9 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     ico_button *volume = load_icon(5, ID_VOLUME, x, y, h, NULL, "ic_volume");
     y += h;
 
-    // Multiplayer button
-    ico_button *multiplayer = NULL;
-    if (prot)
-    {
-        multiplayer = load_icon(11, ID_MULTIPLAYER, x, y, h, NULL, "ic_multiplayer");
-        y += h;
-    }
+    ico_button *multiplayer = load_icon(11, ID_MULTIPLAYER, x, y, h, NULL, "ic_multiplayer");
+    multiplayer->set_enabled(prot != NULL);
+    y += h;
 
     //credits in full version
     // ico_button *sell = load_icon(2, ID_SHOW_SELL, x, y, h, NULL, "ic_sell");
@@ -471,18 +470,14 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
 
     //connect buttons/make list
 
+    general_settings->next = start;
     start->next = set;
     set->next = color;
 
     color->next = volume;
 
-    if (prot)
-    {
-        volume->next = multiplayer;
-        multiplayer->next = quit;
-    }
-    else
-        volume->next = quit;
+    volume->next = multiplayer;
+    multiplayer->next = quit;
 
     // sell->next = quit;
 
@@ -493,42 +488,29 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
         while (append_list->next)
             append_list = (ico_button *)append_list->next;
 
-        append_list->next = start;
+        append_list->next = general_settings;
     }
     else
-        list = start;
+        list = general_settings;
 
     return list;
 }
 
-ico_button *make_conditional_buttons(int x, int &y)
+ico_button *make_context_buttons(int x, int &y)
 {
-    //AR "return to game" and "load game" buttons
-
-    ico_button *start_list = NULL;
-
     int h;
 
-    //should we include a return icon ?
-    if (current_level)
-    {
-        start_list = load_icon(7, ID_RETURN, x, y, h, NULL, "ic_return");
-        y += h;
-    }
+    ico_button *return_to_game = load_icon(7, ID_RETURN, x, y, h, NULL, "ic_return");
+    return_to_game->set_enabled(current_level != NULL);
+    y += h;
 
-    ico_button *load = NULL;
-    if (show_load_icon())
-    {
-        load = load_icon(1, ID_LOAD_PLAYER_GAME, x, y, h, NULL, "ic_load");
-        y += h;
-    }
+    ico_button *load = load_icon(1, ID_LOAD_PLAYER_GAME, x, y, h, NULL, "ic_load");
+    load->set_enabled(show_load_icon());
+    y += h;
 
-    if (start_list)
-        start_list->next = load;
-    else
-        start_list = load;
+    return_to_game->next = load;
 
-    return start_list;
+    return return_to_game;
 }
 
 void main_menu()
@@ -537,7 +519,7 @@ void main_menu()
 
     // Build the list first so its actual artwork dimensions can drive the layout.
     int y = 0;
-    ico_button *list = make_conditional_buttons(0, y);
+    ico_button *list = make_context_buttons(0, y);
     list = make_default_buttons(0, y, list);
 
     int editor_h;
@@ -553,6 +535,7 @@ void main_menu()
     auto icon_column = [](const ifield *button) {
         switch (button->id)
         {
+        case ID_GENERAL_SETTINGS:
         case ID_LIGHT_OFF:
         case ID_VOLUME:
         case ID_MULTIPLAYER:
@@ -566,18 +549,19 @@ void main_menu()
     auto icon_order = [](const ifield *button) {
         switch (button->id)
         {
+        case ID_GENERAL_SETTINGS:
         case ID_RETURN:
-        case ID_LIGHT_OFF:
             return 0;
+        case ID_LIGHT_OFF:
         case ID_NULL: // Difficulty selector
-        case ID_VOLUME:
             return 1;
+        case ID_VOLUME:
         case ID_START_GAME:
-        case ID_MULTIPLAYER:
             return 2;
+        case ID_MULTIPLAYER:
         case ID_LOAD_PLAYER_GAME:
-        case ID_EDITOR:
             return 3;
+        case ID_EDITOR:
         case ID_QUIT:
             return 4;
         default:

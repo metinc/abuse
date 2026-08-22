@@ -303,6 +303,7 @@ plan \n"
 
          (setq ic_return       "Retourner au jeu")
          (setq ic_quit         "Sortir du jeu")
+         (setq ic_general      "Paramètres généraux")
          (setq ic_volume       "Paramètres audio")
          (setq ic_gamma        "Paramètres vidéo")
          (setq ic_easy         "Difficulté : Mauviette")

@@ -306,6 +306,7 @@
 
          (setq ic_return       "Return to Game")        ; ----
          (setq ic_quit         "Quit Abuse")            ;  |
+	 (setq ic_general      "General Settings")      ;  |
 	 (setq ic_volume       "Audio Settings")        ;  |
 	 (setq ic_gamma        "Video Settings")        ;  |
 	 (setq ic_easy         "Difficulty : Wimp")     ;  |

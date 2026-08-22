@@ -19,6 +19,54 @@
 #include "dev.h"
 #include "loader2.h"
 
+static ToastMessage help_toast;
+
+ToastMessage::ToastMessage() : m_background(NULL), m_screen(NULL), m_pos(0) {}
+
+ToastMessage::~ToastMessage()
+{
+    delete m_background;
+}
+
+void ToastMessage::Show(image *screen, std::string_view text)
+{
+    Hide();
+
+    if (text.empty())
+        return;
+
+    constexpr int border = 1;
+    constexpr int padding_x = 3;
+    constexpr int padding_y = 2;
+    constexpr int screen_margin = 2;
+
+    JCFont *font = wm->font();
+    const ivec2 font_size = font->Size();
+    const int text_width = JCFont::EncodeForFont(text).size() * font_size.x;
+    const ivec2 size(text_width + 2 * (border + padding_x), font_size.y + 2 * (border + padding_y));
+    m_pos = ivec2((screen->Size().x - size.x) / 2, screen_margin);
+
+    m_screen = screen;
+    m_background = new image(size);
+    m_background->PutPart(screen, ivec2(0), m_pos, m_pos + size);
+
+    const ivec2 bottom_right = m_pos + size - ivec2(1);
+    screen->Bar(m_pos, bottom_right, wm->dark_color());
+    screen->Bar(m_pos + ivec2(border), bottom_right - ivec2(border), wm->medium_color());
+    font->PutString(screen, m_pos + ivec2(border + padding_x, border + padding_y), text, wm->bright_color());
+}
+
+void ToastMessage::Hide()
+{
+    if (!m_background)
+        return;
+
+    m_screen->PutImage(m_background, m_pos);
+    delete m_background;
+    m_background = NULL;
+    m_screen = NULL;
+}
+
 void ico_button::set_act_id(int id)
 {
     activate_id = id;
@@ -130,13 +178,11 @@ void ico_button::draw(int hover, image *screen)
 
     if (hover && key[0])
     {
-        int g = 127;
-        screen->Bar(ivec2(0, 0), ivec2(144, 20), 0);
-        wm->font()->PutString(screen, ivec2(3), symbol_str(key), color_table->Lookup(g >> 3, g >> 3, g >> 3));
+        help_toast.Show(screen, symbol_str(key));
     }
     else if (!hover && key[0])
     {
-        screen->Bar(ivec2(0, 0), ivec2(144, 20), 0);
+        help_toast.Hide();
     }
 }
 
@@ -198,6 +244,11 @@ ico_button::ico_button(int x, int y, int id, int up_inactive, int down_inactive,
     this->next = next;
     this->activate_id = activate_id;
     enabled = 1;
+}
+
+ico_button::~ico_button()
+{
+    help_toast.Hide();
 }
 
 ico_switch_button::~ico_switch_button()

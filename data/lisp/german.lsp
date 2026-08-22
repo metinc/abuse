@@ -306,6 +306,7 @@
 
          (setq ic_return       "Zurück ins Spiel")
          (setq ic_quit         "Abuse abbrechen")
+         (setq ic_general      "Allgemeine Einstellungen")
          (setq ic_volume       "Audioeinstellungen")
          (setq ic_gamma        "Videoeinstellungen")
          (setq ic_easy         "Schwierigkeitsgrad: Niete")

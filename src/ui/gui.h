@@ -10,7 +10,25 @@
 
 #ifndef __GUI_HPP_
 #define __GUI_HPP_
+#include <string_view>
+
 #include "jwindow.h"
+
+class ToastMessage
+{
+    image *m_background;
+    image *m_screen;
+    ivec2 m_pos;
+
+  public:
+    ToastMessage();
+    ~ToastMessage();
+    ToastMessage(const ToastMessage &) = delete;
+    ToastMessage &operator=(const ToastMessage &) = delete;
+
+    void Show(image *screen, std::string_view text);
+    void Hide();
+};
 
 class ico_button : public ifield
 {
@@ -21,6 +39,7 @@ class ico_button : public ifield
   public:
     ico_button(int x, int y, int id, int up_inactive, int down_inactive, int up_active, int down_active, ifield *next,
                int activate_id = -1, char const *help_key = NULL);
+    virtual ~ico_button();
 
     virtual void area(int &x1, int &y1, int &x2, int &y2);
     virtual void draw_first(image *screen)
