@@ -560,7 +560,7 @@ void text_field::draw_first(image *screen)
 {
     wm->font()->PutString(screen, m_pos + ivec2(0, 3), prompt);
     screen->Bar(ivec2(xstart(), m_pos.y), ivec2(xend(), yend()), wm->dark_color());
-    wm->font()->PutString(screen, ivec2(xstart() + 1, m_pos.y + 3), data);
+    draw_text(screen);
 }
 
 void text_field::draw_cur(int color, image *screen)
