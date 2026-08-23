@@ -795,11 +795,17 @@ void *top_draw()
     int32_t y = o->y;
     short current_frame = o->current_frame;
     uint16_t otype = o->otype;
-    top_aim(true);
 
     if (o->total_objects())
     {
         game_object *bot = o->get_object(0);
+        view *controller = bot->controller();
+        // Only the live local player needs render-time aiming for immediate
+        // mouse response. Remote and replay aim states are updated by TopAi
+        // once per physics tick.
+        if (controller && controller->local_player() && demo_man.current_state() != demo_manager::PLAYING)
+            top_aim(true);
+
         if (bot->state == stopped || bot->state == running || bot->state == run_jump || bot->state == run_jump_fall ||
             bot->state == end_run_jump)
         {
