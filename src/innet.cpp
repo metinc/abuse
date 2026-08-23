@@ -531,6 +531,7 @@ int request_server_entry()
     DEBUG_LOG("Requesting server entry");
     if (prot && main_net_cfg)
     {
+        main_net_cfg->waiting_for_host = false;
         if (!net_server)
         {
             DEBUG_LOG("No server address available");
@@ -578,7 +579,7 @@ int request_server_entry()
 
         uint8_t ctype = CLIENT_ABUSE;
         uint16_t port = lstl(client_port), cnum;
-        uint8_t reg;
+        uint8_t reg, lobby, connected_players, max_players;
 
         // Send client registration with debug ID
         DEBUG_LOG("Sending client type");
@@ -625,7 +626,11 @@ int request_server_entry()
             sock->write(/* client_name_data */ uname, len) != len || sock->write(/* client_skin */ &skin, 1) != 1 ||
             sock->write(/* client_port */ &our_port, 2) != 2 ||
             sock->read(/* server_port */ &port, 2) != 2 || sock->read(/* server_kills */ &nkills, 2) != 2 ||
-            sock->read(/* server_game_mode */ &ctype, 1) != 1 || sock->read(/* server_client_id */ &cnum, 2) != 2 ||
+            sock->read(/* server_game_mode */ &ctype, 1) != 1 ||
+            sock->read(/* server_lobby_state */ &lobby, 1) != 1 ||
+            sock->read(/* server_lobby_players */ &connected_players, 1) != 1 ||
+            sock->read(/* server_max_players */ &max_players, 1) != 1 ||
+            sock->read(/* server_client_id */ &cnum, 2) != 2 ||
             cnum == 0)
         {
             DEBUG_LOG("Failed to exchange client information");
@@ -643,6 +648,9 @@ int request_server_entry()
         main_net_cfg->kills = nkills;
         main_net_cfg->game_mode =
             (gmode == net_configuration::COOP) ? net_configuration::COOP : net_configuration::DEATHMATCH;
+        main_net_cfg->waiting_for_host = lobby != 0;
+        main_net_cfg->lobby_players = connected_players;
+        main_net_cfg->max_players = max_players;
         net_address *addr = net_server->copy();
         addr->set_port(port);
 
@@ -671,6 +679,45 @@ int reload_end()
     if (prot)
         return game_face->end_reload();
     return 0;
+}
+
+void wait_for_server_lobby()
+{
+    int displayed_players = -1;
+    Jwindow *status = NULL;
+
+    while (main_net_cfg && main_net_cfg->waiting_for_host && !main_net_cfg->restart_state() &&
+           !application_quit_requested())
+    {
+        if (displayed_players != main_net_cfg->lobby_players)
+        {
+            if (status)
+                wm->close_window(status);
+
+            char message[256];
+            snprintf(message, sizeof(message), symbol_str("client_lobby_players"), main_net_cfg->lobby_players);
+            status = wm->CreateWindow(ivec2(0), ivec2(-1), new info_field(0, 0, ID_NULL, message, NULL),
+                                      symbol_str("lobby_title"));
+            wm->move_window(status, std::max(0, (xres - status->m_size.x) / 2),
+                            std::max(0, (yres - status->m_size.y) / 2));
+            displayed_players = main_net_cfg->lobby_players;
+        }
+
+        service_net_request();
+        while (wm->IsPending())
+        {
+            Event event;
+            wm->get_event(event);
+        }
+        wm->flush_screen();
+        SDL_Delay(1);
+    }
+
+    if (status)
+    {
+        wm->close_window(status);
+        wm->flush_screen();
+    }
 }
 
 void net_reload()

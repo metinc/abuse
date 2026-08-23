@@ -1488,6 +1488,7 @@ void Game::request_end()
 Game::Game(int argc, char **argv)
 {
     int i;
+    bool deferred_lobby_join = false;
     req_name[0] = 0;
     bg_xmul = bg_ymul = 1;
     bg_xdiv = bg_ydiv = 8;
@@ -1551,7 +1552,9 @@ Game::Game(int argc, char **argv)
         }
         else
         {
-            net_reload();
+            deferred_lobby_join = main_net_cfg->waiting_for_host;
+            if (!deferred_lobby_join)
+                net_reload();
             // dev_init() deliberately resets start_running after the network
             // setup. Enter gameplay only after the client has loaded the level.
             start_running = current_level != NULL;
@@ -1624,6 +1627,16 @@ Game::Game(int argc, char **argv)
     wm->SetMouseShape(cache.img(c_normal)->copy(), ivec2(1));
 
     pal->load();
+
+    if (deferred_lobby_join)
+    {
+        wait_for_server_lobby();
+        if (main_net_cfg && !main_net_cfg->restart_state() && !application_quit_requested())
+            net_reload();
+        start_running = current_level != NULL;
+        if (start_running)
+            recalc_local_view_space();
+    }
 
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))

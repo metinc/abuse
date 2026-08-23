@@ -58,6 +58,7 @@ game_server::game_server()
     player_list = NULL;
     waiting_server_input = 1;
     reload_state = 0;
+    lobby_open = false;
 }
 
 void game_server::restart_single_player()
@@ -79,71 +80,64 @@ int game_server::total_players()
     return total;
 }
 
-// Wait for players and, for online games, explicit host confirmation.
+// Keep every multiplayer game in a shared lobby until the host starts it.
 void game_server::game_start_wait()
 {
-    DEBUG_LOG("Opening game start lobby (%d minimum players)", main_net_cfg->min_players);
+    DEBUG_LOG("Opening multiplayer lobby");
 
-    int last_count = 0;
+    int last_count = -1;
     Jwindow *stat = NULL;
     Event ev;
     int done = 0;
-    const bool online_lobby = main_net_cfg->online;
+    bool start_game = false;
+    lobby_open = true;
 
-    // Online hosts explicitly start the game from the lobby, even when the
-    // configured minimum player count has already been reached.
-    while (!done && !application_quit_requested() &&
-           (online_lobby || total_players() < main_net_cfg->min_players))
+    while (!done && !application_quit_requested())
     {
-        if (last_count != total_players())
+        const int player_count = total_players();
+        if (last_count != player_count)
         {
             if (stat)
                 wm->close_window(stat);
             char msg[256];
             const bool show_room = main_net_cfg->online && main_net_cfg->room_code[0];
-            const int players_needed = std::max(0, main_net_cfg->min_players - total_players());
-            if (show_room && players_needed == 0 && main_net_cfg->streamer_mode)
-                snprintf(msg, sizeof(msg), "%s", symbol_str("online_ready_streamer"));
-            else if (show_room && players_needed == 0)
-                snprintf(msg, sizeof(msg), symbol_str("online_ready"), main_net_cfg->room_code);
-            else if (show_room && main_net_cfg->streamer_mode)
-                snprintf(msg, sizeof(msg), symbol_str("online_min_wait_streamer"),
-                         players_needed);
+            if (show_room && main_net_cfg->streamer_mode)
+                snprintf(msg, sizeof(msg), symbol_str("online_lobby_players_streamer"), player_count);
             else if (show_room)
-                snprintf(msg, sizeof(msg), symbol_str("online_min_wait"), main_net_cfg->room_code, players_needed);
+                snprintf(msg, sizeof(msg), symbol_str("online_lobby_players"), main_net_cfg->room_code, player_count);
             else
-                snprintf(msg, sizeof(msg), symbol_str("min_wait"), players_needed);
+                snprintf(msg, sizeof(msg), symbol_str("lobby_players"), player_count);
 
             ifield *controls;
+            int x1, y1, message_width, message_bottom;
+            info_field message_bounds(0, 0, ID_NULL, msg, NULL);
+            message_bounds.area(x1, y1, message_width, message_bottom);
+            const int button_y = message_bottom + 5;
             if (show_room)
             {
                 char const *copy_text = symbol_str("copy_room_code");
-                char const *action_text = symbol_str(online_lobby ? "start_game_button" : "cancel_button");
-                const int action_id = online_lobby ? ID_START_GAME : ID_CANCEL;
+                char const *action_text = symbol_str("start_game_button");
                 const int font_width = wm->font()->Size().x;
-                const int button_y = wm->font()->Size().y * 4;
                 const int copy_width = strlen(copy_text) * font_width + 6;
                 const int controls_width = (strlen(action_text) + strlen(copy_text)) * font_width + 18;
-                int x1, y1, message_width, y2;
-                info_field message_bounds(0, 0, ID_NULL, msg, NULL);
-                message_bounds.area(x1, y1, message_width, y2);
                 if (message_width < controls_width)
                     message_width = controls_width;
                 const int copy_x = message_width - copy_width;
-                controls = new button(0, button_y, action_id, action_text,
+                controls = new button(0, button_y, ID_START_GAME, action_text,
                                       new button(copy_x, button_y, ID_COPY_ROOM_CODE, copy_text, NULL));
             }
             else
             {
-                const int action_id = online_lobby ? ID_START_GAME : ID_CANCEL;
-                controls = new button(0, wm->font()->Size().y * 2, action_id,
-                                      symbol_str(online_lobby ? "start_game_button" : "cancel_button"), NULL);
+                controls = new button(0, button_y, ID_START_GAME, symbol_str("start_game_button"), NULL);
             }
 
-            stat = wm->CreateWindow(
-                ivec2(100, 50), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls));
+            stat = wm->CreateWindow(ivec2(0), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls),
+                                    symbol_str("lobby_title"));
+            wm->move_window(stat, std::max(0, (xres - stat->m_size.x) / 2),
+                            std::max(0, (yres - stat->m_size.y) / 2));
             wm->flush_screen();
-            last_count = total_players();
+            last_count = player_count;
+            send_lobby_status();
             DEBUG_LOG("Updated player count to %d", last_count);
         }
 
@@ -159,10 +153,10 @@ void game_server::game_start_wait()
                 done = 1;
                 continue;
             }
-            if ((ev.type == EV_MESSAGE && (ev.message.id == ID_CANCEL || ev.message.id == ID_START_GAME)) ||
-                (ev.type == EV_CLOSE_WINDOW && ev.window == stat))
+            if (ev.type == EV_MESSAGE && ev.message.id == ID_START_GAME)
             {
                 DEBUG_LOG("Game start wait ended by host");
+                start_game = true;
                 done = 1;
             }
             else if (ev.type == EV_MESSAGE && ev.message.id == ID_COPY_ROOM_CODE)
@@ -177,6 +171,10 @@ void game_server::game_start_wait()
         SDL_Delay(1);
     }
 
+    if (start_game)
+        send_lobby_start();
+    lobby_open = false;
+
     if (stat)
     {
         wm->close_window(stat);
@@ -184,6 +182,28 @@ void game_server::game_start_wait()
     }
 
     DEBUG_LOG("Game start wait complete");
+}
+
+void game_server::send_lobby_status()
+{
+    const uint8_t message[] = {SRVCMD_LOBBY_STATUS, static_cast<uint8_t>(total_players()),
+                               static_cast<uint8_t>(main_net_cfg->max_players)};
+    for (player_client *client = player_list; client; client = client->next)
+    {
+        if (!client->delete_me() && client->comm->write(/* server_lobby_status */ message, sizeof(message)) !=
+                                        static_cast<int>(sizeof(message)))
+            client->set_delete_me(1);
+    }
+}
+
+void game_server::send_lobby_start()
+{
+    const uint8_t command = SRVCMD_LOBBY_START;
+    for (player_client *client = player_list; client; client = client->next)
+    {
+        if (!client->delete_me() && client->comm->write(/* server_lobby_start */ &command, 1) != 1)
+            client->set_delete_me(1);
+    }
 }
 
 game_server::player_client::~player_client()
@@ -653,11 +673,17 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         uint8_t len, skin;
         int16_t nkills = lstl(main_net_cfg->kills);
         uint8_t gmode = (uint8_t)main_net_cfg->game_mode;
+        uint8_t lobby = lobby_open ? 1 : 0;
+        uint8_t connected_players = static_cast<uint8_t>(total_players() + 1);
+        uint8_t max_players = static_cast<uint8_t>(main_net_cfg->max_players);
 
         if (sock->read(/* client_name_length */ &len, 1) != 1 || sock->read(/* client_name_data */ name, len) != len ||
             sock->read(/* client_skin */ &skin, 1) != 1 || sock->read(/* client_port */ &cport, 2) != 2 ||
             sock->write(/* server_port */ &our_port, 2) != 2 ||
-            sock->write(/* server_kills */ &nkills, 2) != 2 || sock->write(/* server_game_mode */ &gmode, 1) != 1)
+            sock->write(/* server_kills */ &nkills, 2) != 2 || sock->write(/* server_game_mode */ &gmode, 1) != 1 ||
+            sock->write(/* server_lobby_state */ &lobby, 1) != 1 ||
+            sock->write(/* server_lobby_players */ &connected_players, 1) != 1 ||
+            sock->write(/* server_max_players */ &max_players, 1) != 1)
         {
             DEBUG_LOG("Failed to exchange connection data");
             return 0;

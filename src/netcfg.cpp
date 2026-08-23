@@ -29,6 +29,8 @@ net_configuration::net_configuration()
     join_failed = false;
     server_full = false;
     host_ended_server = false;
+    waiting_for_host = false;
+    lobby_players = 1;
     streamer_mode = settings.streamer_mode;
 
     min_players = 2;

@@ -37,6 +37,7 @@ extern int start_running;
 void game_client::restart_single_player()
 {
     main_net_cfg->host_ended_server = true;
+    main_net_cfg->waiting_for_host = false;
     main_net_cfg->state = net_configuration::RESTART_SINGLE;
     start_running = 0;
     strcpy(lsf, "abuse.lsp");
@@ -90,6 +91,26 @@ int game_client::process_server_command()
             DEBUG_LOG("Cannot resend tick %d; retained input is tick %d", tick,
                       has_last_input ? last_input.tick_received() : -1);
         }
+        return 1;
+    }
+    break;
+
+    case SRVCMD_LOBBY_STATUS: {
+        uint8_t players;
+        uint8_t max_players;
+        if (client_sock->read(/* server_lobby_players */ &players, 1) != 1 ||
+            client_sock->read(/* server_max_players */ &max_players, 1) != 1)
+            return 0;
+        main_net_cfg->lobby_players = players;
+        main_net_cfg->max_players = max_players;
+        DEBUG_LOG("Lobby status updated to %d/%d players", players, max_players);
+        return 1;
+    }
+    break;
+
+    case SRVCMD_LOBBY_START: {
+        main_net_cfg->waiting_for_host = false;
+        DEBUG_LOG("Host started the game");
         return 1;
     }
     break;
