@@ -101,7 +101,7 @@ packaged; HMI conversion is not part of the game's runtime audio path. The C++ c
 - `[gameplay].max_fps` - Frame-rate limit
 - `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
-- `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
+- `[general].language` - Game language (`"auto"` uses the operating-system language; also `"english"`, `"german"`, or `"french"`)
 - `[multiplayer].player_name` - Player name used in multiplayer games (maximum 18 characters)
 - `[multiplayer].server_name` - Default name used when hosting a multiplayer game (maximum 18 characters)
 

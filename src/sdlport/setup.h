@@ -16,6 +16,7 @@
 #include <string>
 
 inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
+inline constexpr char DEFAULT_LANGUAGE[] = "auto";
 inline constexpr int GAMEPAD_BINDING_LEFT_TRIGGER = 1000;
 inline constexpr int GAMEPAD_BINDING_RIGHT_TRIGGER = 1001;
 inline constexpr int PLAYER_SKIN_COUNT = 11;
@@ -109,6 +110,7 @@ class Settings
     bool GetEditorFramebufferSize(short &width, short &height) const;
     bool Load();
     bool Save() const;
+    std::string GetEffectiveLanguage() const;
     void BeginCommandLineOverrides();
     void SetFullscreen(bool enabled);
     void SetSoundFont(const std::string &path);

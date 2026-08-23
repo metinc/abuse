@@ -249,11 +249,12 @@ void show_general_settings()
         std::array<char *, skin_label_symbols.size()> skin_labels;
         int selected = 0;
         int longest_label = 0;
+        const std::string effective_language = settings.GetEffectiveLanguage();
         for (size_t index = 0; index < languages.size(); ++index)
         {
             labels[index] = const_cast<char *>(symbol_str(languages[index].label_symbol));
             longest_label = std::max(longest_label, text_width(labels[index]));
-            if (settings.language == languages[index].value)
+            if (effective_language == languages[index].value)
                 selected = static_cast<int>(index);
         }
         int longest_skin_label = 0;
@@ -318,13 +319,16 @@ void show_general_settings()
                 const std::string selected_language = languages[picker->get_selection()].value;
                 if (selected_language != settings.language)
                 {
-                    if (!apply_language(selected_language))
+                    const std::string previous_language = settings.language;
+                    settings.language = selected_language;
+                    const std::string effective_language = settings.GetEffectiveLanguage();
+                    if (!apply_language(effective_language))
                     {
-                        fprintf(stderr, "Unable to load language '%s'\n", selected_language.c_str());
+                        settings.language = previous_language;
+                        fprintf(stderr, "Unable to load language '%s'\n", effective_language.c_str());
                     }
                     else
                     {
-                        settings.language = selected_language;
                         if (!settings.Save())
                             fprintf(stderr, "Unable to save language setting\n");
                     }

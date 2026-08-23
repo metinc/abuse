@@ -97,6 +97,19 @@ std::string find_data_directory()
 
     return ASSETDIR;
 }
+
+const char *language_for_locale(const char *locale)
+{
+    if (!locale)
+        return nullptr;
+    if (SDL_strcasecmp(locale, "en") == 0)
+        return "english";
+    if (SDL_strcasecmp(locale, "de") == 0)
+        return "german";
+    if (SDL_strcasecmp(locale, "fr") == 0)
+        return "french";
+    return nullptr;
+}
 }
 
 Settings::Settings()
@@ -127,7 +140,7 @@ Settings::Settings()
     this->physics_update = 65; // original 65ms/15 FPS
     this->max_fps = 300;
     this->big_font = false;
-    this->language = "english";
+    this->language = DEFAULT_LANGUAGE;
     this->player_skin = 0;
     //
     this->player_touching_console = false;
@@ -198,6 +211,30 @@ Settings::Settings()
     this->ctr_menu_cancel = SDL_GAMEPAD_BUTTON_EAST;
     this->ctr_f5 = -1;
     this->ctr_f9 = -1;
+}
+
+std::string Settings::GetEffectiveLanguage() const
+{
+    if (language != DEFAULT_LANGUAGE)
+    {
+        if (language == "english" || language == "german" || language == "french")
+            return language;
+        return "english";
+    }
+
+    int count = 0;
+    SDL_Locale **locales = SDL_GetPreferredLocales(&count);
+    std::string detected_language = "english";
+    for (int index = 0; locales && index < count; ++index)
+    {
+        if (const char *supported_language = language_for_locale(locales[index]->language))
+        {
+            detected_language = supported_language;
+            break;
+        }
+    }
+    SDL_free(locales);
+    return detected_language;
 }
 
 namespace
