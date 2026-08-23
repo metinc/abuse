@@ -158,7 +158,10 @@ void button_box::handle_event(Event &ev, image *screen, InputManager *im)
                     b->draw_first(screen);
                 }
                 else if (total == 0 && maxdown)
-                    b->push(); // don't let the user de-press a button if non others are selected.
+                {
+                    b->push(); // don't let the user de-press a button if no others are selected.
+                    b->draw_first(screen);
+                }
 
                 found = 1; // don't look at anymore buttons
             }
