@@ -521,6 +521,8 @@ ifield *InputManager::unlink(int id) // unlinks ID from fields list and return t
                 last->next = i->next;
             if (m_active == i)
                 m_active = m_first;
+            if (m_focus == i)
+                m_focus = NULL;
             return i;
         }
         ifield *x = i->unlink(id);
@@ -548,7 +550,10 @@ void InputManager::clear_current()
         m_surf = m_owner->m_surf;
     if (m_active)
         m_active->draw(0, m_surf);
+    if (m_focus && m_focus != m_active)
+        m_focus->draw(0, m_surf);
     m_active = NULL;
+    m_focus = NULL;
 }
 
 void InputManager::handle_event(Event &ev, Jwindow *j)
@@ -568,6 +573,7 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
     if (!m_grab)
     {
         const bool wheel_event = ev.mouse_wheel != 0;
+        bool visual_changed = false;
         if (ev.type == EV_MOUSE_BUTTON || ev.type == EV_MOUSE_MOVE || wheel_event)
         {
             for (i = m_first; i; i = i->next)
@@ -585,48 +591,88 @@ void InputManager::handle_event(Event &ev, Jwindow *j)
             if (in_area != m_active &&
                 (wheel_event || no_selections_allowed || (in_area && in_area->selectable()) || leaving_while_pressed))
             {
-                if (m_active)
+                if (m_active && m_active != m_focus)
                     m_active->draw(0, m_surf);
 
                 m_active = in_area;
 
-                if (m_active)
+                if (m_active && (!m_active->focus_on_click() || m_active == m_focus))
                     m_active->draw(1, m_surf);
 
-                // Present hover and press-cancellation changes immediately,
-                // without redrawing for every mouse-move event.
-                wm->flush_screen();
+                visual_changed = true;
             }
+
+            if (ev.type == EV_MOUSE_BUTTON && (ev.mouse_button & LEFT_BUTTON))
+            {
+                ifield *new_focus = in_area && in_area->focus_on_click() ? in_area : NULL;
+                if (new_focus != m_focus)
+                {
+                    if (m_focus)
+                        m_focus->draw(0, m_surf);
+                    m_focus = new_focus;
+                    if (m_focus)
+                        m_focus->draw(1, m_surf);
+                    visual_changed = true;
+                }
+            }
+
+            // Present hover, focus, and press-cancellation changes immediately,
+            // without redrawing for every mouse-move event.
+            if (visual_changed)
+                wm->flush_screen();
         }
-        if (ev.type == EV_KEY && ev.key == JK_TAB && m_active)
+        if (ev.type == EV_KEY && ev.key == JK_TAB && (m_active || m_focus))
         {
-            m_active->draw(0, m_surf);
+            if (m_active && m_active != m_focus)
+                m_active->draw(0, m_surf);
+            if (m_focus)
+            {
+                m_active = m_focus;
+                m_focus->draw(0, m_surf);
+                m_focus = NULL;
+            }
+            else
+                m_active->draw(0, m_surf);
             do
             {
                 m_active = m_active->next;
                 if (!m_active)
                     m_active = m_first;
             } while (m_active && !m_active->selectable());
-            m_active->draw(1, m_surf);
+            if (m_active)
+            {
+                if (m_active->focus_on_click())
+                    m_focus = m_active;
+                m_active->draw(1, m_surf);
+            }
         }
     }
     else
         m_active = m_grab;
 
-    if (m_active)
+    ifield *event_target = m_active;
+    if (ev.type != EV_MOUSE_MOVE && ev.type != EV_MOUSE_BUTTON && ev.mouse_wheel == 0 && !m_grab)
+    {
+        if (m_focus)
+            event_target = m_focus;
+        else if (event_target && event_target->focus_on_click())
+            event_target = NULL;
+    }
+
+    if (event_target)
     {
         if (ev.type != EV_MOUSE_MOVE && ev.type != EV_MOUSE_BUTTON)
-            m_active->handle_event(ev, m_surf, this);
+            event_target->handle_event(ev, m_surf, this);
         else
         {
-            m_active->area(x1, y1, x2, y2);
+            event_target->area(x1, y1, x2, y2);
             if (m_grab ||
                 (ev.mouse_move.x >= x1 && ev.mouse_move.y >= y1 && ev.mouse_move.x <= x2 && ev.mouse_move.y <= y2))
             {
                 if (j)
-                    m_active->handle_event(ev, m_surf, j->inm);
+                    event_target->handle_event(ev, m_surf, j->inm);
                 else
-                    m_active->handle_event(ev, m_surf, this);
+                    event_target->handle_event(ev, m_surf, this);
             }
         }
     }
@@ -647,8 +693,10 @@ void InputManager::redraw()
         m_surf = m_owner->m_surf;
     for (i = m_first; i; i = i->next)
         i->draw_first(m_surf);
-    if (m_active)
+    if (m_active && (!m_active->focus_on_click() || m_active == m_focus))
         m_active->draw(1, m_surf);
+    if (m_focus && m_focus != m_active)
+        m_focus->draw(1, m_surf);
 }
 
 InputManager::InputManager(image *screen, ifield *first)
@@ -656,6 +704,7 @@ InputManager::InputManager(image *screen, ifield *first)
     no_selections_allowed = 0;
     m_cur = NULL;
     m_grab = NULL;
+    m_focus = NULL;
     m_owner = NULL;
     m_surf = screen;
     m_active = m_first = first;
@@ -670,6 +719,7 @@ InputManager::InputManager(Jwindow *owner, ifield *first)
     no_selections_allowed = 0;
     m_cur = NULL;
     m_grab = NULL;
+    m_focus = NULL;
     m_owner = owner;
     m_surf = NULL;
     m_active = m_first = first;

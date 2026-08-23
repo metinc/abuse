@@ -59,7 +59,7 @@ class InputManager
 
   private:
     image *m_surf;
-    ifield *m_first, *m_active, *m_grab;
+    ifield *m_first, *m_active, *m_focus, *m_grab;
     Jwindow *m_cur, *m_owner;
     int no_selections_allowed;
 };
@@ -85,6 +85,10 @@ class ifield
     virtual int selectable()
     {
         return 1;
+    }
+    virtual bool focus_on_click()
+    {
+        return false;
     }
     virtual void remap(Filter *f)
     {

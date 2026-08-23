@@ -124,6 +124,10 @@ class text_field : public ifield
     virtual void draw_first(image *screen);
     virtual void draw(int active, image *screen);
     virtual void handle_event(Event &ev, image *screen, InputManager *im);
+    virtual bool focus_on_click()
+    {
+        return true;
+    }
 
     virtual ~text_field()
     {
