@@ -382,6 +382,22 @@ int net_start() // is the game starting up off the net? (i.e. -net hostname)
     return main_net_cfg && main_net_cfg->state == net_configuration::CLIENT;
 }
 
+bool net_game_active()
+{
+    return dynamic_cast<game_server *>(game_face) || dynamic_cast<game_client *>(game_face);
+}
+
+bool net_input_ready()
+{
+    return !prot || !base || base->input_state == INPUT_PROCESSING;
+}
+
+void request_net_input_resend()
+{
+    if (prot && game_face)
+        game_face->input_missing();
+}
+
 int kill_net()
 {
     DEBUG_LOG("Shutting down network");

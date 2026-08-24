@@ -365,6 +365,21 @@ int window_state(int state)
 void Game::set_state(int new_state)
 {
     int d = 0;
+    const bool entering_multiplayer_menu = new_state == MENU_STATE && current_level && net_game_active();
+    if (entering_multiplayer_menu)
+    {
+        // Release gameplay keys on every peer before menu navigation takes
+        // ownership of local input.
+        for (int key = 0; key < JK_KEY_COUNT; ++key)
+        {
+            if (key_down(key))
+                pending_input_events.push_back(
+                    {static_cast<uint8_t>(key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
+                     static_cast<uint8_t>(key >= 256 ? key - 256 : key)});
+        }
+        last_demo_mbut = 0;
+        multiplayer_menu_last_resend = SDL_GetTicks();
+    }
     reset_keymap(); // we think all the keys are up right now
 
     if (playing_state(new_state) && !playing_state(state))
@@ -383,7 +398,8 @@ void Game::set_state(int new_state)
         first_view = player_list;
         d = 1;
     }
-    else if (!playing_state(new_state) && (playing_state(state) || state == START_STATE))
+    else if (!entering_multiplayer_menu && !playing_state(new_state) &&
+             (playing_state(state) || state == START_STATE))
     {
         if (player_list)
         {
@@ -2090,13 +2106,58 @@ void net_receive()
     }
 }
 
-void Game::Step()
+bool Game::multiplayer_menu_active() const
 {
-    //AR virtual crosshair inside a circle, solves atan2(axisy,axisx) aiming dead zone problems
-    static float aimx = 0, aimy = 0;
+    return state == MENU_STATE && current_level && net_game_active();
+}
 
+void Game::run_multiplayer_menu_tick()
+{
+    if (!multiplayer_menu_active())
+        return;
+
+    // The menu must stay interactive even while lockstep is waiting. Pump the
+    // sockets first and only consume a tick once its authoritative packet is
+    // complete; net_receive() is deliberately blocking in normal gameplay.
+    service_net_request();
+    if (!multiplayer_menu_active())
+        return;
+    if (!net_input_ready())
+    {
+        const uint64_t now = SDL_GetTicks();
+        if (now - multiplayer_menu_last_resend >= 250)
+        {
+            request_net_input_resend();
+            multiplayer_menu_last_resend = now;
+        }
+        return;
+    }
+
+    net_receive();
+    if (!multiplayer_menu_active())
+        return;
+
+    if (req_name[0])
+    {
+        load_level(req_name);
+        req_name[0] = 0;
+    }
+
+    net_send();
+    service_net_request();
+    if (!multiplayer_menu_active())
+        return;
+
+    prepare_world_tick();
+    advance_world_tick();
+    multiplayer_menu_last_resend = SDL_GetTicks();
+    if (req_end)
+        set_state(RUN_STATE);
+}
+
+void Game::prepare_world_tick()
+{
     settings.player_touching_console = false;
-
     LSpace::Tmp.Clear();
     if (current_level)
     {
@@ -2138,6 +2199,23 @@ void Game::Step()
             }
         }
     }
+}
+
+void Game::advance_world_tick()
+{
+    if (!current_level)
+        return;
+    ambient_ramp = 0;
+    current_level->tick();
+    sbar.step();
+}
+
+void Game::Step()
+{
+    //AR virtual crosshair inside a circle, solves atan2(axisy,axisx) aiming dead zone problems
+    static float aimx = 0, aimy = 0;
+
+    prepare_world_tick();
 
     if (state == RUN_STATE)
     {
@@ -2149,18 +2227,21 @@ void Game::Step()
                 set_state(MENU_STATE);
                 set_key_down(JK_ESC, 0);
             }
-            ambient_ramp = 0;
-            // the_game->UpdateViews();
-
             cache.prof_poll_start();
-            current_level->tick();
-            sbar.step();
+            advance_world_tick();
         }
         else
             dev_scroll();
     }
     else if (state == MENU_STATE)
     {
+        // The outer loop has already consumed the authoritative packet and
+        // sent input for the next tick before entering Step().  Multiplayer
+        // must advance that consumed tick here as well; otherwise the nested
+        // menu loop sends the next packet with the same tick number and both
+        // peers wait forever while rejecting each other's stale packets.
+        if (multiplayer_menu_active())
+            advance_world_tick();
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 

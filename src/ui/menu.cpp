@@ -609,10 +609,18 @@ void main_menu()
 
     int stop_menu = 0;
     time_marker start;
+    Uint64 last_multiplayer_update = SDL_GetTicks();
     wm->flush_screen();
     do
     {
         time_marker new_time;
+
+        if (the_game->multiplayer_menu_active() &&
+            SDL_GetTicks() - last_multiplayer_update >= settings.physics_update)
+        {
+            the_game->run_multiplayer_menu_tick();
+            last_multiplayer_update = SDL_GetTicks();
+        }
 
         if (wm->IsPending())
         {
@@ -639,7 +647,7 @@ void main_menu()
         {
             if (audio_settings_window)
                 start.get_time();
-            else if (settings.menu_demos)
+            else if (settings.menu_demos && !the_game->multiplayer_menu_active())
             {
                 if (!current_demo)
                 {

@@ -378,9 +378,9 @@ void view::get_input()
     int sug_x = 0, sug_y = 0, sug_b1 = 0, sug_b2 = 0, sug_b3 = 0, sug_b4 = 0;
     ivec2 sug_p(0, 0);
 
-    if (chat && chat->showing())
+    if ((chat && chat->showing()) || (the_game && the_game->multiplayer_menu_active()))
     {
-        // Keep the aim fixed while the pointer is being used by the chat UI.
+        // Keep the player idle and the aim fixed while UI owns the controls.
         sug_p = ivec2(pointer_x, pointer_y);
     }
     else
