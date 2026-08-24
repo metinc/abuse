@@ -339,7 +339,7 @@
 
 					     (request_level_load (nth current_net_level net_levels))))
 
-				       (create_dead_parts cop_dead_parts (* (get_dead_part from) 3) (player_number))
+				       (create_dead_parts cop_dead_parts (* (get_dead_part from) 3) (get_object_tint))
 				       (play_sound (aref PLAYER_DEATH (random 4)) 127 (x) (y)))
 				   (if (> amount 8)
 				       (play_sound (aref PLAYER_PAIN (random 4)) 127 (x) (y)))))))
