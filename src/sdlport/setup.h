@@ -51,7 +51,8 @@ class Settings
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     std::string language;
-    int player_skin;
+    int player_lower_skin;
+    int player_upper_skin;
     //
 
     std::string quick_load; //quick load

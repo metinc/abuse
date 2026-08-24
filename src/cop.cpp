@@ -810,6 +810,7 @@ void *top_draw()
             bot->state == end_run_jump)
         {
             int oldy = o->y;
+            const int upper_tint = controller ? controller->get_upper_tint() : bot->get_tint();
             o->x = bot->x;
             if (bot->direction < 0)
                 o->x += 4;
@@ -818,12 +819,12 @@ void *top_draw()
             void *ret = NULL;
             PtrRef r1(ret);
 
-            push_onto_list(LNumber::Create(bot->get_tint()), ret);
+            push_onto_list(LNumber::Create(upper_tint), ret);
 
             if (bot->lvars[special_power] == SNEAKY_POWER)
             {
                 if (bot->lvars[used_special_power] == 0)
-                    player_draw(top_just_fired, bot->get_tint());
+                    player_draw(top_just_fired, upper_tint);
                 else if (bot->lvars[used_special_power] < 15)
                     o->draw_trans(bot->lvars[used_special_power], 16);
                 else

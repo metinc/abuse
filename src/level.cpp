@@ -1745,7 +1745,9 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
                 for (v = player_list; v; v = v->next)
                 {
                     if (!strcmp(find_name, "view.tint"))
-                        v->set_tint(v->local_player() ? settings.player_skin : v->player_number);
+                        v->set_tint(v->local_player() ? settings.player_lower_skin : v->player_number);
+                    else if (!strcmp(find_name, "view.upper_tint"))
+                        v->set_upper_tint(v->local_player() ? settings.player_upper_skin : v->get_tint());
                     else
                         v->set_view_var_value(i, 0);
                 }

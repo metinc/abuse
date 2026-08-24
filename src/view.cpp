@@ -312,7 +312,8 @@ view::view(game_object *focus, view *Next, int number)
         weapons[0] = 0;
     if (local_player())
         sbar.associate(this);
-    set_tint(local_player() ? settings.player_skin : number);
+    set_tint(local_player() ? settings.player_lower_skin : number);
+    set_upper_tint(local_player() ? settings.player_upper_skin : number);
     if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
         set_team(0);
     else
@@ -1074,10 +1075,11 @@ enum
     V_LAST_LAST_X,
     V_LAST_LAST_Y,
     V_FREEZE_TIME,
-    V_TINT
+    V_TINT,
+    V_UPPER_TINT
 };
 
-#define TVV (V_TINT + 1)
+#define TVV (V_UPPER_TINT + 1)
 
 static char const *vv_names[TVV] = {"view.cx1",
                                     "view.cy1",
@@ -1123,7 +1125,8 @@ static char const *vv_names[TVV] = {"view.cx1",
                                     "view.last_last_x",
                                     "view.last_last_y",
                                     "view.freeze_time",
-                                    "view.tint"};
+                                    "view.tint",
+                                    "view.upper_tint"};
 
 int total_view_vars()
 {
@@ -1271,6 +1274,9 @@ int32_t view::get_view_var_value(int num)
     case V_TINT:
         return get_tint();
         break;
+    case V_UPPER_TINT:
+        return get_upper_tint();
+        break;
     }
     return 0;
 }
@@ -1410,12 +1416,18 @@ int32_t view::set_view_var_value(int num, int32_t x)
         pointer_y = x;
         break;
     case V_TINT:
-        if (local_player() &&
-            (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
-             main_net_cfg->state == net_configuration::RESTART_SINGLE))
-            set_tint(settings.player_skin);
+        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+            set_tint(settings.player_lower_skin);
         else
             set_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
+        break;
+    case V_UPPER_TINT:
+        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+            set_upper_tint(settings.player_upper_skin);
+        else
+            set_upper_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_LAST_LAST_X:
         break;
@@ -1635,6 +1647,16 @@ void view::set_tint(int tint)
 int view::get_tint()
 {
     return _tint;
+}
+
+void view::set_upper_tint(int tint)
+{
+    _upper_tint = std::clamp(tint, 0, PLAYER_SKIN_COUNT - 1);
+}
+
+int view::get_upper_tint() const
+{
+    return _upper_tint;
 }
 
 void view::set_team(int team)
