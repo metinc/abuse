@@ -784,6 +784,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
         player_list = new player_client(f, join_array[client_id].name, sock, from, player_list);
 
+        cache.sfx(cache.reg("sfx/endlvl02.wav", "player_join", SPEC_EXTERN_SFX, 1))->play(sfx_volume * 0.3f);
         DEBUG_LOG("Client %d successfully added", client_id);
         return 1;
     }
