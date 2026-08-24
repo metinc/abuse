@@ -36,6 +36,7 @@
 #include "sdlport/setup.h"
 
 #include <string>
+#include <vector>
 
 /*
  
@@ -61,6 +62,107 @@ extern char lsf[256]; // Level file name
 int local_client_number = 0; // Client ID (0 = server)
 join_struct *join_array = NULL; // Array of joining clients
 extern Settings settings;
+
+namespace
+{
+constexpr int ID_NET_KICK_PLAYER_FIRST = 0x7e00;
+constexpr int ID_NET_KICK_PLAYER_END = ID_NET_KICK_PLAYER_FIRST + MAX_JOINERS;
+
+struct player_status_row
+{
+    int client_id;
+    info_field *field;
+};
+
+std::string player_status_text(char const *name, std::uint64_t milliseconds_since_packet)
+{
+    char text[256];
+    const std::uint64_t display_ms = std::min<std::uint64_t>(milliseconds_since_packet, 9999999999ULL);
+    snprintf(text, sizeof(text), "%s  %10llu ms", name, static_cast<unsigned long long>(display_ms));
+    return text;
+}
+
+std::string player_status_text(game_server::client_status const &status)
+{
+    return player_status_text(status.name.c_str(), status.milliseconds_since_packet);
+}
+
+Jwindow *create_player_status_window(game_server *server, std::vector<player_status_row> &rows, char const *message,
+                                     char const *title)
+{
+    const std::vector<game_server::client_status> statuses = server->client_statuses();
+    const int row_height = wm->font()->Size().y + 7;
+    const int kick_x = wm->font()->Size().x * 34;
+    ifield *fields = new info_field(0, 0, ID_NULL, message, nullptr);
+    fields = new info_field(0, row_height, ID_NULL, symbol_str("last_packet_age"), fields);
+
+    rows.clear();
+    int y = row_height * 2;
+    for (game_server::client_status const &status : statuses)
+    {
+        const std::string text = player_status_text(status);
+        info_field *field = new info_field(0, y + 3, ID_NULL, text.c_str(), fields);
+        fields = new button(kick_x, y, ID_NET_KICK_PLAYER_FIRST + status.client_id, symbol_str("kick_player"), field);
+        rows.push_back({status.client_id, field});
+        y += row_height;
+    }
+
+    Jwindow *window = wm->CreateWindow(ivec2(0), ivec2(-1), fields, title);
+    wm->move_window(window, std::max(0, (xres - window->m_size.x) / 2),
+                    std::max(0, (yres - window->m_size.y) / 2));
+    return window;
+}
+
+Jwindow *create_client_status_window(game_client *client, info_field *&status_field, char const *message,
+                                     char const *title)
+{
+    const int row_height = wm->font()->Size().y + 7;
+    ifield *fields = new info_field(0, 0, ID_NULL, message, nullptr);
+    fields = new info_field(0, row_height, ID_NULL, symbol_str("last_packet_age"), fields);
+    const std::string text = player_status_text(symbol_str("host_player"), client->milliseconds_since_last_packet());
+    status_field = new info_field(0, row_height * 2 + 3, ID_NULL, text.c_str(), fields);
+
+    Jwindow *window = wm->CreateWindow(ivec2(0), ivec2(-1), status_field, title);
+    wm->move_window(window, std::max(0, (xres - window->m_size.x) / 2),
+                    std::max(0, (yres - window->m_size.y) / 2));
+    return window;
+}
+
+void refresh_client_status_window(Jwindow *window, game_client *client, info_field *status_field)
+{
+    const std::string text = player_status_text(symbol_str("host_player"), client->milliseconds_since_last_packet());
+    status_field->change_text(text.c_str());
+    window->redraw();
+    wm->flush_screen();
+}
+
+bool refresh_player_status_window(Jwindow *window, game_server *server,
+                                  std::vector<player_status_row> const &rows)
+{
+    const std::vector<game_server::client_status> statuses = server->client_statuses();
+    if (statuses.size() != rows.size())
+        return false;
+    for (player_status_row const &row : rows)
+    {
+        bool found = false;
+        for (game_server::client_status const &status : statuses)
+        {
+            if (status.client_id == row.client_id)
+            {
+                const std::string text = player_status_text(status);
+                row.field->change_text(text.c_str());
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return false;
+    }
+    window->redraw();
+    wm->flush_screen();
+    return true;
+}
+}
 
 int net_init(int argc, char **argv)
 {
@@ -810,17 +912,21 @@ void net_reload()
             base->mem_lock = 0;
 
             DEBUG_LOG("Creating resync window");
-            Jwindow *j = wm->CreateWindow(
-                ivec2(0, yres / 2), ivec2(-1),
-                new info_field(0, 0, 0, symbol_str("resync"),
-                               new button(0, wm->font()->Size().y + 5, ID_NET_DISCONNECT, symbol_str("slack"), NULL)),
-                symbol_str("hold!"));
+            game_server *host_server = dynamic_cast<game_server *>(game_face);
+            std::vector<player_status_row> player_rows;
+            Jwindow *j;
+            if (host_server)
+                j = create_player_status_window(host_server, player_rows, symbol_str("resync"), symbol_str("hold!"));
+            else
+                j = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1),
+                                     new info_field(0, 0, 0, symbol_str("resync"), NULL), symbol_str("hold!"));
 
             wm->flush_screen();
 
             if (!reload_start())
             {
                 DEBUG_LOG("Reload start failed");
+                wm->close_window(j);
                 return;
             }
 
@@ -830,17 +936,28 @@ void net_reload()
             do
             {
                 service_net_request();
+                if (host_server && !refresh_player_status_window(j, host_server, player_rows))
+                {
+                    wm->close_window(j);
+                    j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
+                                                    symbol_str("hold!"));
+                }
                 if (wm->IsPending())
                 {
                     Event ev;
                     do
                     {
                         wm->get_event(ev);
-                        if (ev.type == EV_MESSAGE && ev.message.id == ID_NET_DISCONNECT)
+                        if (ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
+                            ev.message.id < ID_NET_KICK_PLAYER_END)
                         {
-                            DEBUG_LOG("Disconnect requested during reload");
-                            game_face->end_reload(1);
-                            base->input_state = INPUT_PROCESSING;
+                            const int client_id = ev.message.id - ID_NET_KICK_PLAYER_FIRST;
+                            if (host_server->kick_client(client_id))
+                            {
+                                wm->close_window(j);
+                                j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
+                                                                symbol_str("hold!"));
+                            }
                         }
                     } while (wm->IsPending());
 
@@ -897,6 +1014,10 @@ int get_inputs_from_server(unsigned char *buf)
         time_marker start;
         int total_retry = 0;
         Jwindow *abort = NULL;
+        game_server *host_server = dynamic_cast<game_server *>(game_face);
+        game_client *network_client = dynamic_cast<game_client *>(game_face);
+        std::vector<player_status_row> player_rows;
+        info_field *client_status_field = nullptr;
 
         // One lockstep tick normally costs a round trip. Give it a reasonable
         // loss-detection window before adding reliable resend traffic.
@@ -926,27 +1047,46 @@ int get_inputs_from_server(unsigned char *buf)
                 if (total_retry == disconnect_prompt_retries)
                 {
                     DEBUG_LOG("Connection appears dead, showing abort dialog");
-                    abort = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1, wm->font()->Size().y * 4),
-                                             new info_field(0, 0, 0, symbol_str("waiting"),
-                                                            new button(0, wm->font()->Size().y + 5, ID_NET_DISCONNECT,
-                                                                       symbol_str("slack"), NULL)),
-                                             symbol_str("Error"));
+                    if (host_server)
+                    {
+                        abort = create_player_status_window(host_server, player_rows, symbol_str("waiting"),
+                                                            symbol_str("Error"));
+                    }
+                    else if (network_client)
+                        abort = create_client_status_window(network_client, client_status_field,
+                                                            symbol_str("waiting"), symbol_str("Error"));
                     wm->flush_screen();
                 }
             }
             if (abort)
             {
+                if (host_server)
+                {
+                    if (!refresh_player_status_window(abort, host_server, player_rows))
+                    {
+                        wm->close_window(abort);
+                        abort = create_player_status_window(host_server, player_rows, symbol_str("waiting"),
+                                                            symbol_str("Error"));
+                    }
+                }
+                else if (network_client)
+                    refresh_client_status_window(abort, network_client, client_status_field);
                 if (wm->IsPending())
                 {
                     Event ev;
                     do
                     {
                         wm->get_event(ev);
-                        if (ev.type == EV_MESSAGE && ev.message.id == ID_NET_DISCONNECT)
+                        if (ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
+                            ev.message.id < ID_NET_KICK_PLAYER_END)
                         {
-                            DEBUG_LOG("User requested disconnect");
-                            kill_slackers();
-                            base->input_state = INPUT_PROCESSING;
+                            const int client_id = ev.message.id - ID_NET_KICK_PLAYER_FIRST;
+                            if (host_server->kick_client(client_id) && base->input_state != INPUT_PROCESSING)
+                            {
+                                wm->close_window(abort);
+                                abort = create_player_status_window(host_server, player_rows, symbol_str("waiting"),
+                                                                    symbol_str("Error"));
+                            }
                         }
                     } while (wm->IsPending());
 

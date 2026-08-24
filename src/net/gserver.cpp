@@ -80,6 +80,43 @@ int game_server::total_players()
     return total;
 }
 
+std::vector<game_server::client_status> game_server::client_statuses()
+{
+    const std::uint64_t now = SDL_GetTicksNS();
+    std::vector<client_status> statuses;
+    for (player_client *client = player_list; client; client = client->next)
+    {
+        if (!client->delete_me())
+        {
+            const std::uint64_t elapsed = now >= client->last_packet_ticks ? now - client->last_packet_ticks : 0;
+            statuses.push_back({client->client_id, client->name, elapsed / 1000000});
+        }
+    }
+    return statuses;
+}
+
+bool game_server::kick_client(int client_id)
+{
+    for (player_client *client = player_list; client; client = client->next)
+    {
+        if (client->client_id == client_id && !client->delete_me())
+        {
+            DEBUG_LOG("Host is kicking client %d", client_id);
+            client->set_delete_me(1);
+            if (base->input_state == INPUT_RELOAD)
+            {
+                if (client->wait_reload())
+                    client->set_wait_reload(0);
+                check_reload_wait();
+            }
+            else
+                check_collection_complete();
+            return true;
+        }
+    }
+    return false;
+}
+
 // Keep every multiplayer game in a shared lobby until the host starts it.
 void game_server::game_start_wait()
 {
@@ -204,6 +241,15 @@ void game_server::send_lobby_start()
         if (!client->delete_me() && client->comm->write(/* server_lobby_start */ &command, 1) != 1)
             client->set_delete_me(1);
     }
+}
+
+game_server::player_client::player_client(int client_id, char const *name, net_socket *comm,
+                                         net_address *data_address, player_client *next)
+    : flags(0), client_id(client_id), name(name ? name : ""), last_packet_ticks(SDL_GetTicksNS()), comm(comm),
+      data_address(data_address), next(next)
+{
+    set_wait_input(1);
+    comm->read_selectable();
 }
 
 game_server::player_client::~player_client()
@@ -343,6 +389,8 @@ int game_server::process_client_command(player_client *c)
         return 0;
     }
 
+    c->last_packet_ticks = SDL_GetTicksNS();
+
     DEBUG_LOG("Processing command %d from client %d", cmd, c->client_id);
 
     switch (cmd)
@@ -456,6 +504,7 @@ int game_server::process_net()
 
                     if (found)
                     {
+                        found->last_packet_ticks = SDL_GetTicksNS();
                         if (base->current_tick == use->tick_received())
                         {
                             if (base->input_state != INPUT_RELOAD)
@@ -733,7 +782,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         join_array[client_id].client_id = client_id;
         join_array[client_id].skin = static_cast<uint8_t>(std::clamp<int>(skin, 0, PLAYER_SKIN_COUNT - 1));
         copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
-        player_list = new player_client(f, sock, from, player_list);
+        player_list = new player_client(f, join_array[client_id].name, sock, from, player_list);
 
         DEBUG_LOG("Client %d successfully added", client_id);
         return 1;

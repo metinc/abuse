@@ -6,6 +6,10 @@
 #include "sock.h"
 #include "ghandler.h"
 
+#include <cstdint>
+#include <string>
+#include <vector>
+
 class game_server : public game_handler
 {
     class player_client
@@ -78,16 +82,13 @@ class game_server : public game_handler
         }
 
         int client_id;
+        std::string name;
+        std::uint64_t last_packet_ticks;
         net_socket *comm;
         net_address *data_address;
         player_client *next;
-        player_client(int client_id, net_socket *comm, net_address *data_address, player_client *next)
-            : client_id(client_id), comm(comm), data_address(data_address), next(next)
-        {
-            flags = 0;
-            set_wait_input(1);
-            comm->read_selectable();
-        };
+        player_client(int client_id, char const *name, net_socket *comm, net_address *data_address,
+                      player_client *next);
         ~player_client();
     };
 
@@ -105,8 +106,17 @@ class game_server : public game_handler
     int isa_client(int client_id);
 
   public:
+    struct client_status
+    {
+        int client_id;
+        std::string name;
+        std::uint64_t milliseconds_since_packet;
+    };
+
     virtual void game_start_wait();
     int total_players();
+    std::vector<client_status> client_statuses();
+    bool kick_client(int client_id);
     int process_net();
     void add_engine_input();
     int input_missing();
