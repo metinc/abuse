@@ -507,10 +507,9 @@ int MultiplayerUI::get_options(int server, bool online_join)
         b->add_button(new button(0, 0, MIN_5, "5", NULL));
         b->add_button(new button(0, 0, MIN_4, "4", NULL));
         b->add_button(new button(0, 0, MIN_3, "3", NULL));
-        button *r = new button(0, 0, MIN_2, "2", NULL);
-        r->push();
-        b->add_button(r);
+        b->add_button(new button(0, 0, MIN_2, "2", NULL));
         b->add_button(new button(0, 0, MIN_1, "1", NULL));
+        static_cast<button *>(b->find(MIN_1 + config.min_players - 1))->push();
         b->arrange_left_right();
         list = b;
         b->area(bx1, by1, bx2, by2);
@@ -522,15 +521,14 @@ int MultiplayerUI::get_options(int server, bool online_join)
         max_lbl->area(ax1, ay1, ax2, ay2);
         left_y = ay2 + 1;
         b = new button_box(left_x, left_y, NET_MAX, 1, NULL, list);
-        button *q = new button(0, 0, MAX_8, "8", NULL);
-        q->push();
-        b->add_button(q);
+        b->add_button(new button(0, 0, MAX_8, "8", NULL));
         b->add_button(new button(0, 0, MAX_7, "7", NULL));
         b->add_button(new button(0, 0, MAX_6, "6", NULL));
         b->add_button(new button(0, 0, MAX_5, "5", NULL));
         b->add_button(new button(0, 0, MAX_4, "4", NULL));
         b->add_button(new button(0, 0, MAX_3, "3", NULL));
         b->add_button(new button(0, 0, MAX_2, "2", NULL));
+        static_cast<button *>(b->find(MAX_2 + config.max_players - 2))->push();
         b->arrange_left_right();
         list = b;
         b->area(bx1, by1, bx2, by2);
@@ -643,6 +641,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
                         config.online = selected && selected->id == CONNECTION_ONLINE;
                     }
                     read_streamer_mode(&inm, config);
+                    config.min_players = ((ifield *)inm.get(NET_MIN)->read())->id - MIN_1 + 1;
+                    config.max_players = ((ifield *)inm.get(NET_MAX)->read())->id - MAX_2 + 2;
 
                     // Game mode changed - update the mode and restart dialog
                     if (ev.message.id == GAMEMODE_COOP)
