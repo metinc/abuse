@@ -504,7 +504,7 @@ void view::add_chat_key(int key) // return string if buf is complete
         {
             chat_text = "giveall DONE";
 
-            for (int i = 0; i < total_weapons - 1; i++)
+            for (int i = 0; i < total_weapons; i++)
                 weapons[i] = 999;
             sbar.redraw(main_screen);
 
