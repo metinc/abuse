@@ -1,9 +1,9 @@
 ;; Copyright 1995 Crack dot Com,  All Rights reserved
 ;; See licensing information for more details on usage rights
 
-(defun explo_light ()
+(defun colored_explo_light (color)
   (select (aistate)
-	  (0 (progn (link_light (add_light 0 (x) (y) 1 (aitype) 0 0))
+	  (0 (progn (link_light (add_light 0 (x) (y) 1 (aitype) 0 0 color))
 		    (go_state 1)))
 	  (1 (let ((l (get_light 0))
 		   (intensity (- 63 (* (state_time) 9))))
@@ -12,6 +12,9 @@
 			  nil)
 		 (progn (set_light_intensity l intensity)
 			T))))))
+
+(defun explo_light () (colored_explo_light 0))
+(defun cyan_explo_light () (colored_explo_light 7))
 
 (defun do_small_explo (radius amount)
   (add_object EXPLODE3 (+ (x) (random 5)) (+ (y) (random 5)) 0)
@@ -48,9 +51,30 @@
       nil)
 
 
+(defun do_cyan_explo (radius amount)
+      (play_sound GRENADE_SND 127 (x) (y))
+      (let ((ex (+ (x) (random 10)))
+	    (ey (+ (+ (random 10) (y)) -20)))
+	(add_object EXPLODE8 ex ey 0)
+	(if (not (frame_panic))
+	    (add_object EXP_LIGHT_CYAN ex ey 100)))
+      (hurt_radius (x) (y) radius amount (if (> (total_objects) 0)
+					     (get_object 0)
+					   nil) 20)
+      nil)
+
+
 
 (def_char EXP_LIGHT
   (funs (ai_fun   explo_light)
+	(draw_fun dev_draw))
+  (flags (unlistable T))
+  (range 10000 10000)
+  (states "art/misc.spe"
+	  (stopped           "lhold")))
+
+(def_char EXP_LIGHT_CYAN
+  (funs (ai_fun   cyan_explo_light)
 	(draw_fun dev_draw))
   (flags (unlistable T))
   (range 10000 10000)
@@ -68,6 +92,14 @@
   (if (eq (aitype) 0)
       (middle_draw)))
 
+(defun firebomb_flame_ai ()
+  (let ((alive (next_picture)))
+    (if (> (total_lights) 0)
+	(if alive
+	    (flicker_light (get_light 0) (- 32 (* (state_time) 3)) 4 42 3)
+	  (delete_light (get_light 0))))
+    alive))
+
 (defun def_explo (symbol file seq_name last_frame)
   (eval (list 'def_char symbol
 	      '(funs (ai_fun   exp_ai)
@@ -80,6 +112,14 @@
 
 (def_explo 'EXPLODE1 "art/exp1.spe"    "fire"         7)
 
+(def_char FIREBOMB_FLAME
+  (funs (ai_fun   firebomb_flame_ai)
+	(draw_fun exp_draw))
+  (range 10000 10000)
+  (flags (add_front T)
+	 (unlistable T))
+  (states "art/exp1.spe" (stopped (seq "fire" 1 7))))
+
 (def_explo 'EXPLODE2 "art/blowups.spe" "b1"           7)
 (def_explo 'EXPLODE3 "art/blowups.spe" "b2"           7)
 (def_explo 'EXPLODE4 "art/blowups.spe" "b3"           7)
@@ -91,8 +131,4 @@
 (def_explo 'CLOUD "art/cloud.spe" "cloud"             5)
 (def_explo 'SMALL_DARK_CLOUD "art/cloud.spe" "smo2"   5)
 (def_explo 'SMALL_LIGHT_CLOUD "art/cloud.spe" "smo1"  5)
-
-
-
-
 

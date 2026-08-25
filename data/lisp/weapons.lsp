@@ -42,7 +42,9 @@
 
 (defun firebomb_ai ()
 
-  (add_object EXPLODE1 (- (x) (random 5)) (+ (y) (random 20)) 0)
+  (with_object (add_object FIREBOMB_FLAME (- (x) (random 5)) (+ (y) (random 20)) 0)
+    (let ((light (link_weapon_point_light 8 42 32)))
+	(flicker_light light 32 4 42 3)))
   (hurt_radius (x) (y) 60 40 (if (> (total_objects) 0) (get_object 0) nil) 10)
 
   (and (or (< (state_time) 3) (not (eq (xvel) 0)))
@@ -135,6 +137,10 @@
   (list (list EXPLODE1 EXP_LIGHT)
 	(list GRENADE_SND)))
 
+(defun firebomb_cache (type)
+  (list (list FIREBOMB_FLAME)
+	(list FIREBOMB_SND)))
+
 
 (def_char GRENADE
   (funs (ai_fun   grenade_ai)
@@ -148,7 +154,7 @@
 (def_char FIREBOMB
   (funs (ai_fun   firebomb_ai)
 	(user_fun firebomb_ufun)
-	(get_cache_list_fun grenade_cache)
+	(get_cache_list_fun firebomb_cache)
 	(draw_fun fb_draw))
   (abilities (walk_top_speed  20)
 	     (run_top_speed   20))
@@ -571,6 +577,15 @@
     (atan2 (- (y) py 4)
 	   (- px (x)))))
 
+
+(defun dfris_draw ()
+  (if (> (total_lights) 0)
+      (let ((light (get_light 0)))
+	(set_light_x light (x))
+	(set_light_y light (y))))
+  (draw))
+
+
 (defun dfris_ai ()
   (if (and (eq 0 (mod (game_tick) 2)) (not (frame_panic)))
       (let ((rand (rand_on)))
@@ -588,9 +603,16 @@
 							     (+ mex 7)
 							     (+ mey 7) bad_guy_list))))
       (progn
-	(do_white_explo 40 45)
+	(if (> (total_lights) 0)
+	    (delete_light (get_light 0)))
+	(do_cyan_explo 40 45)
 	nil)
     (progn
+      (if (> (total_lights) 0)
+	  (let ((light (get_light 0)))
+	    (set_light_x light (x))
+	    (set_light_y light (y))
+	    (flicker_light light 42 20 24 5)))
       (next_picture)
       (if (> (with_object (get_object 0) (total_objects)) 0)
 	  (let ((player_angle (get_fris_angle)))
@@ -606,12 +628,13 @@
 
 
 (defun dfris_cache (type)
-  (list (list EXPLODE8 EXP_LIGHT)
+  (list (list EXPLODE8 EXP_LIGHT_CYAN)
 	(list GRENADE_SND)))
 
 (def_char DFRIS_BULLET
   (funs (ai_fun   dfris_ai)
-	(get_cache_list_fun dfris_cache))
+	(get_cache_list_fun dfris_cache)
+	(draw_fun dfris_draw))
   (range 10000 10000)
   (flags (unlistable T)
 	 (add_front T))

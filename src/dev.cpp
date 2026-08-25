@@ -1412,7 +1412,7 @@ void dev_controll::toggle_light_window()
                                    0, bh * 4 + th * 2, DEV_LIGHTR1, "R1", "******", prop->getd("light create r1", 1),
                                    new text_field(0, bh * 4 + th * 3, DEV_LIGHTR2, "R2", "******",
                                                   prop->getd("light create r2", 100),
-                                                  new text_field(0, bh * 4 + th * 4, DEV_LIGHT_TINT, "Color 0-7", "*",
+                                                  new text_field(0, bh * 4 + th * 4, DEV_LIGHT_TINT, "Color 0-8", "*",
                                                                  prop->getd("light create tint", 0), NULL)))))),
         symbol_str("l_light"));
 }
@@ -2143,7 +2143,7 @@ void dev_controll::handle_event(Event &ev)
                                         0, bh + th * 2, DEV_LEDIT_R1, "R1", "******", (int)(edit_light->inner_radius),
                                         new text_field(0, bh + th * 3, DEV_LEDIT_R2, "R2", "******",
                                                        (int)(edit_light->outer_radius),
-                                                       new text_field(0, bh + th * 4, DEV_LEDIT_TINT, "Color 0-7", "*",
+                                                       new text_field(0, bh + th * 4, DEV_LEDIT_TINT, "Color 0-8", "*",
                                                                       edit_light->tint, NULL)))))));
                 }
                 else if (ev.window == NULL)
