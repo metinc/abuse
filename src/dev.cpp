@@ -37,7 +37,6 @@
 #include "lisp_gc.h"
 #include "demo.h"
 #include "profile.h"
-#include "ui/sbar.h"
 #include "compiled.h"
 #include "ui/chat.h"
 
@@ -1032,49 +1031,6 @@ void dev_controll::do_command(char const *command, Event &ev)
                        figures[o->otype]->rangey);
                 o = o->next_active;
             }
-        }
-    }
-
-    if (!strcmp(fword, "clear_weapons"))
-    {
-        view *f = NULL;
-        for (f = player_list; f; f = f->next)
-        {
-            int i;
-            for (i = 0; i < total_weapons; i++)
-                f->weapons[i] = -1;
-
-            if (total_weapons)
-                f->weapons[0] = 0;
-        }
-    }
-
-    if (!strcmp(fword, "reload"))
-    {
-        if (current_level && player_list && player_list->m_focus)
-        {
-            edit_object = selected_object = NULL;
-            int32_t cx = player_list->m_focus->x, cy = player_list->m_focus->y;
-
-            // save the old weapon array
-            int32_t *w = (int32_t *)malloc(total_weapons * sizeof(int32_t));
-            memcpy(w, player_list->weapons, total_weapons * sizeof(int32_t));
-
-            char tmp[100];
-            strcpy(tmp, current_level->name());
-            the_game->load_level(tmp);
-            current_level->unactivate_all();
-
-            if (main_screen) // don't draw if graphics haven't been setup yet.
-                the_game->draw();
-            player_list->reset_player();
-            player_list->m_focus->x = cx;
-            player_list->m_focus->y = cy;
-
-            memcpy(player_list->weapons, w, total_weapons * sizeof(int32_t));
-            free(w);
-
-            the_game->need_refresh();
         }
     }
 
@@ -2282,12 +2238,6 @@ void dev_controll::handle_event(Event &ev)
             wm->PushMessage(ID_CANCEL); // close window
         }
         break;
-        case ID_GAME_SAVE: {
-            current_level->save("savegame.spe", 1);
-            the_game->show_help(symbol_str("saved_game"));
-            the_game->need_refresh();
-        }
-        break;
         case ID_LEVEL_SAVE: {
             if (current_level)
             {
@@ -2401,14 +2351,6 @@ void dev_controll::handle_event(Event &ev)
         }
         break;
 
-        case ID_SUSPEND: {
-            dev ^= SUSPEND_MODE;
-            if (dev & SUSPEND_MODE)
-                the_game->show_help(symbol_str("suspend_on"));
-            else
-                the_game->show_help(symbol_str("suspend_off"));
-        }
-        break;
         case ID_PLAY_MODE: {
             the_game->start_editor_playtest();
         }
@@ -2431,26 +2373,6 @@ void dev_controll::handle_event(Event &ev)
             the_game->need_refresh();
         }
         break;
-        case ID_RECORD_DEMO: {
-            if (!mess_win)
-            {
-                int h = wm->font()->Size().y + 8;
-                mess_win = wm->CreateWindow(
-                    ivec2(xres / 2, yres / 2), ivec2(-1),
-                    new text_field(0, h * 0, ID_RECORD_DEMO_FILENAME, "demo filename", "*******************",
-                                   "demo.dat",
-                                   new button(10, h * 2, ID_RECORD_DEMO_OK, symbol_str("ok_button"),
-                                              new button(40, h * 2, ID_CANCEL, symbol_str("cancel_button"), NULL))));
-            }
-        }
-        break;
-
-        case ID_RECORD_DEMO_OK: {
-            demo_man.set_state(demo_manager::RECORDING, mess_win->read(ID_RECORD_DEMO_FILENAME));
-            wm->PushMessage(ID_CANCEL); // close window
-        }
-        break;
-
         case ID_PLAY_DEMO: {
             if (!mess_win)
             {
@@ -2572,35 +2494,6 @@ void dev_controll::handle_event(Event &ev)
             char const *s = name;
             leval(LObject::Compile(s));
             wm->PushMessage(ID_CANCEL); // close window
-        }
-        break;
-        case ID_TOGGLE_DELAY: {
-            the_game->toggle_delay();
-            break;
-        }
-        break;
-
-        case ID_SMALL_MODE: {
-            make_screen_size(311, 160);
-            break;
-        }
-        break;
-        case ID_CLEAR_WEAPONS: {
-            Event ev;
-            do_command("clear_weapons", ev);
-        }
-        break;
-        case ID_GOD_MODE: {
-            for (view *v = player_list; v; v = v->next)
-            {
-                v->god = !v->god;
-                if (v->god)
-                {
-                    for (int i = 0; i < total_weapons - 1; i++)
-                        v->weapons[i] = 999;
-                    sbar.redraw(main_screen);
-                }
-            }
         }
         break;
         case ID_MOUSE_SCROLL: {
@@ -2876,18 +2769,6 @@ void dev_controll::handle_event(Event &ev)
             the_game->end_session();
             ev.type = EV_SPURIOUS;
             break;
-        case DEV_EDIT_FG:
-            dev = 1;
-            break; //the_game->draw(); break;
-        case DEV_EDIT_BG:
-            dev = 2;
-            break; //the_game->draw(); break;
-        case DEV_EDIT_FGBG:
-            dev = 3;
-            break; //the_game->draw(); break;
-        case DEV_PLAY:
-            dev = 0;
-            break; //the_game->draw(); break;
         case SHOW_FOREGROUND: {
             dev = dev ^ DRAW_FG_LAYER;
             the_game->need_refresh();
@@ -3207,9 +3088,6 @@ void dev_controll::handle_event(Event &ev)
                 }
                 break;
 
-            case 'D':
-                the_game->toggle_delay();
-                break;
             case 'L':
                 toggle_show_menu();
                 break;
@@ -3226,9 +3104,6 @@ void dev_controll::handle_event(Event &ev)
                 break;
             case ']':
                 do_command("fg_add 1", ev);
-                break;
-            case 'R':
-                do_command("reload", ev);
                 break;
             case 'w': {
                 ivec2 pos = the_game->MouseToGame(dlast);
@@ -3250,36 +3125,6 @@ void dev_controll::handle_event(Event &ev)
                 the_game->need_refresh();
             }
             break;
-            case 'j': {
-                if (current_level && player_list && player_list->m_focus)
-                {
-                    ivec2 pos = the_game->MouseToGame(dlast);
-                    player_list->m_focus->x = pos.x;
-                    player_list->m_focus->y = pos.y;
-                    do_command("center", ev);
-                    the_game->need_refresh();
-                }
-            }
-            break;
-            case 'z':
-                do_command("clear_weapons", ev);
-                break;
-            case 'Z':
-                if (dev & EDIT_MODE)
-                {
-                    view *v = the_game->GetView(last_demo_mpos);
-                    if (v)
-                    {
-                        v->god = !v->god;
-                        if (v->god)
-                        {
-                            for (int i = 0; i < total_weapons - 1; i++)
-                                v->weapons[i] = 999;
-                            sbar.redraw(main_screen);
-                        }
-                    }
-                }
-                break;
             case ' ': {
                 if (dev & EDIT_MODE)
                 {
@@ -3858,11 +3703,9 @@ static pmi filemenu[] = {{"menu1_load", ID_LEVEL_LOAD, NULL, -1},
                          {NULL, 0, NULL, -1},
                          {"menu1_save", ID_LEVEL_SAVE, NULL, -1},
                          {"menu1_saveas", ID_LEVEL_SAVEAS, NULL, -1},
-                         {"menu1_savegame", ID_GAME_SAVE, NULL, -1},
                          {"menu1_new", ID_LEVEL_NEW, NULL, -1},
                          {"menu1_resize", ID_LEVEL_RESIZE, NULL, -1},
                          {NULL, 0, NULL, -1},
-                         {"menu1_suspend", ID_SUSPEND, NULL, -1},
                          {"menu1_toggle", ID_PLAY_MODE, NULL, -1},
                          {NULL, 0, NULL, -1},
                          {"menu1_savepal", ID_EDIT_SAVE, NULL, -1},
@@ -3876,10 +3719,6 @@ static pmi editmenu[] = {{"menu2_light", ID_TOGGLE_LIGHT, NULL, -1},
                          {"menu2_scroll", ID_SET_SCROLL, NULL, -1},
                          {"menu2_center", ID_CENTER_PLAYER, NULL, -1},
                          {"menu2_addpal", ID_ADD_PALETTE, NULL, -1},
-                         {"menu2_delay", ID_TOGGLE_DELAY, NULL, -1},
-
-                         {"menu2_god", ID_GOD_MODE, NULL, -1},
-                         {"menu2_clear", ID_CLEAR_WEAPONS, NULL, -1},
                          {"menu2_mscroll", ID_MOUSE_SCROLL, &mouse_scrolling, -1},
                          {"menu2_lock", ID_LOCK_PALETTES, &palettes_locked, -1},
                          {"menu2_raise", ID_RAISE_ALL, &raise_all, -1},
@@ -3887,7 +3726,6 @@ static pmi editmenu[] = {{"menu2_light", ID_TOGGLE_LIGHT, NULL, -1},
 
                          {NULL, 0, NULL, -1},
                          {"menu2_map", ID_TOGGLE_MAP, NULL, -1},
-                         //  { "Shrink to 320x200 (F10)",    ID_SMALL_MODE,NULL,-1},
                          {"menu2_view", ID_DISABLE_VIEW_SHIFT, &view_shift_disabled, -1},
                          {"menu2_alight", ID_DISABLE_AUTOLIGHT, &disable_autolight, 'A'},
                          {"menu2_fps", ID_SHOW_FPS, &fps_on, -1},
@@ -3913,11 +3751,9 @@ static pmi filemenu[]={
       { NULL,0,NULL,-1},
       { "Save Level (S)",     ID_LEVEL_SAVE,NULL,-1},
       { "Save level as",      ID_LEVEL_SAVEAS,NULL,-1},
-      { "Save game",          ID_GAME_SAVE,NULL,-1},
       { "New level",          ID_LEVEL_NEW,NULL,-1},
       { "Resize map",         ID_LEVEL_RESIZE,NULL,-1},
       { NULL,0,NULL,-1},
-      { "Suspend non-players",ID_SUSPEND,NULL,-1},
       { "Play level (TAB)",ID_PLAY_MODE,NULL,-1},
       { NULL,0,NULL,-1},
       { "Save Palettes         ",ID_EDIT_SAVE,NULL,-1},
@@ -3934,10 +3770,6 @@ static pmi editmenu[]={
   { "Set scroll rate",            ID_SET_SCROLL,NULL,-1},
   { "Center on player   (c)",       ID_CENTER_PLAYER,NULL,-1},
   { "Add palette",                ID_ADD_PALETTE,NULL,-1},
-  { "Toggle Delays      (D)",          ID_TOGGLE_DELAY,NULL,-1},
-
-  { "God mode",                   ID_GOD_MODE,NULL,-1},
-  { "Clear weapons (z)",          ID_CLEAR_WEAPONS,NULL,-1},
   { "Mouse scroll",               ID_MOUSE_SCROLL,&mouse_scrolling,-1},
   { "Lock palette windows",       ID_LOCK_PALETTES,&palettes_locked,-1},
   { "Raise all foreground",       ID_RAISE_ALL,&raise_all,-1},
@@ -3945,14 +3777,10 @@ static pmi editmenu[]={
 
   { NULL,0,NULL,-1},
   { "Toggle map        (m)",      ID_TOGGLE_MAP,NULL,-1},
-//  { "Shrink to 320x200 (F10)",    ID_SMALL_MODE,NULL,-1},
-  { "Disable view shifts",        ID_DISABLE_VIEW_SHIFT,&view_shift_disabled,-1},
 //  { "Ultra Smooth draw (U)",      ID_INTERPOLATE_DRAW,  &interpolate_draw,'U'},
   { "Disable Autolight (A)",      ID_DISABLE_AUTOLIGHT, &disable_autolight,'A'},
   { "Show FPS/Obj count",         ID_SHOW_FPS,          &fps_on,-1},
 //  { NULL,0,NULL,-1},
-//  { "Record demo",                ID_RECORD_DEMO,NULL,-1},
-//  { "Play demo",                  ID_PLAY_DEMO,NULL,-1},
   { NULL,-1,NULL,-1}
 };
 
