@@ -42,6 +42,7 @@ RUN dnf install --assumeyes --setopt=install_weak_deps=False \
         mingw64-gcc-c++ \
         msitools \
         ninja-build \
+        perl \
         pkgconf-pkg-config \
         pulseaudio-libs-devel \
         rpm-build \

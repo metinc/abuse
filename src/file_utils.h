@@ -26,8 +26,6 @@
 #define O_RDWR 0x0002
 #endif
 
-// Map POSIX open to Windows _open
-#define open _open
 #else
 #include <sys/types.h>
 #include <sys/stat.h>
