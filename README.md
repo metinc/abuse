@@ -41,7 +41,7 @@ For custom content, there are three types to consider:
 
 ### Cheats
 
-To use cheats, press <kbd>Enter</kbd> to open the console and type the desired slash-prefixed cheat command. The mouse cursor must be inside the console window for input. Press Enter when done, or type "quit"/"exit" to close the console. Use the scrollbar, mouse wheel, or arrow keys to browse the chat history.
+Cheats are available in single-player games only. Multiplayer peers reject cheat commands. To use cheats, press <kbd>Enter</kbd> to open the console and type the desired slash-prefixed cheat command. The mouse cursor must be inside the console window for input. Press Enter when done, or type "quit"/"exit" to close the console. Use the scrollbar, mouse wheel, or arrow keys to browse the chat history.
 
 Available cheats:
 

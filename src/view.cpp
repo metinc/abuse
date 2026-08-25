@@ -55,6 +55,15 @@ extern int get_key_binding(char const *dir, int i);
 view *player_list = NULL;
 int morph_sel_frame_color;
 
+namespace
+{
+bool is_cheat_command(std::string const &command)
+{
+    return command == "/god" || command == "/giveall" || command == "/nopower" || command == "/fastpower" ||
+           command == "/flypower" || command == "/sneakypower" || command == "/healthpower";
+}
+} // namespace
+
 view::~view()
 {
     if (local_player())
@@ -487,6 +496,21 @@ void view::add_chat_key(int key) // return string if buf is complete
         {
             if (local_player() && chat && chat->showing())
                 chat->toggle();
+        }
+        else if (net_game_active() && is_cheat_command(chat_text))
+        {
+            // Chat keypresses are processed by every peer. Reject cheats here
+            // so a modified client cannot make the host apply them.
+            if (local_player() && chat)
+            {
+                char message[] = "Cheats are disabled in multiplayer";
+                chat->put_all(message);
+            }
+
+            m_chat_buf[0] = 0;
+            if (local_player() && chat)
+                chat->draw_user(m_chat_buf);
+            return;
         }
         else if (chat_text == "/god")
         {

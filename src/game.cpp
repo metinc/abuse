@@ -2167,7 +2167,9 @@ void Game::prepare_world_tick()
         {
             if (f->m_focus)
             {
-                if (settings.cheat_god)
+                // Never carry a locally enabled god-mode setting into a
+                // multiplayer simulation.
+                if (!net_game_active() && settings.cheat_god)
                     f->god = 1;
                 else
                     f->god = 0;
