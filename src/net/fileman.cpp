@@ -39,12 +39,9 @@ typedef unsigned short ushort;
 
 file_manager *fman = NULL;
 
-file_manager::file_manager(int argc, char **argv, net_protocol *proto) : proto(proto)
+file_manager::file_manager(int argc, char **argv, net_protocol *proto)
+    : default_fs(nullptr), no_security(0), nfs_list(nullptr), remote_list(nullptr), proto(proto)
 {
-    default_fs = NULL;
-    no_security = 0;
-    nfs_list = NULL;
-
     int i;
     for (i = 1; i < argc; i++)
         if (!strcmp(argv[i], "-bastard")) // this bypasses filename security features
@@ -280,6 +277,10 @@ void file_manager::add_nfs_client(net_socket *sock)
             flags |= O_CREAT | O_RDWR;
         else if (*mp == 'r')
             flags |= O_RDONLY;
+#ifdef WIN32
+        else if (*mp == 'b')
+            flags |= O_BINARY;
+#endif
         mp++;
     }
 
@@ -623,7 +624,10 @@ int file_manager::rf_close(int fd)
 {
     remote_file *rf = remote_list, *last = NULL;
     while (rf && rf->sock->get_fd() != fd)
+    {
+        last = rf;
         rf = rf->next;
+    }
     if (rf)
     {
         if (last)
