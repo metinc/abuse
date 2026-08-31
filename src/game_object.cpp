@@ -580,8 +580,14 @@ void game_object::do_flinch(game_object *from)
 void game_object::do_damage(int amount, game_object *from, int32_t hitx, int32_t hity, int32_t push_xvel,
                             int32_t push_yvel)
 {
-    // No friendly fire
-    if ((_team != -1) && (_team == from->get_team()))
+    // Projectiles keep their creator as their first linked object.  Use the
+    // creator's team when the projectile itself has no team, so indirect
+    // damage such as explosions observes the same friendly-fire rules.
+    int from_team = from->get_team();
+    if (from_team == -1 && from->total_objects() > 0)
+        from_team = from->get_object(0)->get_team();
+
+    if ((_team != -1) && (_team == from_team))
         return;
 
     void *d = figures[otype]->get_fun(OFUN_DAMAGE);
