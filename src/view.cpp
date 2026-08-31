@@ -57,6 +57,12 @@ int morph_sel_frame_color;
 
 namespace
 {
+#ifdef NDEBUG
+constexpr bool debug_cheats_enabled = false;
+#else
+constexpr bool debug_cheats_enabled = true;
+#endif
+
 bool is_cheat_command(std::string const &command)
 {
     return command == "/god" || command == "/giveall" || command == "/nopower" || command == "/fastpower" ||
@@ -497,7 +503,7 @@ void view::add_chat_key(int key) // return string if buf is complete
             if (local_player() && chat && chat->showing())
                 chat->toggle();
         }
-        else if (net_game_active() && is_cheat_command(chat_text))
+        else if (net_game_active() && !debug_cheats_enabled && is_cheat_command(chat_text))
         {
             // Chat keypresses are processed by every peer. Reject cheats here
             // so a modified client cannot make the host apply them.

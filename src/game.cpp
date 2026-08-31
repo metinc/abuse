@@ -2172,9 +2172,14 @@ void Game::prepare_world_tick()
         {
             if (f->m_focus)
             {
-                // Never carry a locally enabled god-mode setting into a
-                // multiplayer simulation.
-                if (!net_game_active() && settings.cheat_god)
+                // Release builds never carry a locally enabled god-mode
+                // setting into multiplayer. Debug builds allow it for testing.
+#ifdef NDEBUG
+                constexpr bool debug_cheats_enabled = false;
+#else
+                constexpr bool debug_cheats_enabled = true;
+#endif
+                if ((!net_game_active() || debug_cheats_enabled) && settings.cheat_god)
                     f->god = 1;
                 else
                     f->god = 0;
