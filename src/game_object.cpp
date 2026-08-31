@@ -552,12 +552,15 @@ int game_object::decide()
 int game_object::can_hurt(game_object *who)
 {
     int is_attacker = current_level->is_attacker(this);
+    int attacker_team = get_team();
+    if (attacker_team == -1 && total_objects() > 0)
+        attacker_team = get_object(0)->get_team();
 
     // it's you against them!  Damage only if it you are attacking or they are
     // attacking you, ie. don't let them hurt themselves. This can change if
     // you override this virtual function
 
-    if (who->hurtable() && ((_team == -1) || (_team != who->get_team())) &&
+    if (who->hurtable() && ((attacker_team == -1) || (attacker_team != who->get_team())) &&
         (is_attacker || current_level->is_attacker(who) || hurt_all()))
         return 1;
 

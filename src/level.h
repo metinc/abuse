@@ -258,7 +258,7 @@ class level // contain map info and objects
     int32_t total_light_links(object_node *list);
     int32_t total_object_links(object_node *save_list);
     game_object *find_object_in_area(int32_t x, int32_t y, int32_t x1, int32_t y1, int32_t x2, int32_t y2, Cell *list,
-                                     game_object *exclude);
+                                     game_object *exclude, bool hostile_only = false);
     game_object *find_object_in_angle(int32_t x, int32_t y, int32_t start_angle, int32_t end_angle, void *list,
                                       game_object *exclude);
     object_node *make_not_list(object_node *list);

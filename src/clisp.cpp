@@ -411,7 +411,8 @@ void *l_caller(LispFunc number, void *args)
         return current_object->float_tick();
     }
     break;
-    case LispFunc::FindObjectInArea: {
+    case LispFunc::FindObjectInArea:
+    case LispFunc::FindHostileObjectInArea: {
         long x1 = lnumber_value(leval(CAR(args)));
         args = CDR(args);
         long y1 = lnumber_value(leval(CAR(args)));
@@ -423,7 +424,8 @@ void *l_caller(LispFunc number, void *args)
 
         void *list = leval(CAR(args));
         game_object *find = current_level->find_object_in_area(current_object->x, current_object->y, x1, y1, x2, y2,
-                                                               list, current_object);
+                                                               list, current_object,
+                                                               number == LispFunc::FindHostileObjectInArea);
         if (find)
             return LPointer::Create(find);
         else

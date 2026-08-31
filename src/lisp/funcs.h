@@ -396,6 +396,7 @@ enum class LispFunc
     Name, // returns current object's name (for debugin)
     FloatTick,
     FindObjectInArea, // x1, y1, x2, y2  type_list
+    FindHostileObjectInArea, // x1, y1, x2, y2  type_list
     FindObjectInAngle, // start_angle end_angle type_list
     AddObjectAfter, // type, x,y (type)
     DefChar, // needs at least 2 parms

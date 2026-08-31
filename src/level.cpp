@@ -3189,7 +3189,7 @@ void level::add_all_block(game_object *who)
 }
 
 game_object *level::find_object_in_area(int32_t x, int32_t y, int32_t x1, int32_t y1, int32_t x2, int32_t y2,
-                                        Cell *list, game_object *exclude)
+                                        Cell *list, game_object *exclude, bool hostile_only)
 {
     game_object *closest = NULL;
     int32_t closest_distance = 0xfffffff, distance, xo, yo;
@@ -3199,7 +3199,8 @@ game_object *level::find_object_in_area(int32_t x, int32_t y, int32_t x1, int32_
         int32_t xp1, yp1, xp2, yp2;
         o->picture_space(xp1, yp1, xp2, yp2);
 
-        if (!(xp1 > x2 || xp2 < x1 || yp1 > y2 || yp2 < y1) && o != exclude)
+        if (!(xp1 > x2 || xp2 < x1 || yp1 > y2 || yp2 < y1) && o != exclude &&
+            (!hostile_only || exclude->can_hurt(o)))
         {
             // check to see if the type is in the list
             Cell *v = list;

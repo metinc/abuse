@@ -410,8 +410,9 @@ void *player_rocket_ufun(void *args)
                         yd = abs(p->y - o->y);
                         if (xd < 160 && yd < 130 && bad_guy_array[p->otype] && p != other)
                         {
-                            if (p->targetable() && !(p->otype == S_ROCKET && p->total_objects() &&
-                                                     p->get_object(0) == bot)) // don't track onto own missles
+                            if (bot && p->targetable() && bot->can_hurt(p) &&
+                                !(p->otype == S_ROCKET && p->total_objects() &&
+                                  p->get_object(0) == bot)) // don't track onto own missles
                             {
                                 d = xd * xd + yd * yd;
                                 if (d < cl)

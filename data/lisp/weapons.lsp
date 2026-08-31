@@ -31,10 +31,10 @@
 	       nil
 	     (let ((mex (x))
 		   (mey (y)))
-	       (not (with_object (get_object 0) (find_object_in_area (- mex 7)
-								     (- mey 7)
-								     (+ mex 7)
-								     (+ mey 7) bad_guy_list))))))
+	       (not (with_object (get_object 0) (find_hostile_object_in_area (- mex 7)
+								             (- mey 7)
+								             (+ mex 7)
+								             (+ mey 7) bad_guy_list))))))
       (progn (next_picture) T)
     (do_explo 40 36)))
 
@@ -406,7 +406,7 @@
   (link_object creator)
   (play_sound ROCKET_SND 127 (x) (y))
 
-  (let ((target (with_object creator (find_object_in_area
+  (let ((target (with_object creator (find_hostile_object_in_area
 				      (- (x) 160) (- (y) 160)
 				      (+ (x) 160) (+ (y) 160) bad_guy_list))))
     (select (aitype)
@@ -598,10 +598,10 @@
 	  (< (total_objects) 1)
 	  (let ((mex (x))
 		(mey (y)))
-	    (with_object (get_object 0) (find_object_in_area (- mex 7)
-							     (- mey 7)
-							     (+ mex 7)
-							     (+ mey 7) bad_guy_list))))
+	    (with_object (get_object 0) (find_hostile_object_in_area (- mex 7)
+							             (- mey 7)
+							             (+ mex 7)
+							             (+ mey 7) bad_guy_list))))
       (progn
 	(if (> (total_lights) 0)
 	    (delete_light (get_light 0)))

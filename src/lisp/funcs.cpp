@@ -395,6 +395,7 @@ void initLispFuncs()
     add_lisp_function("name", 0, 0, LispFunc::Name);
     add_lisp_function("float_tick", 0, 0, LispFunc::FloatTick);
     add_lisp_function("find_object_in_area", 5, 5, LispFunc::FindObjectInArea);
+    add_lisp_function("find_hostile_object_in_area", 5, 5, LispFunc::FindHostileObjectInArea);
     add_lisp_function("find_object_in_angle", 3, 3, LispFunc::FindObjectInAngle);
     add_lisp_function("add_object_after", 3, 4, LispFunc::AddObjectAfter);
     add_lisp_function("def_char", 2, -1, LispFunc::DefChar);
