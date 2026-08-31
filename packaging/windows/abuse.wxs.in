@@ -27,6 +27,8 @@
       </Component>
     </DirectoryRef>
 
+    <UIRef Id="WixUI_Minimal"/>
+
     <Feature Id="Complete" Title="Abuse" Level="1">
       <ComponentGroupRef Id="AbuseFiles"/>
       <ComponentRef Id="ApplicationShortcut"/>
