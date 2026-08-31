@@ -379,6 +379,11 @@ void Game::set_state(int new_state)
         }
         last_demo_mbut = 0;
         multiplayer_menu_last_resend = SDL_GetTicks();
+
+        // Keep the live player views for multiplayer simulation, but redraw
+        // the complete framebuffer so the centered 4:3 menu artwork gets
+        // black borders instead of retaining the last widescreen game frame.
+        d = 1;
     }
     reset_keymap(); // we think all the keys are up right now
 
