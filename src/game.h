@@ -89,6 +89,7 @@ class Game
 
     // Whether or not a help text is currently active
     bool help_active = false;
+    uint64_t multiplayer_menu_last_resend = 0;
 
     // How long it takes to completely fade out a help text.
     static const uint16_t HELP_FADE_MS = 1000;
@@ -104,6 +105,8 @@ class Game
 
     void discard_editor_playtest();
     void collect_drawables();
+    void prepare_world_tick();
+    void advance_world_tick();
 
   public:
     JCFont *save_game_font; //AR
@@ -135,6 +138,8 @@ class Game
     int state, zoom;
 
     void Step();
+    bool multiplayer_menu_active() const;
+    void run_multiplayer_menu_tick();
     void pan_editor_view(int32_t x, int32_t y);
     void UpdateViews(float interpolation_ratio);
     void show_help(const std::string &msg);

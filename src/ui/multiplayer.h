@@ -14,6 +14,6 @@
 class net_configuration;
 
 int configure_multiplayer(net_configuration &config);
-void show_multiplayer_error(char const *message);
+void show_multiplayer_error(char const *message, char const *title = nullptr);
 
 #endif

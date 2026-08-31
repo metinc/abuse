@@ -83,12 +83,24 @@ class file_manager
     int32_t rf_file_size(int fd);
     void set_default_fs(net_address *def)
     {
-        default_fs = def->copy();
+        delete default_fs;
+        default_fs = def ? def->copy() : nullptr;
     }
     ~file_manager()
     {
-        if (default_fs)
-            delete default_fs;
+        while (nfs_list)
+        {
+            nfs_client *client = nfs_list;
+            nfs_list = nfs_list->next;
+            delete client;
+        }
+        while (remote_list)
+        {
+            remote_file *file = remote_list;
+            remote_list = remote_list->next;
+            delete file;
+        }
+        delete default_fs;
     }
 };
 

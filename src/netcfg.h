@@ -34,6 +34,11 @@ class net_configuration
     char room_code[7];
     bool online;
     bool join_failed;
+    bool server_full;
+    bool host_ended_server;
+    bool waiting_for_host;
+    int lobby_players;
+    bool streamer_mode;
 
     char min_players, max_players;
     short kills;

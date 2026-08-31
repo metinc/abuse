@@ -24,6 +24,7 @@
 #include "clisp.h"
 #include "dev.h"
 #include "general_settings.h"
+#include "gui.h"
 #include "id.h"
 #include "jwindow.h"
 #include "lisp.h"
@@ -47,10 +48,9 @@ constexpr std::array<language_option, 3> languages = {
     {{"language_english", "english"}, {"language_german", "german"}, {"language_french", "french"}}};
 
 constexpr std::array<const char *, PLAYER_SKIN_COUNT> skin_label_symbols = {
-    "skin_standard", "skin_blue",   "skin_yellow", "skin_fire",   "skin_olive", "skin_pink",
-    "skin_darkblue", "skin_purple", "skin_africa", "skin_gold",   "skin_land"};
+    "skin_standard", "skin_blue",   "skin_yellow", "skin_fire", "skin_olive", "skin_pink",
+    "skin_darkblue", "skin_purple", "skin_africa", "skin_gold", "skin_land"};
 
-constexpr int skin_picker_rows = 6;
 constexpr int skin_preview_width = 54;
 constexpr int skin_preview_height = 58;
 
@@ -105,36 +105,6 @@ class language_picker : public pick_list
     }
 };
 
-class skin_picker : public pick_list
-{
-    int minimum_item_width;
-
-  public:
-    skin_picker(int X, int Y, int ID, char **labels, int selected, int MinimumItemWidth, ifield *Next)
-        : pick_list(X, Y, ID, skin_picker_rows, labels, PLAYER_SKIN_COUNT, selected, Next, nullptr, false),
-          minimum_item_width(MinimumItemWidth)
-    {
-    }
-
-    int item_width() override
-    {
-        return std::max(minimum_item_width, pick_list::item_width());
-    }
-
-    void note_new_current(image *screen, InputManager *inm, int x) override
-    {
-        wm->PushMessage(id, this);
-    }
-
-    void set_x(int x, image *screen) override
-    {
-        const int previous = get_selection();
-        pick_list::set_x(x, screen);
-        if (get_selection() != previous)
-            wm->PushMessage(id, this);
-    }
-};
-
 class skin_preview : public ifield
 {
     int bottom_sprite_id;
@@ -160,17 +130,15 @@ class skin_preview : public ifield
 
     void draw_first(image *screen) override
     {
-        uint8_t *tint = nullptr;
-        if (settings.player_skin != 0)
-        {
-            const int tint_id = lnumber_value(
-                ((LArray *)((LSymbol *)l_player_tints)->GetValue())->Get(settings.player_skin));
-            tint = cache.ctint(tint_id)->data;
-        }
+        auto tint_for = [](int skin) -> uint8_t * {
+            if (skin == 0)
+                return nullptr;
+            const int tint_id = lnumber_value(((LArray *)((LSymbol *)l_player_tints)->GetValue())->Get(skin));
+            return cache.ctint(tint_id)->data;
+        };
 
-        const ivec2 anchor(m_pos.x + skin_preview_width / 2,
-                           m_pos.y + (skin_preview_height + 29) / 2 - 1);
-        auto draw_part = [screen, anchor, tint](figure *part) {
+        const ivec2 anchor(m_pos.x + skin_preview_width / 2, m_pos.y + (skin_preview_height + 29) / 2 - 1);
+        auto draw_part = [screen, anchor](figure *part, uint8_t *tint) {
             TransImage *sprite = part->forward;
             const ivec2 position(anchor.x - part->xcfg, anchor.y - sprite->Size().y + 1);
             if (tint)
@@ -179,8 +147,8 @@ class skin_preview : public ifield
                 sprite->PutImage(screen, position);
         };
 
-        draw_part(cache.fig(bottom_sprite_id));
-        draw_part(cache.fig(top_sprite_id));
+        draw_part(cache.fig(bottom_sprite_id), tint_for(settings.player_lower_skin));
+        draw_part(cache.fig(top_sprite_id), tint_for(settings.player_upper_skin));
     }
 
     void draw(int active, image *screen) override
@@ -246,22 +214,20 @@ void show_general_settings()
     while (true)
     {
         std::array<char *, languages.size()> labels;
-        std::array<char *, skin_label_symbols.size()> skin_labels;
+        std::vector<std::string> skin_labels;
         int selected = 0;
         int longest_label = 0;
+        const std::string effective_language = settings.GetEffectiveLanguage();
         for (size_t index = 0; index < languages.size(); ++index)
         {
             labels[index] = const_cast<char *>(symbol_str(languages[index].label_symbol));
             longest_label = std::max(longest_label, text_width(labels[index]));
-            if (settings.language == languages[index].value)
+            if (effective_language == languages[index].value)
                 selected = static_cast<int>(index);
         }
-        int longest_skin_label = 0;
-        for (size_t index = 0; index < skin_label_symbols.size(); ++index)
-        {
-            skin_labels[index] = const_cast<char *>(symbol_str(skin_label_symbols[index]));
-            longest_skin_label = std::max(longest_skin_label, text_width(skin_labels[index]));
-        }
+        skin_labels.reserve(skin_label_symbols.size());
+        for (const char *label_symbol : skin_label_symbols)
+            skin_labels.emplace_back(symbol_str(label_symbol));
 
         const int font_height = wm->font()->Size().y;
         const int padding = 8;
@@ -269,27 +235,38 @@ void show_general_settings()
         const int label_y = padding / 2;
         const int picker_y = label_y + font_height + 3;
         const int language_natural_width = longest_label + padding * 2 + 8;
-        const int skin_natural_width = longest_skin_label + skin_preview_width + padding * 3 + 20;
+        const int language_picker_bottom = picker_y + static_cast<int>(languages.size()) * (font_height + 1) + 4;
+        const int upper_label_y = language_picker_bottom + 6;
+        const int upper_picker_y = upper_label_y + font_height + 3;
+        choice_picker *upper_skin = new choice_picker(content_x, upper_picker_y, ID_PLAYER_UPPER_SKIN_PICKER,
+                                                      skin_labels, settings.player_upper_skin, nullptr);
+        int upper_x1, upper_y1, upper_x2, upper_y2;
+        upper_skin->area(upper_x1, upper_y1, upper_x2, upper_y2);
+        const int lower_label_y = upper_y2 + 6;
+        const int lower_picker_y = lower_label_y + font_height + 3;
+        choice_picker *lower_skin = new choice_picker(content_x, lower_picker_y, ID_PLAYER_LOWER_SKIN_PICKER,
+                                                      skin_labels, settings.player_lower_skin, nullptr);
+        int lower_x1, lower_y1, lower_x2, lower_y2;
+        lower_skin->area(lower_x1, lower_y1, lower_x2, lower_y2);
+        const int skin_control_width = std::max(lower_x2 - lower_x1 + 1, upper_x2 - upper_x1 + 1);
+        const int skin_natural_width = skin_control_width + skin_preview_width + padding * 3;
         const int client_width = std::max({settings.big_font ? 260 : 220, language_natural_width, skin_natural_width});
         const int language_picker_width = client_width - padding * 2;
 
-        const int language_picker_bottom = picker_y + static_cast<int>(languages.size()) * (font_height + 1) + 4;
-        const int skin_label_y = language_picker_bottom + 6;
-        const int skin_picker_y = skin_label_y + font_height + 3;
         const int preview_x = client_width - padding - skin_preview_width;
-        const int skin_picker_width = preview_x - content_x - padding - 12;
 
-        skin_preview *preview = new skin_preview(preview_x, skin_picker_y, nullptr);
-        skin_picker *skin = new skin_picker(content_x, skin_picker_y, ID_PLAYER_SKIN_PICKER, skin_labels.data(),
-                                            settings.player_skin, skin_picker_width - 4, preview);
-        info_field *skin_label =
-            new info_field(content_x, skin_label_y, ID_NULL, symbol_str("player_skin"), skin);
+        skin_preview *preview = new skin_preview(preview_x, upper_label_y, nullptr);
+        lower_skin->next = preview;
+        info_field *lower_label =
+            new info_field(content_x, lower_label_y, ID_NULL, symbol_str("player_lower_skin"), lower_skin);
+        upper_skin->next = lower_label;
+        info_field *upper_label =
+            new info_field(content_x, upper_label_y, ID_NULL, symbol_str("player_upper_skin"), upper_skin);
         language_picker *picker = new language_picker(content_x, picker_y, ID_LANGUAGE_PICKER, labels.data(), selected,
-                                                      language_picker_width - 4, skin_label);
+                                                      language_picker_width - 4, upper_label);
         info_field *fields = new info_field(content_x, label_y, ID_NULL, symbol_str("language"), picker);
 
-        const int skin_picker_bottom = skin_picker_y + skin_picker_rows * (font_height + 1) + 4;
-        const int content_bottom = std::max(skin_picker_bottom, skin_picker_y + skin_preview_height) + padding;
+        const int content_bottom = std::max(lower_y2 + 1, upper_label_y + skin_preview_height) + padding;
         const ivec2 client_size(client_width, content_bottom);
         const ivec2 total_size = client_size + ivec2(Jwindow::left_border() + Jwindow::right_border(),
                                                      Jwindow::top_border() + Jwindow::bottom_border());
@@ -318,13 +295,16 @@ void show_general_settings()
                 const std::string selected_language = languages[picker->get_selection()].value;
                 if (selected_language != settings.language)
                 {
-                    if (!apply_language(selected_language))
+                    const std::string previous_language = settings.language;
+                    settings.language = selected_language;
+                    const std::string effective_language = settings.GetEffectiveLanguage();
+                    if (!apply_language(effective_language))
                     {
-                        fprintf(stderr, "Unable to load language '%s'\n", selected_language.c_str());
+                        settings.language = previous_language;
+                        fprintf(stderr, "Unable to load language '%s'\n", effective_language.c_str());
                     }
                     else
                     {
-                        settings.language = selected_language;
                         if (!settings.Save())
                             fprintf(stderr, "Unable to save language setting\n");
                     }
@@ -333,18 +313,26 @@ void show_general_settings()
                 }
             }
 
-            if (event.type == EV_MESSAGE && event.message.id == ID_PLAYER_SKIN_PICKER)
+            if (event.type == EV_MESSAGE &&
+                (event.message.id == ID_PLAYER_LOWER_SKIN_PICKER || event.message.id == ID_PLAYER_UPPER_SKIN_PICKER))
             {
-                const int selected_skin = skin->get_selection();
-                if (selected_skin != settings.player_skin)
+                const bool lower = event.message.id == ID_PLAYER_LOWER_SKIN_PICKER;
+                const int selected_skin = lower ? lower_skin->get_selection() : upper_skin->get_selection();
+                int &configured_skin = lower ? settings.player_lower_skin : settings.player_upper_skin;
+                if (selected_skin != configured_skin)
                 {
-                    settings.player_skin = selected_skin;
+                    configured_skin = selected_skin;
                     if (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
                         main_net_cfg->state == net_configuration::RESTART_SINGLE)
                     {
                         for (view *current = player_list; current; current = current->next)
                             if (current->local_player() && current->m_focus)
-                                current->set_tint(selected_skin);
+                            {
+                                if (lower)
+                                    current->set_tint(selected_skin);
+                                else
+                                    current->set_upper_tint(selected_skin);
+                            }
                     }
                     if (!settings.Save())
                         fprintf(stderr, "Unable to save player skin setting\n");

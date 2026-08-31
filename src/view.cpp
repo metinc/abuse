@@ -55,6 +55,15 @@ extern int get_key_binding(char const *dir, int i);
 view *player_list = NULL;
 int morph_sel_frame_color;
 
+namespace
+{
+bool is_cheat_command(std::string const &command)
+{
+    return command == "/god" || command == "/giveall" || command == "/nopower" || command == "/fastpower" ||
+           command == "/flypower" || command == "/sneakypower" || command == "/healthpower";
+}
+} // namespace
+
 view::~view()
 {
     if (local_player())
@@ -312,7 +321,8 @@ view::view(game_object *focus, view *Next, int number)
         weapons[0] = 0;
     if (local_player())
         sbar.associate(this);
-    set_tint(local_player() ? settings.player_skin : number);
+    set_tint(local_player() ? settings.player_lower_skin : number);
+    set_upper_tint(local_player() ? settings.player_upper_skin : number);
     if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
         set_team(0);
     else
@@ -378,9 +388,9 @@ void view::get_input()
     int sug_x = 0, sug_y = 0, sug_b1 = 0, sug_b2 = 0, sug_b3 = 0, sug_b4 = 0;
     ivec2 sug_p(0, 0);
 
-    if (chat && chat->showing())
+    if ((chat && chat->showing()) || (the_game && the_game->multiplayer_menu_active()))
     {
-        // Keep the aim fixed while the pointer is being used by the chat UI.
+        // Keep the player idle and the aim fixed while UI owns the controls.
         sug_p = ivec2(pointer_x, pointer_y);
     }
     else
@@ -487,6 +497,21 @@ void view::add_chat_key(int key) // return string if buf is complete
             if (local_player() && chat && chat->showing())
                 chat->toggle();
         }
+        else if (net_game_active() && is_cheat_command(chat_text))
+        {
+            // Chat keypresses are processed by every peer. Reject cheats here
+            // so a modified client cannot make the host apply them.
+            if (local_player() && chat)
+            {
+                char message[] = "Cheats are disabled in multiplayer";
+                chat->put_all(message);
+            }
+
+            m_chat_buf[0] = 0;
+            if (local_player() && chat)
+                chat->draw_user(m_chat_buf);
+            return;
+        }
         else if (chat_text == "/god")
         {
             settings.cheat_god = !settings.cheat_god;
@@ -503,7 +528,7 @@ void view::add_chat_key(int key) // return string if buf is complete
         {
             chat_text = "giveall DONE";
 
-            for (int i = 0; i < total_weapons - 1; i++)
+            for (int i = 0; i < total_weapons; i++)
                 weapons[i] = 999;
             sbar.redraw(main_screen);
 
@@ -1074,10 +1099,11 @@ enum
     V_LAST_LAST_X,
     V_LAST_LAST_Y,
     V_FREEZE_TIME,
-    V_TINT
+    V_TINT,
+    V_UPPER_TINT
 };
 
-#define TVV (V_TINT + 1)
+#define TVV (V_UPPER_TINT + 1)
 
 static char const *vv_names[TVV] = {"view.cx1",
                                     "view.cy1",
@@ -1123,7 +1149,8 @@ static char const *vv_names[TVV] = {"view.cx1",
                                     "view.last_last_x",
                                     "view.last_last_y",
                                     "view.freeze_time",
-                                    "view.tint"};
+                                    "view.tint",
+                                    "view.upper_tint"};
 
 int total_view_vars()
 {
@@ -1271,6 +1298,9 @@ int32_t view::get_view_var_value(int num)
     case V_TINT:
         return get_tint();
         break;
+    case V_UPPER_TINT:
+        return get_upper_tint();
+        break;
     }
     return 0;
 }
@@ -1410,12 +1440,18 @@ int32_t view::set_view_var_value(int num, int32_t x)
         pointer_y = x;
         break;
     case V_TINT:
-        if (local_player() &&
-            (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
-             main_net_cfg->state == net_configuration::RESTART_SINGLE))
-            set_tint(settings.player_skin);
+        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+            set_tint(settings.player_lower_skin);
         else
             set_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
+        break;
+    case V_UPPER_TINT:
+        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+            set_upper_tint(settings.player_upper_skin);
+        else
+            set_upper_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_LAST_LAST_X:
         break;
@@ -1635,6 +1671,16 @@ void view::set_tint(int tint)
 int view::get_tint()
 {
     return _tint;
+}
+
+void view::set_upper_tint(int tint)
+{
+    _upper_tint = std::clamp(tint, 0, PLAYER_SKIN_COUNT - 1);
+}
+
+int view::get_upper_tint() const
+{
+    return _upper_tint;
 }
 
 void view::set_team(int team)

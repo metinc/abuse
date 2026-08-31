@@ -12,6 +12,9 @@
 #include "config.h"
 #endif
 
+#include <algorithm>
+#include <utility>
+
 #include "common.h"
 
 #include "cache.h"
@@ -20,6 +23,23 @@
 #include "loader2.h"
 
 static ToastMessage help_toast;
+
+namespace
+{
+image *rotate_clockwise(image *source)
+{
+    const ivec2 source_size = source->Size();
+    image *result = new image(ivec2(source_size.y, source_size.x));
+    source->Lock();
+    result->Lock();
+    for (int y = 0; y < source_size.y; ++y)
+        for (int x = 0; x < source_size.x; ++x)
+            result->scan_line(x)[source_size.y - y - 1] = source->scan_line(y)[x];
+    result->Unlock();
+    source->Unlock();
+    return result;
+}
+}
 
 ToastMessage::ToastMessage() : m_screen(NULL), m_pos(0), m_background_pos(0), m_background_size(0) {}
 
@@ -271,6 +291,129 @@ ico_button::ico_button(int x, int y, int id, int up_inactive, int down_inactive,
 ico_button::~ico_button()
 {
     help_toast.Hide();
+}
+
+choice_picker::choice_picker(int x, int y, int ID, std::vector<std::string> Options, int selected, ifield *Next)
+    : options(std::move(Options)), selection(0), text_area_width(0), control_width(0), control_height(0),
+      pressed_direction(0)
+{
+    m_pos = ivec2(x, y);
+    id = ID;
+    next = Next;
+
+    char const *frame_file = "art/frame.spe";
+    left_arrow = {rotate_clockwise(cache.img(cache.reg(frame_file, "d_ua", SPEC_IMAGE, 1))),
+                  rotate_clockwise(cache.img(cache.reg(frame_file, "d_da", SPEC_IMAGE, 1)))};
+    right_arrow = {rotate_clockwise(cache.img(cache.reg(frame_file, "u_ua", SPEC_IMAGE, 1))),
+                   rotate_clockwise(cache.img(cache.reg(frame_file, "u_da", SPEC_IMAGE, 1)))};
+
+    if (!options.empty())
+        selection = std::clamp(selected, 0, static_cast<int>(options.size()) - 1);
+
+    const int font_width = wm->font()->Size().x;
+    for (const std::string &option : options)
+        text_area_width = std::max(
+            text_area_width, static_cast<int>(JCFont::EncodeForFont(option).size()) * font_width);
+    text_area_width += 8;
+
+    constexpr int arrow_gap = 3;
+    control_width = left_arrow[0]->Size().x + arrow_gap + text_area_width + arrow_gap + right_arrow[0]->Size().x;
+    control_height = std::max({left_arrow[0]->Size().y, right_arrow[0]->Size().y, wm->font()->Size().y});
+}
+
+choice_picker::~choice_picker()
+{
+    for (image *arrow : left_arrow)
+        delete arrow;
+    for (image *arrow : right_arrow)
+        delete arrow;
+}
+
+void choice_picker::area(int &x1, int &y1, int &x2, int &y2)
+{
+    x1 = m_pos.x;
+    y1 = m_pos.y;
+    x2 = m_pos.x + control_width - 1;
+    y2 = m_pos.y + control_height - 1;
+}
+
+void choice_picker::draw_first(image *screen)
+{
+    draw(0, screen);
+}
+
+void choice_picker::draw(int active, image *screen)
+{
+    if (!active)
+        pressed_direction = 0;
+
+    constexpr int arrow_gap = 3;
+    const ivec2 left_pos(m_pos.x, m_pos.y + (control_height - left_arrow[0]->Size().y) / 2);
+    const int text_left = m_pos.x + left_arrow[0]->Size().x + arrow_gap;
+    const ivec2 right_pos(text_left + text_area_width + arrow_gap,
+                          m_pos.y + (control_height - right_arrow[0]->Size().y) / 2);
+    screen->PutImage(left_arrow[pressed_direction < 0 ? 1 : 0], left_pos);
+    screen->PutImage(right_arrow[pressed_direction > 0 ? 1 : 0], right_pos);
+
+    screen->Bar(ivec2(text_left, m_pos.y), ivec2(text_left + text_area_width - 1, m_pos.y + control_height - 1),
+                wm->medium_color());
+    if (!options.empty())
+    {
+        const std::string &label = options[selection];
+        const int label_width = static_cast<int>(JCFont::EncodeForFont(label).size()) * wm->font()->Size().x;
+        const ivec2 label_pos(text_left + (text_area_width - label_width) / 2,
+                              m_pos.y + (control_height - wm->font()->Size().y) / 2);
+        wm->font()->PutString(screen, label_pos + ivec2(1), label, wm->black());
+        wm->font()->PutString(screen, label_pos, label, wm->bright_color());
+    }
+}
+
+void choice_picker::change_selection(int direction, image *screen)
+{
+    if (options.empty() || direction == 0)
+        return;
+    selection = (selection + direction + static_cast<int>(options.size())) % static_cast<int>(options.size());
+    draw(1, screen);
+    wm->PushMessage(id, this);
+    if (S_BUTTON_PRESS_SND)
+        cache.sfx(S_BUTTON_PRESS_SND)->play(sfx_volume);
+}
+
+void choice_picker::handle_event(Event &event, image *screen, InputManager *input)
+{
+    (void)input;
+    int direction = 0;
+    const int left_end = m_pos.x + left_arrow[0]->Size().x;
+    const int right_start = m_pos.x + control_width - right_arrow[0]->Size().x;
+    if (event.mouse_move.x < left_end)
+        direction = -1;
+    else if (event.mouse_move.x >= right_start)
+        direction = 1;
+
+    if (event.type == EV_MOUSE_BUTTON)
+    {
+        if (event.mouse_button & LEFT_BUTTON)
+        {
+            pressed_direction = direction;
+            draw(1, screen);
+        }
+        else
+        {
+            const int released_direction = pressed_direction;
+            pressed_direction = 0;
+            if (released_direction != 0 && released_direction == direction)
+                change_selection(direction, screen);
+            else
+                draw(1, screen);
+        }
+    }
+    else if (event.type == EV_KEY && (event.key == JK_LEFT || event.key == JK_RIGHT))
+        change_selection(event.key == JK_LEFT ? -1 : 1, screen);
+}
+
+char *choice_picker::read()
+{
+    return options.empty() ? nullptr : options[selection].data();
 }
 
 ico_switch_button::~ico_switch_button()

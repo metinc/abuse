@@ -22,6 +22,8 @@
 #include <sys/types.h>
 #include <string.h>
 
+#include <SDL3/SDL_timer.h>
+
 #include "common.h"
 
 #include "netcfg.h"
@@ -36,6 +38,8 @@ extern int start_running;
 
 void game_client::restart_single_player()
 {
+    main_net_cfg->host_ended_server = true;
+    main_net_cfg->waiting_for_host = false;
     main_net_cfg->state = net_configuration::RESTART_SINGLE;
     start_running = 0;
     strcpy(lsf, "abuse.lsp");
@@ -54,6 +58,8 @@ int game_client::process_server_command()
         DEBUG_LOG("Failed to read command byte from server");
         return 0;
     }
+
+    last_packet_ticks = SDL_GetTicksNS();
 
     DEBUG_LOG("Received command %d from server", cmd);
 
@@ -93,6 +99,26 @@ int game_client::process_server_command()
     }
     break;
 
+    case SRVCMD_LOBBY_STATUS: {
+        uint8_t players;
+        uint8_t max_players;
+        if (client_sock->read(/* server_lobby_players */ &players, 1) != 1 ||
+            client_sock->read(/* server_max_players */ &max_players, 1) != 1)
+            return 0;
+        main_net_cfg->lobby_players = players;
+        main_net_cfg->max_players = max_players;
+        DEBUG_LOG("Lobby status updated to %d/%d players", players, max_players);
+        return 1;
+    }
+    break;
+
+    case SRVCMD_LOBBY_START: {
+        main_net_cfg->waiting_for_host = false;
+        DEBUG_LOG("Host started the game");
+        return 1;
+    }
+    break;
+
     default: {
         DEBUG_LOG("Unknown command from server: %d", cmd);
         return 0;
@@ -123,6 +149,7 @@ int game_client::process_net()
             uint16_t rec_crc = tmp.get_checksum();
             if (rec_crc == tmp.calc_checksum())
             {
+                last_packet_ticks = SDL_GetTicksNS();
                 if (base->current_tick == tmp.tick_received())
                 {
                     base->packet = tmp;
@@ -165,12 +192,19 @@ int game_client::process_net()
 }
 
 // Constructor - initializes client networking state
-game_client::game_client(net_socket *client_sock, net_address *server_addr) : client_sock(client_sock)
+game_client::game_client(net_socket *client_sock, net_address *server_addr)
+    : client_sock(client_sock), last_packet_ticks(SDL_GetTicksNS())
 {
     DEBUG_LOG("Creating new game client");
     server_data_port = server_addr->copy();
     client_sock->read_selectable();
     wait_local_input = 1;
+}
+
+std::uint64_t game_client::milliseconds_since_last_packet() const
+{
+    const std::uint64_t now = SDL_GetTicksNS();
+    return (now >= last_packet_ticks ? now - last_packet_ticks : 0) / 1000000;
 }
 
 // Called when input from server is missing/late
@@ -260,6 +294,8 @@ int game_client::start_reload()
         DEBUG_LOG("Failed to receive reload acknowledgement");
         return 0;
     }
+
+    last_packet_ticks = SDL_GetTicksNS();
 
     DEBUG_LOG("Reload process initiated successfully");
     return 1;

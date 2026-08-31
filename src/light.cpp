@@ -240,15 +240,18 @@ std::vector<uint8_t> light_tint_table;
 
 namespace
 {
-constexpr uint8_t tint_channels[LIGHT_TINT_COUNT][3] = {
-    {0, 0, 0}, // white does not tint the illuminated pixels
-    {1, 0, 0}, // red
-    {1, 1, 0}, // yellow
-    {1, 0, 1}, // purple
-    {1, 1, 1}, // gray
-    {0, 1, 0}, // green
-    {0, 0, 1}, // blue
-    {0, 1, 1}, // cyan
+// Relative RGB strength used both to mix overlapping lights and to generate
+// their palette remapping tables.
+constexpr uint8_t tint_strength[LIGHT_TINT_COUNT][3] = {
+    {0, 0, 0}, // white
+    {63, 0, 0}, // red
+    {63, 63, 0}, // yellow
+    {63, 0, 63}, // purple
+    {63, 63, 63}, // gray
+    {0, 63, 0}, // green
+    {0, 0, 63}, // blue
+    {0, 63, 63}, // cyan
+    {63, 24, 0}, // orange
 };
 }
 
@@ -307,12 +310,13 @@ void calc_colored_light_table(palette *pal)
                     pal->get(color, base_r, base_g, base_b);
                     // Colored lights are emissive: raise their active RGB channels instead of
                     // merely remapping the pixel to a hue with the same perceived brightness.
-                    auto add_light = [weight](uint8_t channel, bool enabled) {
-                        return enabled ? channel + ((255 - channel) * weight + 31) / 63 : channel;
+                    auto add_light = [weight](uint8_t channel, uint8_t strength) {
+                        const int channel_weight = (weight * strength + 31) / 63;
+                        return channel + ((255 - channel) * channel_weight + 31) / 63;
                     };
-                    mapped = pal->find_closest(add_light(base_r, tint_channels[tint][0]),
-                                               add_light(base_g, tint_channels[tint][1]),
-                                               add_light(base_b, tint_channels[tint][2]));
+                    mapped = pal->find_closest(add_light(base_r, tint_strength[tint][0]),
+                                               add_light(base_g, tint_strength[tint][1]),
+                                               add_light(base_b, tint_strength[tint][2]));
                 }
                 light_tint_table[(static_cast<size_t>(tint) * LIGHT_TINT_STEPS + step) * 256 + color] = mapped;
             }
@@ -595,9 +599,9 @@ light_sample radial_light_value(std::vector<light_source *> const &lights, int32
             value += contribution;
             if (source->tint != LIGHT_TINT_WHITE)
             {
-                red += contribution * tint_channels[source->tint][0];
-                green += contribution * tint_channels[source->tint][1];
-                blue += contribution * tint_channels[source->tint][2];
+                red += (contribution * tint_strength[source->tint][0] + 31) / 63;
+                green += (contribution * tint_strength[source->tint][1] + 31) / 63;
+                blue += (contribution * tint_strength[source->tint][2] + 31) / 63;
             }
         }
     }
@@ -620,10 +624,25 @@ int tint_from_channels(int red, int green, int blue)
     if (strength == 0)
         return LIGHT_TINT_WHITE;
 
-    const int mask = (red * 2 >= strength ? 4 : 0) | (green * 2 >= strength ? 2 : 0) | (blue * 2 >= strength ? 1 : 0);
-    constexpr uint8_t mask_to_tint[8] = {LIGHT_TINT_WHITE, LIGHT_TINT_BLUE,   LIGHT_TINT_GREEN,  LIGHT_TINT_CYAN,
-                                         LIGHT_TINT_RED,   LIGHT_TINT_PURPLE, LIGHT_TINT_YELLOW, LIGHT_TINT_GRAY};
-    return mask_to_tint[mask];
+    const int normalized[3] = {(red * 63 + strength / 2) / strength, (green * 63 + strength / 2) / strength,
+                               (blue * 63 + strength / 2) / strength};
+    int closest_tint = LIGHT_TINT_RED;
+    int closest_distance = std::numeric_limits<int>::max();
+    for (int tint = LIGHT_TINT_RED; tint < LIGHT_TINT_COUNT; ++tint)
+    {
+        int distance = 0;
+        for (int channel = 0; channel < 3; ++channel)
+        {
+            const int difference = normalized[channel] - tint_strength[tint][channel];
+            distance += difference * difference;
+        }
+        if (distance < closest_distance)
+        {
+            closest_distance = distance;
+            closest_tint = tint;
+        }
+    }
+    return closest_tint;
 }
 
 uint8_t apply_colored_tint(int tint, int strength, uint8_t color)
@@ -801,18 +820,19 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
                     uint8_t lit_color = light_lookup[(intensity << 8) + color];
                     if (has_colored_lights)
                     {
-                        const int red =
-                            solid ? tint_channels[solid->tint][0] * solid->strength
-                                  : (red_left * (step_x - x_fraction) + red_right * x_fraction + step_x / 2) / step_x;
-                        const int green =
-                            solid
-                                ? tint_channels[solid->tint][1] * solid->strength
-                                : (green_left * (step_x - x_fraction) + green_right * x_fraction + step_x / 2) / step_x;
-                        const int blue =
-                            solid ? tint_channels[solid->tint][2] * solid->strength
-                                  : (blue_left * (step_x - x_fraction) + blue_right * x_fraction + step_x / 2) / step_x;
-                        lit_color = apply_colored_tint(tint_from_channels(red, green, blue),
-                                                       std::max({red, green, blue}), lit_color);
+                        if (solid)
+                            lit_color = apply_colored_tint(solid->tint, solid->strength, lit_color);
+                        else
+                        {
+                            const int red =
+                                (red_left * (step_x - x_fraction) + red_right * x_fraction + step_x / 2) / step_x;
+                            const int green =
+                                (green_left * (step_x - x_fraction) + green_right * x_fraction + step_x / 2) / step_x;
+                            const int blue =
+                                (blue_left * (step_x - x_fraction) + blue_right * x_fraction + step_x / 2) / step_x;
+                            lit_color = apply_colored_tint(tint_from_channels(red, green, blue),
+                                                           std::max({red, green, blue}), lit_color);
+                        }
                     }
 
                     if (output_scale == 1)

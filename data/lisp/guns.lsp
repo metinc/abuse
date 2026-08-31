@@ -37,6 +37,13 @@
     light))
 
 
+(defun link_weapon_point_light (color radius intensity)
+  (let ((light (add_light 0 (x) (y) 1 radius 0 0 color)))
+    (set_light_intensity light intensity)
+    (link_light light)
+    light))
+
+
 (defun fire_object (creator type x y angle target)
   (select type
 
@@ -152,6 +159,8 @@
 					(set_aistate angle)
 					(if creator
 					      (link_object creator))
+					(let ((light (link_weapon_point_light 5 24 42)))
+					  (flicker_light light 32 18 24 5))
 					(dfris_ai)
 					)))
 

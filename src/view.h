@@ -65,7 +65,7 @@ class view
 
     int god; // :) if you believe in such things
     int player_number;
-    int _tint, _team;
+    int _tint, _upper_tint, _team;
 
     int draw_solid; // -1 if don't draw solid
 
@@ -137,6 +137,8 @@ class view
 
     void set_tint(int);
     int get_tint();
+    void set_upper_tint(int);
+    int get_upper_tint() const;
     void set_team(int);
     int get_team();
 

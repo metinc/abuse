@@ -54,6 +54,7 @@ constexpr int LEFT_Y_NEGATIVE = GAMEPAD_AXIS_SOURCE_BASE + 2;
 constexpr int LEFT_Y_POSITIVE = GAMEPAD_AXIS_SOURCE_BASE + 3;
 constexpr int LEFT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 4;
 constexpr int RIGHT_TRIGGER = GAMEPAD_AXIS_SOURCE_BASE + 5;
+bool quit_requested = false;
 
 struct CombinedInputState
 {
@@ -204,6 +205,11 @@ void perform_quick_load()
     if (!settings.quick_load.empty())
         the_game->request_level_load(settings.quick_load);
 }
+}
+
+bool application_quit_requested()
+{
+    return quit_requested;
 }
 
 void reset_input_sources()
@@ -397,7 +403,8 @@ void EventHandler::Get(Event &ev)
         ev.type = EV_MOUSE_MOVE;
         break;
     case SDL_EVENT_QUIT:
-        exit(EXIT_SUCCESS);
+        quit_requested = true;
+        ev.type = EV_QUIT;
         break;
     case SDL_EVENT_WINDOW_RESIZED:
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:

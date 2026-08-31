@@ -8,6 +8,8 @@
   <description>
     <p>This is an SDL port of the original game from 1995. It is a run and gun game which features pixel based lighting.</p>
   </description>
+  <!-- AppStream before 1.0 (including Debian 12) uses developer_name. -->
+  <developer_name>Crack dot Com</developer_name>
   <developer id="com.crackdotcom">
     <name>Crack dot Com</name>
   </developer>

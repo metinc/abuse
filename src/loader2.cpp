@@ -287,7 +287,8 @@ void load_data(int argc, char **argv)
     pal = NULL;
     color_table = NULL;
 
-    char const *lang = settings.language.c_str();
+    const std::string effective_language = settings.GetEffectiveLanguage();
+    char const *lang = effective_language.c_str();
 
     // Temporarily switch to permanent space for the language string
     LSpace *sp = LSpace::Current;

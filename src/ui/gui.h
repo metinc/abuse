@@ -10,6 +10,8 @@
 
 #ifndef __GUI_HPP_
 #define __GUI_HPP_
+#include <array>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -91,6 +93,35 @@ class ico_switch_button : public ifield
         return cur_but->read();
     }
     ~ico_switch_button();
+};
+
+class choice_picker : public ifield
+{
+    std::vector<std::string> options;
+    std::array<image *, 2> left_arrow;
+    std::array<image *, 2> right_arrow;
+    int selection;
+    int text_area_width;
+    int control_width;
+    int control_height;
+    int pressed_direction;
+
+    void change_selection(int direction, image *screen);
+
+  public:
+    choice_picker(int x, int y, int id, std::vector<std::string> options, int selected, ifield *next);
+    ~choice_picker() override;
+
+    void area(int &x1, int &y1, int &x2, int &y2) override;
+    void draw_first(image *screen) override;
+    void draw(int active, image *screen) override;
+    void handle_event(Event &event, image *screen, InputManager *input) override;
+    char *read() override;
+
+    int get_selection() const
+    {
+        return selection;
+    }
 };
 
 #endif

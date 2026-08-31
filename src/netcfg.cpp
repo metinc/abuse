@@ -27,6 +27,11 @@ net_configuration::net_configuration()
     room_code[0] = '\0';
     online = false;
     join_failed = false;
+    server_full = false;
+    host_ended_server = false;
+    waiting_for_host = false;
+    lobby_players = 1;
+    streamer_mode = settings.streamer_mode;
 
     min_players = 2;
     max_players = 8;

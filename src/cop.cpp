@@ -795,15 +795,22 @@ void *top_draw()
     int32_t y = o->y;
     short current_frame = o->current_frame;
     uint16_t otype = o->otype;
-    top_aim(true);
 
     if (o->total_objects())
     {
         game_object *bot = o->get_object(0);
+        view *controller = bot->controller();
+        // Only the live local player needs render-time aiming for immediate
+        // mouse response. Remote and replay aim states are updated by TopAi
+        // once per physics tick.
+        if (controller && controller->local_player() && demo_man.current_state() != demo_manager::PLAYING)
+            top_aim(true);
+
         if (bot->state == stopped || bot->state == running || bot->state == run_jump || bot->state == run_jump_fall ||
             bot->state == end_run_jump)
         {
             int oldy = o->y;
+            const int upper_tint = controller ? controller->get_upper_tint() : bot->get_tint();
             o->x = bot->x;
             if (bot->direction < 0)
                 o->x += 4;
@@ -812,12 +819,12 @@ void *top_draw()
             void *ret = NULL;
             PtrRef r1(ret);
 
-            push_onto_list(LNumber::Create(bot->get_tint()), ret);
+            push_onto_list(LNumber::Create(upper_tint), ret);
 
             if (bot->lvars[special_power] == SNEAKY_POWER)
             {
                 if (bot->lvars[used_special_power] == 0)
-                    player_draw(top_just_fired, bot->get_tint());
+                    player_draw(top_just_fired, upper_tint);
                 else if (bot->lvars[used_special_power] < 15)
                     o->draw_trans(bot->lvars[used_special_power], 16);
                 else
@@ -1144,7 +1151,7 @@ void *score_draw()
         ivec2 pos = local->m_aa;
         char msg[100];
 
-        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0])
+        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0] && !main_net_cfg->streamer_mode)
         {
             snprintf(msg, sizeof(msg), "%s: %s", symbol_str("room_code"), main_net_cfg->room_code);
             fnt->PutString(main_screen, pos, msg, wm->bright_color());

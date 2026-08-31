@@ -97,6 +97,19 @@ std::string find_data_directory()
 
     return ASSETDIR;
 }
+
+const char *language_for_locale(const char *locale)
+{
+    if (!locale)
+        return nullptr;
+    if (SDL_strcasecmp(locale, "en") == 0)
+        return "english";
+    if (SDL_strcasecmp(locale, "de") == 0)
+        return "german";
+    if (SDL_strcasecmp(locale, "fr") == 0)
+        return "french";
+    return nullptr;
+}
 }
 
 Settings::Settings()
@@ -127,8 +140,9 @@ Settings::Settings()
     this->physics_update = 65; // original 65ms/15 FPS
     this->max_fps = 300;
     this->big_font = false;
-    this->language = "english";
-    this->player_skin = 0;
+    this->language = DEFAULT_LANGUAGE;
+    this->player_lower_skin = 0;
+    this->player_upper_skin = 0;
     //
     this->player_touching_console = false;
 
@@ -138,6 +152,7 @@ Settings::Settings()
     this->record_replays = false;
     this->player_name = get_login();
     this->server_name = "Abuse Game";
+    this->streamer_mode = false;
     this->gamma = 1.0;
     this->difficulty = "hard";
 
@@ -197,6 +212,30 @@ Settings::Settings()
     this->ctr_menu_cancel = SDL_GAMEPAD_BUTTON_EAST;
     this->ctr_f5 = -1;
     this->ctr_f9 = -1;
+}
+
+std::string Settings::GetEffectiveLanguage() const
+{
+    if (language != DEFAULT_LANGUAGE)
+    {
+        if (language == "english" || language == "german" || language == "french")
+            return language;
+        return "english";
+    }
+
+    int count = 0;
+    SDL_Locale **locales = SDL_GetPreferredLocales(&count);
+    std::string detected_language = "english";
+    for (int index = 0; locales && index < count; ++index)
+    {
+        if (const char *supported_language = language_for_locale(locales[index]->language))
+        {
+            detected_language = supported_language;
+            break;
+        }
+    }
+    SDL_free(locales);
+    return detected_language;
 }
 
 namespace
@@ -656,7 +695,8 @@ void Settings::Validate()
     validate_gain(volume_music, "audio.music_volume");
     clamp(physics_update, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.physics_tick_ms");
     clamp(max_fps, static_cast<short>(1), std::numeric_limits<short>::max(), "gameplay.max_fps");
-    clamp(player_skin, 0, PLAYER_SKIN_COUNT - 1, "general.player_skin");
+    clamp(player_lower_skin, 0, PLAYER_SKIN_COUNT - 1, "general.player_lower_skin");
+    clamp(player_upper_skin, 0, PLAYER_SKIN_COUNT - 1, "general.player_upper_skin");
     clamp(ctr_aim_correctx, -1000, 1000, "input.gamepad.aim_correction_x");
     clamp(ctr_cd, 1, 1000, "input.gamepad.crosshair_distance");
     clamp(ctr_rst_s, 1, 100, "input.gamepad.aim_sensitivity");
@@ -704,7 +744,7 @@ bool Settings::ReadTomlFile()
     {
         const settings_document document = toml::parse<toml::ordered_type_config>(path);
         const settings_document *version = find_value(&document, "schema_version");
-        if (version && version->is_integer() && version->as_integer() > 7)
+        if (version && version->is_integer() && version->as_integer() > 8)
         {
             fprintf(stderr, "Config: %s uses unsupported schema version %lld\n", path.string().c_str(),
                     static_cast<long long>(version->as_integer()));
@@ -747,13 +787,18 @@ bool Settings::ReadTomlFile()
 
         const settings_document *general = find_table(document, "general");
         read_string(general, "general", "language", language);
-        read_integer(general, "general", "player_skin", player_skin);
+        // Older settings used one skin for both sprite halves.
+        read_integer(general, "general", "player_skin", player_lower_skin);
+        player_upper_skin = player_lower_skin;
+        read_integer(general, "general", "player_lower_skin", player_lower_skin);
+        read_integer(general, "general", "player_upper_skin", player_upper_skin);
         read_boolean(general, "general", "grab_input", grab_input);
         read_boolean(general, "general", "local_save", local_save);
 
         const settings_document *multiplayer = find_table(document, "multiplayer");
         read_string(multiplayer, "multiplayer", "player_name", player_name);
         read_string(multiplayer, "multiplayer", "server_name", server_name);
+        read_boolean(multiplayer, "multiplayer", "streamer_mode", streamer_mode);
 
         const settings_document *input = find_table(document, "input");
         const settings_document *keyboard = input ? find_table(*input, "keyboard") : nullptr;
@@ -855,7 +900,7 @@ bool Settings::Save() const
     try
     {
         settings_document document = document_for_save(path);
-        set_value(document, "schema_version", 7);
+        set_value(document, "schema_version", 8);
 
         settings_document &video = ensure_table(document, "video");
         const bool saved_fullscreen = command_line_overrides ? file_fullscreen : fullscreen;
@@ -895,7 +940,9 @@ bool Settings::Save() const
 
         settings_document &general = ensure_table(document, "general");
         set_value(general, "language", language);
-        set_value(general, "player_skin", player_skin);
+        set_value(general, "player_lower_skin", player_lower_skin);
+        set_value(general, "player_upper_skin", player_upper_skin);
+        general.as_table().erase("player_skin");
         general.as_table().erase("editor");
         set_value(general, "grab_input", grab_input);
         set_value(general, "local_save", command_line_overrides ? file_local_save : local_save);
@@ -903,6 +950,7 @@ bool Settings::Save() const
         settings_document &multiplayer = ensure_table(document, "multiplayer");
         set_value(multiplayer, "player_name", player_name);
         set_value(multiplayer, "server_name", server_name);
+        set_value(multiplayer, "streamer_mode", streamer_mode);
 
         settings_document &input = ensure_table(document, "input");
         input.as_table().erase("mouse_scale");

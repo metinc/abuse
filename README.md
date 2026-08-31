@@ -41,7 +41,7 @@ For custom content, there are three types to consider:
 
 ### Cheats
 
-To use cheats, press <kbd>Enter</kbd> to open the console and type the desired slash-prefixed cheat command. The mouse cursor must be inside the console window for input. Press Enter when done, or type "quit"/"exit" to close the console. Use the scrollbar, mouse wheel, or arrow keys to browse the chat history.
+Cheats are available in single-player games only. Multiplayer peers reject cheat commands. To use cheats, press <kbd>Enter</kbd> to open the console and type the desired slash-prefixed cheat command. The mouse cursor must be inside the console window for input. Press Enter when done, or type "quit"/"exit" to close the console. Use the scrollbar, mouse wheel, or arrow keys to browse the chat history.
 
 Available cheats:
 
@@ -101,7 +101,7 @@ packaged; HMI conversion is not part of the game's runtime audio path. The C++ c
 - `[gameplay].max_fps` - Frame-rate limit
 - `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
-- `[general].language` - Game language (`"english"`, `"german"`, or `"french"`)
+- `[general].language` - Game language (`"auto"` uses the operating-system language; also `"english"`, `"german"`, or `"french"`)
 - `[multiplayer].player_name` - Player name used in multiplayer games (maximum 18 characters)
 - `[multiplayer].server_name` - Default name used when hosting a multiplayer game (maximum 18 characters)
 

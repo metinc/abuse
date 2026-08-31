@@ -365,6 +365,26 @@ int window_state(int state)
 void Game::set_state(int new_state)
 {
     int d = 0;
+    const bool entering_multiplayer_menu = new_state == MENU_STATE && current_level && net_game_active();
+    if (entering_multiplayer_menu)
+    {
+        // Release gameplay keys on every peer before menu navigation takes
+        // ownership of local input.
+        for (int key = 0; key < JK_KEY_COUNT; ++key)
+        {
+            if (key_down(key))
+                pending_input_events.push_back(
+                    {static_cast<uint8_t>(key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
+                     static_cast<uint8_t>(key >= 256 ? key - 256 : key)});
+        }
+        last_demo_mbut = 0;
+        multiplayer_menu_last_resend = SDL_GetTicks();
+
+        // Keep the live player views for multiplayer simulation, but redraw
+        // the complete framebuffer so the centered 4:3 menu artwork gets
+        // black borders instead of retaining the last widescreen game frame.
+        d = 1;
+    }
     reset_keymap(); // we think all the keys are up right now
 
     if (playing_state(new_state) && !playing_state(state))
@@ -383,7 +403,8 @@ void Game::set_state(int new_state)
         first_view = player_list;
         d = 1;
     }
-    else if (!playing_state(new_state) && (playing_state(state) || state == START_STATE))
+    else if (!entering_multiplayer_menu && !playing_state(new_state) &&
+             (playing_state(state) || state == START_STATE))
     {
         if (player_list)
         {
@@ -531,7 +552,7 @@ void Game::load_level(char const *name)
 
 int Game::done()
 {
-    return finished || (main_net_cfg && main_net_cfg->restart_state());
+    return finished || application_quit_requested() || (main_net_cfg && main_net_cfg->restart_state());
 }
 
 void Game::end_session()
@@ -1488,6 +1509,7 @@ void Game::request_end()
 Game::Game(int argc, char **argv)
 {
     int i;
+    bool deferred_lobby_join = false;
     req_name[0] = 0;
     bg_xmul = bg_ymul = 1;
     bg_xdiv = bg_ydiv = 8;
@@ -1543,12 +1565,21 @@ Game::Game(int argc, char **argv)
     {
         if (!request_server_entry())
         {
-            exit(EXIT_SUCCESS);
+            net_uninit();
+            main_net_cfg->join_failed = true;
+            main_net_cfg->state = net_configuration::RESTART_SINGLE;
+            strcpy(lsf, "abuse.lsp");
+            start_running = 0;
         }
-        net_reload();
-        // dev_init() deliberately resets start_running after the network
-        // setup. Enter gameplay only after the client has loaded the level.
-        start_running = current_level != NULL;
+        else
+        {
+            deferred_lobby_join = main_net_cfg->waiting_for_host;
+            if (!deferred_lobby_join)
+                net_reload();
+            // dev_init() deliberately resets start_running after the network
+            // setup. Enter gameplay only after the client has loaded the level.
+            start_running = current_level != NULL;
+        }
         //    load_level(NET_STARTFILE);
     }
 
@@ -1618,10 +1649,20 @@ Game::Game(int argc, char **argv)
 
     pal->load();
 
+    if (deferred_lobby_join)
+    {
+        wait_for_server_lobby();
+        if (main_net_cfg && !main_net_cfg->restart_state() && !application_quit_requested())
+            net_reload();
+        start_running = current_level != NULL;
+        if (start_running)
+            recalc_local_view_space();
+    }
+
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
-        if (!start_edit && !net_start() && !settings.skip_intro)
+        if (!start_edit && !net_start() && !settings.skip_intro && !(main_net_cfg && main_net_cfg->join_failed))
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
@@ -1772,6 +1813,13 @@ void Game::get_input()
     while (event_waiting())
     {
         get_event(ev);
+
+        if (ev.type == EV_QUIT)
+        {
+            finished = true;
+            clear_player_input();
+            return;
+        }
 
         if (chat && chat->showing())
         {
@@ -2063,13 +2111,58 @@ void net_receive()
     }
 }
 
-void Game::Step()
+bool Game::multiplayer_menu_active() const
 {
-    //AR virtual crosshair inside a circle, solves atan2(axisy,axisx) aiming dead zone problems
-    static float aimx = 0, aimy = 0;
+    return state == MENU_STATE && current_level && net_game_active();
+}
 
+void Game::run_multiplayer_menu_tick()
+{
+    if (!multiplayer_menu_active())
+        return;
+
+    // The menu must stay interactive even while lockstep is waiting. Pump the
+    // sockets first and only consume a tick once its authoritative packet is
+    // complete; net_receive() is deliberately blocking in normal gameplay.
+    service_net_request();
+    if (!multiplayer_menu_active())
+        return;
+    if (!net_input_ready())
+    {
+        const uint64_t now = SDL_GetTicks();
+        if (now - multiplayer_menu_last_resend >= 250)
+        {
+            request_net_input_resend();
+            multiplayer_menu_last_resend = now;
+        }
+        return;
+    }
+
+    net_receive();
+    if (!multiplayer_menu_active())
+        return;
+
+    if (req_name[0])
+    {
+        load_level(req_name);
+        req_name[0] = 0;
+    }
+
+    net_send();
+    service_net_request();
+    if (!multiplayer_menu_active())
+        return;
+
+    prepare_world_tick();
+    advance_world_tick();
+    multiplayer_menu_last_resend = SDL_GetTicks();
+    if (req_end)
+        set_state(RUN_STATE);
+}
+
+void Game::prepare_world_tick()
+{
     settings.player_touching_console = false;
-
     LSpace::Tmp.Clear();
     if (current_level)
     {
@@ -2079,7 +2172,9 @@ void Game::Step()
         {
             if (f->m_focus)
             {
-                if (settings.cheat_god)
+                // Never carry a locally enabled god-mode setting into a
+                // multiplayer simulation.
+                if (!net_game_active() && settings.cheat_god)
                     f->god = 1;
                 else
                     f->god = 0;
@@ -2111,6 +2206,23 @@ void Game::Step()
             }
         }
     }
+}
+
+void Game::advance_world_tick()
+{
+    if (!current_level)
+        return;
+    ambient_ramp = 0;
+    current_level->tick();
+    sbar.step();
+}
+
+void Game::Step()
+{
+    //AR virtual crosshair inside a circle, solves atan2(axisy,axisx) aiming dead zone problems
+    static float aimx = 0, aimy = 0;
+
+    prepare_world_tick();
 
     if (state == RUN_STATE)
     {
@@ -2122,18 +2234,21 @@ void Game::Step()
                 set_state(MENU_STATE);
                 set_key_down(JK_ESC, 0);
             }
-            ambient_ramp = 0;
-            // the_game->UpdateViews();
-
             cache.prof_poll_start();
-            current_level->tick();
-            sbar.step();
+            advance_world_tick();
         }
         else
             dev_scroll();
     }
     else if (state == MENU_STATE)
     {
+        // The outer loop has already consumed the authoritative packet and
+        // sent input for the next tick before entering Step().  Multiplayer
+        // must advance that consumed tick here as well; otherwise the nested
+        // menu loop sends the next packet with the same tick number and both
+        // peers wait forever while rejecting each other's stale packets.
+        if (multiplayer_menu_active())
+            advance_world_tick();
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 
@@ -2482,6 +2597,7 @@ bool game_net_init(int argc, char **argv)
                 printf("Unable to attach to server, returning to the menu\n");
                 net_uninit();
                 main_net_cfg->join_failed = true;
+                main_net_cfg->server_full = false;
                 main_net_cfg->state = net_configuration::RESTART_SINGLE;
                 strcpy(lsf, "abuse.lsp");
                 return false;
@@ -2549,10 +2665,20 @@ int main(int argc, char *argv[])
 
         if (main_net_cfg && main_net_cfg->join_failed)
         {
+            const bool server_full = main_net_cfg->server_full;
             main_net_cfg->join_failed = false;
+            main_net_cfg->server_full = false;
             main_net_cfg->online = false;
             main_net_cfg->room_code[0] = '\0';
-            show_multiplayer_error(symbol_str("online_join_error"));
+            show_multiplayer_error(symbol_str(server_full ? "max_players" : "online_join_error"));
+        }
+
+        if (main_net_cfg && main_net_cfg->host_ended_server)
+        {
+            main_net_cfg->host_ended_server = false;
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+            show_multiplayer_error(symbol_str("host_ended_server"), symbol_str("connection_lost"));
         }
 
         g->get_input(); // prime the net
@@ -2570,11 +2696,12 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (main_net_cfg)
+        if (!g->done() && main_net_cfg)
             wait_min_players();
 
-        net_send(1);
-        if (net_start())
+        if (!g->done())
+            net_send(1);
+        if (!g->done() && net_start())
         {
             g->Step(); // process all the objects in the world
             g->update_screen(); // redraw the screen with any changes
@@ -2609,6 +2736,8 @@ int main(int argc, char *argv[])
 
             // if (demo_man.current_state() != demo_manager::PLAYING)
             g->get_input();
+            if (g->done())
+                break;
 
             // make sure physics process gets called every 65 ms
             if (SDL_GetTicks() - lastFixedUpdate >= settings.physics_update)
@@ -2731,7 +2860,7 @@ int main(int argc, char *argv[])
         base->packet.packet_reset();
     }
 
-    while (main_net_cfg && main_net_cfg->restart_state());
+    while (!application_quit_requested() && main_net_cfg && main_net_cfg->restart_state());
 
     delete main_net_cfg;
     main_net_cfg = NULL;

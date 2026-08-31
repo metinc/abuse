@@ -19,6 +19,7 @@ enum EventType
     EV_KEY,
     EV_KEYRELEASE,
     EV_TEXT_INPUT,
+    EV_QUIT,
     EV_CLOSE_WINDOW,
     EV_MESSAGE,
 };
@@ -38,6 +39,7 @@ class Jwindow;
 struct SDL_Cursor;
 
 void reset_input_sources();
+bool application_quit_requested();
 
 class Event
 {

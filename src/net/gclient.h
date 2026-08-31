@@ -11,6 +11,8 @@
 // Include base game networking handler interface
 #include "ghandler.h"
 
+#include <cstdint>
+
 /*
  * game_client - Handles client-side network communication in multiplayer games
  * Inherits from game_handler to provide client-specific implementations
@@ -27,6 +29,7 @@ class game_client : public game_handler
     int wait_local_input; // Flag indicating if waiting for local player input
     net_packet last_input; // Last UDP input packet, retained for loss recovery
     bool has_last_input{false};
+    std::uint64_t last_packet_ticks;
     int process_server_command(); // Processes control commands from server
     void restart_single_player(); // Releases lockstep after a connection failure
     net_address *server_data_port; // Server's address/port for game state data
@@ -34,6 +37,8 @@ class game_client : public game_handler
   public:
     // Constructor - initializes client connection to server
     game_client(net_socket *client_sock, net_address *server_addr);
+
+    std::uint64_t milliseconds_since_last_packet() const;
 
     // Main update function - processes all network events
     int process_net();

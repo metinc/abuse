@@ -58,7 +58,9 @@ enum
     SRVCMD_REGISTRATION_OK,
     SRVCMD_TOO_MANY,
     SRVCMD_RELOAD_START_OK,
-    SRVCMD_REQUEST_RESEND
+    SRVCMD_REQUEST_RESEND,
+    SRVCMD_LOBBY_STATUS,
+    SRVCMD_LOBBY_START
 };
 
 // return codes for NFCMD_OPEN
@@ -118,7 +120,8 @@ enum
 struct join_struct
 {
     int client_id;
-    uint8_t skin;
+    uint8_t lower_skin;
+    uint8_t upper_skin;
     char name[100];
     join_struct *next;
 };

@@ -34,6 +34,7 @@ enum light_tint
     LIGHT_TINT_GREEN,
     LIGHT_TINT_BLUE,
     LIGHT_TINT_CYAN,
+    LIGHT_TINT_ORANGE,
     LIGHT_TINT_COUNT
 };
 

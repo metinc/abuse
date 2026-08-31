@@ -424,8 +424,9 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
         target = *blist;
         if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
         {
-            // skip friendly hurtable targets so movement passes through teammates
-            if (subject && target->hurtable() && !subject->can_hurt(target))
+            // Skip friendly hurtable targets so movement passes through teammates,
+            // but keep explicit blockers such as destructible BLOCK floors solid.
+            if (subject && target->hurtable() && !target->can_block() && !subject->can_hurt(target))
                 continue;
             target->picture_space(tx1, ty1, tx2, ty2);
             if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
@@ -1745,7 +1746,9 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
                 for (v = player_list; v; v = v->next)
                 {
                     if (!strcmp(find_name, "view.tint"))
-                        v->set_tint(v->local_player() ? settings.player_skin : v->player_number);
+                        v->set_tint(v->local_player() ? settings.player_lower_skin : v->player_number);
+                    else if (!strcmp(find_name, "view.upper_tint"))
+                        v->set_upper_tint(v->local_player() ? settings.player_upper_skin : v->get_tint());
                     else
                         v->set_view_var_value(i, 0);
                 }

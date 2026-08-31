@@ -1,5 +1,6 @@
 foreach(required_variable
-        WIXL_EXECUTABLE WIXL_HEAT_EXECUTABLE STAGING_DIR PRODUCT_WXS OUTPUT)
+        WIXL_EXECUTABLE WIXL_HEAT_EXECUTABLE STAGING_DIR PRODUCT_WXS
+        WIX_UI_DIR OUTPUT)
     if(NOT DEFINED ${required_variable} OR "${${required_variable}}" STREQUAL "")
         message(FATAL_ERROR "${required_variable} is required")
     endif()
@@ -37,9 +38,11 @@ execute_process(
         -D "SourceDir=${STAGING_DIR}"
         -D Win64=yes
         --arch x64
+        --ext ui
         -o "${OUTPUT}"
         "${PRODUCT_WXS}"
         "${component_wxs}"
+    WORKING_DIRECTORY "${WIX_UI_DIR}"
     ERROR_VARIABLE wixl_error
     RESULT_VARIABLE wixl_result
 )

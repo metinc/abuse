@@ -184,6 +184,10 @@ int prefix_open(const char *filename, const int flags, const mode_t mode)
     const bool is_write = (flags & (O_WRONLY | O_RDWR | O_CREAT | O_APPEND)) != 0;
     const bool is_read = (flags & O_ACCMODE) == O_RDONLY;
 
+#ifdef WIN32
+    auto opener = [](const char *path, const int flags, const mode_t mode) -> int { return _open(path, flags, mode); };
+#else
     auto opener = [](const char *path, const int flags, const mode_t mode) -> int { return open(path, flags, mode); };
+#endif
     return prefix_open_impl<decltype(opener), int, int, mode_t>(filename, is_write, is_read, opener, -1, flags, mode);
 }

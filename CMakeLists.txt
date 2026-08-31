@@ -678,6 +678,11 @@ if(WIN32 AND CMAKE_CROSSCOMPILING)
             "${CMAKE_BINARY_DIR}/packaging/windows/abuse.wxs"
             @ONLY
         )
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/COPYING.rtf"
+            "${CMAKE_BINARY_DIR}/packaging/windows/License.rtf"
+            COPYONLY
+        )
 
         add_custom_target(windows-msi
             COMMAND "${CMAKE_COMMAND}" -E remove_directory "${WINDOWS_STAGE_DIR}"
@@ -688,6 +693,7 @@ if(WIN32 AND CMAKE_CROSSCOMPILING)
                 "-DWIXL_HEAT_EXECUTABLE=${WIXL_HEAT_EXECUTABLE}"
                 "-DSTAGING_DIR=${WINDOWS_STAGE_DIR}"
                 "-DPRODUCT_WXS=${CMAKE_BINARY_DIR}/packaging/windows/abuse.wxs"
+                "-DWIX_UI_DIR=${CMAKE_BINARY_DIR}/packaging/windows"
                 "-DOUTPUT=${WINDOWS_MSI_OUTPUT}"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/build-msi.cmake"
             DEPENDS abuse

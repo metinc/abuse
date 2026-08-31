@@ -19,8 +19,12 @@ int net_init(int argc, char **argv);
 void net_uninit();
 void service_net_request();
 void wait_min_players();
+void wait_for_server_lobby();
 
 int net_start();
+bool net_game_active();
+bool net_input_ready();
+void request_net_input_resend();
 bFILE *open_nfs_file(char const *filename, char const *mode);
 
 int NF_open_file(char const *filename, char const *mode);

@@ -16,6 +16,7 @@
 #include <string>
 
 inline constexpr char DEFAULT_SOUNDFONT[] = "MuseScore.sf3";
+inline constexpr char DEFAULT_LANGUAGE[] = "auto";
 inline constexpr int GAMEPAD_BINDING_LEFT_TRIGGER = 1000;
 inline constexpr int GAMEPAD_BINDING_RIGHT_TRIGGER = 1001;
 inline constexpr int PLAYER_SKIN_COUNT = 11;
@@ -50,7 +51,8 @@ class Settings
     short max_fps; //max frames per seconds to avoid GPU hogging if vsync is off
     bool big_font; //big font doesn't render properly (there are lines under letters and stuff)
     std::string language;
-    int player_skin;
+    int player_lower_skin;
+    int player_upper_skin;
     //
 
     std::string quick_load; //quick load
@@ -62,6 +64,7 @@ class Settings
     //multiplayer
     std::string player_name;
     std::string server_name;
+    bool streamer_mode; //keep room codes out of captured video and console output
 
     double gamma;
 
@@ -108,6 +111,7 @@ class Settings
     bool GetEditorFramebufferSize(short &width, short &height) const;
     bool Load();
     bool Save() const;
+    std::string GetEffectiveLanguage() const;
     void BeginCommandLineOverrides();
     void SetFullscreen(bool enabled);
     void SetSoundFont(const std::string &path);
