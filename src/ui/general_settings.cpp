@@ -51,7 +51,7 @@ constexpr std::array<const char *, PLAYER_SKIN_COUNT> skin_label_symbols = {
     "skin_standard", "skin_blue",   "skin_yellow", "skin_fire", "skin_olive", "skin_pink",
     "skin_darkblue", "skin_purple", "skin_africa", "skin_gold", "skin_land"};
 
-constexpr int skin_preview_width = 54;
+constexpr int skin_preview_width = 36;
 constexpr int skin_preview_height = 58;
 
 class language_picker : public pick_list
@@ -235,6 +235,10 @@ void show_general_settings()
         const int label_y = padding / 2;
         const int picker_y = label_y + font_height + 3;
         const int language_natural_width = longest_label + padding * 2 + 8;
+        const int heading_natural_width =
+            std::max({text_width(symbol_str("language")), text_width(symbol_str("player_upper_skin")),
+                      text_width(symbol_str("player_lower_skin"))}) +
+            padding * 2;
         const int language_picker_bottom = picker_y + static_cast<int>(languages.size()) * (font_height + 1) + 4;
         const int upper_label_y = language_picker_bottom + 6;
         const int upper_picker_y = upper_label_y + font_height + 3;
@@ -250,7 +254,9 @@ void show_general_settings()
         lower_skin->area(lower_x1, lower_y1, lower_x2, lower_y2);
         const int skin_control_width = std::max(lower_x2 - lower_x1 + 1, upper_x2 - upper_x1 + 1);
         const int skin_natural_width = skin_control_width + skin_preview_width + padding * 3;
-        const int client_width = std::max({settings.big_font ? 260 : 220, language_natural_width, skin_natural_width});
+        const int compact_width = settings.big_font ? 156 : 132;
+        const int client_width =
+            std::max({compact_width, language_natural_width, heading_natural_width, skin_natural_width});
         const int language_picker_width = client_width - padding * 2;
 
         const int preview_x = client_width - padding - skin_preview_width;
