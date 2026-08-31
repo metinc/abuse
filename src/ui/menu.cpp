@@ -445,6 +445,7 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     y += h;
 
     ico_button *start = load_icon(0, ID_START_GAME, x, y, h, NULL, "ic_start");
+    start->set_enabled(!the_game->multiplayer_menu_active());
     y += h;
 
     //difficulty/hardness icon
