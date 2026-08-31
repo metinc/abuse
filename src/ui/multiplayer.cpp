@@ -635,6 +635,11 @@ int MultiplayerUI::get_options(int server, bool online_join)
                     {
                         copy_player_name(config.name, sizeof(config.name), name_field->read());
                     }
+                    if (ifield *server_name_field = inm.get(NET_SERVER_NAME))
+                    {
+                        strncpy(game_name, server_name_field->read(), MAX_SERVER_NAME_LENGTH);
+                        game_name[MAX_SERVER_NAME_LENGTH] = '\0';
+                    }
                     if (ifield *connection_field = inm.get(NET_CONNECTION))
                     {
                         ifield *selected = (ifield *)connection_field->read();
