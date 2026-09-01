@@ -894,7 +894,7 @@ long c_caller(CFunc number, void *args)
         else
         {
             //AR enable quick save if player is touching the save console
-            if (current_level->attacker(current_object)->otype == TYPE_PLAYER_BOTTOM &&
+            if (!net_game_active() && current_level->attacker(current_object)->otype == TYPE_PLAYER_BOTTOM &&
                 current_object->otype == TYPE_SAVE_CONSOLE)
                 settings.player_touching_console = true;
             return 1;
@@ -2473,6 +2473,9 @@ long c_caller(CFunc number, void *args)
     }
     break;
     case CFunc::GetSaveSlot: {
+        if (net_game_active())
+            return 0;
+
         the_game->reset_keymap();
         if (demo_man.current_state() == demo_manager::PLAYING)
             return 1;
