@@ -19,6 +19,7 @@
 
 #include "common.h"
 
+#include "cop.h"
 #include "specs.h"
 #include "level.h"
 #include "game.h"
@@ -880,6 +881,22 @@ void net_reload()
         {
             DEBUG_LOG("Server-side reload");
             join_struct *join_list = base->join_list;
+            bool use_coop_checkpoint = false;
+            ivec2 coop_checkpoint;
+            if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+            {
+                for (view *checkpoint_view = player_list; checkpoint_view; checkpoint_view = checkpoint_view->next)
+                {
+                    game_object *player = checkpoint_view->m_focus;
+                    if (player && figures[player->otype]->tv > coop_checkpoint_y &&
+                        player->lvars[coop_checkpoint_active])
+                    {
+                        coop_checkpoint = ivec2(player->lvars[coop_checkpoint_x], player->lvars[coop_checkpoint_y]);
+                        use_coop_checkpoint = true;
+                        break;
+                    }
+                }
+            }
 
             // Process all joined players
             while (join_list)
@@ -895,8 +912,16 @@ void net_reload()
                         st = i;
 
                 game_object *o = create(current_start_type, 0, 0);
-                game_object *start = current_level->get_random_start(320, NULL);
-                if (start)
+                game_object *start = NULL;
+                if (use_coop_checkpoint)
+                {
+                    o->x = coop_checkpoint.x;
+                    o->y = coop_checkpoint.y;
+                    o->lvars[coop_checkpoint_active] = 1;
+                    o->lvars[coop_checkpoint_x] = coop_checkpoint.x;
+                    o->lvars[coop_checkpoint_y] = coop_checkpoint.y;
+                }
+                else if ((start = current_level->get_random_start(320, NULL)))
                 {
                     o->x = start->x;
                     o->y = start->y;
