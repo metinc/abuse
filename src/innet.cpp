@@ -712,6 +712,12 @@ void net_uninit()
     kill_net();
 }
 
+void disconnect_net_game()
+{
+    if (game_face)
+        game_face->quit();
+}
+
 int NF_set_file_server(net_address *addr)
 {
     DEBUG_LOG("Setting file server address");

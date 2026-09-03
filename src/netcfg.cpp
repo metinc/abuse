@@ -30,6 +30,7 @@ net_configuration::net_configuration()
     server_full = false;
     host_ended_server = false;
     waiting_for_host = false;
+    returning_to_menu = false;
     lobby_players = 1;
     streamer_mode = settings.streamer_mode;
 

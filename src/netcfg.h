@@ -37,6 +37,7 @@ class net_configuration
     bool server_full;
     bool host_ended_server;
     bool waiting_for_host;
+    bool returning_to_menu;
     int lobby_players;
     bool streamer_mode;
 

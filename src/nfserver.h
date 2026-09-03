@@ -19,6 +19,7 @@ class Event;
 
 int net_init(int argc, char **argv);
 void net_uninit();
+void disconnect_net_game();
 void service_net_request();
 void wait_min_players();
 void wait_for_server_lobby();

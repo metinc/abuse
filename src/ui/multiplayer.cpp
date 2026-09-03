@@ -17,6 +17,7 @@
 #include "game.h"
 
 #include "netcfg.h"
+#include "nfserver.h"
 #include "multiplayer.h"
 #include "input.h"
 #include "cache.h"
@@ -905,7 +906,9 @@ int MultiplayerUI::run()
         }
         else if (ev.type == EV_MESSAGE && ev.message.id == NET_SINGLE)
         {
+            disconnect_net_game();
             config.state = net_configuration::RESTART_SINGLE;
+            config.returning_to_menu = true;
             start_running = 0;
 
             strcpy(lsf, "abuse.lsp");

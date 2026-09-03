@@ -1935,10 +1935,15 @@ Game::Game(int argc, char **argv)
             recalc_local_view_space();
     }
 
+    const bool returning_to_menu = main_net_cfg && main_net_cfg->returning_to_menu;
+    if (main_net_cfg)
+        main_net_cfg->returning_to_menu = false;
+
     if (main_net_cfg == NULL ||
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
-        if (!start_edit && !net_start() && !settings.skip_intro && !(main_net_cfg && main_net_cfg->join_failed))
+        if (!start_edit && !net_start() && !settings.skip_intro && !returning_to_menu &&
+            !(main_net_cfg && main_net_cfg->join_failed))
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
