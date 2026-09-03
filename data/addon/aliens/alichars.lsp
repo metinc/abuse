@@ -431,7 +431,8 @@
           (progn
             (setq sgb_speed (+ sgb_speed (/ (xvel) 2)))
             (link_object creator)))
-      (sgun_ai))))
+      (sgun_ai)
+      (link_weapon_line_light 5 12))))
 
 (defun ad_ai ()
 	(if (not (eq (aistate) 20))

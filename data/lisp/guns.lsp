@@ -62,6 +62,7 @@
 					      (setq sgb_speed (+ sgb_speed (/ (xvel) 2)))
 					      (link_object creator)))
 					(sgun_ai)
+					(link_weapon_line_light 2 12)
 					)))
 	  (1 (with_object (add_object SHOTGUN_BULLET x y)
 				      (progn
@@ -79,6 +80,7 @@
 					      (setq sgb_speed (+ sgb_speed (/ (xvel) 2)))
 					      (link_object creator)))
 					(sgun_ai)
+					(link_weapon_line_light 8 12)
 					)))
 	  (2 (with_object (add_object GRENADE x y)
 			  (progn
