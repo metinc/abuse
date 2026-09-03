@@ -50,12 +50,20 @@ extern Settings settings;
 game_object *level::attacker(game_object *who)
 {
     int32_t d = 0x7fffffff;
-    game_object *c = NULL;
+    game_object *c = NULL, *fallback = NULL;
     view *f = the_game->first_view;
     for (; f; f = f->next)
     {
         if (f->m_focus)
         {
+            // Keep the old non-null guarantee while all players are dead and
+            // the game is transitioning to a restart.  During normal co-op
+            // play, however, corpses must not compete with living targets.
+            if (!fallback)
+                fallback = f->m_focus;
+            if (!f->m_focus->alive())
+                continue;
+
             int32_t tmp_d = abs(f->m_focus->x - who->x) + abs(f->m_focus->y - who->y);
             if (tmp_d < d)
             {
@@ -64,6 +72,8 @@ game_object *level::attacker(game_object *who)
             }
         }
     }
+    if (!c)
+        c = fallback;
     CONDITION(c, "no attacker found");
     return c;
 }
