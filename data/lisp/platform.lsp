@@ -5,7 +5,8 @@
 
 (defun make_smart_plat (symbol off_frame on_frame snap_yoffset)
   (eval (list 'def_char symbol
-	      '(flags (can_block T))
+	      '(flags (can_block T)
+	              (draw_behind T))
 	      `(abilities (start_accel ,snap_yoffset))
 	      `(fields ("xacel" ,plat_speed)
 		       ("yacel" ,plat_2speed)
@@ -87,7 +88,6 @@
 		))
     (set_state stopped))
   T)
-
 
 
 

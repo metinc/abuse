@@ -59,9 +59,9 @@ char const *state_names[MAX_STATE] = {"dead",        "dieing",        "stopped",
 #endif
 };
 
-char const *cflag_names[TOTAL_CFLAGS] = {"hurt_all",  "is_weapon",     "stoppable",      "can_block",
-                                         "hurtable",  "pushable",      "unlistable",     "add_front",
-                                         "cached_in", "need_cache_in", "unactive_shield"};
+char const *cflag_names[TOTAL_CFLAGS] = {"hurt_all",      "is_weapon",     "stoppable",      "can_block",
+                                         "hurtable",      "pushable",      "unlistable",     "add_front",
+                                         "cached_in",     "need_cache_in", "unactive_shield", "draw_behind"};
 
 char const *ofun_names[TOTAL_OFUNS] = {"ai_fun",     "move_fun",           "draw_fun",       "map_draw_fun",
                                        "damage_fun", "next_state_fun",     "user_fun",       "constructor",

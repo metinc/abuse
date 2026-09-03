@@ -688,7 +688,13 @@ void level::draw_objects(view *v)
     else
     {
         for (; o; o = o->next_active)
-            o->draw();
+            if (figures[o->otype]->get_cflag(CFLAG_DRAW_BEHIND))
+                o->draw();
+
+        o = first_active;
+        for (; o; o = o->next_active)
+            if (!figures[o->otype]->get_cflag(CFLAG_DRAW_BEHIND))
+                o->draw();
     }
 
     LSpace::Tmp.Clear();

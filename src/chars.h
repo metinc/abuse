@@ -56,7 +56,7 @@ class named_field
 };
 
 // all cflags default is 0
-#define TOTAL_CFLAGS 11
+#define TOTAL_CFLAGS 12
 enum
 {
     CFLAG_HURT_ALL, // if object hurts all characters, not just player
@@ -69,8 +69,8 @@ enum
     CFLAG_ADD_FRONT,
     CFLAG_CACHED_IN,
     CFLAG_NEED_CACHE_IN,
-    CFLAG_UNACTIVE_SHIELD // if object is not active (i.e. link 0 aistate==0)
-        // then objects will not draw a damage when hitting it
+    CFLAG_UNACTIVE_SHIELD, // inactive objects do not draw damage when hit
+    CFLAG_DRAW_BEHIND // draw before the regular object layer
 };
 extern char const *cflag_names[TOTAL_CFLAGS];
 
