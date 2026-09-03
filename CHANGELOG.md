@@ -1,5 +1,27 @@
 # Changelog
 
+## Abuse 1.0.6 by Metin Çelik (2026-09-04)
+
+- Added online multiplayer.
+- Added Co-op with checkpoints and shared items.
+- Added streamer mode.
+- Added widescreen support.
+- Added colored weapon lighting effects.
+- Added customizable player skins.
+- Fixed replay recording and playback.
+- Improved mouse and gamepad controls.
+- Added randomized pitch variation to alien sounds.
+- Put a previously unused alien death animation into use.
+- Made gibbed enemy body parts remain in the level.
+- Made flying enemies destroyed by non-explosive weapons crash and explode on impact instead of exploding immediately.
+- Added language, window mode, and SoundFont settings.
+- Added the level editor to the main menu.
+- Improved multiplayer chat and connection reliability.
+- Improved the save/load interface.
+- Fixed collision bugs.
+- Added Flatpak, Debian, and RPM packages and improved installers.
+- Migrated to SDL3, SDL3_mixer, and SDL3_net.
+
 ## Abuse 1.0.5 by Metin Çelik (2026-02-28)
 
 - Fixed a bug on Windows that caused the movement inputs to get stuck.
