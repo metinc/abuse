@@ -115,6 +115,7 @@ class Game
     std::string coop_ammo_level_name;
     bool editor_playtest_available = false;
     bool coop_restart_requested = false;
+    bool net_player_status_visible = false;
 
     void discard_editor_playtest();
     void clear_coop_checkpoint();

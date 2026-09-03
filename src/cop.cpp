@@ -1155,7 +1155,7 @@ void *respawn_ai()
 
 void *score_draw()
 {
-    // Multiplayer status, scores and room details are shown while TAB is held.
+    // Multiplayer status, scores and room details are toggled with TAB.
     return NULL;
 }
 

@@ -378,6 +378,12 @@ int window_state(int state)
 void Game::set_state(int new_state)
 {
     int d = 0;
+    if (new_state != RUN_STATE)
+    {
+        net_player_status_visible = false;
+        update_net_player_status(false);
+    }
+
     const bool entering_multiplayer_menu = new_state == MENU_STATE && current_level && net_game_active();
     if (entering_multiplayer_menu)
     {
@@ -385,7 +391,7 @@ void Game::set_state(int new_state)
         // ownership of local input.
         for (int key = 0; key < JK_KEY_COUNT; ++key)
         {
-            // Escape and the held player-status overlay are local UI controls.
+            // Escape and the player-status overlay are local UI controls.
             if (key != JK_ESC && key != JK_TAB && key_down(key))
                 pending_input_events.push_back(
                     {static_cast<uint8_t>(key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
@@ -2156,6 +2162,20 @@ void Game::get_input()
         {
             last_input = ev.window;
         }
+
+        if (net_game_active() && (ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && ev.key == JK_TAB)
+        {
+            if (ev.type == EV_KEY)
+            {
+                if (!key_down(JK_TAB))
+                    net_player_status_visible = !net_player_status_visible;
+                set_key_down(JK_TAB, 1);
+            }
+            else
+                set_key_down(JK_TAB, 0);
+            continue;
+        }
+
         // don't process repeated keys in the main window, it will slow down the game to handle such
         // useless events. However in other windows it might be useful, such as in input windows
         // where you want to repeatedly scroll down...
@@ -2183,9 +2203,6 @@ void Game::get_input()
                          static_cast<uint8_t>(ev.key > 255 ? ev.key - 256 : ev.key)});
                 }
             }
-            if (net_game_active() && (ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && ev.key == JK_TAB)
-                continue;
-
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
             {
                 dev_cont->handle_event(ev);
@@ -2303,12 +2320,12 @@ void Game::get_input()
     }
 
     const bool show_net_player_status =
-        state == RUN_STATE && !(dev & EDIT_MODE) && wm->key_pressed(JK_TAB);
+        state == RUN_STATE && !(dev & EDIT_MODE) && net_player_status_visible;
     update_net_player_status(show_net_player_status);
     if (show_net_player_status)
     {
         // Window buttons use the same physical left mouse button as firing.
-        // While TAB owns that input, never expose it to the player controls.
+        // While the overlay is visible, never expose that input to the player controls.
         last_demo_mbut = 0;
     }
 }
