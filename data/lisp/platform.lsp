@@ -64,14 +64,14 @@
 	  (next_picture))
 	(select (aistate)
 		(0 ;; look for a player
-		 (if (or (not (eq (with_object (get_object (aitype)) (aistate)) 0))
-			 (and (touching_bg) (with_object (bg) (pressing_action_key))))
-		     (progn
-		       (if (and (touching_bg) (with_object (bg) (pressing_action_key)))
-			   (let ((mex (x))
-				 (mey (- (y) (get_ability start_accel))))
-			     (with_object (bg) (progn (set_y mey)))))
-		       (go_state 2))))
+		 (let ((player (action_player -1 -1)))
+		   (if (or (not (eq (with_object (get_object (aitype)) (aistate)) 0))
+			   player)
+		       (progn
+			 (if player
+			     (let ((mey (- (y) (get_ability start_accel))))
+			       (with_object player (progn (set_y mey)))))
+			 (go_state 2)))))
 
 
 		(2 ;; swap dest and source and go to new dest
@@ -87,7 +87,6 @@
 		))
     (set_state stopped))
   T)
-
 
 
 

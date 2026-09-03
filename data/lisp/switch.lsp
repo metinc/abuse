@@ -5,22 +5,22 @@
   (next_picture)
   (select (aistate)
 	  (0      ; waiting for player to press, then turn to on
-	   (if (and (< (distx) 20) (< (disty) 30) (with_object (bg) (pressing_action_key)))
+	   (if (action_player 20 30)
 	       (progn
 		 (play_sound SWITCH_SND 127 (x) (y))
 		 (set_state running)
 		 (set_aistate 1))))
 	  (1     ; wait for player to let go of button
-	   (if (not (with_object (bg) (pressing_action_key)))
+	   (if (not (action_player 20 30))
 	       (set_aistate 2)))
 	  (2     ; wait for player to press, then turn to off
-	   (if (and (< (distx) 20) (< (disty) 30) (with_object (bg) (pressing_action_key)))
+	   (if (action_player 20 30)
 	       (progn
 		 (play_sound SWITCH_SND 127 (x) (y))
 		 (set_state stopped)
 		 (set_aistate 4))))
 	   (4     ; wait for player to let go of button
-	    (if (not (with_object (bg) (pressing_action_key)))
+	    (if (not (action_player 20 30))
 		(set_aistate 0)))
 	   )
 T)
@@ -30,7 +30,7 @@ T)
   (select (aistate)
 	  (0      ; waiting for player to press, then turn to on
 	   (next_picture)
-	   (if (and (< (distx) 20) (< (disty) 30) (with_object (bg) (pressing_action_key)))
+	   (if (action_player 20 30)
 	       (progn
 		 (print (random 1000))
 		 (play_sound SWITCH_SND 127 (x) (y))
@@ -77,14 +77,14 @@ T)
   (select (aistate)
 	  (0      ; waiting for player to press, then turn to on
 	   (next_picture)
-	   (if (and (< (distx) 20) (< (disty) 30) (with_object (bg) (pressing_action_key)))
+	   (if (action_player 20 30)
 	       (progn
 		 (print (random 1000))
 		 (play_sound SWITCH_SND 127 (x) (y))
 		 (set_state running)
 		 (set_aistate 1))))
 	  (1     ; wait for player to let go of button
-	   (if (not (with_object (bg) (pressing_action_key)))
+	   (if (not (action_player 20 30))
 	       (set_aistate 2)))
 	  (2     ; wait for reset time
 	   (if (> (state_time) reset_time)
@@ -297,5 +297,4 @@ T) */
   (states "art/misc.spe"
 	  (stopped "death_sensor0")
 	  (running "death_sensor1")))
-
 

@@ -81,6 +81,14 @@ class Game
         uint8_t value;
     };
 
+    struct coop_level_start_ammo
+    {
+        int player_number;
+        std::string player_name;
+        std::vector<int32_t> weapons;
+        int32_t current_weapon;
+    };
+
     // Timestamp when the current transient message was shown.
     uint64_t help_start_time = 0;
 
@@ -100,10 +108,18 @@ class Game
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
     std::vector<pending_input_event> pending_input_events;
+    std::vector<coop_level_start_ammo> coop_start_ammo;
     std::string editor_level_name;
+    std::string coop_checkpoint_level_name;
+    std::string coop_level_start_path;
+    std::string coop_ammo_level_name;
     bool editor_playtest_available = false;
+    bool coop_restart_requested = false;
 
     void discard_editor_playtest();
+    void clear_coop_checkpoint();
+    void remember_coop_level_start_ammo();
+    void restore_coop_level_start_ammo();
     void collect_drawables();
     void prepare_world_tick();
     void advance_world_tick();
@@ -241,6 +257,10 @@ class Game
     void play_sound(int id, float gain, int32_t x, int32_t y, float frequency_ratio = 1.0f);
     void request_level_load(char *name);
     void request_level_load(std::string name); //AR
+    bool save_coop_checkpoint();
+    void request_coop_restart();
+    bool consume_coop_restart_request();
+    bool restart_coop_from_checkpoint();
     void request_end();
 };
 

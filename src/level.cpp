@@ -424,9 +424,10 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
         target = *blist;
         if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
         {
-            // Skip friendly hurtable targets so movement passes through teammates,
-            // but keep explicit blockers such as destructible BLOCK floors solid.
-            if (subject && target->hurtable() && !target->can_block() && !subject->can_hurt(target))
+            // Only teammates are transparent to projectiles. can_hurt() also
+            // contains Abuse's attacker-vs-enemy rules and would incorrectly
+            // make neutral traps pass through ordinary enemies.
+            if (subject && target->hurtable() && !target->can_block() && subject->is_friendly_to(target))
                 continue;
             target->picture_space(tx1, ty1, tx2, ty2);
             if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||
@@ -1677,6 +1678,36 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
     spec_entry *se = sd->find("player_info");
     if (se)
     {
+        // Validate the complete player reference table before replacing the
+        // current views.  A malformed network snapshot must not create views
+        // whose focus is NULL (the view constructor applies player colours and
+        // teams to that object immediately).
+        if (se->size < 4 || (se->size - 4) % 4)
+        {
+            printf("Invalid player_info section size (%lu)\n", se->size);
+            return 0;
+        }
+
+        fp->seek(se->offset, 0);
+        uint32_t saved_player_count = fp->read_uint32();
+        uint32_t expected_player_count = static_cast<uint32_t>((se->size - 4) / 4);
+        if (!saved_player_count || saved_player_count != expected_player_count)
+        {
+            printf("Invalid player count in player_info (%u, expected %u)\n", saved_player_count,
+                   expected_player_count);
+            return 0;
+        }
+
+        for (uint32_t i = 0; i < saved_player_count; i++)
+        {
+            uint32_t object_number = fp->read_uint32();
+            if (!number_to_object_in_list(object_number, save_list))
+            {
+                printf("Invalid player object reference %u in player_info\n", object_number);
+                return 0;
+            }
+        }
+
         fp->seek(se->offset, 0);
 
         int set_first_view = 0;
@@ -2261,11 +2292,6 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
             {
                 fp->write_uint8(strlen(first_name) + 1);
                 fp->write(first_name, strlen(first_name) + 1);
-            }
-            else
-            {
-                fp->write_uint8(1);
-                fp->write_uint8(0);
             }
 
             fp->write_uint32(fg_width);

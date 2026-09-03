@@ -92,6 +92,8 @@ class view
     int32_t yoff();
     int drawable(); // network viewables are not drawable
     int local_player(); //  just in case I ever need non-viewable local players.
+    game_object *camera_focus() const;
+    bool spectating() const;
 
     view *next; // next viewable player (singly linked list)
     void get_input();
@@ -149,9 +151,14 @@ class view
     game_object *m_focus; // object we are focusing on (player)
 
   private:
+    void update_spectator();
+    void next_spectator_target();
+    bool has_live_spectator_target() const;
     int32_t unclamped_xoff(int32_t pan) const;
     int32_t unclamped_yoff(int32_t pan) const;
 
+    int m_spectate_player;
+    bool m_spectator_active;
     uint8_t m_keymap[JK_KEY_COUNT / 8];
     char m_chat_buf[60];
     float interpolation_ratio;

@@ -370,6 +370,7 @@ enum class CFunc
     GetObjectTint,
     SetObjectTeam,
     GetObjectTeam,
+    AllPlayersAlive,
 };
 
 enum class LispFunc
@@ -379,6 +380,7 @@ enum class LispFunc
     BMove, // returns true=unblocked, nil=block, or object
     Me,
     Bg,
+    ActionPlayer,
     FindClosest,
     FindXClosest,
     FindXRange,

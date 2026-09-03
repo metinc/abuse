@@ -47,6 +47,7 @@ Available cheats:
 
 - `/god` - Makes you invulnerable to all damage
 - `/giveall` - Gives all weapons and maximum ammunition
+- `/kill` - Kills your own player
 - `/flypower` - Grants Anti-Gravity Boots effect
 - `/sneakypower` - Grants Cloak effect
 - `/fastpower` - Grants Flash Speed effect

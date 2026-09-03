@@ -136,7 +136,7 @@ void game_server::game_start_wait()
         {
             if (stat)
                 wm->close_window(stat);
-            char msg[256];
+            char msg[512];
             const bool show_room = main_net_cfg->online && main_net_cfg->room_code[0];
             if (show_room && main_net_cfg->streamer_mode)
                 snprintf(msg, sizeof(msg), symbol_str("online_lobby_players_streamer"), player_count);
@@ -144,6 +144,16 @@ void game_server::game_start_wait()
                 snprintf(msg, sizeof(msg), symbol_str("online_lobby_players"), main_net_cfg->room_code, player_count);
             else
                 snprintf(msg, sizeof(msg), symbol_str("lobby_players"), player_count);
+
+            const bool cooperative = main_net_cfg->game_mode == net_configuration::COOP;
+            char instructions[512];
+            if (cooperative)
+                snprintf(instructions, sizeof(instructions), "%s", symbol_str("coop_lobby_instructions"));
+            else
+                snprintf(instructions, sizeof(instructions), symbol_str("deathmatch_lobby_instructions"),
+                         main_net_cfg->kills);
+            const size_t message_length = strlen(msg);
+            snprintf(msg + message_length, sizeof(msg) - message_length, "\n\n%s", instructions);
 
             ifield *controls;
             int x1, y1, message_width, message_bottom;
@@ -169,7 +179,7 @@ void game_server::game_start_wait()
             }
 
             stat = wm->CreateWindow(ivec2(0), ivec2(-1), new info_field(0, 0, ID_NULL, msg, controls),
-                                    symbol_str("lobby_title"));
+                                    symbol_str(cooperative ? "coop_lobby_title" : "deathmatch_lobby_title"));
             wm->move_window(stat, std::max(0, (xres - stat->m_size.x) / 2),
                             std::max(0, (yres - stat->m_size.y) / 2));
             wm->flush_screen();

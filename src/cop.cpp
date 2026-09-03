@@ -27,6 +27,7 @@
 #include "cop.h"
 #include "dev.h"
 #include "netcfg.h"
+#include "nfserver.h"
 #include <SDL3/SDL_timer.h>
 
 enum
@@ -45,6 +46,21 @@ typedef enum
     DFRIS = 6,
     LSABER = 7
 } WeaponType;
+
+static bool all_coop_players_dead()
+{
+    bool found_player = false;
+    for (view *candidate = player_list; candidate; candidate = candidate->next)
+    {
+        if (!candidate->m_focus)
+            continue;
+
+        found_player = true;
+        if (candidate->m_focus->alive())
+            return false;
+    }
+    return found_player;
+}
 
 signed char small_fire_off[24 * 2] = // x & y offset from character to end of gun.
     {17,  20, // 1
@@ -720,8 +736,28 @@ void *cop_mover(int xm, int ym, int but)
         }
         else if (o->aistate() == 3)
         {
-            //AR "Press SPACEBAR to continue", reset after death
-            if (!o->controller() || but || o->controller()->key_down(JK_SPACE) || o->controller()->key_down(JK_ENTER))
+            const bool coop_spectator =
+                main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+
+            // Co-op players stay dead and use their local view to spectate a
+            // surviving teammate. Other game modes retain their old restart.
+            if (coop_spectator)
+            {
+                const bool team_is_dead = all_coop_players_dead();
+                const bool local_player = o->controller() && o->controller()->local_player();
+                const bool host_can_restart =
+                    net_game_active() && client_number() == 0 && team_is_dead && local_player;
+                if (host_can_restart &&
+                    (but || o->controller()->key_down(JK_SPACE) || o->controller()->key_down(JK_ENTER)))
+                    the_game->request_coop_restart();
+                else if (host_can_restart)
+                    the_game->show_help(symbol_str("space_cont"));
+                else if (!team_is_dead && local_player && !o->controller()->spectating())
+                    the_game->show_help(symbol_str("space_cont"));
+            }
+            else if (
+                (!o->controller() || but || o->controller()->key_down(JK_SPACE) ||
+                 o->controller()->key_down(JK_ENTER)))
             {
                 // call the user function to reset the player
                 ((LSymbol *)l_restart_player)->EvalFunction(NULL);
@@ -1117,72 +1153,9 @@ void *respawn_ai()
     return true_symbol;
 }
 
-static int compare_players(const void *a, const void *b)
-{
-    if (((view **)a)[0]->kills > ((view **)b)[0]->kills)
-        return -1;
-    else if (((view **)a)[0]->kills < ((view **)b)[0]->kills)
-        return 1;
-    else if (((view **)a)[0]->player_number > ((view **)b)[0]->player_number)
-        return -1;
-    else if (((view **)a)[0]->player_number < ((view **)b)[0]->player_number)
-        return 1;
-    else
-        return 0;
-}
-
 void *score_draw()
 {
-    float visibility = the_game ? the_game->transient_message_visibility() : 1.0f;
-
-    view *sorted_players[16], *local = NULL;
-    int tp = 0;
-    view *f = player_list;
-    for (; f; f = f->next)
-    {
-        sorted_players[tp] = f;
-        tp++;
-        if (f->local_player())
-            local = f;
-    }
-
-    JCFont *fnt = wm->font();
-    if (local)
-    {
-        ivec2 pos = local->m_aa;
-        char msg[100];
-
-        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0] && !main_net_cfg->streamer_mode)
-        {
-            snprintf(msg, sizeof(msg), "%s: %s", symbol_str("room_code"), main_net_cfg->room_code);
-            fnt->PutString(main_screen, pos, msg, wm->bright_color());
-            pos.y += fnt->Size().y;
-        }
-
-        if (visibility <= 0.0f)
-            return NULL;
-
-        qsort(sorted_players, tp, sizeof(view *), compare_players);
-
-        int i;
-        for (i = 0; i < tp; i++)
-        {
-            int color = lnumber_value(
-                ((LArray *)((LSymbol *)l_player_text_color)->GetValue())->Get(sorted_players[i]->get_tint()));
-            if (visibility < 1.0f)
-            {
-                color = pal->find_closest(static_cast<uint8_t>(pal->red(color) * visibility),
-                                          static_cast<uint8_t>(pal->green(color) * visibility),
-                                          static_cast<uint8_t>(pal->blue(color) * visibility));
-            }
-            sprintf(msg, "%3ld %s", (long)sorted_players[i]->kills, sorted_players[i]->name);
-            if (sorted_players[i] == local)
-                strcat(msg, " <<");
-
-            fnt->PutString(main_screen, pos, msg, color);
-            pos.y += fnt->Size().y;
-        }
-    }
+    // Multiplayer status, scores and room details are shown while TAB is held.
     return NULL;
 }
 

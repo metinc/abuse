@@ -99,6 +99,20 @@ static view *lget_view(void *arg, char const *msg)
     return c;
 }
 
+static bool all_players_are_alive()
+{
+    bool found_player = false;
+    for (view *v = player_list; v; v = v->next)
+    {
+        if (!v->m_focus)
+            continue;
+        found_player = true;
+        if (!v->m_focus->alive())
+            return false;
+    }
+    return found_player;
+}
+
 extern int get_option(char const *name);
 
 // called by lisp_init, defines symbols and functions to interface with c
@@ -261,6 +275,49 @@ void *l_caller(LispFunc number, void *args)
             return LPointer::Create(current_level->attacker(current_object));
         else
             return LPointer::Create(player_list->m_focus);
+    }
+    break;
+    case LispFunc::ActionPlayer: {
+        const int32_t max_x = lnumber_value(leval(CAR(args)));
+        args = CDR(args);
+        const int32_t max_y = lnumber_value(leval(CAR(args)));
+        const bool require_overlap = max_x < 0 || max_y < 0;
+
+        int32_t object_x1, object_y1, object_x2, object_y2;
+        if (require_overlap)
+            current_object->picture_space(object_x1, object_y1, object_x2, object_y2);
+
+        game_object *selected = NULL;
+        int32_t selected_distance = 0x7fffffff;
+        for (view *candidate = player_list; candidate; candidate = candidate->next)
+        {
+            game_object *player = candidate->m_focus;
+            if (!player || !player->alive() || candidate->y_suggestion <= 0)
+                continue;
+
+            bool in_range;
+            if (require_overlap)
+            {
+                int32_t player_x1, player_y1, player_x2, player_y2;
+                player->picture_space(player_x1, player_y1, player_x2, player_y2);
+                in_range = !(object_x1 > player_x2 || object_x2 < player_x1 || object_y1 > player_y2 ||
+                             object_y2 < player_y1);
+            }
+            else
+            {
+                in_range = abs(player->x - current_object->x) < max_x &&
+                           abs(player->y - current_object->y) < max_y;
+            }
+
+            const int32_t distance = abs(player->x - current_object->x) + abs(player->y - current_object->y);
+            if (in_range && distance < selected_distance)
+            {
+                selected = player;
+                selected_distance = distance;
+            }
+        }
+
+        return selected ? LPointer::Create(selected) : NULL;
     }
     break;
     case LispFunc::FindClosest:
@@ -2111,6 +2168,13 @@ long c_caller(CFunc number, void *args)
             if (!demo_man.save_playback_checkpoint())
                 std::fprintf(stderr, "Unable to update the replay checkpoint\n");
         }
+        else if (net_game_active() && main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        {
+            if (!all_players_are_alive())
+                break;
+            if (!the_game->save_coop_checkpoint() && client_number() == 0)
+                std::fprintf(stderr, "Unable to update the co-op checkpoint\n");
+        }
         else
         {
             current_level->save(fn, 1);
@@ -2633,6 +2697,9 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::Cooperative:
         return main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    break;
+    case CFunc::AllPlayersAlive:
+        return all_players_are_alive();
     break;
     case CFunc::TimeForNextLevel: {
         if (main_net_cfg &&

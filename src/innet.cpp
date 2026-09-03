@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <stdio.h>
 
+#include <SDL3/SDL_clipboard.h>
 #include <SDL3/SDL_timer.h>
 
 #include "common.h"
@@ -68,12 +69,71 @@ namespace
 {
 constexpr int ID_NET_KICK_PLAYER_FIRST = 0x7e00;
 constexpr int ID_NET_KICK_PLAYER_END = ID_NET_KICK_PLAYER_FIRST + MAX_JOINERS;
+constexpr int ID_NET_COPY_ROOM_CODE = 0x7f01;
 
 struct player_status_row
 {
     int client_id;
     info_field *field;
 };
+
+struct tab_player_status_row
+{
+    int player_number;
+    info_field *field;
+};
+
+class tab_action_button : public button
+{
+  public:
+    using button::button;
+
+    void handle_event(Event &event, image *screen, InputManager *manager) override
+    {
+        if (event.type != EV_MOUSE_BUTTON)
+        {
+            button::handle_event(event, screen, manager);
+            return;
+        }
+
+        if (event.mouse_button & LEFT_BUTTON)
+        {
+            if (!left_action_sent)
+            {
+                left_action_sent = true;
+                button::handle_event(event, screen, manager);
+                wm->PushMessage(id, this);
+            }
+            return;
+        }
+
+        if (left_action_sent)
+        {
+            // Cancel button's deferred release action: this overlay dispatches
+            // left clicks immediately so a refresh cannot swallow the release.
+            left_action_sent = false;
+            button::draw(0, screen);
+            button::draw(1, screen);
+            return;
+        }
+
+        button::handle_event(event, screen, manager);
+    }
+
+    void draw(int active, image *screen) override
+    {
+        if (!active)
+            left_action_sent = false;
+        button::draw(active, screen);
+    }
+
+  private:
+    bool left_action_sent = false;
+};
+
+Jwindow *tab_player_status_window = nullptr;
+std::vector<tab_player_status_row> tab_player_status_rows;
+std::uint64_t tab_player_status_refresh = 0;
 
 std::string player_status_text(char const *name, std::uint64_t milliseconds_since_packet)
 {
@@ -99,6 +159,9 @@ Jwindow *create_player_status_window(game_server *server, std::vector<player_sta
 
     rows.clear();
     int y = row_height * 2;
+    const std::string host_text = player_status_text(symbol_str("host_player"), 0);
+    fields = new info_field(0, y + 3, ID_NULL, host_text.c_str(), fields);
+    y += row_height;
     for (game_server::client_status const &status : statuses)
     {
         const std::string text = player_status_text(status);
@@ -163,6 +226,197 @@ bool refresh_player_status_window(Jwindow *window, game_server *server,
     wm->flush_screen();
     return true;
 }
+
+std::vector<view *> sorted_score_players()
+{
+    std::vector<view *> players;
+    for (view *player = player_list; player; player = player->next)
+        players.push_back(player);
+    std::sort(players.begin(), players.end(), [](view const *left, view const *right) {
+        if (left->kills != right->kills)
+            return left->kills > right->kills;
+        return left->player_number < right->player_number;
+    });
+    return players;
+}
+
+std::string tab_player_status_text(view *player, game_server *server, game_client *client)
+{
+    char packet_age[32] = "-";
+    if (player->local_player())
+        snprintf(packet_age, sizeof(packet_age), "%7d ms", 0);
+    else if (server)
+    {
+        for (game_server::client_status const &status : server->client_statuses())
+            if (status.client_id == player->player_number)
+            {
+                const std::uint64_t display_ms = std::min<std::uint64_t>(status.milliseconds_since_packet, 9999999);
+                snprintf(packet_age, sizeof(packet_age), "%7llu ms",
+                         static_cast<unsigned long long>(display_ms));
+                break;
+            }
+    }
+    else if (client && player->player_number == 0)
+    {
+        const std::uint64_t display_ms =
+            std::min<std::uint64_t>(client->milliseconds_since_last_packet(), 9999999);
+        snprintf(packet_age, sizeof(packet_age), "%7llu ms", static_cast<unsigned long long>(display_ms));
+    }
+
+    char text[256];
+    snprintf(text, sizeof(text), "%-18s %5ld %10s", player->name, static_cast<long>(player->kills), packet_age);
+    return text;
+}
+
+bool refresh_tab_player_status_window(game_server *server, game_client *client)
+{
+    const std::vector<view *> players = sorted_score_players();
+    if (players.size() != tab_player_status_rows.size())
+        return false;
+
+    for (std::size_t i = 0; i < players.size(); ++i)
+    {
+        if (players[i]->player_number != tab_player_status_rows[i].player_number)
+            return false;
+        const std::string text = tab_player_status_text(players[i], server, client);
+        tab_player_status_rows[i].field->change_text(text.c_str());
+    }
+
+    tab_player_status_window->redraw();
+    wm->flush_screen();
+    return true;
+}
+
+void close_tab_player_status_window()
+{
+    if (tab_player_status_window)
+        wm->close_window(tab_player_status_window);
+    tab_player_status_window = nullptr;
+    tab_player_status_rows.clear();
+    tab_player_status_refresh = 0;
+}
+
+void create_tab_player_status_window()
+{
+    game_server *server = dynamic_cast<game_server *>(game_face);
+    game_client *client = dynamic_cast<game_client *>(game_face);
+    if (!server && !client)
+        return;
+
+    const int row_height = wm->font()->Size().y + 7;
+    const int kick_x = wm->font()->Size().x * 36;
+    ifield *fields = nullptr;
+    int y = 0;
+
+    const bool show_room = main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0];
+    if (show_room)
+    {
+        char room[128];
+        snprintf(room, sizeof(room), "%s: %s", symbol_str("room_code"),
+                 main_net_cfg->streamer_mode ? "******" : main_net_cfg->room_code);
+        fields = new info_field(0, y + 3, ID_NULL, room, fields);
+        y += row_height;
+        fields = new tab_action_button(0, y, ID_NET_COPY_ROOM_CODE, symbol_str("copy_room_code"), fields);
+        y += row_height;
+    }
+
+    fields = new info_field(0, y + 3, ID_NULL, symbol_str("player_status_columns"), fields);
+    y += row_height;
+
+    const std::vector<game_server::client_status> statuses = server ? server->client_statuses()
+                                                                    : std::vector<game_server::client_status>();
+    for (view *player : sorted_score_players())
+    {
+        const std::string text = tab_player_status_text(player, server, client);
+        info_field *field = new info_field(0, y + 3, ID_NULL, text.c_str(), fields);
+        fields = field;
+
+        const bool can_kick = server && !player->local_player() &&
+                              std::any_of(statuses.begin(), statuses.end(), [player](auto const &status) {
+                                  return status.client_id == player->player_number;
+                              });
+        if (can_kick)
+            fields = new tab_action_button(kick_x, y, ID_NET_KICK_PLAYER_FIRST + player->player_number,
+                                           symbol_str("kick_player"), fields);
+
+        tab_player_status_rows.push_back({player->player_number, field});
+        y += row_height;
+    }
+
+    tab_player_status_window =
+        wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("player_status"));
+    wm->move_window(tab_player_status_window, std::max(0, (xres - tab_player_status_window->m_size.x) / 2),
+                    std::max(0, (yres - tab_player_status_window->m_size.y) / 2));
+
+    if (tab_player_status_window)
+    {
+        tab_player_status_refresh = SDL_GetTicks();
+        wm->flush_screen();
+    }
+}
+}
+
+bool handle_net_player_status_event(Event const &event)
+{
+    if (!tab_player_status_window)
+        return false;
+
+    if (event.type == EV_CLOSE_WINDOW && event.window == tab_player_status_window)
+        return true;
+
+    if (event.type == EV_MESSAGE && event.message.id == ID_NET_COPY_ROOM_CODE)
+    {
+        if (main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0] &&
+            !SDL_SetClipboardText(main_net_cfg->room_code))
+            DEBUG_LOG("Unable to copy room code: %s", SDL_GetError());
+        return true;
+    }
+
+    game_server *server = dynamic_cast<game_server *>(game_face);
+    if (event.type != EV_MESSAGE || !server || event.message.id < ID_NET_KICK_PLAYER_FIRST ||
+        event.message.id >= ID_NET_KICK_PLAYER_END)
+    {
+        // WindowManager has already delivered these events to the status
+        // window. Do not pass its mouse input on to the local player as well.
+        return event.window == tab_player_status_window &&
+               (event.type == EV_MOUSE_BUTTON || event.type == EV_MOUSE_MOVE);
+    }
+
+    const int client_id = event.message.id - ID_NET_KICK_PLAYER_FIRST;
+    if (server->kick_client(client_id))
+    {
+        close_tab_player_status_window();
+        create_tab_player_status_window();
+    }
+    return true;
+}
+
+void update_net_player_status(bool show)
+{
+    game_server *server = dynamic_cast<game_server *>(game_face);
+    game_client *client = dynamic_cast<game_client *>(game_face);
+    if (!show || (!server && !client))
+    {
+        close_tab_player_status_window();
+        return;
+    }
+
+    if (!tab_player_status_window)
+    {
+        create_tab_player_status_window();
+        return;
+    }
+
+    const std::uint64_t now = SDL_GetTicks();
+    if (now - tab_player_status_refresh < 100)
+        return;
+    tab_player_status_refresh = now;
+
+    if (!refresh_tab_player_status_window(server, client))
+    {
+        close_tab_player_status_window();
+        create_tab_player_status_window();
+    }
 }
 
 int net_init(int argc, char **argv)
@@ -454,6 +708,7 @@ int kill_net()
 void net_uninit()
 {
     DEBUG_LOG("Uninitializing network");
+    close_tab_player_status_window();
     kill_net();
 }
 
@@ -814,10 +1069,19 @@ void wait_for_server_lobby()
             if (status)
                 wm->close_window(status);
 
-            char message[256];
+            char message[512];
             snprintf(message, sizeof(message), symbol_str("client_lobby_players"), main_net_cfg->lobby_players);
+            const bool cooperative = main_net_cfg->game_mode == net_configuration::COOP;
+            char instructions[512];
+            if (cooperative)
+                snprintf(instructions, sizeof(instructions), "%s", symbol_str("coop_lobby_instructions"));
+            else
+                snprintf(instructions, sizeof(instructions), symbol_str("deathmatch_lobby_instructions"),
+                         main_net_cfg->kills);
+            const size_t message_length = strlen(message);
+            snprintf(message + message_length, sizeof(message) - message_length, "\n\n%s", instructions);
             status = wm->CreateWindow(ivec2(0), ivec2(-1), new info_field(0, 0, ID_NULL, message, NULL),
-                                      symbol_str("lobby_title"));
+                                      symbol_str(cooperative ? "coop_lobby_title" : "deathmatch_lobby_title"));
             wm->move_window(status, std::max(0, (xres - status->m_size.x) / 2),
                             std::max(0, (yres - status->m_size.y) / 2));
             displayed_players = main_net_cfg->lobby_players;
@@ -915,6 +1179,11 @@ void net_reload()
                 game_object *start = NULL;
                 if (use_coop_checkpoint)
                 {
+                    // The checkpoint determines where the joining player spawns,
+                    // but the START object still determines its render order.
+                    // Falling back to add_object() would prepend the player and
+                    // draw it behind consoles and other level objects.
+                    start = current_level->find_type(st, join_list->client_id);
                     o->x = coop_checkpoint.x;
                     o->y = coop_checkpoint.y;
                     o->lvars[coop_checkpoint_active] = 1;

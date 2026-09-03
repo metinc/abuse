@@ -39,6 +39,7 @@
 #include "multiplayer.h"
 #include "scroller.h"
 #include "netcfg.h"
+#include "nfserver.h"
 
 #include "net/sock.h"
 
@@ -53,6 +54,17 @@ extern int get_key_binding(char const *dir, int i);
 extern net_protocol *prot;
 
 static AudioSettingsWindow *audio_settings_window;
+
+static bool load_player_game_enabled()
+{
+    if (!the_game->multiplayer_menu_active())
+        return show_load_icon();
+
+    // The co-op host can always restart. If no save console has created a
+    // checkpoint yet, restart_coop_from_checkpoint() reloads the level start
+    // and restores every player's initial ammunition instead.
+    return main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP && client_number() == 0;
+}
 
 static bool apply_soundfont(const std::string &selected_soundfont)
 {
@@ -288,6 +300,16 @@ void menu_handler(Event &ev, InputManager *inm)
         case ID_LOAD_PLAYER_GAME:
             if (!audio_settings_window)
             {
+                if (the_game->multiplayer_menu_active())
+                {
+                    if (load_player_game_enabled())
+                    {
+                        the_game->request_coop_restart();
+                        the_game->set_state(RUN_STATE);
+                    }
+                    break;
+                }
+
                 int got_level = load_game(0, symbol_str("LOAD"));
                 the_game->reset_keymap();
                 if (got_level)
@@ -505,7 +527,7 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
     return list;
 }
 
-ico_button *make_context_buttons(int x, int &y)
+ico_button *make_context_buttons(int x, int &y, ico_button *&load_game_button)
 {
     int h;
 
@@ -513,11 +535,11 @@ ico_button *make_context_buttons(int x, int &y)
     return_to_game->set_enabled(current_level != NULL);
     y += h;
 
-    ico_button *load = load_icon(1, ID_LOAD_PLAYER_GAME, x, y, h, NULL, "ic_load");
-    load->set_enabled(show_load_icon());
+    load_game_button = load_icon(1, ID_LOAD_PLAYER_GAME, x, y, h, NULL, "ic_load");
+    load_game_button->set_enabled(load_player_game_enabled());
     y += h;
 
-    return_to_game->next = load;
+    return_to_game->next = load_game_button;
 
     return return_to_game;
 }
@@ -528,7 +550,8 @@ void main_menu()
 
     // Build the list first so its actual artwork dimensions can drive the layout.
     int y = 0;
-    ico_button *list = make_context_buttons(0, y);
+    ico_button *load_game_button;
+    ico_button *list = make_context_buttons(0, y, load_game_button);
     list = make_default_buttons(0, y, list);
 
     int editor_h;
@@ -611,6 +634,7 @@ void main_menu()
     int stop_menu = 0;
     time_marker start;
     Uint64 last_multiplayer_update = SDL_GetTicks();
+    bool load_game_enabled = load_player_game_enabled();
     wm->flush_screen();
     do
     {
@@ -621,6 +645,18 @@ void main_menu()
         {
             the_game->run_multiplayer_menu_tick();
             last_multiplayer_update = SDL_GetTicks();
+
+            if (the_game->multiplayer_menu_active())
+            {
+                const bool enabled = load_player_game_enabled();
+                if (enabled != load_game_enabled)
+                {
+                    load_game_enabled = enabled;
+                    load_game_button->set_enabled(enabled);
+                    inm->redraw();
+                    wm->flush_screen();
+                }
+            }
         }
 
         if (wm->IsPending())

@@ -54,6 +54,7 @@ SDL_Surface *surface = nullptr;
 SDL_Renderer *renderer = nullptr;
 SDL_Texture *game_texture = nullptr;
 image *presentation_screen = nullptr;
+int requested_renderer_vsync = SDL_RENDERER_VSYNC_DISABLED;
 
 struct WindowedBounds
 {
@@ -188,6 +189,7 @@ void set_mode()
 
         if (!SDL_SetRenderVSync(renderer, 1))
             fprintf(stderr, "Video: Unable to enable VSync: %s\n", SDL_GetError());
+        requested_renderer_vsync = 1;
 
         int vsync = SDL_RENDERER_VSYNC_DISABLED;
         if (!SDL_GetRenderVSync(renderer, &vsync))
@@ -552,6 +554,7 @@ void close_graphics()
         SDL_DestroyWindow(window);
     renderer = nullptr;
     window = nullptr;
+    requested_renderer_vsync = SDL_RENDERER_VSYNC_DISABLED;
 
     windowed_bounds = {};
 }
@@ -673,7 +676,32 @@ void palette::load_nice()
 
 void present_framebuffer()
 {
-    if (!surface || !game_texture || !renderer)
+    if (!surface || !game_texture || !renderer || !window)
+        return;
+
+    const SDL_WindowFlags window_flags = SDL_GetWindowFlags(window);
+    const bool presentable =
+        (window_flags & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_OCCLUDED)) == 0;
+
+    // Some compositors throttle a VSync present when a window loses focus,
+    // and minimized/occluded swapchains may block for much longer. Rendering
+    // runs on the simulation thread, so such a block would also slow network
+    // and physics ticks. Keep visible background windows rendering through the
+    // configured frame limiter, and do not present frames that cannot be seen.
+    const int desired_vsync = presentable && (window_flags & SDL_WINDOW_INPUT_FOCUS)
+                                  ? 1
+                                  : SDL_RENDERER_VSYNC_DISABLED;
+    if (desired_vsync != requested_renderer_vsync)
+    {
+        // Remember the request even if the backend does not support changing
+        // VSync, otherwise an unfocused window would print the same error on
+        // every frame.
+        requested_renderer_vsync = desired_vsync;
+        if (!SDL_SetRenderVSync(renderer, desired_vsync))
+            fprintf(stderr, "Video: Unable to change VSync: %s\n", SDL_GetError());
+    }
+
+    if (!presentable)
         return;
 
     SDL_Surface *texture_surface = nullptr;

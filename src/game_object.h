@@ -113,6 +113,8 @@ class game_object : public simple_object
         (void)signal;
     }
     int push_range();
+    int attack_team();
+    bool is_friendly_to(game_object *who);
     int can_hurt(game_object *who); // collision checking will ask first to see if you
         // can hurt this person before calculating weither you actually do
 

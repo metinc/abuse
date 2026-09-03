@@ -65,8 +65,14 @@ constexpr bool debug_cheats_enabled = true;
 
 bool is_cheat_command(std::string const &command)
 {
-    return command == "/god" || command == "/giveall" || command == "/nopower" || command == "/fastpower" ||
-           command == "/flypower" || command == "/sneakypower" || command == "/healthpower";
+    return command == "/god" || command == "/giveall" || command == "/kill" || command == "/nopower" ||
+           command == "/fastpower" || command == "/flypower" || command == "/sneakypower" ||
+           command == "/healthpower";
+}
+
+bool cooperative_game()
+{
+    return main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
 }
 } // namespace
 
@@ -213,23 +219,95 @@ void view::reset_camera()
     m_lastpos = m_focus ? ivec2(m_focus->x, m_focus->y) : ivec2(0);
 }
 
+bool view::spectating() const
+{
+    return cooperative_game() && m_spectator_active && m_focus && !m_focus->alive();
+}
+
+bool view::has_live_spectator_target() const
+{
+    for (view *candidate = player_list; candidate; candidate = candidate->next)
+        if (candidate != this && candidate->m_focus && candidate->m_focus->alive())
+            return true;
+    return false;
+}
+
+game_object *view::camera_focus() const
+{
+    if (!spectating())
+        return m_focus;
+
+    for (view *candidate = player_list; candidate; candidate = candidate->next)
+        if (candidate != this && candidate->player_number == m_spectate_player && candidate->m_focus &&
+            candidate->m_focus->alive())
+            return candidate->m_focus;
+
+    return m_focus;
+}
+
+void view::next_spectator_target()
+{
+    if (!spectating() || !player_list)
+        return;
+
+    view *current = NULL;
+    for (view *candidate = player_list; candidate; candidate = candidate->next)
+        if (candidate->player_number == m_spectate_player)
+        {
+            current = candidate;
+            break;
+        }
+
+    view *candidate = current && current->next ? current->next : player_list;
+    view *const start = candidate;
+    do
+    {
+        if (candidate != this && candidate->m_focus && candidate->m_focus->alive())
+        {
+            m_spectate_player = candidate->player_number;
+            m_lastpos = ivec2(candidate->m_focus->x, candidate->m_focus->y);
+            return;
+        }
+        candidate = candidate->next ? candidate->next : player_list;
+    } while (candidate != start);
+
+    m_spectate_player = -1;
+}
+
+void view::update_spectator()
+{
+    if (!cooperative_game() || !m_focus || m_focus->alive())
+        m_spectator_active = false;
+
+    if (!spectating())
+    {
+        m_spectate_player = -1;
+        return;
+    }
+
+    if (camera_focus() == m_focus)
+        next_spectator_target();
+}
+
 // updates the camera position to follow the player
 void view::update_scroll(float interpolation_ratio)
 {
     this->interpolation_ratio = interpolation_ratio;
+    update_spectator();
 
-    if (!m_focus)
+    game_object *focus = camera_focus();
+    if (!focus)
         return;
 
-    if (m_focus->x > m_lastpos.x)
-        m_lastpos.x = std::max(m_lastpos.x, m_focus->x - no_xright);
-    else if (m_focus->x < m_lastpos.x)
-        m_lastpos.x = std::min(m_lastpos.x, m_focus->x + no_xleft);
+    if (focus->x > m_lastpos.x)
+        m_lastpos.x = std::max(m_lastpos.x, focus->x - no_xright);
+    else if (focus->x < m_lastpos.x)
+        m_lastpos.x = std::min(m_lastpos.x, focus->x + no_xleft);
 
-    if (m_focus->y > m_lastpos.y)
-        m_lastpos.y = std::max(m_lastpos.y, m_focus->y - no_ybottom);
-    else if (m_focus->y < m_lastpos.y)
-        m_lastpos.y = std::min(m_lastpos.y, m_focus->y + no_ytop);
+    if (focus->y > m_lastpos.y)
+        m_lastpos.y = std::max(m_lastpos.y, focus->y - no_ybottom);
+    else if (focus->y < m_lastpos.y)
+        m_lastpos.y = std::min(m_lastpos.y, focus->y + no_ytop);
 }
 
 static char cur_user_name[100] = {0};
@@ -270,6 +348,8 @@ view::view(game_object *focus, view *Next, int number)
 {
     m_chat_buf[0] = 0;
     interpolation_ratio = 1.0f;
+    m_spectate_player = -1;
+    m_spectator_active = false;
 
     draw_solid = -1;
     no_xleft = 0;
@@ -540,6 +620,14 @@ void view::add_chat_key(int key) // return string if buf is complete
 
             strcpy(m_chat_buf, chat_text.c_str());
         }
+        else if (chat_text == "/kill")
+        {
+            if (m_focus)
+                m_focus->set_hp(0);
+
+            chat_text = "kill DONE";
+            strcpy(m_chat_buf, chat_text.c_str());
+        }
         else if (chat_text == "/nopower")
         {
             this->m_focus->lvars[4] = 0; //NO_POWER
@@ -772,6 +860,18 @@ int view::handle_event(Event &ev)
 {
     if (ev.type == EV_KEY)
     {
+        if (ev.key == JK_SPACE && cooperative_game() && m_focus && !m_focus->alive())
+        {
+            if (m_spectator_active)
+                next_spectator_target();
+            else if (has_live_spectator_target())
+            {
+                m_spectator_active = true;
+                next_spectator_target();
+            }
+            return 1;
+        }
+
         if (ev.key == get_key_binding("b3", 0))
         {
             if (total_weapons)
@@ -1585,6 +1685,17 @@ void process_packet_commands(uint8_t *pk, int size)
             }
         }
         break;
+        case SCMD_COOP_RESTART: {
+            const uint8_t requester = *(pk++);
+            if (!already_reloaded && requester == 0 && cooperative_game())
+            {
+                if (client_number() == 0)
+                    the_game->restart_coop_from_checkpoint();
+                net_reload();
+                already_reloaded = 1;
+            }
+        }
+        break;
 
         case SCMD_SET_DIFFICULTY: {
             const uint8_t difficulty = *(pk++);
@@ -1671,7 +1782,8 @@ void view::set_tint(int tint)
     if (tint < 0)
         tint = 0;
     _tint = tint;
-    m_focus->set_tint(tint);
+    if (m_focus)
+        m_focus->set_tint(tint);
 }
 
 int view::get_tint()
@@ -1692,7 +1804,8 @@ int view::get_upper_tint() const
 void view::set_team(int team)
 {
     _team = team;
-    m_focus->set_team(team);
+    if (m_focus)
+        m_focus->set_team(team);
 }
 
 int view::get_team()

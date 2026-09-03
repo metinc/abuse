@@ -43,16 +43,16 @@
     (if (has_object player)
 	(if (not (with_object player (pressing_action_key)))
 	    (remove_object player))
-      (if (and (< (distx) 20) (< (disty) 30) (with_object player (pressing_action_key))
-	       (> (total_objects) 0))
-	  (let ((otherx (with_object (get_object 0) (x)))
-		(othery (with_object (get_object 0) (y))))
-	    (with_object (get_object 0) (link_object player))
-	    (with_object player (progn
-				  (set_x otherx)
-				  (set_y othery)
-				  (set_last_x otherx)
-				  (set_last_y othery)))))))
+      (let ((player (action_player 20 30)))
+	(if (and player (> (total_objects) 0))
+	    (let ((otherx (with_object (get_object 0) (x)))
+		  (othery (with_object (get_object 0) (y))))
+	      (with_object (get_object 0) (link_object player))
+	      (with_object player (progn
+			    (set_x otherx)
+			    (set_y othery)
+			    (set_last_x otherx)
+			    (set_last_y othery))))))))
 T)
 
 
@@ -75,19 +75,17 @@ T)
        (if (has_object player)
 	   (if (not (with_object player (pressing_action_key)))
 	       (remove_object player))
-	   (if (and (< (distx) 15)
-		    (< (disty) 20)
-		    (with_object player (pressing_action_key))
-		    (> (total_objects) 0))
-	       (let ((otherx (with_object (get_object 0) (x)))
-		     (othery (with_object (get_object 0) (y))))
-		    (with_object (get_object 0) (link_object player))
-		    (with_object player
-		      (progn
-			    (set_x otherx)
-				(set_y othery)
-				(set_last_x otherx)
-				(set_last_y othery)))))))
+	   (let ((player (action_player 15 20)))
+	     (if (and player (> (total_objects) 0))
+		 (let ((otherx (with_object (get_object 0) (x)))
+		       (othery (with_object (get_object 0) (y))))
+		   (with_object (get_object 0) (link_object player))
+		   (with_object player
+		     (progn
+		       (set_x otherx)
+		       (set_y othery)
+		       (set_last_x otherx)
+		       (set_last_y othery))))))))
   T)
 
 (def_char TP_DOOR_INVIS
@@ -96,4 +94,3 @@ T)
 	(draw_fun dev_draw))
   (fields ("xvel" tp_amb))
   (states "art/misc.spe" (stopped "clone_icon")))
-

@@ -548,19 +548,30 @@ int game_object::decide()
     return 1;
 }
 
+int game_object::attack_team()
+{
+    int team = get_team();
+    if (team == -1 && total_objects() > 0)
+        team = get_object(0)->get_team();
+    return team;
+}
+
+bool game_object::is_friendly_to(game_object *who)
+{
+    const int team = attack_team();
+    return who && team != -1 && team == who->get_team();
+}
+
 // collision checking will ask first to see if you
 int game_object::can_hurt(game_object *who)
 {
     int is_attacker = current_level->is_attacker(this);
-    int attacker_team = get_team();
-    if (attacker_team == -1 && total_objects() > 0)
-        attacker_team = get_object(0)->get_team();
 
     // it's you against them!  Damage only if it you are attacking or they are
     // attacking you, ie. don't let them hurt themselves. This can change if
     // you override this virtual function
 
-    if (who->hurtable() && ((attacker_team == -1) || (attacker_team != who->get_team())) &&
+    if (who->hurtable() && !is_friendly_to(who) &&
         (is_attacker || current_level->is_attacker(who) || hurt_all()))
         return 1;
 
@@ -583,14 +594,7 @@ void game_object::do_flinch(game_object *from)
 void game_object::do_damage(int amount, game_object *from, int32_t hitx, int32_t hity, int32_t push_xvel,
                             int32_t push_yvel)
 {
-    // Projectiles keep their creator as their first linked object.  Use the
-    // creator's team when the projectile itself has no team, so indirect
-    // damage such as explosions observes the same friendly-fire rules.
-    int from_team = from->get_team();
-    if (from_team == -1 && from->total_objects() > 0)
-        from_team = from->get_object(0)->get_team();
-
-    if ((_team != -1) && (_team == from_team))
+    if (from->is_friendly_to(this))
         return;
 
     void *d = figures[otype]->get_fun(OFUN_DAMAGE);

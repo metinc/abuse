@@ -232,14 +232,13 @@ T)
   (if (> (total_objects) 0)
       (select (aistate)
 	      (0 ;; wait for player to activate
-	       (if (and (touching_bg) (eq (total_objects) 1))
-		   (progn
-		     (if (with_object (bg) (pressing_action_key))
-			 (progn
-			   (link_object (bg))
-			   (set_state running)
-			   (play_sound TELEPORTER_SND 127 (x) (y))
-			   (set_aistate 1))))))
+	       (let ((player (action_player -1 -1)))
+		 (if (and player (eq (total_objects) 1))
+		     (progn
+		       (link_object player)
+		       (set_state running)
+		       (play_sound TELEPORTER_SND 127 (x) (y))
+		       (set_aistate 1)))))
 	      (1 ;; wait for animation
 	       (if (next_picture)
 		   (let ((x (x))
@@ -412,7 +411,6 @@ T)
 
   (states "art/bold.spe"
 	  (stopped "bsmall")))
-
 
 
 

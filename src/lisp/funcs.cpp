@@ -361,6 +361,7 @@ void initCFuncs()
     add_c_bool_fun("enable_chatting", 0, 0, CFunc::EnableChatting);
     add_c_bool_fun("am_a_client", 0, 0, CFunc::AmAClient);
     add_c_bool_fun("cooperative", 0, 0, CFunc::Cooperative);
+    add_c_bool_fun("all_players_alive", 0, 0, CFunc::AllPlayersAlive);
     add_c_bool_fun("time_for_next_level", 0, 0, CFunc::TimeForNextLevel);
     add_c_bool_fun("reset_kills", 0, 0, CFunc::ResetKills);
     add_c_bool_fun("set_game_name", 1, 1, CFunc::SetGameName);
@@ -378,6 +379,7 @@ void initLispFuncs()
     add_lisp_function("bmove", 0, 1, LispFunc::BMove);
     add_lisp_function("me", 0, 0, LispFunc::Me);
     add_lisp_function("bg", 0, 0, LispFunc::Bg);
+    add_lisp_function("action_player", 2, 2, LispFunc::ActionPlayer);
     add_lisp_function("find_closest", 1, 1, LispFunc::FindClosest);
     add_lisp_function("find_xclosest", 1, 1, LispFunc::FindXClosest);
     add_lisp_function("find_xrange", 2, 2, LispFunc::FindXRange);

@@ -106,7 +106,8 @@ enum
     SCMD_EXT_KEYRELEASE, // Extended key release
     SCMD_CHAT_KEYPRESS, // Chat input
     SCMD_SYNC, // Synchronization check
-    SCMD_SET_DIFFICULTY // Host-authoritative difficulty for deterministic simulation
+    SCMD_SET_DIFFICULTY, // Host-authoritative difficulty for deterministic simulation
+    SCMD_COOP_RESTART // Host-authoritative restart after a complete co-op wipe
 };
 
 enum

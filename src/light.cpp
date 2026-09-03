@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
+#include <limits>
 #include <vector>
 
 #include "common.h"
@@ -105,6 +107,13 @@ void delete_light(light_source *which)
 
 void light_source::calc_range()
 {
+    // Light falloff requires a positive radius span. Savegames and network
+    // snapshots are external data, so keep the invariant here as well as in
+    // the editor and Lisp setters.
+    constexpr int32_t max_radius = std::numeric_limits<int32_t>::max();
+    inner_radius = std::clamp(inner_radius, 0, max_radius - 1);
+    outer_radius = std::clamp(outer_radius, inner_radius + 1, max_radius);
+
     switch (type)
     {
     case 0: {
@@ -908,7 +917,32 @@ void read_lights(spec_directory *sd, bFILE *fp, char const *level_name)
     {
         fp->seek(se->offset, SEEK_SET);
         int32_t t = fp->read_uint32();
-        const bool has_tints = se->size >= static_cast<unsigned long>(8 + t * (6 * 4 + 2));
+        constexpr uint64_t legacy_light_size = 6 * 4 + 1;
+        constexpr uint64_t tinted_light_size = legacy_light_size + 1;
+        if (t < 0)
+        {
+            std::fprintf(stderr, "Invalid light count in %s\n", level_name ? level_name : "<unknown level>");
+            return;
+        }
+
+        const uint64_t light_count = static_cast<uint64_t>(t);
+        const uint64_t legacy_size = 8 + light_count * legacy_light_size;
+        const uint64_t tinted_size = 8 + light_count * tinted_light_size;
+        if (legacy_size > se->size)
+        {
+            std::fprintf(stderr, "Truncated light data in %s\n", level_name ? level_name : "<unknown level>");
+            return;
+        }
+
+        const bool has_tints = tinted_size <= se->size;
+        const uint64_t required_size = has_tints ? tinted_size : legacy_size;
+        const int file_size = fp->file_size();
+        if (file_size >= 0 && static_cast<uint64_t>(se->offset) + required_size > static_cast<uint64_t>(file_size))
+        {
+            std::fprintf(stderr, "Incomplete light data in %s\n", level_name ? level_name : "<unknown level>");
+            return;
+        }
+
         min_light_level = fp->read_uint32();
         light_source *last = NULL;
         while (t)
@@ -922,6 +956,10 @@ void read_lights(spec_directory *sd, bFILE *fp, char const *level_name)
             int32_t ora = fp->read_uint32();
             int32_t ty = fp->read_uint8();
             int32_t tint = has_tints ? fp->read_uint8() : LIGHT_TINT_WHITE;
+
+            if (ir < 0 || ora <= ir)
+                std::fprintf(stderr, "Invalid light radii (%d, %d) in %s; normalizing\n", ir, ora,
+                             level_name ? level_name : "<unknown level>");
 
             light_source *p = new light_source(ty, x, y, ir, ora, xshift, yshift, NULL, tint);
 

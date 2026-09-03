@@ -15,6 +15,8 @@
 #include "net/netface.h"
 #include "net/sock.h"
 
+class Event;
+
 int net_init(int argc, char **argv);
 void net_uninit();
 void service_net_request();
@@ -25,6 +27,8 @@ int net_start();
 bool net_game_active();
 bool net_input_ready();
 void request_net_input_resend();
+bool handle_net_player_status_event(Event const &event);
+void update_net_player_status(bool show);
 bFILE *open_nfs_file(char const *filename, char const *mode);
 
 int NF_open_file(char const *filename, char const *mode);

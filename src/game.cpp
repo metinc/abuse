@@ -69,6 +69,7 @@
 #include "ui/sbar.h"
 #include "profile.h"
 #include "compiled.h"
+#include "cop.h"
 #include "lisp_gc.h"
 #include "pmenu.h"
 #include "timing.h"
@@ -103,6 +104,18 @@ constexpr int legacy_activation_view_width = 319;
 constexpr int legacy_activation_view_height = 200;
 constexpr int legacy_status_bar_height = 32;
 constexpr char editor_playtest_file[] = ".abuse-editor-playtest.spe";
+constexpr char coop_checkpoint_file[] = ".abuse-coop-checkpoint.spe";
+
+std::filesystem::path coop_checkpoint_path()
+{
+    const char *save_prefix = get_save_filename_prefix();
+    return std::filesystem::path(save_prefix ? save_prefix : "") / coop_checkpoint_file;
+}
+
+bool is_coop_checkpoint_path(char const *name)
+{
+    return name && std::filesystem::path(name).lexically_normal() == coop_checkpoint_path().lexically_normal();
+}
 
 char **start_argv;
 int start_argc;
@@ -372,18 +385,14 @@ void Game::set_state(int new_state)
         // ownership of local input.
         for (int key = 0; key < JK_KEY_COUNT; ++key)
         {
-            if (key_down(key))
+            // Escape and the held player-status overlay are local UI controls.
+            if (key != JK_ESC && key != JK_TAB && key_down(key))
                 pending_input_events.push_back(
                     {static_cast<uint8_t>(key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
                      static_cast<uint8_t>(key >= 256 ? key - 256 : key)});
         }
         last_demo_mbut = 0;
         multiplayer_menu_last_resend = SDL_GetTicks();
-
-        // Keep the live player views for multiplayer simulation, but redraw
-        // the complete framebuffer so the centered 4:3 menu artwork gets
-        // black borders instead of retaining the last widescreen game frame.
-        d = 1;
     }
     reset_keymap(); // we think all the keys are up right now
 
@@ -522,8 +531,265 @@ void Game::set_level(level *nl)
     current_level = nl;
 }
 
+void Game::clear_coop_checkpoint()
+{
+    std::error_code error;
+    std::filesystem::remove(coop_checkpoint_path(), error);
+    coop_checkpoint_level_name.clear();
+}
+
+bool Game::save_coop_checkpoint()
+{
+    if (!current_level)
+        return false;
+
+    coop_checkpoint_level_name = current_level->original_name();
+
+    // Every peer reaches the save console in lockstep, but only the host owns
+    // the temporary file which will later become the authoritative snapshot.
+    if (client_number() != 0)
+        return true;
+
+    const std::string path = coop_checkpoint_path().string();
+    return current_level->save(path.c_str(), 1) == 1;
+}
+
+void Game::request_coop_restart()
+{
+    coop_restart_requested = true;
+}
+
+bool Game::consume_coop_restart_request()
+{
+    const bool requested = coop_restart_requested;
+    coop_restart_requested = false;
+    return requested;
+}
+
+void Game::remember_coop_level_start_ammo()
+{
+    if (!current_level || client_number() != 0 || !main_net_cfg ||
+        main_net_cfg->game_mode != net_configuration::COOP)
+        return;
+
+    const std::string level_name = current_level->original_name();
+    if (coop_ammo_level_name != level_name)
+    {
+        coop_start_ammo.clear();
+        coop_ammo_level_name = level_name;
+    }
+
+    for (view *v = player_list; v; v = v->next)
+    {
+        const auto existing = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(), [&](auto const &ammo) {
+            return ammo.player_number == v->player_number && ammo.player_name == v->name;
+        });
+        if (existing != coop_start_ammo.end())
+            continue;
+
+        coop_level_start_ammo ammo;
+        ammo.player_number = v->player_number;
+        ammo.player_name = v->name;
+        ammo.current_weapon = v->current_weapon;
+        if (total_weapons)
+            ammo.weapons.assign(v->weapons, v->weapons + total_weapons);
+        coop_start_ammo.push_back(std::move(ammo));
+    }
+}
+
+void Game::restore_coop_level_start_ammo()
+{
+    for (view *v = player_list; v; v = v->next)
+    {
+        const auto saved = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(), [&](auto const &ammo) {
+            return ammo.player_number == v->player_number && ammo.player_name == v->name;
+        });
+        if (saved == coop_start_ammo.end() || saved->weapons.size() != static_cast<std::size_t>(total_weapons))
+            continue;
+
+        if (total_weapons)
+        {
+            std::copy(saved->weapons.begin(), saved->weapons.end(), v->weapons);
+            std::copy(saved->weapons.begin(), saved->weapons.end(), v->last_weapons);
+        }
+        v->current_weapon = saved->current_weapon;
+        v->last_ammo = -1;
+        v->suggest.send_weapon_change = 0;
+    }
+    sbar.need_refresh();
+}
+
+bool Game::restart_coop_from_checkpoint()
+{
+    if (!current_level || client_number() != 0)
+        return false;
+
+    if (demo_man.current_state() == demo_manager::PLAYING && demo_man.load_playback_checkpoint())
+        return true;
+
+    struct connected_player
+    {
+        int number;
+        std::string name;
+        int tint;
+        int upper_tint;
+        int team;
+        ivec2 aa;
+        ivec2 bb;
+    };
+
+    std::vector<connected_player> connected;
+    for (view *v = player_list; v; v = v->next)
+        connected.push_back(
+            {v->player_number, v->name, v->get_tint(), v->get_upper_tint(), v->get_team(), v->m_aa, v->m_bb});
+
+    // Saved levels can contain historical DOS paths such as
+    // C:\\ABUSE\\LEVELS\\LEVEL06.SPE.  Keep using the path with which the
+    // host actually opened the level instead of that embedded display/origin
+    // name when a wipe has to restart from the beginning.
+    const std::string level_start =
+        coop_level_start_path.empty() ? current_level->name() : coop_level_start_path;
+    const std::filesystem::path checkpoint = coop_checkpoint_path();
+    std::error_code file_error;
+    const bool have_checkpoint = std::filesystem::exists(checkpoint, file_error) && !file_error;
+
+    if (!have_checkpoint)
+    {
+        // Match the single-player fallback: revive the existing roster and
+        // reload the original level, which applies set_player_defaults.
+        restore_coop_level_start_ammo();
+        for (view *v = player_list; v; v = v->next)
+            if (v->m_focus)
+            {
+                v->m_focus->set_hp(100);
+                v->m_focus->set_state(stopped);
+                v->m_focus->set_aistate(0);
+                v->x_suggestion = v->y_suggestion = 0;
+                v->b1_suggestion = v->b2_suggestion = v->b3_suggestion = v->b4_suggestion = 0;
+                v->reset_keymap();
+            }
+        load_level(level_start.c_str());
+        for (view *v = player_list; v; v = v->next)
+            v->reset_camera();
+        return true;
+    }
+
+    load_level(checkpoint.string().c_str());
+
+    bool checkpoint_position_found = false;
+    ivec2 checkpoint_position;
+    for (view *v = player_list; v; v = v->next)
+    {
+        game_object *player = v->m_focus;
+        if (player && figures[player->otype]->tv > coop_checkpoint_y && player->lvars[coop_checkpoint_active])
+        {
+            checkpoint_position = ivec2(player->lvars[coop_checkpoint_x], player->lvars[coop_checkpoint_y]);
+            checkpoint_position_found = true;
+            break;
+        }
+    }
+
+    const bool views_are_displayed = first_view == player_list;
+    view *previous = NULL;
+    view *saved = player_list;
+    while (saved)
+    {
+        view *next = saved->next;
+        const auto identity = std::find_if(connected.begin(), connected.end(), [&](connected_player const &player) {
+            return saved->m_focus && player.number == saved->player_number && player.name == saved->name;
+        });
+
+        if (identity == connected.end())
+        {
+            object_node *objects = make_player_onodes(saved->player_number);
+            while (objects)
+            {
+                object_node *next_object = objects->next;
+                current_level->delete_object(objects->me);
+                delete objects;
+                objects = next_object;
+            }
+            saved->m_focus = NULL;
+            if (previous)
+                previous->next = next;
+            else
+                player_list = next;
+            delete saved;
+        }
+        else
+        {
+            previous = saved;
+        }
+        saved = next;
+    }
+
+    for (connected_player const &identity : connected)
+    {
+        view *v = player_list;
+        for (; v; v = v->next)
+            if (v->m_focus && v->player_number == identity.number && identity.name == v->name)
+                break;
+
+        if (!v)
+        {
+            game_object *player = create(current_start_type, 0, 0);
+            if (checkpoint_position_found)
+            {
+                player->x = checkpoint_position.x;
+                player->y = checkpoint_position.y;
+                if (figures[player->otype]->tv > coop_checkpoint_y)
+                {
+                    player->lvars[coop_checkpoint_active] = 1;
+                    player->lvars[coop_checkpoint_x] = checkpoint_position.x;
+                    player->lvars[coop_checkpoint_y] = checkpoint_position.y;
+                }
+            }
+            else if (game_object *start = current_level->get_random_start(320, NULL))
+            {
+                player->x = start->x;
+                player->y = start->y;
+            }
+            else
+            {
+                player->x = 100;
+                player->y = 100;
+            }
+
+            v = new view(player, NULL, identity.number);
+            player->set_controller(v);
+            current_level->add_object(player);
+            if (previous)
+                previous->next = v;
+            else
+                player_list = v;
+            previous = v;
+        }
+
+        copy_player_name(v->name, sizeof(v->name), identity.name.c_str());
+        v->m_aa = identity.aa;
+        v->m_bb = identity.bb;
+        v->set_tint(identity.tint);
+        v->set_upper_tint(identity.upper_tint);
+        v->set_team(identity.team);
+        v->x_suggestion = v->y_suggestion = 0;
+        v->b1_suggestion = v->b2_suggestion = v->b3_suggestion = v->b4_suggestion = 0;
+        v->reset_keymap();
+        v->reset_camera();
+    }
+
+    if (views_are_displayed)
+        first_view = player_list;
+    recalc_local_view_space();
+    sbar.need_refresh();
+    return true;
+}
+
 void Game::load_level(char const *name)
 {
+    const bool loading_coop_checkpoint = is_coop_checkpoint_path(name);
+    if (!current_level && !loading_coop_checkpoint)
+        clear_coop_checkpoint();
+
     if (current_level)
         delete current_level;
 
@@ -539,6 +805,11 @@ void Game::load_level(char const *name)
     }
     else
     {
+        if (!loading_coop_checkpoint && main_net_cfg &&
+            main_net_cfg->game_mode == net_configuration::COOP &&
+            std::filesystem::path(name).filename() != NET_STARTFILE)
+            coop_level_start_path = name;
+
         spec_directory sd(fp);
         current_level = new level(&sd, fp, name);
         delete fp;
@@ -548,6 +819,10 @@ void Game::load_level(char const *name)
 
     current_level->level_loaded_notify();
     the_game->help_active = false;
+
+    if (!loading_coop_checkpoint && !coop_checkpoint_level_name.empty() &&
+        coop_checkpoint_level_name != current_level->original_name())
+        clear_coop_checkpoint();
 }
 
 int Game::done()
@@ -563,6 +838,7 @@ void Game::end_session()
         return;
     }
 
+    clear_coop_checkpoint();
     finished = true;
     if (main_net_cfg)
     {
@@ -775,7 +1051,7 @@ void controller_aim(view *v)
     const float elapsed = std::min(static_cast<float>(now - last_update) / 1000000000.0f, 0.1f);
     last_update = now;
 
-    if (!settings.gamepad_enabled || (chat && chat->showing()))
+    if (!settings.gamepad_enabled || (chat && chat->showing()) || v->spectating())
         return;
 
     const float input_x = settings.ctr_aim_x;
@@ -1821,6 +2097,9 @@ void Game::get_input()
             return;
         }
 
+        if (handle_net_player_status_event(ev))
+            continue;
+
         if (chat && chat->showing())
         {
             // The chat window is modal. WindowManager has already handled
@@ -1880,8 +2159,8 @@ void Game::get_input()
             if (ev.type == EV_KEY && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 1);
-                if (playing_state(state) && !(dev & EDIT_MODE) &&
-                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
+                if (playing_state(state) && !(dev & EDIT_MODE) && ev.key != JK_ESC &&
+                    (!net_game_active() || ev.key != JK_TAB))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYPRESS : SCMD_EXT_KEYPRESS),
@@ -1891,14 +2170,17 @@ void Game::get_input()
             else if (ev.type == EV_KEYRELEASE && key_is_valid(ev.key))
             {
                 set_key_down(ev.key, 0);
-                if (playing_state(state) && !(dev & EDIT_MODE) &&
-                    !(demo_man.state == demo_manager::RECORDING && ev.key == JK_ESC))
+                if (playing_state(state) && !(dev & EDIT_MODE) && ev.key != JK_ESC &&
+                    (!net_game_active() || ev.key != JK_TAB))
                 {
                     pending_input_events.push_back(
                         {static_cast<uint8_t>(ev.key < 256 ? SCMD_KEYRELEASE : SCMD_EXT_KEYRELEASE),
                          static_cast<uint8_t>(ev.key > 255 ? ev.key - 256 : ev.key)});
                 }
             }
+            if (net_game_active() && (ev.type == EV_KEY || ev.type == EV_KEYRELEASE) && ev.key == JK_TAB)
+                continue;
+
             if ((dev & EDIT_MODE) || start_edit || ev.type == EV_MESSAGE)
             {
                 dev_cont->handle_event(ev);
@@ -2014,6 +2296,16 @@ void Game::get_input()
             }
         }
     }
+
+    const bool show_net_player_status =
+        state == RUN_STATE && !(dev & EDIT_MODE) && wm->key_pressed(JK_TAB);
+    update_net_player_status(show_net_player_status);
+    if (show_net_player_status)
+    {
+        // Window buttons use the same physical left mouse button as firing.
+        // While TAB owns that input, never expose it to the player controls.
+        last_demo_mbut = 0;
+    }
 }
 
 void Game::flush_pending_input()
@@ -2078,6 +2370,12 @@ void net_send(int force = 0)
 
             if (base->join_list)
                 base->packet.write_uint8(SCMD_RELOAD);
+
+            if (client_number() == 0 && the_game->consume_coop_restart_request())
+            {
+                base->packet.write_uint8(SCMD_COOP_RESTART);
+                base->packet.write_uint8(0);
+            }
 
             //      printf("save tick %d, pk size=%d, rand_on=%d, sync=%d\n", current_level->tick_counter(),
             //         base->packet.packet_size(), rand_on, make_sync());
@@ -2164,6 +2462,7 @@ void Game::prepare_world_tick()
 {
     settings.player_touching_console = false;
     LSpace::Tmp.Clear();
+    remember_coop_level_start_ammo();
     if (current_level)
     {
         current_level->unactivate_all();
@@ -2253,7 +2552,15 @@ void Game::Step()
         // menu loop sends the next packet with the same tick number and both
         // peers wait forever while rejecting each other's stale packets.
         if (multiplayer_menu_active())
+        {
             advance_world_tick();
+
+            // draw() rebuilds the level's active list for rendering.  It must
+            // run after the authoritative world tick; doing this from
+            // set_state() while entering the menu made this peer simulate the
+            // transition tick with a render-only object list and desync.
+            draw(false);
+        }
         main_menu(); // AR this is a main menu LOOP, it handles events and rendering inside !
     }
 
@@ -2285,6 +2592,7 @@ extern void *current_demo;
 
 Game::~Game()
 {
+    clear_coop_checkpoint();
     discard_editor_playtest();
     current_demo = NULL;
     if (first_view == player_list)
