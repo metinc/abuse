@@ -824,6 +824,21 @@ void Game::load_level(char const *name)
     base->current_tick = (current_level->tick_counter() & 0xff);
 
     current_level->level_loaded_notify();
+
+    // Damage flashes are transient presentation state.  Do not carry either
+    // the currently loaded tinted palette or saved ramp values into a newly
+    // loaded level.
+    for (view *player = player_list; player; player = player->next)
+    {
+        if (player->m_focus && player->m_focus->otype == TYPE_PLAYER_BOTTOM)
+        {
+            player->m_focus->lvars[r_ramp] = 0;
+            player->m_focus->lvars[g_ramp] = 0;
+            player->m_focus->lvars[b_ramp] = 0;
+        }
+    }
+    pal->load();
+
     the_game->help_active = false;
 
     if (!loading_coop_checkpoint && !coop_checkpoint_level_name.empty() &&
