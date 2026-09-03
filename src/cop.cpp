@@ -174,11 +174,24 @@ void *top_aim(bool check_local)
                     }
                 }
 
-                // if the pointer is too close to the player go with the angle shown, not the angle through the pointer
-                if (abs(q->y - fb[1] - pointer_y) < 45 && abs(pointer_x - q->x + fb[0]) < 40)
-                    o->lvars[point_angle] = lisp_atan2(fb[1] - iy, fb[0] - ix);
+                // A shot cannot pass through a pointer that is behind its muzzle
+                // without firing back through the player. Also keep a small
+                // safety radius around the muzzle before targeting the pointer
+                // exactly.
+                const int muzzle_dx = fb[0] - ix;
+                const int muzzle_dy = fb[1] - iy;
+                const int target_dx = pointer_x - (q->x + fb[0]);
+                const int target_dy = q->y - fb[1] - pointer_y;
+                constexpr int minimum_muzzle_distance = 10;
+                const bool pointer_too_close =
+                    static_cast<int64_t>(target_dx) * target_dx + static_cast<int64_t>(target_dy) * target_dy <
+                    minimum_muzzle_distance * minimum_muzzle_distance;
+                const bool pointer_behind_muzzle =
+                    static_cast<int64_t>(muzzle_dx) * target_dx + static_cast<int64_t>(muzzle_dy) * target_dy <= 0;
+                if (pointer_too_close || pointer_behind_muzzle)
+                    o->lvars[point_angle] = lisp_atan2(muzzle_dy, muzzle_dx);
                 else
-                    o->lvars[point_angle] = lisp_atan2(q->y - fb[1] - pointer_y, pointer_x - (q->x + fb[0]));
+                    o->lvars[point_angle] = lisp_atan2(target_dy, target_dx);
 
                 if (q->direction < 0)
                     q->x -= 4;
@@ -736,8 +749,7 @@ void *cop_mover(int xm, int ym, int but)
         }
         else if (o->aistate() == 3)
         {
-            const bool coop_spectator =
-                main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+            const bool coop_spectator = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
 
             // Co-op players stay dead and use their local view to spectate a
             // surviving teammate. Other game modes retain their old restart.
@@ -745,8 +757,7 @@ void *cop_mover(int xm, int ym, int but)
             {
                 const bool team_is_dead = all_coop_players_dead();
                 const bool local_player = o->controller() && o->controller()->local_player();
-                const bool host_can_restart =
-                    net_game_active() && client_number() == 0 && team_is_dead && local_player;
+                const bool host_can_restart = net_game_active() && client_number() == 0 && team_is_dead && local_player;
                 if (host_can_restart &&
                     (but || o->controller()->key_down(JK_SPACE) || o->controller()->key_down(JK_ENTER)))
                     the_game->request_coop_restart();
@@ -755,9 +766,8 @@ void *cop_mover(int xm, int ym, int but)
                 else if (!team_is_dead && local_player && !o->controller()->spectating())
                     the_game->show_help(symbol_str("space_cont"));
             }
-            else if (
-                (!o->controller() || but || o->controller()->key_down(JK_SPACE) ||
-                 o->controller()->key_down(JK_ENTER)))
+            else if ((!o->controller() || but || o->controller()->key_down(JK_SPACE) ||
+                      o->controller()->key_down(JK_ENTER)))
             {
                 // call the user function to reset the player
                 ((LSymbol *)l_restart_player)->EvalFunction(NULL);
@@ -1200,8 +1210,7 @@ void *show_kills()
         max_name[NAME_LEN - 1] = 0;
         char msg[100];
 
-        sprintf(msg, "%-*s %3ld  %3ld", MAX_PLAYER_NAME_LENGTH, max_name, (long)v->kills,
-                (long)(v->tkills + v->kills));
+        sprintf(msg, "%-*s %3ld  %3ld", MAX_PLAYER_NAME_LENGTH, max_name, (long)v->kills, (long)(v->tkills + v->kills));
         fnt->PutString(main_screen, ivec2(x, y), msg, color);
 
         y += fnt->Size().y;
