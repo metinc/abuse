@@ -1,6 +1,6 @@
 {
   "name": "abuse-windows-container-dependencies",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "dependencies": [
     {
       "name": "fluidsynth",

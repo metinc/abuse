@@ -5,7 +5,7 @@ if(POLICY CMP0177)
 endif()
 
 project(abuse
-    VERSION 1.0.6
+    VERSION 1.0.7
     DESCRIPTION "Dark 2D side-scrolling run-and-gun game"
     HOMEPAGE_URL "https://github.com/metinc/abuse"
     LANGUAGES C CXX
