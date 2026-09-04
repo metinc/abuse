@@ -1,5 +1,10 @@
 # Changelog
 
+## Abuse 1.0.7 by Metin Çelik (2026-09-04)
+
+- Fixed fRaBs level exits loading levels from the Abuse campaign.
+- Added a campaign selector dialog when starting a new game.
+
 ## Abuse 1.0.6 by Metin Çelik (2026-09-04)
 
 - Added online multiplayer.
