@@ -1201,6 +1201,7 @@ level::level(spec_directory *sd, bFILE *fp, char const *lev_name)
     all_block_list = NULL;
     all_block_list_size = all_block_total = 0;
     first_name = NULL;
+    loaded_savegame = sd->find("player_info") != NULL;
 
     the_game->need_refresh();
 
@@ -1474,8 +1475,9 @@ bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, o
 {
     spec_directory sd;
     sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "Copyright 1995 Crack dot Com, All Rights reserved", NULL, 0, 0));
-    if (first_name)
-        sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "first name", NULL, strlen(first_name) + 2, 0));
+    char const *saved_level_name = save_all ? transition_name() : first_name;
+    if (saved_level_name)
+        sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "first name", NULL, strlen(saved_level_name) + 2, 0));
 
     sd.add_by_hand(new spec_entry(SPEC_GRUE_FGMAP, "fgmap", NULL, 4 + 4 + fg_width * fg_height * 2, 0));
     sd.add_by_hand(new spec_entry(SPEC_GRUE_BGMAP, "bgmap", NULL, 4 + 4 + bg_width * bg_height * 2, 0));
@@ -2304,10 +2306,11 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
         if (!fp->open_failure())
         {
             // Proceed with normal saving
-            if (first_name)
+            char const *saved_level_name = save_all ? transition_name() : first_name;
+            if (saved_level_name)
             {
-                fp->write_uint8(strlen(first_name) + 1);
-                fp->write(first_name, strlen(first_name) + 1);
+                fp->write_uint8(strlen(saved_level_name) + 1);
+                fp->write(saved_level_name, strlen(saved_level_name) + 1);
             }
 
             fp->write_uint32(fg_width);
@@ -2422,6 +2425,7 @@ level::level(int width, int height, char const *name)
 
     Name = NULL;
     first_name = NULL;
+    loaded_savegame = false;
 
     set_name(name);
     first = first_active = NULL;
