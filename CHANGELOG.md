@@ -1,5 +1,9 @@
 # Changelog
 
+## Abuse 1.0.8 by Metin Çelik (2026-09-04)
+
+- Fixed level transitions.
+
 ## Abuse 1.0.7 by Metin Çelik (2026-09-04)
 
 - Fixed fRaBs level exits loading levels from the Abuse campaign.
