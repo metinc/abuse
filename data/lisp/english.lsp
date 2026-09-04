@@ -326,6 +326,7 @@
 	 (setq ic_extreme      "Difficulty : Extreme")  ; don't make any strings longer than this!
          (setq ic_load         "Load Saved Game")       ;  /\
          (setq ic_start        "Start New Game")        ;  |
+	 (setq campaign_prompt "Choose a campaign:")
 	 (setq ic_sell         "Credits")               ;  |
 	 ;; XXX: Mac Abuse
 	 ;(setq ic_mackeys      "Setup Keys")

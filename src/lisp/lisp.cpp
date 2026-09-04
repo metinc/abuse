@@ -2654,15 +2654,14 @@ LObject *LSysFunction::EvalFunction(LList *arg_list)
     case SysFunc::Substr: {
         int32_t x1 = lnumber_value(leval(CAR(arg_list)));
         int32_t x2 = lnumber_value(leval(CAR(CDR(arg_list))));
-        LObject *st = leval(CAR(CAR(CDR(arg_list))));
+        LObject *st = leval(CAR(CDR(CDR(arg_list))));
         PtrRef r1(st);
 
         if (x1 < 0 || x1 > x2 || x2 >= (int32_t)strlen(lstring_value(st)))
             lbreak("substr: bad x1 or x2 value");
 
         LString *s = LString::Create(x2 - x1 + 2);
-        if (x2 - x1)
-            memcpy(lstring_value(s), lstring_value(st) + x1, x2 - x1 + 1);
+        memcpy(lstring_value(s), lstring_value(st) + x1, x2 - x1 + 1);
 
         lstring_value(s)[x2 - x1 + 1] = 0;
         ret = s;

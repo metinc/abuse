@@ -207,6 +207,8 @@ enum dev_ids
     DEV_AREA_VIEW_YOFF_SPEED,
 
     ID_START_GAME,
+    ID_CAMPAIGN_ABUSE,
+    ID_CAMPAIGN_FRABS,
     ID_EASY,
     ID_MEDIUM,
     ID_HARD,

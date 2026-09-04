@@ -904,13 +904,20 @@
 	  (stopped (app (rep "console" 3) (rep "console2" 3)))
 	  (running (rep "console_on" 2))))
 
+(defun next_level_filename (number)
+  (let ((name (level_name)))
+    (concatenate 'string
+		 (substr 0 (- (length name) 7) name)
+		 (digstr number 2)
+		 (substr (- (length name) 4) (- (length name) 1) name))))
+
 (defun next_level_ai ()
   (if (action_player -1 -1)
       (if (eq (aistate) end_level)
 	  (request_end_game)
 	(progn
 	  (show_stats)
-	  (request_level_load (concatenate 'string "levels/level" (digstr (aistate) 2) ".spe")))))
+	  (request_level_load (next_level_filename (aistate))))))
   T)
 
 
