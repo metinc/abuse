@@ -194,6 +194,76 @@ void fade_in(image *im, int steps);
 
 image *credits_hires = NULL;
 
+static bool choose_new_game_campaign()
+{
+    char const *prompt_text = symbol_str("campaign_prompt");
+    char const *abuse_text = "Abuse";
+    char const *frabs_text = "fRaBs";
+    const int gap = 8;
+    const int content_x = Jwindow::left_border();
+    const int content_y = Jwindow::top_border();
+
+    int x1, y1, prompt_right, prompt_bottom;
+    info_field prompt_bounds(content_x, content_y, ID_NULL, prompt_text, NULL);
+    prompt_bounds.area(x1, y1, prompt_right, prompt_bottom);
+
+    const int font_width = wm->font()->Size().x;
+    const int abuse_width = static_cast<int>(strlen(abuse_text)) * font_width + 7;
+    const int frabs_width = static_cast<int>(strlen(frabs_text)) * font_width + 7;
+    const int controls_width = abuse_width + gap + frabs_width;
+    const int content_width = std::max(prompt_right - content_x + 1, controls_width);
+    const int button_y = prompt_bottom + 8;
+    const int abuse_x = content_x + (content_width - controls_width) / 2;
+    const int frabs_x = abuse_x + abuse_width + gap;
+
+    button *frabs = new button(frabs_x, button_y, ID_CAMPAIGN_FRABS, frabs_text, NULL);
+    button *abuse = new button(abuse_x, button_y, ID_CAMPAIGN_ABUSE, abuse_text, frabs);
+    info_field *fields = new info_field(content_x, content_y, ID_NULL, prompt_text, abuse);
+    Jwindow *window = wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("ic_start"));
+    wm->move_window(window, std::max(0, (xres - window->m_size.x) / 2),
+                    std::max(0, (yres - window->m_size.y) / 2));
+    wm->grab_focus(window);
+
+    bool selected = false;
+    bool done = false;
+    wm->flush_screen();
+    while (!done && !application_quit_requested())
+    {
+        Event event;
+        do
+        {
+            wm->get_event(event);
+        } while (event.type == EV_MOUSE_MOVE && wm->IsPending());
+
+        if (event.type == EV_CLOSE_WINDOW || (event.type == EV_KEY && event.key == JK_ESC))
+            done = true;
+        else if (event.type == EV_MESSAGE &&
+                 (event.message.id == ID_CAMPAIGN_ABUSE || event.message.id == ID_CAMPAIGN_FRABS))
+        {
+            strcpy(level_file,
+                   event.message.id == ID_CAMPAIGN_FRABS ? "levels/frabs00.spe" : "levels/level00.spe");
+            selected = true;
+            done = true;
+        }
+        else if (event.type == EV_KEY &&
+                 (event.key == get_key_binding("up", 0) || event.key == get_key_binding("up2", 0) ||
+                  event.key == get_key_binding("down", 0) || event.key == get_key_binding("down2", 0) ||
+                  event.key == get_key_binding("left", 0) || event.key == get_key_binding("left2", 0) ||
+                  event.key == get_key_binding("right", 0) || event.key == get_key_binding("right2", 0)))
+        {
+            Event tab_event = event;
+            tab_event.key = JK_TAB;
+            window->inm->handle_event(tab_event, window);
+        }
+
+        wm->flush_screen();
+    }
+
+    wm->close_window(window);
+    wm->flush_screen();
+    return selected;
+}
+
 void show_sell(int abortable)
 {
     //AR credits screen, enabled hires image
@@ -275,6 +345,11 @@ void menu_handler(Event &ev, InputManager *inm)
         case ID_START_GAME:
             if (!audio_settings_window)
             {
+                const bool bundled_campaign = !strcmp(level_file, "levels/level00.spe") ||
+                                              !strcmp(level_file, "levels/frabs00.spe");
+                if (bundled_campaign && !choose_new_game_campaign())
+                    break;
+
                 if (demo_man.is_automatic_recording())
                     demo_man.set_state(demo_manager::NORMAL);
                 the_game->load_level(level_file);
@@ -709,7 +784,7 @@ void main_menu()
             stop_menu = 1;
         else if (ev.type == EV_MESSAGE)
         {
-            if (ev.message.id == ID_START_GAME || ev.message.id == ID_RETURN || ev.message.id == ID_EDITOR)
+            if (ev.message.id == ID_RETURN || ev.message.id == ID_EDITOR)
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {

@@ -326,6 +326,7 @@
          (setq ic_extreme   "Schwierigkeitsgrad: Extrem")  ; don't make any strings longer than this!
          (setq ic_load         "Gespeichertes Spiel laden")
          (setq ic_start        "Neues Spiel")
+	 (setq campaign_prompt "Kampagne auswählen:")
          (setq ic_sell         "Beteiligte")
 	 (setq ic_multiplayer    "Mehrspieler")
 	 (setq ic_editor         "Level-Editor")

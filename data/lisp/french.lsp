@@ -323,6 +323,7 @@ plan \n"
          (setq ic_extreme      "Difficulté : Cauchemar")  ; don't make any strings longer than this!
          (setq ic_load         "Charger jeu sauvegardé")
          (setq ic_start        "Démarrer nouveau jeu")
+	 (setq campaign_prompt "Choisissez une campagne :")
          (setq ic_sell         "Générique")
          (setq ic_multiplayer  "Multijoueur")
 	 (setq ic_editor       "Éditeur de niveaux")
