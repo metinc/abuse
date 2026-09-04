@@ -47,6 +47,7 @@ class level // contain map info and objects
     uint16_t *map_fg, // just big 2d arrays
         *map_bg, bg_width, bg_height, fg_width, fg_height;
     char *Name, *first_name;
+    bool loaded_savegame;
     int32_t total_objs;
     game_object *first, *first_active, *last;
 
@@ -92,6 +93,10 @@ class level // contain map info and objects
     char *name()
     {
         return Name;
+    }
+    char const *transition_name() const
+    {
+        return loaded_savegame && first_name ? first_name : Name;
     }
     game_object *attacker(game_object *who);
     int is_attacker(game_object *who);

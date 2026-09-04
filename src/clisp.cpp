@@ -563,7 +563,7 @@ void *l_caller(LispFunc number, void *args)
     }
     break;
     case LispFunc::LevelName: {
-        return LString::Create(current_level->name());
+        return LString::Create(current_level->transition_name());
     }
     break;
     case LispFunc::AntAi:
