@@ -36,10 +36,7 @@
   </releases>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/flathub/com.github.Xenoveritas.abuse/refs/heads/master/screenshots/1.png</image>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/flathub/com.github.Xenoveritas.abuse/refs/heads/master/screenshots/2.png</image>
+      <image>https://github.com/user-attachments/assets/143352b6-dfe5-474f-926d-dd7f74548a85</image>
     </screenshot>
   </screenshots>
   <launchable type="desktop-id">io.github.metinc.abuse.desktop</launchable>
