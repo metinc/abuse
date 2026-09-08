@@ -21,6 +21,9 @@
     <content_attribute id="violence-bloodshed">moderate</content_attribute>
   </content_rating>
   <releases>
+    <release date="2026-09-04" version="1.0.8"/>
+    <release date="2026-09-04" version="1.0.7"/>
+    <release date="2026-09-04" version="1.0.6"/>
     <release date="2026-02-28" version="1.0.5"/>
     <release date="2025-11-16" version="1.0.4"/>
     <release date="2025-11-02" version="1.0.3"/>

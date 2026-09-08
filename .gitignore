@@ -6,6 +6,7 @@
 *~
 
 /build
+/build-container
 /.flatpak-builder
 /flatpak-build
 /flatpak-repo
