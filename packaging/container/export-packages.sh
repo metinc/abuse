@@ -23,10 +23,10 @@ flatpak-builder \
     --state-dir=/cache/state \
     --repo=/cache/repo \
     /cache/build \
-    /src/packaging/flatpak/com.github.metinc.abuse.yaml
+    /src/packaging/flatpak/io.github.metinc.abuse.yaml
 flatpak build-bundle \
     --arch=x86_64 \
     --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
     /cache/repo \
     "/output/Abuse-${ABUSE_VERSION}-x86_64.flatpak" \
-    com.github.metinc.abuse
+    io.github.metinc.abuse

@@ -1,4 +1,4 @@
-app-id: com.github.metinc.abuse
+app-id: io.github.metinc.abuse
 runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk

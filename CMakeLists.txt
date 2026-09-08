@@ -289,17 +289,17 @@ else()
     )
 
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.desktop"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/io.github.metinc.abuse.desktop"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/io.github.metinc.abuse.png"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/160x160/apps")
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse-128.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/io.github.metinc.abuse-128.png"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/128x128/apps"
-        RENAME "com.github.metinc.abuse.png")
+        RENAME "io.github.metinc.abuse.png")
     install(FILES
-        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/com.github.metinc.abuse.appdata.xml"
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/freedesktop/io.github.metinc.abuse.appdata.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
     find_program(GZIP_EXECUTABLE gzip REQUIRED)
     set(ABUSE_GENERATED_DOCDIR "${CMAKE_CURRENT_BINARY_DIR}/packaging/doc")
@@ -448,7 +448,7 @@ else()
             message(STATUS "flatpak-builder was not found; the flatpak target will use org.flatpak.Builder")
         endif()
 
-        set(FLATPAK_APP_ID "com.github.metinc.abuse")
+        set(FLATPAK_APP_ID "io.github.metinc.abuse")
         set(FLATPAK_MANIFEST
             "${CMAKE_CURRENT_SOURCE_DIR}/packaging/flatpak/${FLATPAK_APP_ID}.yaml")
         set(FLATPAK_STATE_DIR "${CMAKE_BINARY_DIR}/.flatpak-builder")

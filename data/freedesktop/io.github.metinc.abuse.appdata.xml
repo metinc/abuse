@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.github.metinc.abuse</id>
+  <id>io.github.metinc.abuse</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-2.0-or-later AND GPL-2.0-only AND MIT AND WTFPL AND LicenseRef-Abuse-Data</project_license>
   <name>Abuse</name>
@@ -42,7 +42,7 @@
       <image>https://raw.githubusercontent.com/flathub/com.github.Xenoveritas.abuse/refs/heads/master/screenshots/2.png</image>
     </screenshot>
   </screenshots>
-  <launchable type="desktop-id">com.github.metinc.abuse.desktop</launchable>
+  <launchable type="desktop-id">io.github.metinc.abuse.desktop</launchable>
   <provides>
     <binary>abuse</binary>
   </provides>
