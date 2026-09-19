@@ -25,6 +25,7 @@
 #include "level.h"
 #include "game.h"
 #include "dev.h"
+#include "demo.h"
 #include "timing.h"
 #include "net/netface.h"
 
@@ -1112,6 +1113,10 @@ void wait_for_server_lobby()
 
 void net_reload()
 {
+    // Replays restore their recorded snapshots without contacting a server.
+    if (demo_man.current_state() == demo_manager::PLAYING)
+        return;
+
     DEBUG_LOG("Beginning network reload");
     if (prot)
     {
@@ -1146,6 +1151,7 @@ void net_reload()
             base->current_tick = (current_level->tick_counter() & 0xff);
 
             reload_end();
+            demo_man.notify_network_reload();
         }
         else if (current_level) // Server-side reload
         {
@@ -1290,6 +1296,7 @@ void net_reload()
             the_game->reset_keymap();
 
             base->input_state = INPUT_COLLECTING;
+            demo_man.notify_network_reload();
         }
     }
 }

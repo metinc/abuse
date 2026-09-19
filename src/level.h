@@ -135,7 +135,8 @@ class level // contain map info and objects
     level(int width, int height, char const *name);
     int save(char const *filename, int save_all,
              char const *first_name_override = NULL,
-             bool create_backup = true); // save_all includes player and view information (1 = success)
+             bool create_backup = true,
+             bool save_player_keys = false); // save_all includes player and view information (1 = success)
     void set_name(char const *name)
     {
         Name = strcpy((char *)realloc(Name, strlen(name) + 1), name);
@@ -258,7 +259,8 @@ class level // contain map info and objects
     game_object *get_random_start(int min_player_dist, view *exclude);
     //  game_object *find_enemy(game_object *exclude1, game_object *exclude2);
 
-    bFILE *create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list);
+    bFILE *create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list,
+                      bool save_player_keys);
     view *make_view_list(int nplayers);
     int32_t total_light_links(object_node *list);
     int32_t total_object_links(object_node *save_list);

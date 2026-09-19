@@ -796,7 +796,9 @@ int view::process_input(char cmd, uint8_t *&pk) // return 0 if something went wr
 
 int view::local_player()
 {
-    return player_number == client_number();
+    return player_number == (demo_man.current_state() == demo_manager::PLAYING
+                                 ? demo_man.playback_player_number()
+                                 : client_number());
 }
 
 void view::next_weapon()
@@ -1546,15 +1548,17 @@ int32_t view::set_view_var_value(int num, int32_t x)
         pointer_y = x;
         break;
     case V_TINT:
-        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
-                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+        if (demo_man.current_state() != demo_manager::PLAYING && local_player() &&
+            (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+             main_net_cfg->state == net_configuration::RESTART_SINGLE))
             set_tint(settings.player_lower_skin);
         else
             set_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_UPPER_TINT:
-        if (local_player() && (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
-                               main_net_cfg->state == net_configuration::RESTART_SINGLE))
+        if (demo_man.current_state() != demo_manager::PLAYING && local_player() &&
+            (!main_net_cfg || main_net_cfg->state == net_configuration::SINGLE_PLAYER ||
+             main_net_cfg->state == net_configuration::RESTART_SINGLE))
             set_upper_tint(settings.player_upper_skin);
         else
             set_upper_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));

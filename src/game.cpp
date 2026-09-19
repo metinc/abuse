@@ -2438,11 +2438,13 @@ void net_receive()
         else
         {
             size = get_inputs_from_server(buf);
-            if (demo_man.state == demo_manager::RECORDING)
-                demo_man.save_packet(buf, size);
         }
 
         process_packet_commands(buf, size);
+        // A join or resynchronization can replace the world while processing
+        // the packet. Record that resulting state before the simulation steps.
+        if (demo_man.state == demo_manager::RECORDING)
+            demo_man.save_packet(buf, size);
     }
 }
 

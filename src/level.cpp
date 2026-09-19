@@ -1471,7 +1471,8 @@ void level::level_loaded_notify()
 	}*/
 }
 
-bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list)
+bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list,
+                         bool save_player_keys)
 {
     spec_directory sd;
     sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "Copyright 1995 Crack dot Com, All Rights reserved", NULL, 0, 0));
@@ -1569,6 +1570,9 @@ bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, o
         for (v = player_list; v; v = v->next)
             name_len += strlen(v->name) + 2;
         sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "player_names", NULL, name_len, 0));
+
+        if (save_player_keys)
+            sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "player_keys", NULL, t * (JK_KEY_COUNT / 8), 0));
 
         sd.add_by_hand(new spec_entry(SPEC_IMAGE, "thumb nail", NULL, 4 + 160 * (100 + wm->font()->Size().y * 2), 0));
     }
@@ -1856,6 +1860,21 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
                 fp->read(saved_name, len);
                 copy_player_name(v->name, sizeof(v->name), saved_name);
             }
+        }
+
+        // Replay snapshots must retain held keys across a restored reload.
+        // Ordinary saves/network snapshots omit this optional section.
+        se = sd->find("player_keys");
+        if (se && se->size == static_cast<unsigned long>(total_players * (JK_KEY_COUNT / 8)))
+        {
+            fp->seek(se->offset, 0);
+            for (v = player_list; v; v = v->next)
+                for (int key = 0; key < JK_KEY_COUNT; key += 8)
+                {
+                    const uint8_t keys = fp->read_uint8();
+                    for (int bit = 0; bit < 8; bit++)
+                        v->set_key_down(key + bit, (keys >> bit) & 1);
+                }
         }
 
         ret = 1;
@@ -2245,7 +2264,8 @@ void level::load_cache_info(spec_directory *sd, bFILE *fp)
     }
 }
 
-int level::save(char const *filename, int save_all, char const *first_name_override, bool create_backup)
+int level::save(char const *filename, int save_all, char const *first_name_override, bool create_backup,
+                bool save_player_keys)
 {
     //AR clisp.case 223 saves the game in game
 
@@ -2300,7 +2320,7 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
         players = make_player_onodes();
     objs = make_not_list(players); // the complement list
 
-    bFILE *fp = create_dir(name, save_all, objs, players);
+    bFILE *fp = create_dir(name, save_all, objs, players, save_player_keys);
     if (fp)
     {
         if (!fp->open_failure())
@@ -2368,6 +2388,16 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
             if (save_all)
             {
                 write_player_info(fp, objs);
+                if (save_player_keys)
+                    for (view *v = player_list; v; v = v->next)
+                        for (int key = 0; key < JK_KEY_COUNT; key += 8)
+                        {
+                            uint8_t keys = 0;
+                            for (int bit = 0; bit < 8; bit++)
+                                if (v->key_down(key + bit))
+                                    keys |= 1 << bit;
+                            fp->write_uint8(keys);
+                        }
                 write_thumb_nail(fp, main_screen);
             }
 

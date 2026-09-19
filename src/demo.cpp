@@ -32,6 +32,7 @@
 #include "lisp.h"
 #include "clisp.h"
 #include "net/netface.h"
+#include "nfserver.h"
 #include "netcfg.h"
 #include "file_utils.h"
 
@@ -112,7 +113,7 @@ std::string timestamped_replay_filename()
     const long milliseconds = duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
 
     char filename[80];
-    std::snprintf(filename, sizeof(filename), "replays/replay-%04d%02d%02d-%02d%02d%02d-%03ld.dat",
+    std::snprintf(filename, sizeof(filename), "replays/%04d%02d%02d-%02d%02d%02d-%03ld.dat",
                   local_time.tm_year + 1900, local_time.tm_mon + 1, local_time.tm_mday, local_time.tm_hour,
                   local_time.tm_min, local_time.tm_sec, milliseconds);
     return filename;
@@ -127,6 +128,35 @@ std::filesystem::path temporary_replay_checkpoint_path()
 
     const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
     return directory / ("abuse-replay-checkpoint-" + std::to_string(nonce) + ".spe");
+}
+
+// Reload snapshots live inside the replay, not in the shared netstart.spe.
+// A temporary file lets the existing level serializer read and write them.
+struct temporary_replay_snapshot
+{
+    std::filesystem::path path = temporary_replay_checkpoint_path();
+
+    ~temporary_replay_snapshot()
+    {
+        std::error_code error;
+        if (!path.empty())
+            std::filesystem::remove(path, error);
+    }
+};
+
+constexpr uint32_t max_replay_snapshot_size = 64 * 1024 * 1024;
+
+bool copy_replay_snapshot(bFILE &source, bFILE &destination, uint32_t size)
+{
+    uint8_t buffer[16384];
+    while (size)
+    {
+        const uint32_t count = std::min<uint32_t>(size, sizeof(buffer));
+        if (source.read(buffer, count) != count || destination.write(buffer, count) != count)
+            return false;
+        size -= count;
+    }
+    return true;
 }
 }
 
@@ -190,7 +220,7 @@ int demo_manager::start_recording(char const *filename)
     snapshot_name.replace_extension(".spe");
     const std::string snapshot = snapshot_name.generic_string();
     if (snapshot.size() + 1 > std::numeric_limits<uint16_t>::max() ||
-        !current_level->save(replay_write_path(snapshot.c_str()).string().c_str(), 1, NULL, false))
+        !current_level->save(replay_write_path(snapshot.c_str()).string().c_str(), 1, NULL, false, true))
     {
         delete record_file;
         record_file = NULL;
@@ -199,7 +229,7 @@ int demo_manager::start_recording(char const *filename)
         return 0;
     }
 
-    record_file->write((void *)"DEMO,VERSION:4", 14);
+    record_file->write((void *)"DEMO,VERSION:5", 14);
     record_file->write_uint16(static_cast<uint16_t>(snapshot.size() + 1));
     record_file->write(snapshot.c_str(), snapshot.size() + 1);
 
@@ -219,7 +249,9 @@ int demo_manager::start_recording(char const *filename)
 
     const bool cooperative = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
     record_file->write_uint8(cooperative ? 1 : 0);
+    record_file->write_uint8(client_number());
 
+    network_reloaded = false;
     state = RECORDING;
     std::printf("Recording replay to %s\n", replay_write_path(filename).string().c_str());
 
@@ -254,18 +286,23 @@ void demo_manager::do_inputs()
 
         base->packet.write_uint8(SCMD_SYNC);
         base->packet.write_uint16(make_sync());
-        demo_man.save_packet(base->packet.packet_data(), base->packet.packet_size());
         process_packet_commands(base->packet.packet_data(), base->packet.packet_size());
+        demo_man.save_packet(base->packet.packet_data(), base->packet.packet_size());
     }
     break;
     case PLAYING: {
-        uint8_t buf[1500];
+        uint8_t buf[PACKET_MAX_SIZE + 1];
         int size;
         if (get_packet(buf, size)) // get starting inputs
         {
             process_packet_commands(buf, size);
-            ivec2 mouse = the_game->GameToMouse(ivec2(player_list->pointer_x, player_list->pointer_y), player_list);
-            wm->SetMousePos((small_render ? 2 : 1) * mouse);
+            for (view *p = player_list; p; p = p->next)
+                if (p->local_player())
+                {
+                    ivec2 mouse = the_game->GameToMouse(ivec2(p->pointer_x, p->pointer_y), p);
+                    wm->SetMousePos((small_render ? 2 : 1) * mouse);
+                    break;
+                }
         }
         else
         {
@@ -315,7 +352,8 @@ int demo_manager::start_playing(char const *filename)
         return 0;
     }
 
-    const bool mode_replay = memcmp(sig, "DEMO,VERSION:4", 14) == 0;
+    reload_snapshots = memcmp(sig, "DEMO,VERSION:5", 14) == 0;
+    const bool mode_replay = reload_snapshots || memcmp(sig, "DEMO,VERSION:4", 14) == 0;
     const bool snapshot_replay = mode_replay || memcmp(sig, "DEMO,VERSION:3", 14) == 0;
     if (!snapshot_replay && memcmp(sig, "DEMO,VERSION:2", 14) != 0)
     {
@@ -350,6 +388,15 @@ int demo_manager::start_playing(char const *filename)
         record_file = NULL;
         return 0;
     }
+
+    uint8_t player_number = 0;
+    if (reload_snapshots && record_file->read(&player_number, 1) != 1)
+    {
+        delete record_file;
+        record_file = NULL;
+        return 0;
+    }
+    recorded_player_number = reload_snapshots ? player_number : client_number();
 
     std::replace(name.begin(), name.end(), '\\', '/');
     std::string tname(name);
@@ -404,6 +451,9 @@ int demo_manager::start_playing(char const *filename)
         main_net_cfg->game_mode = recorded_game_mode == 1 ? net_configuration::COOP : net_configuration::DEATHMATCH;
     }
 
+    // Snapshot loading recalculates the local viewport, so select the recorded
+    // player before loading it (a client recording need not follow player 0).
+    state = PLAYING;
     the_game->load_level(tname.c_str());
     initial_difficulty = l_difficulty->GetValue();
 
@@ -510,8 +560,10 @@ int demo_manager::save_packet(void *packet, int packet_size) // returns non 0 if
     if (state == RECORDING)
     {
         uint16_t ps = lstl(packet_size);
-        if (record_file->write(&ps, 2) != 2 || record_file->write(packet, packet_size) != packet_size)
+        if (record_file->write(&ps, 2) != 2 || record_file->write(packet, packet_size) != packet_size ||
+            !write_reload_snapshot())
         {
+            std::fprintf(stderr, "Unable to write replay packet or network reload snapshot\n");
             set_state(NORMAL);
             return 0;
         }
@@ -533,14 +585,93 @@ int demo_manager::get_packet(void *packet, int &packet_size) // returns non 0 if
         }
         ps = lstl(ps);
 
-        if (record_file->read(packet, ps) != ps)
+        if (ps > PACKET_MAX_SIZE || record_file->read(packet, ps) != ps)
         {
             set_state(NORMAL);
             return 0;
         }
 
         packet_size = ps;
+        if (reload_snapshots)
+        {
+            bool loaded = false;
+            if (!read_reload_snapshot(loaded))
+            {
+                std::fprintf(stderr, "Unable to read replay network reload snapshot\n");
+                set_state(NORMAL);
+                return 0;
+            }
+            // This snapshot already includes every command in the packet. It
+            // replaces that tick's input processing, before the world advances.
+            if (loaded)
+                packet_size = 0;
+        }
         return 1;
     }
     return 0;
+}
+
+bool demo_manager::write_reload_snapshot()
+{
+    // Version 5 appends a uint32 byte count and optional .spe contents to each
+    // input packet. Capture after processing, including joins and sync reloads.
+    if (!network_reloaded)
+    {
+        const uint32_t size = 0;
+        return record_file->write(&size, sizeof(size)) == sizeof(size);
+    }
+
+    temporary_replay_snapshot snapshot;
+    if (snapshot.path.empty() || !current_level ||
+        !current_level->save(snapshot.path.string().c_str(), 1, NULL, false, true))
+        return false;
+
+    jFILE source(snapshot.path.string().c_str(), "rb");
+    if (source.open_failure() || source.file_size() <= 0 || source.file_size() > max_replay_snapshot_size)
+        return false;
+
+    const uint32_t size = source.file_size();
+    const uint32_t encoded_size = lltl(size);
+    if (record_file->write(&encoded_size, sizeof(encoded_size)) != sizeof(encoded_size) ||
+        !copy_replay_snapshot(source, *record_file, size))
+        return false;
+
+    network_reloaded = false;
+    return true;
+}
+
+bool demo_manager::read_reload_snapshot(bool &loaded)
+{
+    uint32_t size;
+    if (record_file->read(&size, sizeof(size)) != sizeof(size))
+        return false;
+    size = lltl(size);
+    if (!size)
+        return true;
+    if (size > max_replay_snapshot_size)
+        return false;
+
+    temporary_replay_snapshot snapshot;
+    if (snapshot.path.empty())
+        return false;
+    {
+        jFILE destination(snapshot.path.string().c_str(), "wb");
+        if (destination.open_failure() || !copy_replay_snapshot(*record_file, destination, size))
+            return false;
+    }
+
+    jFILE source(snapshot.path.string().c_str(), "rb");
+    if (source.open_failure())
+        return false;
+    spec_directory directory(&source);
+    if (!directory.find("player_info"))
+        return false;
+
+    // Match net_reload(): ordinary level loading also runs level-loaded hooks
+    // and clears transient state, which would change the recorded simulation.
+    delete current_level;
+    current_level = new level(&directory, &source, snapshot.path.string().c_str());
+    base->current_tick = current_level->tick_counter() & 0xff;
+    loaded = true;
+    return true;
 }

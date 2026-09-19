@@ -24,9 +24,14 @@ class demo_manager
     int skip_next;
     bool automatic_recording;
     bool game_mode_overridden;
+    bool reload_snapshots;
+    bool network_reloaded;
+    int recorded_player_number;
     std::string playback_checkpoint_path;
 
     void clear_playback_checkpoint();
+    bool write_reload_snapshot();
+    bool read_reload_snapshot(bool &loaded);
 
   public:
     enum demo_state
@@ -42,6 +47,15 @@ class demo_manager
     }
     int save_packet(void *packet, int packet_size); // returns non 0 if actually saved
     int get_packet(void *packet, int &packet_size); // returns non 0 if actually loaded
+    void notify_network_reload()
+    {
+        if (state == RECORDING)
+            network_reloaded = true;
+    }
+    int playback_player_number() const
+    {
+        return recorded_player_number;
+    }
 
     int start_playing(char const *filename);
     int start_recording(char const *filename);
@@ -72,6 +86,9 @@ class demo_manager
         initial_game_mode = 0;
         automatic_recording = false;
         game_mode_overridden = false;
+        reload_snapshots = false;
+        network_reloaded = false;
+        recorded_player_number = 0;
     }
     void do_inputs();
 };
