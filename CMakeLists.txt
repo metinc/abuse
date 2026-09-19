@@ -280,9 +280,10 @@ if(WIN32)
     install(FILES COPYING COPYING.toml11 DESTINATION .)
 elseif(APPLE)
     install(TARGETS abuse BUNDLE DESTINATION .)
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/macOS/abuse.icns"
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/macos/abuse.icns"
         DESTINATION "abuse.app/Contents/Resources")
-    install(FILES COPYING.toml11 DESTINATION "abuse.app/Contents/Resources")
+    install(FILES COPYING COPYING.GPL COPYING.WTFPL COPYING.toml11
+        DESTINATION "abuse.app/Contents/Resources")
 else()
     install(TARGETS abuse
         RUNTIME DESTINATION "${ABUSE_INSTALL_BINDIR}"
@@ -380,6 +381,99 @@ else()
     set(ABUSE_APPIMAGE_GLIBC_BASELINE "2.36" CACHE STRING
         "Newest GLIBC symbol version allowed in an AppImage")
     find_program(READELF_EXECUTABLE NAMES readelf REQUIRED)
+
+    find_program(DOCKER_EXECUTABLE NAMES docker podman)
+    if(DOCKER_EXECUTABLE AND APPIMAGE_ARCH STREQUAL "x86_64")
+        set(_abuse_container_user_args "")
+        find_program(ID_EXECUTABLE NAMES id)
+        if(ID_EXECUTABLE)
+            execute_process(COMMAND "${ID_EXECUTABLE}" -u
+                OUTPUT_VARIABLE _abuse_host_uid
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            execute_process(COMMAND "${ID_EXECUTABLE}" -g
+                OUTPUT_VARIABLE _abuse_host_gid
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            if(_abuse_host_uid MATCHES "^[0-9]+$" AND
+                    _abuse_host_gid MATCHES "^[0-9]+$")
+                set(_abuse_container_user_args
+                    --user "${_abuse_host_uid}:${_abuse_host_gid}")
+            endif()
+        endif()
+        add_custom_target(appimage-container
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_BINARY_DIR}/appimage"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/appimage/Dockerfile
+                --target appimage-artifact
+                --tag "abuse-appimage-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                ${_abuse_container_user_args}
+                --volume "${CMAKE_BINARY_DIR}/appimage:/output"
+                "abuse-appimage-builder:${PROJECT_VERSION}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building the Debian 12 AppImage with a GLIBC 2.36 baseline"
+            USES_TERMINAL
+            VERBATIM
+        )
+
+        set(_abuse_macos_container_commands
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/macos/Dockerfile
+                --tag "abuse-macos-package-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                ${_abuse_container_user_args}
+                --volume "${CMAKE_BINARY_DIR}/packages:/output"
+                "abuse-macos-package-builder:${PROJECT_VERSION}")
+
+        add_custom_target(macos-container
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_BINARY_DIR}/packages"
+            ${_abuse_macos_container_commands}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Cross-building macOS packages for Intel and Apple Silicon"
+            USES_TERMINAL
+            VERBATIM)
+
+        add_custom_target(packages-container
+            COMMAND "${CMAKE_COMMAND}" -E remove_directory
+                "${CMAKE_BINARY_DIR}/packages"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "${CMAKE_BINARY_DIR}/packages"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/appimage/Dockerfile
+                --target packages-artifact
+                --tag "abuse-debian-package-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                ${_abuse_container_user_args}
+                --volume "${CMAKE_BINARY_DIR}/packages:/output"
+                "abuse-debian-package-builder:${PROJECT_VERSION}"
+            COMMAND "${DOCKER_EXECUTABLE}" build
+                --file packaging/rpm/Dockerfile
+                --tag "abuse-rpm-package-builder:${PROJECT_VERSION}"
+                .
+            COMMAND "${DOCKER_EXECUTABLE}" run --rm
+                --cap-add SYS_ADMIN
+                --cap-add NET_ADMIN
+                --security-opt seccomp=unconfined
+                --security-opt systempaths=unconfined
+                --env "ABUSE_VERSION=${PROJECT_VERSION}"
+                --env "OUTPUT_UID=${_abuse_host_uid}"
+                --env "OUTPUT_GID=${_abuse_host_gid}"
+                --volume "${CMAKE_BINARY_DIR}/packages:/output"
+                "abuse-rpm-package-builder:${PROJECT_VERSION}"
+            ${_abuse_macos_container_commands}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building Linux, Windows, and macOS packages in containers"
+            USES_TERMINAL
+            VERBATIM
+        )
+    elseif(NOT DOCKER_EXECUTABLE)
+        message(STATUS
+            "docker/podman was not found; the container package targets are disabled")
+    endif()
 
     find_program(LINUXDEPLOY
         NAMES linuxdeploy "linuxdeploy-${APPIMAGE_ARCH}.AppImage"
@@ -512,7 +606,14 @@ if(WIN32)
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/doc/icon.ico")
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Abuse")
 elseif(APPLE)
-    set(CPACK_GENERATOR "DragNDrop;TGZ")
+    if(CMAKE_CROSSCOMPILING)
+        # Apple's hdiutil is unavailable in Linux containers.
+        set(CPACK_GENERATOR "ZIP")
+    else()
+        set(CPACK_GENERATOR "DragNDrop;TGZ")
+    endif()
+    set(CPACK_PACKAGE_FILE_NAME
+        "Abuse-${PROJECT_VERSION}-macos-${CMAKE_SYSTEM_PROCESSOR}")
     set(CPACK_PACKAGING_INSTALL_PREFIX .)
     set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
 else()

@@ -1,0 +1,10 @@
+{
+  "name": "abuse-macos-container-dependencies",
+  "version": "1.0.8",
+  "dependencies": [
+    { "name": "fluidsynth", "features": ["sndfile"] },
+    { "name": "libdatachannel", "features": ["ws"] },
+    "nlohmann-json",
+    "toml11"
+  ]
+}

@@ -43,7 +43,11 @@ override it with `-signal-server`.
 
 ## Experimental macOS cross-toolchain on Linux
 
-The local Docker toolchain setup and Apple SDK import are documented in
-[`packaging/macos/README.md`](packaging/macos/README.md). This currently
-prepares the compiler; the full Abuse cross-build and `.app` packaging are
-not yet integrated.
+Requires Docker.
+
+```sh
+cmake -S . -B build && cmake --build build --target packages-container
+```
+
+The Linux DEB, RPM, TGZ, AppImage and Flatpak packages, Windows ZIP and MSI
+packages, and macOS ZIP packages are written to `build/packages/`.
