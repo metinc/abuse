@@ -81,10 +81,17 @@ if(WIN32)
 endif()
 
 if(APPLE)
+    set(ABUSE_MACOS_MINIMUM_VERSION "")
+    if(CMAKE_OSX_DEPLOYMENT_TARGET)
+        set(ABUSE_MACOS_MINIMUM_VERSION
+            "<key>LSMinimumSystemVersion</key><string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>")
+    endif()
     set_target_properties(abuse PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_ICON_FILE "abuse"
         MACOSX_BUNDLE_BUNDLE_NAME "Abuse"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.metinc.abuse"
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/packaging/macos/Info.plist.in"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
     )
