@@ -125,6 +125,11 @@
 ; i.e. not for savegames
 ; this function is called once for each player object
 (defun set_player_defaults ()
+  ;; Every teammate starts a new co-op level alive and at full health.
+  (if (cooperative)
+      (progn
+	(set_hp 100)
+	(set_state stopped)))
   (set_ambient_light (me) 35)
   (set_aistate 0)
   (set_fade_count 0)
