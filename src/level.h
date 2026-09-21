@@ -260,7 +260,7 @@ class level // contain map info and objects
     //  game_object *find_enemy(game_object *exclude1, game_object *exclude2);
 
     bFILE *create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list,
-                      bool save_player_keys);
+                      bool save_player_keys, const std::string &coop_data);
     view *make_view_list(int nplayers);
     int32_t total_light_links(object_node *list);
     int32_t total_object_links(object_node *save_list);

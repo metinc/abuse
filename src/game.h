@@ -25,6 +25,7 @@
 #include "director.h"
 #include "view.h"
 #include "id.h"
+#include "coop_state.h"
 
 #include <string>
 #include <vector>
@@ -83,10 +84,21 @@ class Game
 
     struct coop_level_start_ammo
     {
-        int player_number;
-        std::string player_name;
+        std::string player_id;
         std::vector<int32_t> weapons;
         int32_t current_weapon;
+    };
+
+    struct coop_connected_player
+    {
+        int number;
+        std::string id;
+        std::string name;
+        int tint;
+        int upper_tint;
+        int team;
+        ivec2 aa;
+        ivec2 bb;
     };
 
     // Timestamp when the current transient message was shown.
@@ -109,6 +121,7 @@ class Game
     uint8_t keymap[JK_KEY_COUNT / 8];
     std::vector<pending_input_event> pending_input_events;
     std::vector<coop_level_start_ammo> coop_start_ammo;
+    coop_state coop_session;
     std::string editor_level_name;
     std::string coop_checkpoint_level_name;
     std::string coop_level_start_path;
@@ -121,6 +134,8 @@ class Game
     void clear_coop_checkpoint();
     void remember_coop_level_start_ammo();
     void restore_coop_level_start_ammo();
+    std::vector<coop_connected_player> connected_coop_players() const;
+    void reconcile_coop_players(const std::vector<coop_connected_player> &connected);
     void collect_drawables();
     void prepare_world_tick();
     void advance_world_tick();
@@ -259,6 +274,11 @@ class Game
     void request_level_load(char *name);
     void request_level_load(std::string name); //AR
     bool save_coop_checkpoint();
+    bool resume_coop_save();
+    void remember_coop_player(const view *player);
+    void restore_coop_player(view *player);
+    std::string serialize_coop_state() const;
+    bool deserialize_coop_state(const std::string &data);
     void request_coop_restart();
     bool consume_coop_restart_request();
     bool restart_coop_from_checkpoint();

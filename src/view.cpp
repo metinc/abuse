@@ -374,6 +374,8 @@ view::view(game_object *focus, view *Next, int number)
     god = 0;
 
     player_number = number;
+    if (number == 0 && client_number() == 0 && valid_player_id(settings.player_id))
+        memcpy(persistent_id, settings.player_id.c_str(), sizeof(persistent_id));
     m_aa = ivec2(0);
     m_bb = ivec2(100);
     m_focus = focus;
@@ -1752,7 +1754,7 @@ void process_packet_commands(uint8_t *pk, int size)
                 printf("evil : delete client %d, but no such client\n");
             else
             {
-
+                the_game->remember_coop_player(v);
                 // make a list of all objects associated with this player
                 object_node *on = make_player_onodes(player_num);
                 while (on)

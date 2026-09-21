@@ -958,7 +958,7 @@ int request_server_entry()
             return 0;
         }
 
-        uint8_t ctype = CLIENT_ABUSE;
+        uint8_t ctype = CLIENT_ABUSE_ID;
         uint16_t port = lstl(client_port), cnum;
         uint8_t reg, lobby, connected_players, max_players;
 
@@ -1004,8 +1004,9 @@ int request_server_entry()
         int16_t nkills;
 
         DEBUG_LOG("Sending client info - username: %s", uname);
-        if (sock->write(/* client_name_length */ &len, 1) != 1 ||
+        if (!valid_player_id(settings.player_id) || sock->write(/* client_name_length */ &len, 1) != 1 ||
             sock->write(/* client_name_data */ uname, len) != len ||
+            sock->write(/* client_identity */ settings.player_id.data(), PLAYER_ID_LENGTH) != PLAYER_ID_LENGTH ||
             sock->write(/* client_lower_skin */ &lower_skin, 1) != 1 ||
             sock->write(/* client_upper_skin */ &upper_skin, 1) != 1 ||
             sock->write(/* client_port */ &our_port, 2) != 2 || sock->read(/* server_port */ &port, 2) != 2 ||
@@ -1216,6 +1217,7 @@ void net_reload()
                 DEBUG_LOG("Creating new view for player %d", join_list->client_id);
                 f->next = new view(o, NULL, join_list->client_id);
                 copy_player_name(f->next->name, sizeof(f->next->name), join_list->name);
+                memcpy(f->next->persistent_id, join_list->persistent_id, sizeof(f->next->persistent_id));
                 o->set_controller(f->next);
                 f->next->set_tint(join_list->lower_skin);
                 f->next->set_upper_tint(join_list->upper_skin);
@@ -1225,6 +1227,7 @@ void net_reload()
                     current_level->add_object(o);
 
                 view *v = f->next;
+                the_game->restore_coop_player(v);
                 v->m_aa = ivec2(5);
                 v->m_bb = ivec2(319, 199) - ivec2(5);
                 join_list = join_list->next;

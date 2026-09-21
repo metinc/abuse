@@ -1472,7 +1472,7 @@ void level::level_loaded_notify()
 }
 
 bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list,
-                         bool save_player_keys)
+                         bool save_player_keys, const std::string &coop_data)
 {
     spec_directory sd;
     sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "Copyright 1995 Crack dot Com, All Rights reserved", NULL, 0, 0));
@@ -1570,9 +1570,13 @@ bFILE *level::create_dir(char *filename, int save_all, object_node *save_list, o
         for (v = player_list; v; v = v->next)
             name_len += strlen(v->name) + 2;
         sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "player_names", NULL, name_len, 0));
+        sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "player_ids", NULL, t * PLAYER_ID_LENGTH, 0));
 
         if (save_player_keys)
             sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "player_keys", NULL, t * (JK_KEY_COUNT / 8), 0));
+
+        if (!coop_data.empty())
+            sd.add_by_hand(new spec_entry(SPEC_DATA_ARRAY, "coop_state.v1", NULL, coop_data.size(), 0));
 
         sd.add_by_hand(new spec_entry(SPEC_IMAGE, "thumb nail", NULL, 4 + 160 * (100 + wm->font()->Size().y * 2), 0));
     }
@@ -1692,6 +1696,8 @@ void level::write_player_info(bFILE *fp, object_node *save_list)
         fp->write_uint8(len);
         fp->write(v->name, len);
     }
+    for (v = player_list; v; v = v->next)
+        fp->write(v->persistent_id, PLAYER_ID_LENGTH);
 }
 
 int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_list)
@@ -1860,6 +1866,31 @@ int level::load_player_info(bFILE *fp, spec_directory *sd, object_node *save_lis
                 fp->read(saved_name, len);
                 copy_player_name(v->name, sizeof(v->name), saved_name);
             }
+        }
+
+        // Older saves have no stable identities. Never infer them from names
+        // or the transient player numbers used by the network transport.
+        for (v = player_list; v; v = v->next)
+            memset(v->persistent_id, 0, sizeof(v->persistent_id));
+        se = sd->find("player_ids");
+        if (se && se->size == total_players * PLAYER_ID_LENGTH)
+        {
+            fp->seek(se->offset, 0);
+            for (v = player_list; v; v = v->next)
+            {
+                fp->read(v->persistent_id, PLAYER_ID_LENGTH);
+                if (!valid_player_id(v->persistent_id))
+                    memset(v->persistent_id, 0, sizeof(v->persistent_id));
+            }
+        }
+
+        se = sd->find("coop_state.v1");
+        if (se && se->size <= 1024 * 1024)
+        {
+            std::string data(se->size, '\0');
+            fp->seek(se->offset, 0);
+            if (fp->read(data.data(), data.size()) == static_cast<int>(data.size()))
+                the_game->deserialize_coop_state(data);
         }
 
         // Replay snapshots must retain held keys across a restored reload.
@@ -2320,7 +2351,8 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
         players = make_player_onodes();
     objs = make_not_list(players); // the complement list
 
-    bFILE *fp = create_dir(name, save_all, objs, players, save_player_keys);
+    const std::string coop_data = save_all ? the_game->serialize_coop_state() : "";
+    bFILE *fp = create_dir(name, save_all, objs, players, save_player_keys, coop_data);
     if (fp)
     {
         if (!fp->open_failure())
@@ -2398,6 +2430,8 @@ int level::save(char const *filename, int save_all, char const *first_name_overr
                                     keys |= 1 << bit;
                             fp->write_uint8(keys);
                         }
+                if (!coop_data.empty())
+                    fp->write(coop_data.data(), coop_data.size());
                 write_thumb_nail(fp, main_screen);
             }
 

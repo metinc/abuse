@@ -40,6 +40,7 @@ class net_configuration
     bool returning_to_menu;
     int lobby_players;
     bool streamer_mode;
+    bool resume_coop = false;
 
     char min_players, max_players;
     short kills;

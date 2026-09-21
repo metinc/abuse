@@ -19,6 +19,7 @@
 #define NET_STARTFILE "netstart.spe"
 
 #include <string.h>
+#include "player_identity.h"
 
 // list of commands for general networking and file services
 
@@ -77,7 +78,8 @@ enum
     CLIENT_NFS = 50, // client can read one remote files
     CLIENT_ABUSE, // waits for entry into a game
     CLIENT_CRC_WAITER, // client waits for crcs to be saved
-    CLIENT_LSF_WAITER // waits for lsf to be transmitted
+    CLIENT_LSF_WAITER, // waits for lsf to be transmitted
+    CLIENT_ABUSE_ID // registration with a persistent player identity
 };
 
 // base->input_state will be one of the following
@@ -124,6 +126,7 @@ struct join_struct
     uint8_t lower_skin;
     uint8_t upper_skin;
     char name[100];
+    char persistent_id[PLAYER_ID_LENGTH + 1];
     join_struct *next;
 };
 

@@ -14,6 +14,7 @@
 #include "light.h"
 #include "jwindow.h"
 #include "player_name.h"
+#include "player_identity.h"
 
 class object_node;
 class game_object;
@@ -61,6 +62,7 @@ class view
     }
 
     char name[100];
+    char persistent_id[PLAYER_ID_LENGTH + 1] = {};
     struct suggest_struct suggest;
 
     int god; // :) if you believe in such things

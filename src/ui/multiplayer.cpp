@@ -69,11 +69,13 @@ static void build_level_list(bool is_coop)
     SDL_free(matches);
 
     std::sort(g_net_levels.begin(), g_net_levels.end());
+    if (is_coop && coop_save_available())
+        g_net_levels.insert(g_net_levels.begin(), ""); // Resume the host's last console save.
     g_net_levels_display.clear();
     g_net_levels_display.reserve(g_net_levels.size());
     for (auto &s : g_net_levels)
     {
-        std::string disp = s.substr(0, s.size() - 4); // strip .spe
+        std::string disp = s.empty() ? symbol_str("coop_continue") : s.substr(0, s.size() - 4);
         if (disp.size() > 12)
             disp = disp.substr(0, 12);
         else if (disp.size() < 12)
@@ -284,23 +286,31 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             strcpy(lsf, "addon/deathmat/deathmat.lsp"); // Use same networking infrastructure for co-op
         }
 
+        config.resume_coop = false;
+        int sel_index = -1;
+        if (ifield *lvl_if = i->get(LEVEL_BOX))
+            sel_index = static_cast<pick_list *>(lvl_if)->get_selection();
+        if (config.game_mode == net_configuration::COOP && sel_index >= 0 &&
+            sel_index < static_cast<int>(g_net_levels.size()) && g_net_levels[sel_index].empty())
+        {
+            if (!coop_save_available())
+            {
+                error(symbol_str("coop_load_failed"));
+                return 0;
+            }
+            config.resume_coop = true;
+        }
+
         bFILE *fp = open_file("addon/deathmat/levelset.lsp", "wb");
         if (!fp->open_failure())
         {
-            int sel_index = -1;
-            ifield *lvl_if = i->get(LEVEL_BOX);
-            if (lvl_if)
-            {
-                pick_list *pl = (pick_list *)lvl_if; /* lvl_if is pick_list (LEVEL_BOX) */
-                if (pl)
-                    sel_index = pl->get_selection();
-            }
             if (sel_index >= 0 && sel_index < (int)g_net_levels.size())
             {
                 char str[512];
                 // Use correct directory path based on game mode
                 const char *dir = (config.game_mode == net_configuration::COOP) ? "levels" : "netlevel";
-                snprintf(str, sizeof(str), "(setq net_levels '(\"%s/%s\"))\n", dir, g_net_levels[sel_index].c_str());
+                const char *level = config.resume_coop ? "level00.spe" : g_net_levels[sel_index].c_str();
+                snprintf(str, sizeof(str), "(setq net_levels '(\"%s/%s\"))\n", dir, level);
                 fp->write(str, strlen(str) + 1);
             }
         }
@@ -341,8 +351,13 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
     settings.streamer_mode = config.streamer_mode;
     if (server)
         settings.server_name = game_name;
+    if (!valid_player_id(settings.player_id))
+        settings.player_id = generate_player_id();
     if (!settings.Save())
-        fprintf(stderr, "Unable to save multiplayer names to settings.toml\n");
+    {
+        error(symbol_str("player_identity_failed"));
+        return 0;
+    }
 
     return 1;
 }

@@ -2173,7 +2173,11 @@ long c_caller(CFunc number, void *args)
             if (!all_players_are_alive())
                 break;
             if (!the_game->save_coop_checkpoint() && client_number() == 0)
+            {
                 std::fprintf(stderr, "Unable to update the co-op checkpoint\n");
+                the_game->show_message(symbol_str("coop_save_failed"), 4000);
+                return 0;
+            }
         }
         else
         {

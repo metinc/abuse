@@ -83,6 +83,7 @@ class game_server : public game_handler
 
         int client_id;
         std::string name;
+        std::string persistent_id;
         std::uint64_t last_packet_ticks;
         net_socket *comm;
         net_address *data_address;
