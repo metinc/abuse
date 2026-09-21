@@ -27,6 +27,7 @@
 #include <memory>
 #include <mutex>
 #include <random>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -45,6 +46,15 @@ constexpr size_t write_high_water_mark = size_t{256} * 1024;
 constexpr auto signaling_timeout = 20s;
 constexpr auto peer_timeout = 30s;
 std::atomic<int> next_socket_id{100000};
+
+#ifdef TCPIP_DEBUG
+template <typename T> std::string debug_string(const T &value)
+{
+    std::ostringstream text;
+    text << value;
+    return text.str();
+}
+#endif
 
 class webrtc_address final : public net_address
 {
@@ -588,12 +598,15 @@ struct webrtc_protocol::impl
         peer->connection = std::make_shared<rtc::PeerConnection>(configuration);
         const std::weak_ptr<peer_state> weak_peer = peer;
         peer->connection->onLocalDescription([this, id](const rtc::Description &description) {
+            DEBUG_LOG("WebRTC: sending %s", description.typeString().c_str());
             send_json({{"type", "signal"},
                        {"to", id},
                        {"signalType", description.typeString()},
                        {"description", std::string(description)}});
         });
         peer->connection->onLocalCandidate([this, id](const rtc::Candidate &candidate) {
+            DEBUG_LOG("WebRTC: sending ICE candidate (type=%s, transport=%s)",
+                      debug_string(candidate.type()).c_str(), debug_string(candidate.transportType()).c_str());
             send_json({{"type", "signal"},
                        {"to", id},
                        {"signalType", "candidate"},
@@ -601,6 +614,7 @@ struct webrtc_protocol::impl
                        {"mid", candidate.mid()}});
         });
         peer->connection->onStateChange([this, weak_peer](const rtc::PeerConnection::State state) {
+            DEBUG_LOG("WebRTC: peer state = %s", debug_string(state).c_str());
             if (const auto peer = weak_peer.lock())
             {
                 std::lock_guard<std::mutex> lock(mutex);
@@ -609,6 +623,14 @@ struct webrtc_protocol::impl
                 changed.notify_all();
             }
         });
+#ifdef TCPIP_DEBUG
+        peer->connection->onIceStateChange([](rtc::PeerConnection::IceState state) {
+            DEBUG_LOG("WebRTC: ICE state = %s", debug_string(state).c_str());
+        });
+        peer->connection->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
+            DEBUG_LOG("WebRTC: ICE gathering state = %s", debug_string(state).c_str());
+        });
+#endif
         peer->connection->onDataChannel([this, weak_peer](const std::shared_ptr<rtc::DataChannel> &channel) {
             if (const auto peer = weak_peer.lock())
                 accept_channel(peer, channel);
@@ -662,6 +684,7 @@ struct webrtc_protocol::impl
                 else
                 {
                     signaling_ready = true;
+                    DEBUG_LOG("WebRTC: signaling welcome accepted (%s)", requested_mode == mode::host ? "host" : "client");
                 }
                 changed.notify_all();
                 return;
@@ -673,6 +696,7 @@ struct webrtc_protocol::impl
             }
             if (type == "peer-joined" && requested_mode == mode::host)
             {
+                DEBUG_LOG("WebRTC: guest joined signaling room; starting peer connection");
                 const std::string id = message.value("id", "");
                 if (!id.empty())
                     create_peer(id, true);
@@ -680,6 +704,7 @@ struct webrtc_protocol::impl
             }
             if (type == "peer-left")
             {
+                DEBUG_LOG("WebRTC: peer left signaling room");
                 const std::string id = message.value("id", "");
                 std::shared_ptr<peer_state> peer;
                 {
@@ -713,11 +738,18 @@ struct webrtc_protocol::impl
             if (!peer)
                 return;
             if (signal_type == "offer" || signal_type == "answer")
+            {
                 peer->connection->setRemoteDescription(
                     rtc::Description(message.at("description").get<std::string>(), signal_type));
+                DEBUG_LOG("WebRTC: applied remote %s", signal_type.c_str());
+            }
             else if (signal_type == "candidate")
-                peer->connection->addRemoteCandidate(
-                    rtc::Candidate(message.at("candidate").get<std::string>(), message.value("mid", "0")));
+            {
+                rtc::Candidate candidate(message.at("candidate").get<std::string>(), message.value("mid", "0"));
+                peer->connection->addRemoteCandidate(candidate);
+                DEBUG_LOG("WebRTC: received ICE candidate (type=%s, transport=%s)",
+                          debug_string(candidate.type()).c_str(), debug_string(candidate.transportType()).c_str());
+            }
         }
         catch (const std::exception &error)
         {
