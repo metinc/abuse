@@ -3,7 +3,7 @@
       (if (eq (aistate) end_level)
 	  (request_end_game)
 	(progn
-	  (show_stats)
+	  (show_stats (aistate))
 	  (request_level_load (concatenate 'string "addon/leon/level" (digstr (aistate) 2) ".spe")))))
   T)
 
@@ -23,7 +23,7 @@
 	    (if (eq (aistate) end_level)
 	  (request_end_game)
 	(progn
-	  (show_stats)
+	  (show_stats (aistate))
 	  (request_level_load (concatenate 'string "addon/leon/level" (digstr (aistate) 2) ".spe"))))))) T)
 
 (def_char SW_ENDLEV

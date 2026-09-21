@@ -287,7 +287,8 @@ plan \n"
 	 (setq client_lobby_players "Joueurs connectés : %d\nEn attente du lancement de la partie par l’hôte.")
          (setq copy_room_code  "Copier le code")
          (setq searching_local_games "Recherche de parties locales")
-         (setq lev_complete    "Niveau terminé !")
+         (setq lev_complete    "Niveau terminé")
+         (setq lev_next        "Prochain niveau")
          (setq no_low_mem         (concatenate 'string "Gestionnaire de mémoire : Pas assez de mémoire disponible\n"
                                            "  Suggestions...\n"
                                            "    - créez une disquette de démarrage (consultez le manuel)\n"

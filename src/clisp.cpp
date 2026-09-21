@@ -2442,7 +2442,7 @@ long c_caller(CFunc number, void *args)
         current_object->set_targetable(CAR(args) == NULL ? 0 : 1);
         break;
     case CFunc::ShowStats:
-        show_stats();
+        show_stats(args ? lnumber_value(CAR(args)) : -1);
         break;
     case CFunc::Kills: {
         view *v = current_object->controller();

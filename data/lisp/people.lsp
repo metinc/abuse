@@ -921,7 +921,7 @@
       (if (eq (aistate) end_level)
 	  (request_end_game)
 	(progn
-	  (show_stats)
+	  (show_stats (aistate))
 	  (request_level_load (next_level_filename (aistate))))))
   T)
 

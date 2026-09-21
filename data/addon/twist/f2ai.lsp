@@ -112,7 +112,7 @@
       (if (and (< (distx) (xvel)) (< (disty) (yvel)))
 	   (progn
 		(if (eq (aistate) 1) (request_end_game))
-		(if (eq (aitype) 1) (show_stats))
+		(if (eq (aitype) 1) (show_stats (xacel)))
 		(request_level_load (concatenate 'string "levels/level" (digstr (xacel) 2)".spe"))
 	   )
 		T)

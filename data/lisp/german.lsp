@@ -288,6 +288,7 @@
          (setq copy_room_code  "Raumcode kopieren")
          (setq searching_local_games "Suche nach lokalen Spielen")
          (setq lev_complete    "Level abgeschlossen")
+         (setq lev_next        "Nächstes Level")
          (setq no_low_mem         (concatenate 'string "Nicht genügend Grundspeicher\n"
                                            "  Vorschläge...\n"
                                            "    - Startdiskette erstellen (Info im Handbuch)\n"

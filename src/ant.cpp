@@ -14,6 +14,7 @@
 #endif
 
 #include <ctype.h>
+#include <string>
 
 #include "common.h"
 
@@ -485,7 +486,7 @@ void *ant_ai()
 void fade_in(image *im, int steps);
 void fade_out(int steps);
 
-void show_stats()
+void show_stats(int next_level)
 {
     //AR end level screen, why is it here ? C'mon !
 
@@ -508,34 +509,42 @@ void show_stats()
 
         fade_in(NULL, 16);
 
-        char name[50];
-        strcpy(name, current_level->original_name());
-        char dig1 = name[strlen(name) - strlen(".spe") - 2];
-        char dig2 = name[strlen(name) - strlen(".spe") - 1];
-
-        char msg[50];
-
-        if (isdigit(dig1) && isdigit(dig2))
+        std::string level_name = current_level->original_name();
+        if (level_name.size() >= 6)
         {
-            if (dig1 != '0')
-                sprintf(msg, "%s : %c%c", symbol_str("lev_complete"), dig1, dig2);
-            else
-                sprintf(msg, "%s : %c", symbol_str("lev_complete"), dig2);
+            const size_t digits = level_name.size() - 6;
+            if (isdigit(static_cast<unsigned char>(level_name[digits])) &&
+                isdigit(static_cast<unsigned char>(level_name[digits + 1])))
+                level_name = level_name.substr(digits + (level_name[digits] == '0'), level_name[digits] == '0' ? 1 : 2);
         }
-        else
-            sprintf(msg, "%s : %s", symbol_str("lev_complete"), current_level->original_name());
 
-        int w = wm->font()->Size().x * strlen(msg);
-        int h = wm->font()->Size().y;
+        const std::string lines[] = {
+            std::string(symbol_str("lev_complete")) + ": " + level_name,
+            next_level >= 0 ? std::string(symbol_str("lev_next")) + ": " + std::to_string(next_level) : ""};
+        const int line_count = next_level >= 0 ? 2 : 1;
+        const ivec2 font_size = wm->font()->Size();
+        int line_widths[2] = {};
+        int w = 0;
+        for (int i = 0; i < line_count; i++)
+        {
+            line_widths[i] = font_size.x * static_cast<int>(JCFont::EncodeForFont(lines[i]).size());
+            w = std::max(w, line_widths[i]);
+        }
+        const int h = font_size.y * line_count;
 
         int x = xres / 2 - w / 2;
-        int y = 0.9 * yres - h / 2;
+        int y = std::min(yres * 9 / 10 - h / 2, yres - h - 11);
 
         main_screen->Bar(ivec2(x - 10, y - 10), ivec2(x + w + 10, y + h + 10), wm->bright_color());
         main_screen->Bar(ivec2(x - 9, y - 9), ivec2(x + w + 9, y + h + 9), wm->medium_color());
 
-        wm->font()->PutString(main_screen, ivec2(x + 1, y + 1), msg, wm->dark_color());
-        wm->font()->PutString(main_screen, ivec2(x, y), msg, wm->bright_color());
+        for (int i = 0; i < line_count; i++)
+        {
+            const int line_x = (xres - line_widths[i]) / 2;
+            const ivec2 pos(line_x, y + i * font_size.y);
+            wm->font()->PutString(main_screen, pos + ivec2(1), lines[i].c_str(), wm->dark_color());
+            wm->font()->PutString(main_screen, pos, lines[i].c_str(), wm->bright_color());
+        }
         wm->flush_screen();
 
         //pause a bit

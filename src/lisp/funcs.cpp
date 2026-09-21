@@ -325,7 +325,7 @@ void initCFuncs()
     add_c_bool_fun("stop_song", 0, 0, CFunc::StopSong);
     add_c_bool_fun("targetable", 0, 0, CFunc::Targetable);
     add_c_bool_fun("set_targetable", 1, 1, CFunc::SetTargetable);
-    add_c_bool_fun("show_stats", 0, 0, CFunc::ShowStats);
+    add_c_bool_fun("show_stats", 0, 1, CFunc::ShowStats);
     add_c_function("kills", 0, 0, CFunc::Kills);
     add_c_function("tkills", 0, 0, CFunc::TKills);
     add_c_function("secrets", 0, 0, CFunc::Secrets);

@@ -296,7 +296,8 @@
 	 (setq client_lobby_players "Players connected: %d\nWaiting for the host to start the round.")
 	 (setq copy_room_code  "Copy room code")
 	 (setq searching_local_games "Searching for local games")
-	 (setq lev_complete    "Level Completed!")
+	 (setq lev_complete    "Level Completed")
+	 (setq lev_next        "Next level")
 	 ;(setq lev_complete    "Level %d Completed!") XXX: Mac Abuse
 	 (setq no_low_mem      "Not enough low memory")
 	 (setq no_mem          "Not enough memory")
