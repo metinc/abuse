@@ -610,7 +610,7 @@
 
 
 (defun dead_part_render_order ()
-  (if (> (y) (with_object (bg) (y)))
+  (if (> (fade_dir) 0)
       (if (not (eq (yacel) 2))
 	  (progn
 	    (raise)
