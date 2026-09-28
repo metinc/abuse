@@ -32,6 +32,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <memory>
 #include "imlib/scroller.h"
 #include "file_utils.h"
 #include "sdlport/setup.h"
@@ -113,6 +114,7 @@ enum
     NET_ROOM_CODE,
     NET_STREAMER_MODE,
     NET_LOCAL_SEARCH,
+    NET_STREAMER_LABEL,
     NET_GAME = 400,
     MIN_1,
     MIN_2,
@@ -442,6 +444,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
           *cancel_image = cache.img(cache.reg("art/frame.spe", "cancel", SPEC_IMAGE, 1))->copy();
 
     ifield *list = NULL;
+    std::unique_ptr<ifield> hidden_streamer_label;
+    std::unique_ptr<ifield> hidden_streamer_box;
 
     if (server)
     {
@@ -474,14 +478,23 @@ int MultiplayerUI::get_options(int server, bool online_join)
         connection_box->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + gap;
 
-        info_field *streamer_lbl = new info_field(right_x, right_y, 0, symbol_str("streamer_mode"), list);
-        list = streamer_lbl;
+        info_field *streamer_lbl = new info_field(right_x, right_y, NET_STREAMER_LABEL, symbol_str("streamer_mode"), NULL);
         streamer_lbl->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + 1;
-        button_box *streamer_box = make_streamer_mode_box(right_x, right_y, config.streamer_mode, list);
-        list = streamer_box;
+        button_box *streamer_box = make_streamer_mode_box(right_x, right_y, config.streamer_mode, NULL);
         streamer_box->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + gap;
+        if (config.online)
+        {
+            streamer_lbl->next = list;
+            streamer_box->next = streamer_lbl;
+            list = streamer_box;
+        }
+        else
+        {
+            hidden_streamer_label.reset(streamer_lbl);
+            hidden_streamer_box.reset(streamer_box);
+        }
 
         // Game mode selection
         info_field *mode_lbl = new info_field(left_x, left_y, 0, symbol_str("game_mode"), list);
@@ -563,7 +576,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
         {
             list = new info_field(right_x, right_y, 0, symbol_str("select_level"), list);
             right_y += fnt->Size().y + 4;
-            // Leave room for the local privacy controls above the list.
+            // Keep the level list in place when the online privacy controls are hidden.
             constexpr int visible_level_rows = 7;
             pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, visible_level_rows, g_net_levels_c.data(),
                                           (int)g_net_levels_c.size(), 0, list, cache.img(window_texture));
@@ -624,6 +637,28 @@ int MultiplayerUI::get_options(int server, bool online_join)
             {
                 switch (ev.message.id)
                 {
+                case CONNECTION_LOCAL:
+                case CONNECTION_ONLINE: {
+                    bool online = ev.message.id == CONNECTION_ONLINE;
+                    if (online == config.online)
+                        break;
+                    config.online = online;
+                    if (online)
+                    {
+                        hidden_streamer_label->next = NULL;
+                        hidden_streamer_box->next = hidden_streamer_label.release();
+                        inm.add(hidden_streamer_box.release());
+                    }
+                    else
+                    {
+                        read_streamer_mode(&inm, config);
+                        hidden_streamer_box.reset(inm.unlink(NET_STREAMER_MODE));
+                        hidden_streamer_label.reset(inm.unlink(NET_STREAMER_LABEL));
+                    }
+                    main_screen->PutImage(ns, ivec2(x, y));
+                    inm.redraw();
+                }
+                break;
                 case STREAMER_MODE_OFF:
                 case STREAMER_MODE_ON: {
                     if (text_field *field = static_cast<text_field *>(inm.get(NET_ROOM_CODE)))
