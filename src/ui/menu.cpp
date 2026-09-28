@@ -407,7 +407,7 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_EDITOR:
-            if (!audio_settings_window)
+            if (!audio_settings_window && !net_game_active())
             {
                 if (demo_man.is_automatic_recording())
                     demo_man.set_state(demo_manager::NORMAL);
@@ -674,6 +674,7 @@ void main_menu()
 
     int editor_h;
     ico_button *editor = load_icon(2, ID_EDITOR, 0, 0, editor_h, list, "ic_editor");
+    editor->set_enabled(!net_game_active());
     list = editor;
 
     int icon_x1, icon_y1, icon_x2, icon_y2;
@@ -822,7 +823,7 @@ void main_menu()
             stop_menu = 1;
         else if (ev.type == EV_MESSAGE)
         {
-            if (ev.message.id == ID_RETURN || ev.message.id == ID_EDITOR)
+            if (ev.message.id == ID_RETURN || (ev.message.id == ID_EDITOR && !net_game_active()))
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {
