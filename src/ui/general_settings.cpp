@@ -24,6 +24,7 @@
 #include "clisp.h"
 #include "dev.h"
 #include "general_settings.h"
+#include "menu.h"
 #include "gui.h"
 #include "id.h"
 #include "jwindow.h"
@@ -287,10 +288,11 @@ void show_general_settings()
         {
             do
             {
-                wm->get_event(event);
+                get_menu_event(event);
             } while (event.type == EV_MOUSE_MOVE && wm->IsPending());
 
-            if (event.type == EV_CLOSE_WINDOW || (event.type == EV_KEY && event.key == JK_ESC))
+            if (application_quit_requested() || event.type == EV_CLOSE_WINDOW ||
+                (event.type == EV_KEY && event.key == JK_ESC))
             {
                 close_requested = true;
                 continue;

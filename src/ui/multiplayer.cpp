@@ -19,6 +19,7 @@
 #include "netcfg.h"
 #include "nfserver.h"
 #include "multiplayer.h"
+#include "menu.h"
 #include "input.h"
 #include "cache.h"
 #include "timing.h"
@@ -174,7 +175,7 @@ void show_multiplayer_error(char const *msg, char const *title)
         wm->flush_screen();
         do
         {
-            wm->get_event(ev);
+            get_menu_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
     } while (!application_quit_requested() &&
              (ev.type != EV_MESSAGE || ev.message.id != CFG_ERR_OK || ev.type == EV_CLOSE_WINDOW ||
@@ -420,7 +421,7 @@ void MultiplayerUI::error(char const *message)
             wm->flush_screen();
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm.handle_event(ev, NULL);
             if ((ev.type == EV_KEY && (ev.key == JK_ESC || ev.key == JK_ENTER)) || ev.type == EV_MESSAGE)
@@ -650,7 +651,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
             wm->flush_screen();
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm.handle_event(ev, NULL);
             if (ev.type == EV_MESSAGE)
@@ -816,11 +817,12 @@ int MultiplayerUI::run()
 
         do
         {
+            update_multiplayer_menu();
             if (wm->IsPending())
             {
                 do
                 {
-                    wm->get_event(ev);
+                    get_menu_event(ev);
                 } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
                 inm.handle_event(ev, NULL);
                 if (ev.type == EV_MESSAGE)

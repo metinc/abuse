@@ -55,6 +55,49 @@ extern net_protocol *prot;
 
 static AudioSettingsWindow *audio_settings_window;
 
+bool update_multiplayer_menu()
+{
+    static Uint64 last_update = SDL_GetTicks();
+    static bool updating = false;
+    if (updating)
+        return false;
+    if (!the_game || !the_game->multiplayer_menu_active())
+    {
+        last_update = SDL_GetTicks();
+        return false;
+    }
+    if (SDL_GetTicks() - last_update < settings.physics_update)
+        return false;
+
+    // Network error dialogs can enter another menu loop during this call.
+    updating = true;
+    the_game->run_multiplayer_menu_tick();
+    last_update = SDL_GetTicks();
+    updating = false;
+    return true;
+}
+
+void get_menu_event(Event &event)
+{
+    for (;;)
+    {
+        update_multiplayer_menu();
+        if (application_quit_requested())
+        {
+            event = Event{};
+            event.type = EV_QUIT;
+            return;
+        }
+        if (wm->IsPending() || !the_game || !the_game->multiplayer_menu_active())
+        {
+            wm->get_event(event);
+            return;
+        }
+        // SDL's ordinary event wait would also stop lockstep networking.
+        SDL_Delay(10);
+    }
+}
+
 static bool load_player_game_enabled()
 {
     if (!the_game->multiplayer_menu_active())
@@ -102,13 +145,13 @@ static void create_audio_settings_window()
     wm->grab_focus(window);
     wm->flush_screen();
 
-    while (audio_settings_window)
+    while (audio_settings_window && !application_quit_requested())
     {
         Event ev;
 
         do
         {
-            wm->get_event(ev);
+            get_menu_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
 
         if (ev.type == EV_CLOSE_WINDOW || (ev.type == EV_KEY && ev.key == JK_ESC))
@@ -232,7 +275,7 @@ static bool choose_new_game_campaign()
         Event event;
         do
         {
-            wm->get_event(event);
+            get_menu_event(event);
         } while (event.type == EV_MOUSE_MOVE && wm->IsPending());
 
         if (event.type == EV_CLOSE_WINDOW || (event.type == EV_KEY && event.key == JK_ESC))
@@ -291,7 +334,7 @@ void show_sell(int abortable)
 
         LObject *tmp = (LObject *)ss->GetValue();
         int quit = 0;
-        while (tmp && !quit)
+        while (tmp && !quit && !application_quit_requested())
         {
             if (settings.hires && credits_hires)
                 fade_in(credits_hires, 16);
@@ -305,8 +348,8 @@ void show_sell(int abortable)
             do
             {
                 wm->flush_screen();
-                wm->get_event(ev);
-            } while (ev.type != EV_KEY);
+                get_menu_event(ev);
+            } while (ev.type != EV_KEY && !application_quit_requested());
             if (ev.key == JK_ESC && abortable)
                 quit = 1;
             fade_out(16);
@@ -708,19 +751,14 @@ void main_menu()
 
     int stop_menu = 0;
     time_marker start;
-    Uint64 last_multiplayer_update = SDL_GetTicks();
     bool load_game_enabled = load_player_game_enabled();
     wm->flush_screen();
     do
     {
         time_marker new_time;
 
-        if (the_game->multiplayer_menu_active() &&
-            SDL_GetTicks() - last_multiplayer_update >= settings.physics_update)
+        if (update_multiplayer_menu())
         {
-            the_game->run_multiplayer_menu_tick();
-            last_multiplayer_update = SDL_GetTicks();
-
             if (the_game->multiplayer_menu_active())
             {
                 const bool enabled = load_player_game_enabled();
@@ -738,7 +776,7 @@ void main_menu()
         {
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm->handle_event(ev, NULL);
             if (ev.type == EV_KEY && ev.key == JK_ESC && current_level)
