@@ -257,6 +257,8 @@ plan \n"
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ANNULER")
 	 (setq kills_to_win    "Morts pour gagner")
+         (setq ant_multiplier "Multiplicateur d'ennemis")
+         (setq ant_multiplier_error "Le multiplicateur des ennemis doit être entre 1 et 99")
 	 (setq max_play        "Nombre max. de joueurs")
 	 (setq min_play        "\nNombre min. de joueurs")          ; V-B (added \n)
 	 (setq use_port        "Numéro du jeu")

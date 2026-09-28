@@ -43,6 +43,8 @@
 // Global settings object (defined setup.cpp)
 extern Settings settings;
 
+thread_local bool ScopedSoundMute::muted = false;
+
 namespace
 {
 constexpr int SFX_TRACK_COUNT = 50;
@@ -484,6 +486,8 @@ sound_effect::~sound_effect()
   */
 void sound_effect::play(float gain, float frequency_ratio, int panpot)
 {
+    if (ScopedSoundMute::active())
+        return;
     if (!sound_is_initialized() || settings.no_sound || !m_audio)
         return;
 

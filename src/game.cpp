@@ -234,6 +234,8 @@ void handle_no_space()
 
 void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
+    if (ScopedSoundMute::active())
+        return;
     if (!sound_is_initialized())
         return;
     if (source_gain <= 0.0f)
@@ -661,6 +663,7 @@ std::string Game::serialize_coop_state() const
     if (!main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP || !current_level)
         return {};
     coop_state state = coop_session;
+    state.ant_multiplier = main_net_cfg->ant_multiplier;
     state.level_path = coop_level_start_path.empty() ? current_level->transition_name() : coop_level_start_path;
     const auto difficulty = symbol_value(l_difficulty);
     state.difficulty = difficulty == l_easy      ? "easy"
@@ -678,6 +681,8 @@ bool Game::deserialize_coop_state(const std::string &data)
     coop_state saved;
     if (!coop_state::decode(data, total_weapons, saved))
         return false;
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        main_net_cfg->ant_multiplier = saved.ant_multiplier;
     coop_level_start_path = saved.level_path;
     l_difficulty->SetValue(saved.difficulty == "easy"      ? l_easy
                            : saved.difficulty == "medium"  ? l_medium

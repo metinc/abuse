@@ -267,6 +267,8 @@
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "CANCEL")
 	 (setq kills_to_win    "Kills to win")
+         (setq ant_multiplier "Enemy multiplier")
+         (setq ant_multiplier_error "Enemy multiplier should be 1-99")
 	 (setq max_play        "Maximum # of players")
 	 (setq min_play        "\nMinimum # of players")          ; V-B (added \n)
 	 (setq use_port        "Game number")

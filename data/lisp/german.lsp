@@ -256,6 +256,8 @@
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ABBRECHEN")
 	 (setq kills_to_win    "Kills zum Sieg")
+         (setq ant_multiplier "Gegner-Multiplikator")
+         (setq ant_multiplier_error "Gegner-Multiplikator muss zwischen 1 und 99 sein.")
 	 (setq max_play        "Maximale Spielerzahl")
 	 (setq min_play        "\nMinimale Spielerzahl")          ; V-B (added \n)
 	 (setq use_port        "Spielzahl")

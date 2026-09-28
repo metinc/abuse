@@ -448,6 +448,7 @@ int demo_manager::start_playing(char const *filename)
     if (game_mode_overridden)
     {
         initial_game_mode = main_net_cfg->game_mode;
+        initial_ant_multiplier = main_net_cfg->ant_multiplier;
         main_net_cfg->game_mode = recorded_game_mode == 1 ? net_configuration::COOP : net_configuration::DEATHMATCH;
     }
 
@@ -508,8 +509,11 @@ int demo_manager::set_state(demo_state new_state, char const *filename)
         clear_playback_checkpoint();
         l_difficulty->SetValue(initial_difficulty);
         if (game_mode_overridden && main_net_cfg)
+        {
             main_net_cfg->game_mode = initial_game_mode == net_configuration::COOP ? net_configuration::COOP
                                                                                    : net_configuration::DEATHMATCH;
+            main_net_cfg->ant_multiplier = initial_ant_multiplier;
+        }
         game_mode_overridden = false;
         // Playback has ended before we return to the menu.  Game::set_state()
         // uses this state to choose the cursor, and PLAYING selects a blank one.

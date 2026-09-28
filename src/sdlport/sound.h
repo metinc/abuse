@@ -22,6 +22,30 @@ void sound_uninit();
 bool sound_is_initialized();
 bool sound_set_soundfont(const std::string &configured_soundfont);
 
+// Scope sound muting to an object's callback without skipping scripts or RNG.
+class ScopedSoundMute
+{
+  public:
+    explicit ScopedSoundMute(bool mute) : previous(muted)
+    {
+        muted = mute;
+    }
+    ~ScopedSoundMute()
+    {
+        muted = previous;
+    }
+    ScopedSoundMute(const ScopedSoundMute &) = delete;
+    ScopedSoundMute &operator=(const ScopedSoundMute &) = delete;
+    static bool active()
+    {
+        return muted;
+    }
+
+  private:
+    bool previous;
+    static thread_local bool muted;
+};
+
 class sound_effect
 {
   public:

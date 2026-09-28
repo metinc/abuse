@@ -28,6 +28,7 @@
 #include "jrand.h"
 #include "clisp.h"
 #include "dev.h"
+#include "netcfg.h"
 #include <SDL3/SDL_timer.h>
 
 enum
@@ -40,6 +41,26 @@ enum
 static float random_voice_frequency_ratio(float min_pitch, float max_pitch)
 {
     return min_pitch + SDL_randf() * (max_pitch - min_pitch);
+}
+
+static void multiply_coop_ant(game_object *ant)
+{
+    if (!main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP ||
+        (ant->flags() & FLAG_COOP_ANT_MULTIPLIED))
+        return;
+
+    // Run after level loading/spawner setup so copies retain the ANT's variant,
+    // movement, hiding state and trigger links. Mark both before either runs AI.
+    ant->set_flags(ant->flags() | FLAG_COOP_ANT_MULTIPLIED);
+    for (int i = 1; i < main_net_cfg->ant_multiplier; ++i)
+    {
+        game_object *extra = ant->copy();
+        extra->set_flags(extra->flags() | FLAG_COOP_ANT_SILENT);
+        extra->active = 0;
+        // RESPAWN fades in only its own linked object; the extra must be visible.
+        extra->set_fade_count(0);
+        current_level->add_object_after(extra, ant);
+    }
 }
 
 static void play_voice(game_object *o, int sound, float min_pitch, float max_pitch)
@@ -163,6 +184,8 @@ void *ant_ai()
             o->set_state(dead);
         return true_symbol;
     }
+
+    multiply_coop_ant(o);
 
     if (o->state == flinch_up || o->state == flinch_down)
     {

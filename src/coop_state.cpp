@@ -1,4 +1,5 @@
 #include "coop_state.h"
+#include "netcfg.h"
 #include "player_identity.h"
 
 #include <limits>
@@ -6,7 +7,8 @@
 
 std::string coop_state::encode() const
 {
-    nlohmann::json data = {{"level", level_path}, {"difficulty", difficulty}, {"players", nlohmann::json::object()}};
+    nlohmann::json data = {{"level", level_path}, {"difficulty", difficulty}, {"ant_multiplier", ant_multiplier},
+                           {"players", nlohmann::json::object()}};
     for (const auto &[id, inventory] : players)
         data["players"][id] = {{"weapons", inventory.weapons}, {"current_weapon", inventory.current_weapon}};
     return data.dump();
@@ -20,6 +22,11 @@ bool coop_state::decode(std::string_view data, int weapon_count, coop_state &res
             return false;
         const auto json = nlohmann::json::parse(data);
         coop_state decoded;
+        const auto &multiplier = json.at("ant_multiplier");
+        if (!multiplier.is_number_integer() || multiplier < 1 ||
+            multiplier > net_configuration::MAX_ANT_MULTIPLIER)
+            return false;
+        decoded.ant_multiplier = multiplier.get<int>();
         decoded.level_path = json.at("level").get<std::string>();
         decoded.difficulty = json.at("difficulty").get<std::string>();
         if (decoded.level_path.empty() || decoded.level_path.size() > 240 ||

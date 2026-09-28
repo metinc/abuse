@@ -14,6 +14,10 @@
 class net_configuration
 {
   public:
+    static constexpr int DEFAULT_ANT_MULTIPLIER = 2;
+    static constexpr int MAX_ANT_MULTIPLIER = 99;
+    int ant_multiplier = DEFAULT_ANT_MULTIPLIER;
+
     enum
     {
         SINGLE_PLAYER,

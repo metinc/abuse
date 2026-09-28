@@ -15,6 +15,7 @@ struct coop_inventory
 
 struct coop_state
 {
+    int ant_multiplier = 0;
     std::string level_path;
     std::string difficulty;
     std::map<std::string, coop_inventory> players;

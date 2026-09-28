@@ -27,6 +27,7 @@
 #include "clisp.h"
 #include "lisp_gc.h"
 #include "profile.h"
+#include "sdlport/sound.h"
 
 char **object_names;
 int total_objects;
@@ -509,6 +510,7 @@ int game_object::push_range()
 
 int game_object::decide()
 {
+    ScopedSoundMute mute(flags() & FLAG_COOP_ANT_SILENT);
     if (figures[otype]->get_fun(OFUN_AI))
     {
         int old_aistate;
@@ -594,6 +596,7 @@ void game_object::do_flinch(game_object *from)
 void game_object::do_damage(int amount, game_object *from, int32_t hitx, int32_t hity, int32_t push_xvel,
                             int32_t push_yvel)
 {
+    ScopedSoundMute mute(flags() & FLAG_COOP_ANT_SILENT);
     if (from->is_friendly_to(this))
         return;
 

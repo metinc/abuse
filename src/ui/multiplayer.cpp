@@ -115,6 +115,7 @@ enum
     NET_STREAMER_MODE,
     NET_LOCAL_SEARCH,
     NET_STREAMER_LABEL,
+    NET_ANT_MULTIPLIER,
     NET_GAME = 400,
     MIN_1,
     MIN_2,
@@ -143,7 +144,8 @@ enum
 class MultiplayerUI
 {
   public:
-    explicit MultiplayerUI(net_configuration &config) : config(config)
+    explicit MultiplayerUI(net_configuration &config)
+        : config(config), ant_multiplier_input(std::to_string(config.ant_multiplier))
     {
     }
 
@@ -156,6 +158,7 @@ class MultiplayerUI
     int get_options(int server, bool online_join = false);
 
     net_configuration &config;
+    std::string ant_multiplier_input;
 };
 
 void show_multiplayer_error(char const *msg, char const *title)
@@ -251,6 +254,17 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
                 return 0;
             }
             config.kills = kl;
+        }
+        else
+        {
+            char *end;
+            const long multiplier = strtol(i->get(NET_ANT_MULTIPLIER)->read(), &end, 10);
+            if (*end || multiplier < 1 || multiplier > net_configuration::MAX_ANT_MULTIPLIER)
+            {
+                error(symbol_str("ant_multiplier_error"));
+                return 0;
+            }
+            config.ant_multiplier = static_cast<int>(multiplier);
         }
 
         char *nm = i->get(NET_NAME)->read();
@@ -569,6 +583,12 @@ int MultiplayerUI::get_options(int server, bool online_join)
             list = new text_field(left_x, left_y, NET_KILLS, symbol_str("kills_to_win"), "***", "25", list);
             left_y += fnt->Size().y + gap;
         }
+        else
+        {
+            list = new text_field(left_x, left_y, NET_ANT_MULTIPLIER, symbol_str("ant_multiplier"), "**",
+                                  ant_multiplier_input.c_str(), list);
+            left_y += fnt->Size().y + gap;
+        }
 
         // Right column : level selection list
         build_level_list(config.game_mode == net_configuration::COOP);
@@ -697,6 +717,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
                         config.online = selected && selected->id == CONNECTION_ONLINE;
                     }
                     read_streamer_mode(&inm, config);
+                    if (ifield *multiplier = inm.get(NET_ANT_MULTIPLIER))
+                        ant_multiplier_input = multiplier->read();
                     config.min_players = ((ifield *)inm.get(NET_MIN)->read())->id - MIN_1 + 1;
                     config.max_players = ((ifield *)inm.get(NET_MAX)->read())->id - MAX_2 + 2;
 
