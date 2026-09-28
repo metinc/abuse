@@ -25,6 +25,8 @@
 
 #include "light.h"
 #include "level.h"
+#include "ant.h"
+#include "compiled.h"
 #include "game.h"
 #include "intsect.h"
 #include "lisp.h"
@@ -422,8 +424,18 @@ void level::try_pushback(game_object *subject, game_object *target)
     }
 }
 
-game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, bool all)
+static bool is_enemy(game_object *object)
 {
+    // The targeting list also contains players and shootable rockets.
+    if (!object || object->controller() || object->otype == current_start_type || object->otype == S_ROCKET)
+        return false;
+    return is_ant_enemy(object) || (bad_guy_array && bad_guy_array[object->otype]);
+}
+
+game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, bool all,
+                                     bool projectile)
+{
+    const bool enemy_projectile = projectile && is_enemy(subject);
     game_object *l = NULL;
     int32_t tx1, ty1, tx2, ty2, t_centerx;
     game_object *target = first_active;
@@ -434,10 +446,11 @@ game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y
         target = *blist;
         if (target != subject && (target->total_objects() == 0 || target->get_object(0) != subject))
         {
-            // Only teammates are transparent to projectiles. can_hurt() also
-            // contains Abuse's attacker-vs-enemy rules and would incorrectly
-            // make neutral traps pass through ordinary enemies.
-            if (subject && target->hurtable() && !target->can_block() && subject->is_friendly_to(target))
+            // Enemy shots also pass through solid enemies such as turrets and
+            // robots. Neutral traps and destructible scenery remain solid.
+            if (target->hurtable() &&
+                ((subject && !target->can_block() && subject->is_friendly_to(target)) ||
+                 (enemy_projectile && is_enemy(target))))
                 continue;
             target->picture_space(tx1, ty1, tx2, ty2);
             if (!((x2 < tx1 && x1 < tx1) || (x1 > tx2 && x2 > tx2) || (y1 > ty2 && y2 > ty2) ||

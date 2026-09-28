@@ -68,7 +68,7 @@
 		      ('hard    17)
 		      ('extreme 22) ))
   (set_frame_angle 0 359 (aistate))
-  (let ((stat (bmove nil)))
+  (let ((stat (bmove (if (> (total_objects) 0) (get_object 0) nil))))
     (if (eq stat T)
 	T
     (progn

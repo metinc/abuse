@@ -38,6 +38,17 @@ enum
     ANT_hide_flag
 };
 
+bool is_ant_enemy(game_object *object)
+{
+    if (!object || object->controller())
+        return false;
+    // ANT variants share ant_cons, including those with custom AI. Hidden
+    // ANTs have no constructor and change back into ANT_ROOF when revealed.
+    void *ant_constructor = figures[S_ANT_ROOF]->get_fun(OFUN_CONSTRUCTOR);
+    return object->otype == S_HIDDEN_ANT ||
+           (ant_constructor && figures[object->otype]->get_fun(OFUN_CONSTRUCTOR) == ant_constructor);
+}
+
 static float random_voice_frequency_ratio(float min_pitch, float max_pitch)
 {
     return min_pitch + SDL_randf() * (max_pitch - min_pitch);
