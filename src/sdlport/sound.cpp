@@ -70,12 +70,14 @@ std::vector<RetiredMusic *> retired_music;
 
 MIX_Track *acquire_music_track()
 {
-    std::lock_guard<std::mutex> lock(music_mutex);
-    if (!music_tracks.empty())
     {
-        MIX_Track *track = music_tracks.back();
-        music_tracks.pop_back();
-        return track;
+        std::lock_guard<std::mutex> lock(music_mutex);
+        if (!music_tracks.empty())
+        {
+            MIX_Track *track = music_tracks.back();
+            music_tracks.pop_back();
+            return track;
+        }
     }
     return mixer ? MIX_CreateTrack(mixer) : nullptr;
 }
@@ -279,8 +281,7 @@ bool sound_set_soundfont(const std::string &configured_soundfont)
 
     if (sound_is_initialized() && !resolved_path.empty() && !fluidsynth_available)
     {
-        printf("Sound: FluidSynth MIDI decoder is unavailable; cannot use SoundFont: %s\n",
-               resolved_path.c_str());
+        printf("Sound: FluidSynth MIDI decoder is unavailable; cannot use SoundFont: %s\n", resolved_path.c_str());
         return false;
     }
 
