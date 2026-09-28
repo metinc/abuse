@@ -270,6 +270,8 @@
 	 (setq room_code       "Raumcode")
 	 (setq room_code_error "Raumcode: genau 6 Zeichen")
 	 (setq online_join_error "Onlinespiel konnte nicht beigetreten werden.\nPrüfe den Raumcode und versuche es erneut.")
+         (setq online_host_error "Onlineraum konnte nicht erstellt werden.\nPrüfe deine Verbindung und versuche es erneut.")
+         (setq server_host_error "Server konnte nicht gestartet werden.\nPrüfe deine Netzwerkeinstellungen und versuche es erneut.")
 
          (setq min_error       "Min. Spielerzahl 1-8")
          (setq max_players     "Dieser Server ist voll.\nBitte versuche es später erneut.")

@@ -38,6 +38,7 @@ class net_configuration
     char room_code[7];
     bool online;
     bool join_failed;
+    bool host_failed = false;
     bool server_full;
     bool host_ended_server;
     bool waiting_for_host;

@@ -512,6 +512,8 @@ int net_init(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "-server"))
         {
+            if (main_net_cfg->host_failed)
+                continue;
             DEBUG_LOG("Setting state to SERVER");
             main_net_cfg->online = false;
             main_net_cfg->room_code[0] = '\0';
@@ -1450,6 +1452,8 @@ int get_inputs_from_server(unsigned char *buf)
 int become_server(char *name)
 {
     DEBUG_LOG("Attempting to become server: %s", name);
+    if (main_net_cfg)
+        main_net_cfg->host_failed = true;
     if (prot && main_net_cfg)
     {
         if (comm_sock)
@@ -1460,7 +1464,6 @@ int become_server(char *name)
         if (!comm_sock)
         {
             DEBUG_LOG("Failed to create communication socket");
-            prot = NULL;
             return 0;
         }
         if (main_net_cfg->online && prot == &webrtc)
@@ -1485,7 +1488,6 @@ int become_server(char *name)
             if (comm_sock)
                 delete comm_sock;
             comm_sock = NULL;
-            prot = NULL;
             return 0;
         }
         game_sock->read_selectable();
@@ -1494,6 +1496,7 @@ int become_server(char *name)
         delete game_face;
         game_face = new game_server;
         local_client_number = 0;
+        main_net_cfg->host_failed = false;
         return 1;
     }
     return 0;

@@ -177,9 +177,9 @@ void show_multiplayer_error(char const *msg, char const *title)
         {
             get_menu_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
-    } while (!application_quit_requested() &&
-             (ev.type != EV_MESSAGE || ev.message.id != CFG_ERR_OK || ev.type == EV_CLOSE_WINDOW ||
-              (ev.type == EV_KEY && ev.key == JK_ESC)));
+    } while (!application_quit_requested() && ev.type != EV_CLOSE_WINDOW &&
+             !(ev.type == EV_KEY && ev.key == JK_ESC) &&
+             !(ev.type == EV_MESSAGE && ev.message.id == CFG_ERR_OK));
     wm->close_window(j);
     wm->flush_screen();
 }

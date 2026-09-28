@@ -271,6 +271,8 @@ plan \n"
 	 (setq room_code       "Code de salon")
 	 (setq room_code_error "Code : exactement 6 caractères")
 	 (setq online_join_error "Impossible de rejoindre la partie en ligne.\nVérifiez le code et réessayez.")
+         (setq online_host_error "Impossible de créer une salle en ligne.\nVérifiez votre connexion et réessayez.")
+         (setq server_host_error "Impossible de démarrer le serveur.\nVérifiez vos paramètres réseau et réessayez.")
 
 (setq max_players     "Ce serveur est complet.\nVeuillez réessayer plus tard.")
 	 (setq connection_lost "Connexion interrompue")

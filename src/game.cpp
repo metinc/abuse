@@ -1972,6 +1972,16 @@ void Game::request_end()
     req_end = 1;
 }
 
+static void restart_after_host_failure()
+{
+    main_net_cfg->host_failed = true;
+    main_net_cfg->resume_coop = false;
+    main_net_cfg->returning_to_menu = true;
+    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+    strcpy(lsf, "abuse.lsp");
+    start_running = 0;
+}
+
 Game::Game(int argc, char **argv)
 {
     int i;
@@ -2017,6 +2027,10 @@ Game::Game(int argc, char **argv)
 
     //    ProfilerInit(collectDetailed, bestTimeBase, 2000, 200); //prof
     load_data(argc, argv);
+    // Multiplayer startup scripts call start_server(), but do not abort when
+    // it fails. Never load a solo level in place of the requested server.
+    if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER && main_net_cfg->host_failed)
+        restart_after_host_failure();
     //    ProfilerDump("\pabuse.prof");  //prof
     //    ProfilerTerm();
 
@@ -2133,7 +2147,7 @@ Game::Game(int argc, char **argv)
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
         if (!start_edit && !net_start() && !settings.skip_intro && !returning_to_menu &&
-            !(main_net_cfg && main_net_cfg->join_failed))
+            !(main_net_cfg && (main_net_cfg->join_failed || main_net_cfg->host_failed)))
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
@@ -3117,7 +3131,15 @@ bool game_net_init(int argc, char **argv)
 {
     int nonet = !net_init(argc, argv);
     if (nonet)
+    {
         printf("No network driver, or network driver returned failure\n");
+        if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
+        {
+            net_uninit();
+            restart_after_host_failure();
+            return false;
+        }
+    }
     else
     {
         set_file_opener(open_nfs_file);
@@ -3194,6 +3216,15 @@ int main(int argc, char *argv[])
         dev_cont = new dev_controll();
         dev_cont->load_stuff();
 
+        if (main_net_cfg && main_net_cfg->host_failed &&
+            main_net_cfg->state == net_configuration::SINGLE_PLAYER)
+        {
+            show_multiplayer_error(symbol_str(main_net_cfg->online ? "online_host_error" : "server_host_error"));
+            main_net_cfg->host_failed = false;
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+        }
+
         if (main_net_cfg && main_net_cfg->join_failed)
         {
             const bool server_full = main_net_cfg->server_full;
@@ -3216,12 +3247,13 @@ int main(int argc, char *argv[])
 
         for (int i = 1; i + 1 < argc; i++)
         {
-            if (!strcmp(argv[i], "-server"))
+            if (!strcmp(argv[i], "-server") && main_net_cfg->state == net_configuration::SERVER &&
+                !net_game_active())
             {
                 if (!become_server(argv[i + 1]))
                 {
                     printf("unable to become a server\n");
-                    exit(EXIT_SUCCESS);
+                    restart_after_host_failure();
                 }
                 break;
             }

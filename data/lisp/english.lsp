@@ -281,6 +281,8 @@
 	 (setq room_code       "Room code")
 	 (setq room_code_error "Room code: exactly 6 characters")
 	 (setq online_join_error "Unable to join online game.\nCheck the room code and try again.")
+         (setq online_host_error "Unable to create an online room.\nCheck your connection and try again.")
+         (setq server_host_error "Unable to start the server.\nCheck your network settings and try again.")
          (setq max_players     "This server is full.\nPlease try again later.")
 	 (setq connection_lost "Connection lost")
 	 (setq host_ended_server "The host has ended the server.")
