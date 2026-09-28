@@ -627,7 +627,7 @@
 	   (next_picture)
 	   (set_yvel (+ (yvel) 3))
 	   (bounce_move T T T
-			'(if (try_move 0 1)
+			'(if (try_move 0 1 nil)
 			     ;; Diagonal wall impacts can also report BLOCKED_DOWN.
 			     ;; Keep falling unless there really is ground below.
 			     (set_yvel 1)
