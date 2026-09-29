@@ -85,6 +85,7 @@ class view
     int32_t last_left, last_right, last_up, last_down, // how many frames ago were these pressed (<=0)
         last_b1, last_b2, last_b3, last_b4, last_hp, last_ammo, last_type;
     int32_t secrets, kills, tsecrets, tkills;
+    int32_t damage = 0, total_damage = 0;
 
     void draw_character_damage(); // draws the characters 'status' on the viewer
 

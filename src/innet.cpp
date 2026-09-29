@@ -267,8 +267,16 @@ std::vector<view *> sorted_score_players()
     std::vector<view *> players;
     for (view *player = player_list; player; player = player->next)
         players.push_back(player);
-    std::sort(players.begin(), players.end(), [](view const *left, view const *right) {
-        if (left->kills != right->kills)
+    const bool coop = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    std::sort(players.begin(), players.end(), [coop](view const *left, view const *right) {
+        if (coop)
+        {
+            if (left->damage != right->damage)
+                return left->damage > right->damage;
+            if (left->total_damage != right->total_damage)
+                return left->total_damage > right->total_damage;
+        }
+        else if (left->kills != right->kills)
             return left->kills > right->kills;
         return left->player_number < right->player_number;
     });
@@ -299,7 +307,11 @@ std::string tab_player_status_text(view *player, game_server *server, game_clien
     }
 
     char text[256];
-    snprintf(text, sizeof(text), "%-18s %5ld %10s", player->name, static_cast<long>(player->kills), packet_age);
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        snprintf(text, sizeof(text), "%-18s %10ld %13ld %10s", player->name, static_cast<long>(player->damage),
+                 static_cast<long>(player->total_damage), packet_age);
+    else
+        snprintf(text, sizeof(text), "%-18s %5ld %10s", player->name, static_cast<long>(player->kills), packet_age);
     return text;
 }
 
@@ -343,8 +355,9 @@ void create_tab_player_status_window()
     if (!server && !client)
         return;
 
+    const bool coop = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
     const int row_height = wm->font()->Size().y + 7;
-    const int kick_x = wm->font()->Size().x * 36;
+    const int kick_x = wm->font()->Size().x * (coop ? 55 : 36);
     ifield *fields = nullptr;
     int y = 0;
 
@@ -371,7 +384,8 @@ void create_tab_player_status_window()
         y += row_height;
     }
 
-    fields = new info_field(0, y + 3, ID_NULL, symbol_str("player_status_columns"), fields);
+    fields = new info_field(0, y + 3, ID_NULL,
+                            symbol_str(coop ? "coop_status_columns" : "player_status_columns"), fields);
     y += row_height;
 
     const std::vector<game_server::client_status> statuses = server ? server->client_statuses()

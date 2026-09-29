@@ -1210,10 +1210,12 @@ enum
     V_LAST_LAST_Y,
     V_FREEZE_TIME,
     V_TINT,
-    V_UPPER_TINT
+    V_UPPER_TINT,
+    V_DAMAGE,
+    V_TOTAL_DAMAGE
 };
 
-#define TVV (V_UPPER_TINT + 1)
+#define TVV (V_TOTAL_DAMAGE + 1)
 
 static char const *vv_names[TVV] = {"view.cx1",
                                     "view.cy1",
@@ -1260,7 +1262,9 @@ static char const *vv_names[TVV] = {"view.cx1",
                                     "view.last_last_y",
                                     "view.freeze_time",
                                     "view.tint",
-                                    "view.upper_tint"};
+                                    "view.upper_tint",
+                                    "view.damage",
+                                    "view.total_damage"};
 
 int total_view_vars()
 {
@@ -1383,6 +1387,10 @@ int32_t view::get_view_var_value(int num)
     case V_KILLS:
         return kills;
         break;
+    case V_DAMAGE:
+        return damage;
+    case V_TOTAL_DAMAGE:
+        return total_damage;
     case V_TSECRETS:
         return tsecrets;
         break;
@@ -1533,6 +1541,12 @@ int32_t view::set_view_var_value(int num, int32_t x)
         break;
     case V_KILLS:
         kills = x;
+        break;
+    case V_DAMAGE:
+        damage = std::max(0, x);
+        break;
+    case V_TOTAL_DAMAGE:
+        total_damage = std::max(damage, x);
         break;
     case V_TSECRETS:
         tsecrets = x;

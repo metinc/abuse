@@ -28,6 +28,12 @@
 #include "lisp_gc.h"
 #include "profile.h"
 #include "sdlport/sound.h"
+#include "ant.h"
+#include "compiled.h"
+#include "netcfg.h"
+
+#include <algorithm>
+#include <limits>
 
 char **object_names;
 int total_objects;
@@ -564,6 +570,14 @@ bool game_object::is_friendly_to(game_object *who)
     return who && team != -1 && team == who->get_team();
 }
 
+bool game_object::is_enemy()
+{
+    // The targeting list also contains players and shootable rockets.
+    if (controller() || otype == current_start_type || otype == S_ROCKET)
+        return false;
+    return is_ant_enemy(this) || (bad_guy_array && bad_guy_array[otype]);
+}
+
 // collision checking will ask first to see if you
 int game_object::can_hurt(game_object *who)
 {
@@ -665,7 +679,21 @@ void game_object::damage_fun(int amount, game_object *from, int32_t hitx, int32_
     if (!hurtable() || !alive())
         return;
 
+    const int previous_hp = hp();
     add_hp(-amount);
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP && from && is_enemy())
+    {
+        view *player = from->controller();
+        if (!player && from->total_objects())
+            player = from->get_object(0)->controller();
+        if (player)
+        {
+            const int damage = std::max(0, previous_hp - hp());
+            const int credited = std::min(damage, std::numeric_limits<int32_t>::max() - player->total_damage);
+            player->damage += credited;
+            player->total_damage += credited;
+        }
+    }
     set_flags(flags() | FLAG_JUST_HIT);
     do_flinch(from);
 

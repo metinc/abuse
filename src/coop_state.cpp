@@ -10,7 +10,8 @@ std::string coop_state::encode() const
     nlohmann::json data = {{"level", level_path}, {"difficulty", difficulty}, {"ant_multiplier", ant_multiplier},
                            {"players", nlohmann::json::object()}};
     for (const auto &[id, inventory] : players)
-        data["players"][id] = {{"weapons", inventory.weapons}, {"current_weapon", inventory.current_weapon}};
+        data["players"][id] = {{"weapons", inventory.weapons}, {"current_weapon", inventory.current_weapon},
+                               {"damage", inventory.damage}, {"total_damage", inventory.total_damage}};
     return data.dump();
 }
 
@@ -51,6 +52,16 @@ bool coop_state::decode(std::string_view data, int weapon_count, coop_state &res
             if (current < 0 || current >= weapon_count)
                 return false;
             coop_inventory inventory;
+            for (auto [name, value] : {std::pair{"damage", &inventory.damage},
+                                      std::pair{"total_damage", &inventory.total_damage}})
+            {
+                const auto &score = entry.at(name);
+                if (!score.is_number_integer() || score < 0 || score > std::numeric_limits<int32_t>::max())
+                    return false;
+                *value = score.get<int32_t>();
+            }
+            if (inventory.damage > inventory.total_damage)
+                return false;
             inventory.current_weapon = static_cast<int32_t>(current);
             for (const auto &ammo : weapons)
             {

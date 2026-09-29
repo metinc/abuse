@@ -11,6 +11,8 @@ struct coop_inventory
 {
     std::vector<int32_t> weapons;
     int32_t current_weapon = 0;
+    int32_t damage = 0;
+    int32_t total_damage = 0;
 };
 
 struct coop_state

@@ -627,6 +627,8 @@ void Game::remember_coop_player(const view *player)
     coop_inventory &inventory = coop_session.players[player->persistent_id];
     inventory.weapons.assign(player->weapons, player->weapons + total_weapons);
     inventory.current_weapon = player->current_weapon;
+    inventory.damage = player->damage;
+    inventory.total_damage = player->total_damage;
 }
 
 void Game::restore_coop_player(view *player)
@@ -651,6 +653,8 @@ void Game::restore_coop_player(view *player)
     {
         std::copy(saved->second.weapons.begin(), saved->second.weapons.end(), player->weapons);
         player->current_weapon = saved->second.current_weapon;
+        player->damage = saved->second.damage;
+        player->total_damage = saved->second.total_damage;
     }
     std::copy(player->weapons, player->weapons + total_weapons, player->last_weapons);
     player->last_ammo = -1;
@@ -672,7 +676,8 @@ std::string Game::serialize_coop_state() const
                                                  : "hard";
     for (view *v = player_list; v; v = v->next)
         if (valid_player_id(v->persistent_id))
-            state.players[v->persistent_id] = {{v->weapons, v->weapons + total_weapons}, v->current_weapon};
+            state.players[v->persistent_id] = {{v->weapons, v->weapons + total_weapons}, v->current_weapon,
+                                               v->damage, v->total_damage};
     return state.encode();
 }
 
@@ -812,6 +817,18 @@ bool Game::restart_coop_from_checkpoint()
 
     if (!have_checkpoint)
     {
+        // Discard damage from the failed attempt, including disconnected players.
+        for (view *v = player_list; v; v = v->next)
+        {
+            v->total_damage -= v->damage;
+            v->damage = 0;
+        }
+        for (auto &[id, inventory] : coop_session.players)
+        {
+            inventory.total_damage -= inventory.damage;
+            inventory.damage = 0;
+        }
+
         // Match the single-player fallback: revive the existing roster and
         // reload the original level, which applies set_player_defaults.
         restore_coop_level_start_ammo();
@@ -986,7 +1003,15 @@ void Game::load_level(char const *name)
             coop_level_start_path = name;
 
         spec_directory sd(fp);
+        const bool starting_level = sd.find("player_info") == nullptr;
         current_level = new level(&sd, fp, name);
+        if (starting_level && main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        {
+            for (view *v = player_list; v; v = v->next)
+                v->damage = 0;
+            for (auto &[id, inventory] : coop_session.players)
+                inventory.damage = 0;
+        }
         delete fp;
     }
 

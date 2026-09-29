@@ -20,6 +20,7 @@
 	 (setq game_status      "Spielstatus")
 	 (setq current_level_label "Level")
 	 (setq player_status_columns "Spieler             Score Paketalter")
+	 (setq coop_status_columns "Spieler               Schaden Gesamtschaden Paketalter")
 	 (setq hold!              "Bitte warten!")
 	 (setq waiting            "Wartet auf Daten...")
 	 (setq Error              "Fehler")

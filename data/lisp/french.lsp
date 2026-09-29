@@ -20,6 +20,7 @@
 	 (setq game_status      "État de la partie")
 	 (setq current_level_label "Niveau")
 	 (setq player_status_columns "Joueur              Score Age paquet")
+	 (setq coop_status_columns "Joueur                 Dégâts Dégâts totaux Age paquet")
 	 (setq hold!              "Attendez !")
 	 (setq waiting            "Chargement des données...")
 	 (setq Error              "Erreur")
