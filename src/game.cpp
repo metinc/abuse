@@ -244,13 +244,16 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
         return;
 
     int mindist = 500;
-    view *cd = NULL;
+    int32_t listener_x = 0;
     for (view *f = player_list; f; f = f->next)
     {
         if (!f->local_player())
             continue;
 
-        int d, cx = abs(f->x_center() - x), cy = abs(f->y_center() - y);
+        game_object *focus = f->camera_focus();
+        const int32_t fx = focus ? focus->x : f->x_center();
+        const int32_t fy = focus ? focus->y : f->y_center();
+        int d, cx = abs(fx - x), cy = abs(fy - y);
         if (cx < cy)
             d = cx + cy - (cx >> 1);
         else
@@ -258,7 +261,7 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
 
         if (d < mindist)
         {
-            cd = f;
+            listener_x = fx;
             mindist = d;
         }
     }
@@ -270,8 +273,8 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
     else
         mindist -= 100;
 
-    // Calculate the position of the sound relative to the player
-    int p = (cd->x_center() - x) / 2 + 128;
+    // Calculate the position of the sound relative to the viewed player.
+    int p = (listener_x - x) / 2 + 128;
     if (p < 0)
         p = 0;
     if (p > 255)
