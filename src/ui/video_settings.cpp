@@ -50,7 +50,7 @@ class gamma_slider : public scroller
 
     static int step_for_gamma(double gamma)
     {
-        return static_cast<int>(std::lround((std::clamp(gamma, min_gamma, max_gamma) - min_gamma) / gamma_step));
+        return static_cast<int>(::lround((std::clamp(gamma, min_gamma, max_gamma) - min_gamma) / gamma_step));
     }
 
   public:

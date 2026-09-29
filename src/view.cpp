@@ -153,19 +153,19 @@ int view::weapon_total(int type)
 int32_t view::xoff()
 {
     int32_t distance = pan_x - pan_x_last;
-    int32_t pan_x_interpolated = pan_x_last + std::round(distance * this->interpolation_ratio);
+    int32_t pan_x_interpolated = pan_x_last + ::round(distance * this->interpolation_ratio);
 
     const int32_t offset = unclamped_xoff(pan_x_interpolated);
-    return m_focus ? std::max(0, offset) : offset;
+    return m_focus ? std::max<int32_t>(0, offset) : offset;
 }
 
 int32_t view::yoff()
 {
     int32_t distance = pan_y - pan_y_last;
-    int32_t pan_y_interpolated = pan_y_last + std::round(distance * this->interpolation_ratio);
+    int32_t pan_y_interpolated = pan_y_last + ::round(distance * this->interpolation_ratio);
 
     const int32_t offset = unclamped_yoff(pan_y_interpolated);
-    return m_focus ? std::max(0, offset) : offset;
+    return m_focus ? std::max<int32_t>(0, offset) : offset;
 }
 
 int32_t view::unclamped_xoff(int32_t pan) const
@@ -194,10 +194,10 @@ void view::pan_editor(int32_t x, int32_t y)
     // The rendered offsets stop at zero, but the camera calculation can still
     // be negative near the top or left level edge. Base the drag on what is
     // actually visible so that hidden distance does not consume mouse motion.
-    const int32_t current_xoff = std::max(0, raw_xoff);
-    const int32_t current_yoff = std::max(0, raw_yoff);
-    const int32_t target_xoff = std::max(0, current_xoff + x);
-    const int32_t target_yoff = std::max(0, current_yoff + y);
+    const int32_t current_xoff = std::max<int32_t>(0, raw_xoff);
+    const int32_t current_yoff = std::max<int32_t>(0, raw_yoff);
+    const int32_t target_xoff = std::max<int32_t>(0, current_xoff + x);
+    const int32_t target_yoff = std::max<int32_t>(0, current_yoff + y);
 
     pan_x += target_xoff - raw_xoff;
     pan_y += target_yoff - raw_yoff;
@@ -300,14 +300,14 @@ void view::update_scroll(float interpolation_ratio)
         return;
 
     if (focus->x > m_lastpos.x)
-        m_lastpos.x = std::max(m_lastpos.x, focus->x - no_xright);
+        m_lastpos.x = std::max<int32_t>(m_lastpos.x, focus->x - no_xright);
     else if (focus->x < m_lastpos.x)
-        m_lastpos.x = std::min(m_lastpos.x, focus->x + no_xleft);
+        m_lastpos.x = std::min<int32_t>(m_lastpos.x, focus->x + no_xleft);
 
     if (focus->y > m_lastpos.y)
-        m_lastpos.y = std::max(m_lastpos.y, focus->y - no_ybottom);
+        m_lastpos.y = std::max<int32_t>(m_lastpos.y, focus->y - no_ybottom);
     else if (focus->y < m_lastpos.y)
-        m_lastpos.y = std::min(m_lastpos.y, focus->y + no_ytop);
+        m_lastpos.y = std::min<int32_t>(m_lastpos.y, focus->y + no_ytop);
 }
 
 static char cur_user_name[100] = {0};
@@ -1543,7 +1543,7 @@ int32_t view::set_view_var_value(int num, int32_t x)
         kills = x;
         break;
     case V_DAMAGE:
-        damage = std::max(0, x);
+        damage = std::max<int32_t>(0, x);
         break;
     case V_TOTAL_DAMAGE:
         total_damage = std::max(damage, x);
@@ -1569,7 +1569,7 @@ int32_t view::set_view_var_value(int num, int32_t x)
              main_net_cfg->state == net_configuration::RESTART_SINGLE))
             set_tint(settings.player_lower_skin);
         else
-            set_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
+            set_tint(std::clamp<int32_t>(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_UPPER_TINT:
         if (demo_man.current_state() != demo_manager::PLAYING && local_player() &&
@@ -1577,7 +1577,7 @@ int32_t view::set_view_var_value(int num, int32_t x)
              main_net_cfg->state == net_configuration::RESTART_SINGLE))
             set_upper_tint(settings.player_upper_skin);
         else
-            set_upper_tint(std::clamp(x, 0, PLAYER_SKIN_COUNT - 1));
+            set_upper_tint(std::clamp<int32_t>(x, 0, PLAYER_SKIN_COUNT - 1));
         break;
     case V_LAST_LAST_X:
         break;

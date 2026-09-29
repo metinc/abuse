@@ -37,7 +37,9 @@
 #include "net/gserver.h"
 #include "net/gclient.h"
 #include "netcfg.h"
+#ifndef ABUSE_NO_NETWORK
 #include "net/webrtc.h"
+#endif
 #include "sdlport/setup.h"
 
 #include <string>
@@ -515,6 +517,10 @@ int net_init(int argc, char **argv)
         main_net_cfg = new net_configuration;
     }
 
+#ifdef ABUSE_NO_NETWORK
+    printf("Net: Singleplayer build\n");
+    return 0;
+#else
     // Parse command line arguments
     constexpr char default_signaling_url[] = "wss://abusecoop.com";
     enum class online_mode
@@ -712,6 +718,7 @@ int net_init(int argc, char **argv)
 
     DEBUG_LOG("Network initialization complete");
     return 1;
+#endif
 }
 
 int net_start() // is the game starting up off the net? (i.e. -net hostname)
@@ -1566,12 +1573,14 @@ int become_server(char *name)
             DEBUG_LOG("Failed to create communication socket");
             return 0;
         }
+#ifndef ABUSE_NO_NETWORK
         if (main_net_cfg->online && prot == &webrtc)
         {
             const std::string code = webrtc.room_code();
             strncpy(main_net_cfg->room_code, code.c_str(), sizeof(main_net_cfg->room_code) - 1);
             main_net_cfg->room_code[sizeof(main_net_cfg->room_code) - 1] = '\0';
         }
+#endif
         comm_sock->read_selectable();
 
         DEBUG_LOG("Starting server notification on port 0x9090");

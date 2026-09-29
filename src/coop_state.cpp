@@ -3,6 +3,11 @@
 #include "player_identity.h"
 
 #include <limits>
+#ifdef ABUSE_NO_NETWORK
+// Singleplayer saves have no co-op metadata.
+std::string coop_state::encode() const { return {}; }
+bool coop_state::decode(std::string_view, int, coop_state &) { return false; }
+#else
 #include <nlohmann/json.hpp>
 
 std::string coop_state::encode() const
@@ -83,3 +88,4 @@ bool coop_state::decode(std::string_view data, int weapon_count, coop_state &res
         return false;
     }
 }
+#endif

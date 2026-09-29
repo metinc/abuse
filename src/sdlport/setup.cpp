@@ -877,7 +877,7 @@ bool Settings::Load()
     if (!Save())
         return false;
     if (!existing)
-        printf("Default \"settings.toml\" created\n");
+        printf("Default \"%s\" created\n", settings_filename);
     return true;
 }
 
@@ -1025,7 +1025,8 @@ bool Settings::Save() const
         return false;
     }
 
-    const std::filesystem::path temporary = path.string() + ".tmp";
+    std::filesystem::path temporary = path;
+    temporary.replace_extension(".tmp");
     std::error_code error;
     std::filesystem::create_directories(path.parent_path(), error);
     std::ofstream output(temporary, std::ios::binary | std::ios::trunc);

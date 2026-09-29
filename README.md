@@ -101,7 +101,7 @@ packaged; HMI conversion is not part of the game's runtime audio path. The C++ c
 - `[gameplay].physics_tick_ms` - Physics update time in ms (65ms/15FPS original)
 - `[gameplay].max_fps` - Frame-rate limit
 - `[gameplay].original_plot` - Use the original Ant story in the selected language and animated planet ending
-- `[gameplay].record_replays` - Record every game as a timestamped replay under the save path's `replays/` folder
+- `[gameplay].record_replays` - Record every game under the save path's `replays/` folder, using eight-character filenames with a `.dat` extension
 - `[general].grab_input` - Confine the mouse to the rendered game area in windowed mode
 - `[general].language` - Game language (`"auto"` uses the operating-system language; also `"english"`, `"german"`, or `"french"`)
 - `[multiplayer].player_name` - Player name used in multiplayer games (maximum 18 characters)

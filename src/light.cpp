@@ -111,7 +111,7 @@ void light_source::calc_range()
     // snapshots are external data, so keep the invariant here as well as in
     // the editor and Lisp setters.
     constexpr int32_t max_radius = std::numeric_limits<int32_t>::max();
-    inner_radius = std::clamp(inner_radius, 0, max_radius - 1);
+    inner_radius = std::clamp<int32_t>(inner_radius, 0, max_radius - 1);
     outer_radius = std::clamp(outer_radius, inner_radius + 1, max_radius);
 
     switch (type)
@@ -207,8 +207,8 @@ light_source::light_source(char Type, int32_t X, int32_t Y, int32_t Inner_radius
                            int32_t Yshift, light_source *Next, int32_t Tint, int32_t Strength)
 {
     type = Type;
-    tint = std::clamp(Tint, 0, LIGHT_TINT_COUNT - 1);
-    strength = std::clamp(Strength, 0, LIGHT_STRENGTH_MAX);
+    tint = std::clamp<int32_t>(Tint, 0, LIGHT_TINT_COUNT - 1);
+    strength = std::clamp<int32_t>(Strength, 0, LIGHT_STRENGTH_MAX);
     x = X;
     y = Y;
     inner_radius = Inner_radius;
@@ -948,7 +948,7 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
                         grid.solid.empty() ? nullptr : solid_light_at(grid.solid, world_x, world_y);
                     const int x_fraction = local_x - local_x0;
                     const int intensity =
-                        solid ? std::clamp(adjusted_ambient + (solid->inner_radius - adjusted_ambient) *
+                        solid ? std::clamp<int32_t>(adjusted_ambient + (solid->inner_radius - adjusted_ambient) *
                                                                   solid->strength / LIGHT_STRENGTH_MAX,
                                            0, 63)
                               : (left * (step_x - x_fraction) + right * x_fraction + step_x / 2) / step_x;

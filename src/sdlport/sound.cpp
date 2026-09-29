@@ -28,7 +28,6 @@
 #include <cctype>
 #include <cstring>
 #include <filesystem>
-#include <mutex>
 #include <new>
 #include <string>
 #include <vector>
@@ -65,13 +64,23 @@ struct RetiredMusic
     MIX_Audio *audio;
 };
 
-std::mutex music_mutex;
+SDL_Mutex *music_mutex = nullptr;
+
+// SDL's mutexes also work with the cooperative DOS audio thread.
+class MusicLock
+{
+  public:
+    MusicLock() { SDL_LockMutex(music_mutex); }
+    ~MusicLock() { SDL_UnlockMutex(music_mutex); }
+    MusicLock(const MusicLock &) = delete;
+    MusicLock &operator=(const MusicLock &) = delete;
+};
 std::vector<RetiredMusic *> retired_music;
 
 MIX_Track *acquire_music_track()
 {
     {
-        std::lock_guard<std::mutex> lock(music_mutex);
+        MusicLock lock;
         if (!music_tracks.empty())
         {
             MIX_Track *track = music_tracks.back();
@@ -92,7 +101,7 @@ void release_music_track(MIX_Track *track)
 
     bool keep = false;
     {
-        std::lock_guard<std::mutex> lock(music_mutex);
+        MusicLock lock;
         if (mixer && music_tracks.size() < MUSIC_TRACK_POOL_SIZE)
         {
             music_tracks.push_back(track);
@@ -112,7 +121,7 @@ void SDLCALL retired_music_stopped(void *userdata, MIX_Track *track)
 
     bool keep_track = false;
     {
-        std::lock_guard<std::mutex> lock(music_mutex);
+        MusicLock lock;
         const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
         if (it != retired_music.end())
             retired_music.erase(it);
@@ -158,7 +167,7 @@ void dispose_music(MIX_Track *&track, MIX_Audio *&audio, int fadeout_millisecond
 
     const bool already_fading_out = MIX_GetTrackFadeFrames(track) < 0;
     {
-        std::lock_guard<std::mutex> lock(music_mutex);
+        MusicLock lock;
         retired_music.push_back(retired);
     }
     track = nullptr;
@@ -167,7 +176,7 @@ void dispose_music(MIX_Track *&track, MIX_Audio *&audio, int fadeout_millisecond
     if (!MIX_SetTrackStoppedCallback(retired->track, retired_music_stopped, retired))
     {
         {
-            std::lock_guard<std::mutex> lock(music_mutex);
+            MusicLock lock;
             const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
             if (it != retired_music.end())
                 retired_music.erase(it);
@@ -184,7 +193,7 @@ void dispose_music(MIX_Track *&track, MIX_Audio *&audio, int fadeout_millisecond
     {
         MIX_SetTrackStoppedCallback(retired->track, nullptr, nullptr);
         {
-            std::lock_guard<std::mutex> lock(music_mutex);
+            MusicLock lock;
             const auto it = std::find(retired_music.begin(), retired_music.end(), retired);
             if (it != retired_music.end())
                 retired_music.erase(it);
@@ -326,6 +335,13 @@ bool sound_init()
         return false;
     }
 
+    music_mutex = SDL_CreateMutex();
+    if (!music_mutex)
+    {
+        MIX_Quit();
+        return false;
+    }
+
     const int num_decoders = MIX_GetNumAudioDecoders();
     fluidsynth_available = false;
     if (num_decoders > 0)
@@ -352,6 +368,8 @@ bool sound_init()
     mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &requested_spec);
     if (!mixer)
     {
+        SDL_DestroyMutex(music_mutex);
+        music_mutex = nullptr;
         MIX_Quit();
         printf("Sound: Unable to open audio - %s\nSound: Disabled (error)\n", SDL_GetError());
         return false;
@@ -371,10 +389,10 @@ bool sound_init()
     }
     else
     {
-        // Let SDL_mixer select another available MIDI backend (for example
-        // Timidity). A configured SoundFont is meaningful only to FluidSynth.
+        // A configured SoundFont is meaningful only to FluidSynth. SDL_mixer
+        // selects an available decoder for each music file's format.
         soundfont_path.clear();
-        printf("Sound: FluidSynth is unavailable; using SDL_mixer's default MIDI decoder.\n");
+        printf("Sound: FluidSynth is unavailable; using available SDL_mixer decoders.\n");
     }
     sfx_tracks.reserve(SFX_TRACK_COUNT);
     for (int i = 0; i < SFX_TRACK_COUNT; ++i)
@@ -416,7 +434,7 @@ void sound_uninit()
 
     MIX_DestroyMixer(mixer);
     {
-        std::lock_guard<std::mutex> lock(music_mutex);
+        MusicLock lock;
         mixer = nullptr;
         music_tracks.clear();
         for (RetiredMusic *retired : retired_music)
@@ -429,6 +447,8 @@ void sound_uninit()
     sfx_tracks.clear();
     soundfont_path.clear();
     fluidsynth_available = false;
+    SDL_DestroyMutex(music_mutex);
+    music_mutex = nullptr;
     MIX_Quit();
 }
 

@@ -510,8 +510,8 @@ void level::interpolate_object_positions(float interpolation_ratio)
         {
             int32_t distance_x = o->x - o->last_x;
             int32_t distance_y = o->y - o->last_y;
-            o->x = o->last_x + std::round(distance_x * interpolation_ratio);
-            o->y = o->last_y + std::round(distance_y * interpolation_ratio);
+            o->x = o->last_x + ::round(distance_x * interpolation_ratio);
+            o->y = o->last_y + ::round(distance_y * interpolation_ratio);
         }
     }
 }
@@ -2814,8 +2814,8 @@ void level::foreground_intersect(int32_t x1, int32_t y1, int32_t &x2, int32_t &y
     {
         y2 = th * foreground_height() - 1;
     }
-    blockx1 = std::max(blockx1, 0);
-    blocky1 = std::max(blocky1, 0);
+    blockx1 = std::max<int32_t>(blockx1, 0);
+    blocky1 = std::max<int32_t>(blocky1, 0);
 
     if ((blockx1 > blockx2) || (blocky1 > blocky2))
         return;

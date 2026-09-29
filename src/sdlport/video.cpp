@@ -296,8 +296,8 @@ ivec2 video_window_to_game(float window_x, float window_y)
 
     game_x *= static_cast<float>(main_screen->Size().x) / logical_width;
     game_y *= static_cast<float>(main_screen->Size().y) / logical_height;
-    return ivec2(std::clamp(static_cast<int>(std::lround(game_x)), 0, main_screen->Size().x - 1),
-                 std::clamp(static_cast<int>(std::lround(game_y)), 0, main_screen->Size().y - 1));
+    return ivec2(std::clamp(static_cast<int>(::lround(game_x)), 0, main_screen->Size().x - 1),
+                 std::clamp(static_cast<int>(::lround(game_y)), 0, main_screen->Size().y - 1));
 }
 
 ivec2 video_game_to_window_size(ivec2 size)
@@ -319,8 +319,8 @@ ivec2 video_game_to_window_size(ivec2 size)
         !SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &extent_x, &extent_y))
         return Max(size, ivec2(1));
 
-    return ivec2(std::max(1, static_cast<int>(std::lround(std::abs(extent_x - origin_x)))),
-                 std::max(1, static_cast<int>(std::lround(std::abs(extent_y - origin_y)))));
+    return ivec2(std::max(1, static_cast<int>(::lround(std::abs(extent_x - origin_x)))),
+                 std::max(1, static_cast<int>(::lround(std::abs(extent_y - origin_y)))));
 }
 
 void video_warp_mouse(ivec2 position)
@@ -466,9 +466,11 @@ bool resize_framebuffer(int width, int height)
     SDL_Surface *new_surface = new_presentation_pixels ? SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_INDEX8,
                                                                                new_presentation_pixels, width)
                                                        : nullptr;
-    SDL_Texture *new_texture =
-        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, width, height);
-    if (!new_main_pixels || !new_presentation_pixels || !new_surface || !new_texture)
+    SDL_Texture *new_texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
+                                                            SDL_TEXTUREACCESS_STREAMING, width, height)
+                                       : nullptr;
+    const bool output_ready = !renderer || new_texture;
+    if (!new_main_pixels || !new_presentation_pixels || !new_surface || !output_ready)
     {
         fprintf(stderr, "Video: Unable to resize framebuffer to %dx%d: %s\n", width, height, SDL_GetError());
         if (new_texture)
@@ -655,7 +657,7 @@ void palette::load()
         for (size_t channel = 0; channel < gamma_channels.size(); ++channel)
             gamma_channels[channel] = gamma == 1.0
                                           ? static_cast<Uint8>(channel)
-                                          : static_cast<Uint8>(std::lround(std::pow(channel / 255.0, inverse_gamma) * 255.0));
+                                          : static_cast<Uint8>(::lround(std::pow(channel / 255.0, inverse_gamma) * 255.0));
         cached_gamma = gamma;
     }
 

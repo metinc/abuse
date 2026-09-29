@@ -684,8 +684,8 @@ void EventHandler::Get(Event &ev)
         case SDLK_PRINTSCREEN: //grab a screenshot
             if (ev.type == EV_KEYRELEASE)
             {
-                if (video_save_screenshot("screenshot.bmp"))
-                    the_game->show_help("Screenshot saved to: screenshot.bmp.\n");
+                if (video_save_screenshot("screen.bmp"))
+                    the_game->show_help("Screenshot saved to: screen.bmp.\n");
                 else
                     fprintf(stderr, "Video: Unable to save screenshot: %s\n", SDL_GetError());
             }

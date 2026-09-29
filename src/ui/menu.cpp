@@ -601,9 +601,11 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list, ico_swi
     ico_button *volume = load_icon(5, ID_VOLUME, x, y, h, NULL, "ic_volume");
     y += h;
 
+#ifndef ABUSE_NO_NETWORK
     ico_button *multiplayer = load_icon(11, ID_MULTIPLAYER, x, y, h, NULL, "ic_multiplayer");
     multiplayer->set_enabled(prot != NULL);
     y += h;
+#endif
 
     //credits in full version
     // ico_button *sell = load_icon(2, ID_SHOW_SELL, x, y, h, NULL, "ic_sell");
@@ -620,8 +622,12 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list, ico_swi
 
     color->next = volume;
 
+#ifndef ABUSE_NO_NETWORK
     volume->next = multiplayer;
     multiplayer->next = quit;
+#else
+    volume->next = quit;
+#endif
 
     // sell->next = quit;
 

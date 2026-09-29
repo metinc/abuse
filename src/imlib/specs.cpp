@@ -394,11 +394,9 @@ jFILE::jFILE(char const *filename, char const *access_string) // same as fopen p
     {
         if (toupper(*s) == 'A')
             access |= O_APPEND | O_WRONLY;
-#ifdef WIN32
-        // Also check for 'b' - doesn't exist on other platforms
+        // DOS and Windows distinguish binary files from text files.
         if (toupper(*s) == 'B')
             access |= O_BINARY;
-#endif
     }
 
     file_length = start_offset = -1;

@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
-#include <ctime>
 #include <filesystem>
 #include <limits>
 #include <string>
@@ -99,23 +98,15 @@ std::filesystem::path replay_write_path(char const *filename)
     return path;
 }
 
-std::string timestamped_replay_filename()
+std::string automatic_replay_filename()
 {
-    using namespace std::chrono;
-    const system_clock::time_point now = system_clock::now();
-    const std::time_t time = system_clock::to_time_t(now);
-    std::tm local_time = {};
-#ifdef WIN32
-    localtime_s(&local_time, &time);
-#else
-    localtime_r(&time, &local_time);
-#endif
-    const long milliseconds = duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
-
-    char filename[80];
-    std::snprintf(filename, sizeof(filename), "replays/%04d%02d%02d-%02d%02d%02d-%03ld.dat",
-                  local_time.tm_year + 1900, local_time.tm_mon + 1, local_time.tm_mday, local_time.tm_hour,
-                  local_time.tm_min, local_time.tm_sec, milliseconds);
+    // Use eight-character names on every platform; skip existing recordings.
+    uint32_t stamp = static_cast<uint32_t>(SDL_GetTicks());
+    char filename[32];
+    do
+    {
+        std::snprintf(filename, sizeof(filename), "replays/%08lx.dat", static_cast<unsigned long>(stamp++));
+    } while (std::filesystem::exists(replay_write_path(filename)));
     return filename;
 }
 
@@ -126,8 +117,21 @@ std::filesystem::path temporary_replay_checkpoint_path()
     if (error)
         return {};
 
-    const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
-    return directory / ("abuse-replay-checkpoint-" + std::to_string(nonce) + ".spe");
+    // Temporary snapshots need no descriptive name. Keep them usable on 8.3
+    // filesystems, and skip existing files when the shortened nonce collides.
+    uint32_t nonce = static_cast<uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    char filename[13];
+    std::filesystem::path path;
+    do
+    {
+        std::snprintf(filename, sizeof(filename), "%08lx.tmp", static_cast<unsigned long>(nonce++));
+        path = directory / filename;
+        const bool exists = std::filesystem::exists(path, error);
+        if (error)
+            return {};
+        if (!exists)
+            return path;
+    } while (true);
 }
 
 // Reload snapshots live inside the replay, not in the shared netstart.spe.
@@ -263,7 +267,7 @@ int demo_manager::start_automatic_recording()
     if (state != NORMAL)
         return 0;
 
-    const std::string filename = timestamped_replay_filename();
+    const std::string filename = automatic_replay_filename();
     automatic_recording = true;
     if (!start_recording(filename.c_str()))
     {

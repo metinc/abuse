@@ -160,10 +160,11 @@ void show_end2()
     // The planet, mask and escape ship come from Abuse 0.33.
 
     int i;
-    int planet = cache.reg("art/fore/original_endgame.spe", "planet", SPEC_IMAGE, 1);
-    int planet2 = cache.reg("art/fore/original_endgame.spe", "dead_planet", SPEC_IMAGE, 1);
-    int mask = cache.reg("art/fore/original_endgame.spe", "mask", SPEC_IMAGE, 1);
-    int ship = cache.reg("art/fore/original_endgame.spe", "ship", SPEC_IMAGE, 1);
+    const char *artwork = "art/fore/origend.spe";
+    int planet = cache.reg(artwork, "planet", SPEC_IMAGE, 1);
+    int planet2 = cache.reg(artwork, "dead_planet", SPEC_IMAGE, 1);
+    int mask = cache.reg(artwork, "mask", SPEC_IMAGE, 1);
+    int ship = cache.reg(artwork, "ship", SPEC_IMAGE, 1);
 
     int explo_snd = lnumber_value(LSymbol::FindOrCreate("P_EXPLODE_SND")->GetValue());
     int space_snd = lnumber_value(LSymbol::FindOrCreate("SPACE_SND")->GetValue());

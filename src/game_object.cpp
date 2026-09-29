@@ -689,7 +689,7 @@ void game_object::damage_fun(int amount, game_object *from, int32_t hitx, int32_
         if (player)
         {
             const int damage = std::max(0, previous_hp - hp());
-            const int credited = std::min(damage, std::numeric_limits<int32_t>::max() - player->total_damage);
+            const int credited = std::min<int32_t>(damage, std::numeric_limits<int32_t>::max() - player->total_damage);
             player->damage += credited;
             player->total_damage += credited;
         }

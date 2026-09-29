@@ -24,6 +24,10 @@ if(WIN32)
 endif()
 
 # Options
+option(ABUSE_NETWORK "Build LAN and online multiplayer transports" ON)
+if(NOT ABUSE_NETWORK)
+    add_compile_definitions(ABUSE_NO_NETWORK)
+endif()
 option(ABUSE_BUILD_TOOLS "Build the abuse-tool asset extraction utility" ON)
 set(ABUSE_SIGNALING_URL "wss://abusecoop.com" CACHE STRING
     "Default signaling WebSocket URL (may be overridden at runtime)")
@@ -74,10 +78,11 @@ set(ABUSE_INSTALL_BINDIR "${_abuse_default_install_bindir}" CACHE STRING
 # Dependencies used by the game
 find_package(SDL3 3.4.0 REQUIRED)
 find_package(SDL3_mixer 3.2.0 REQUIRED)
-find_package(SDL3_net 3.0.0 REQUIRED)
-
-find_package(LibDataChannel CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+if(ABUSE_NETWORK)
+    find_package(SDL3_net 3.0.0 REQUIRED)
+    find_package(LibDataChannel CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
+endif()
 
 # A selected SoundFont is passed to SDL_mixer's FluidSynth decoder. Some Linux
 # distributions build SDL_mixer with another MIDI backend instead; those
@@ -177,8 +182,11 @@ if(ABUSE_BUNDLE_SDL_RUNTIME)
         INSTALL_RPATH "\$ORIGIN/../${ABUSE_PRIVATE_LIBDIR}")
 
     set(_abuse_bundled_sdl_targets "")
-    foreach(_abuse_sdl_target IN ITEMS
-            SDL3::SDL3 SDL3_mixer::SDL3_mixer SDL3_net::SDL3_net)
+    set(_abuse_sdl_targets SDL3::SDL3 SDL3_mixer::SDL3_mixer)
+    if(ABUSE_NETWORK)
+        list(APPEND _abuse_sdl_targets SDL3_net::SDL3_net)
+    endif()
+    foreach(_abuse_sdl_target IN LISTS _abuse_sdl_targets)
         get_target_property(_abuse_sdl_aliased_target
             "${_abuse_sdl_target}" ALIASED_TARGET)
         if(_abuse_sdl_aliased_target)
@@ -188,37 +196,42 @@ if(ABUSE_BUNDLE_SDL_RUNTIME)
             list(APPEND _abuse_bundled_sdl_targets "${_abuse_sdl_target}")
         endif()
     endforeach()
-    list(APPEND _abuse_bundled_sdl_targets LibDataChannel::LibDataChannel)
+    if(ABUSE_NETWORK)
+        list(APPEND _abuse_bundled_sdl_targets LibDataChannel::LibDataChannel)
+    endif()
     install(IMPORTED_RUNTIME_ARTIFACTS ${_abuse_bundled_sdl_targets}
         LIBRARY DESTINATION "${ABUSE_PRIVATE_LIBDIR}")
 
-    foreach(_abuse_sdl_license IN ITEMS
-            ABUSE_SDL3_LICENSE_FILE
-            ABUSE_SDL3_MIXER_LICENSE_FILE
-            ABUSE_SDL3_NET_LICENSE_FILE)
+    set(_abuse_sdl_licenses ABUSE_SDL3_LICENSE_FILE ABUSE_SDL3_MIXER_LICENSE_FILE)
+    if(ABUSE_NETWORK)
+        list(APPEND _abuse_sdl_licenses ABUSE_SDL3_NET_LICENSE_FILE)
+    endif()
+    foreach(_abuse_sdl_license IN LISTS _abuse_sdl_licenses)
         if(NOT EXISTS "${${_abuse_sdl_license}}")
             message(FATAL_ERROR
                 "${_abuse_sdl_license} must name an existing license file "
                 "when ABUSE_BUNDLE_SDL_RUNTIME is enabled")
         endif()
     endforeach()
-    if(NOT EXISTS "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}")
-        message(FATAL_ERROR
-            "ABUSE_LIBDATACHANNEL_LICENSE_FILE must name the libdatachannel "
-            "license when its runtime is bundled")
+    if(ABUSE_NETWORK)
+        if(NOT EXISTS "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}")
+            message(FATAL_ERROR
+                "ABUSE_LIBDATACHANNEL_LICENSE_FILE must name the libdatachannel "
+                "license when its runtime is bundled")
+        endif()
+        install(FILES "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}"
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+            RENAME libdatachannel.txt)
+        install(FILES "${ABUSE_SDL3_NET_LICENSE_FILE}"
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
+            RENAME SDL3_net.txt)
     endif()
-    install(FILES "${ABUSE_LIBDATACHANNEL_LICENSE_FILE}"
-        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
-        RENAME libdatachannel.txt)
     install(FILES "${ABUSE_SDL3_LICENSE_FILE}"
         DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
         RENAME SDL3.txt)
     install(FILES "${ABUSE_SDL3_MIXER_LICENSE_FILE}"
         DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
         RENAME SDL3_mixer.txt)
-    install(FILES "${ABUSE_SDL3_NET_LICENSE_FILE}"
-        DESTINATION "${CMAKE_INSTALL_DOCDIR}/third-party"
-        RENAME SDL3_net.txt)
 endif()
 
 # One canonical installation layout. Platform packagers and linuxdeploy consume
@@ -229,8 +242,10 @@ if(WIN32)
         set(windows_runtime_dlls
             "$<TARGET_FILE:SDL3::SDL3>"
             "$<TARGET_FILE:SDL3_mixer::SDL3_mixer>"
-            "$<TARGET_FILE:SDL3_net::SDL3_net>"
         )
+        if(ABUSE_NETWORK)
+            list(APPEND windows_runtime_dlls "$<TARGET_FILE:SDL3_net::SDL3_net>")
+        endif()
         if(ABUSE_WINDOWS_RUNTIME_DIR)
             file(GLOB windows_dependency_dlls LIST_DIRECTORIES FALSE
                 "${ABUSE_WINDOWS_RUNTIME_DIR}/*.dll")

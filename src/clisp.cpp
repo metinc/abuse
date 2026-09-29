@@ -1076,7 +1076,7 @@ long c_caller(CFunc number, void *args)
         const char *message = lstring_value(CAR(args));
         args = CDR(args);
         if (args)
-            the_game->show_message(message, std::max(0, lnumber_value(CAR(args))));
+            the_game->show_message(message, std::max<int32_t>(0, lnumber_value(CAR(args))));
         else
             the_game->show_help(message);
     }
@@ -1266,8 +1266,8 @@ long c_caller(CFunc number, void *args)
             dist = 20.0;
         }
 
-        int32_t x2 = x1 - std::lround(dist * cos(angle_rad));
-        int32_t y2 = y1 + std::lround(dist * sin(angle_rad));
+        int32_t x2 = x1 - ::lround(dist * cos(angle_rad));
+        int32_t y2 = y1 + ::lround(dist * sin(angle_rad));
 
         // A laser may own a line light. Keep its endpoints identical to the
         // visible, length-limited beam before the lighting pass runs.
@@ -1396,13 +1396,13 @@ long c_caller(CFunc number, void *args)
     break;
     case CFunc::SetLightColor: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
-        l->tint = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_TINT_COUNT - 1);
+        l->tint = std::clamp<int32_t>(lnumber_value(CAR(CDR(args))), 0, LIGHT_TINT_COUNT - 1);
         return 1;
     }
     break;
     case CFunc::SetLightIntensity: {
         light_source *l = (light_source *)lpointer_value(CAR(args));
-        l->strength = std::clamp(lnumber_value(CAR(CDR(args))), 0, LIGHT_STRENGTH_MAX);
+        l->strength = std::clamp<int32_t>(lnumber_value(CAR(CDR(args))), 0, LIGHT_STRENGTH_MAX);
         return 1;
     }
     break;

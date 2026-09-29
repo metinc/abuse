@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <SDL3/SDL_clipboard.h>
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_main.h>
 
 #include "common.h"
 
@@ -103,7 +104,7 @@ int req_end = 0;
 constexpr int legacy_activation_view_width = 319;
 constexpr int legacy_activation_view_height = 200;
 constexpr int legacy_status_bar_height = 32;
-constexpr char editor_playtest_file[] = ".abuse-editor-playtest.spe";
+constexpr char editor_playtest_file[] = "playtest.spe";
 constexpr char coop_checkpoint_file[] = ".abuse-coop-checkpoint.spe";
 
 std::filesystem::path coop_checkpoint_path()
@@ -199,8 +200,10 @@ extern uint8_t chatting_enabled;
 Settings settings;
 
 // Enable TCP/IP driver
+#ifndef ABUSE_NO_NETWORK
 #include "tcpip.h"
 tcpip_protocol tcpip;
+#endif
 #include <map>
 
 void handle_no_space()
@@ -1178,8 +1181,8 @@ void Game::pan_editor_view(int32_t xs, int32_t ys)
 {
     if (dev & MAP_MODE)
     {
-        map_xoff = std::max(0, map_xoff + xs / 2);
-        map_yoff = std::max(0, map_yoff + ys / 2);
+        map_xoff = std::max<int32_t>(0, map_xoff + xs / 2);
+        map_yoff = std::max<int32_t>(0, map_yoff + ys / 2);
     }
     else
     {
@@ -1281,7 +1284,7 @@ void controller_aim(view *v)
 
     const float input_x = settings.ctr_aim_x;
     const float input_y = settings.ctr_aim_invert_y ? -settings.ctr_aim_y : settings.ctr_aim_y;
-    const float magnitude = std::hypot(input_x, input_y);
+    const float magnitude = ::hypot(input_x, input_y);
     if (magnitude > settings.ctr_rst_dz)
     {
         const float usable_range = 32767.0f - settings.ctr_rst_dz;
@@ -2819,13 +2822,13 @@ void Game::prepare_world_tick()
                 // full camera dead-zone range from authoritative player and
                 // view state so every peer activates the same set.
                 const int min_xoff =
-                    std::max(0, f->m_focus->x - f->no_xright - activation_view_width / 2 + f->m_shift.x + f->pan_x);
+                    std::max<int32_t>(0, f->m_focus->x - f->no_xright - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int max_xoff =
-                    std::max(0, f->m_focus->x + f->no_xleft - activation_view_width / 2 + f->m_shift.x + f->pan_x);
+                    std::max<int32_t>(0, f->m_focus->x + f->no_xleft - activation_view_width / 2 + f->m_shift.x + f->pan_x);
                 const int min_yoff =
-                    std::max(0, f->m_focus->y - f->no_ybottom - activation_view_height / 2 - f->m_shift.y + f->pan_y);
+                    std::max<int32_t>(0, f->m_focus->y - f->no_ybottom - activation_view_height / 2 - f->m_shift.y + f->pan_y);
                 const int max_yoff =
-                    std::max(0, f->m_focus->y + f->no_ytop - activation_view_height / 2 - f->m_shift.y + f->pan_y);
+                    std::max<int32_t>(0, f->m_focus->y + f->no_ytop - activation_view_height / 2 - f->m_shift.y + f->pan_y);
 
                 total_active += current_level->add_actives(
                     min_xoff - activation_view_width / 4, min_yoff - activation_view_height / 4,
@@ -3224,7 +3227,9 @@ bool game_net_init(int argc, char **argv)
     int nonet = !net_init(argc, argv);
     if (nonet)
     {
+#ifndef ABUSE_NO_NETWORK
         printf("No network driver, or network driver returned failure\n");
+#endif
         if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
         {
             net_uninit();
@@ -3262,6 +3267,8 @@ bool game_net_init(int argc, char **argv)
 
 int main(int argc, char *argv[])
 {
+    // Keep complete diagnostic lines visible even when output is redirected.
+    setvbuf(stdout, nullptr, _IOLBF, BUFSIZ);
     start_argc = argc;
     start_argv = argv;
 
