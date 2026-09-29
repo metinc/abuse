@@ -142,6 +142,35 @@ enum
     LEVEL_BOX
 };
 
+class start_net_game_button : public button
+{
+  public:
+    using button::button;
+
+    int selectable() override
+    {
+        return !net_game_active();
+    }
+
+    void draw_first(image *screen) override
+    {
+        button::draw_first(screen);
+        if (net_game_active())
+            wm->font()->PutString(screen, m_pos + ivec2(3, 4), symbol_str("server"), wm->dark_color());
+    }
+
+    void draw(int active, image *screen) override
+    {
+        button::draw(net_game_active() ? 0 : active, screen);
+    }
+
+    void handle_event(Event &event, image *screen, InputManager *input) override
+    {
+        if (!net_game_active())
+            button::handle_event(event, screen, input);
+    }
+};
+
 class MultiplayerUI
 {
   public:
@@ -777,7 +806,7 @@ int MultiplayerUI::run()
     {
 
         char const *server_str = symbol_str("server");
-        button *sb = new button(x + 40, y + ns_h - 23 - fnt->Size().y, NET_SERVER, server_str, NULL);
+        button *sb = new start_net_game_button(x + 40, y + ns_h - 23 - fnt->Size().y, NET_SERVER, server_str, NULL);
 
         if (main_net_cfg &&
             (main_net_cfg->state == net_configuration::CLIENT || main_net_cfg->state == net_configuration::SERVER))
@@ -833,7 +862,8 @@ int MultiplayerUI::run()
                         done = 1;
                         break;
                     case NET_SERVER:
-                        done = 1;
+                        if (!net_game_active())
+                            done = 1;
                         break;
                     case NET_SINGLE:
                         done = 1;
@@ -957,7 +987,7 @@ int MultiplayerUI::run()
             }
             return 0;
         }
-        else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER)
+        else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER && !net_game_active())
         {
             int options_result;
             do
