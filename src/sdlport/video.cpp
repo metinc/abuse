@@ -644,19 +644,33 @@ void palette::load()
         ncolors = 256;
 
     std::array<SDL_Color, 256> colors{};
-    const double inverse_gamma = 1.0 / std::clamp(settings.gamma, 0.5, 2.0);
-    auto apply_gamma = [inverse_gamma](unsigned int channel) {
-        return static_cast<Uint8>(std::lround(std::pow(channel / 255.0, inverse_gamma) * 255.0));
-    };
+    // Damage flashes and fades change the palette every frame, but gamma
+    // only changes in settings. Reuse the channel mapping between updates.
+    static std::array<Uint8, 256> gamma_channels{};
+    static double cached_gamma = 0.0;
+    const double gamma = std::clamp(settings.gamma, 0.5, 2.0);
+    if (gamma != cached_gamma)
+    {
+        const double inverse_gamma = 1.0 / gamma;
+        for (size_t channel = 0; channel < gamma_channels.size(); ++channel)
+            gamma_channels[channel] = gamma == 1.0
+                                          ? static_cast<Uint8>(channel)
+                                          : static_cast<Uint8>(std::lround(std::pow(channel / 255.0, inverse_gamma) * 255.0));
+        cached_gamma = gamma;
+    }
 
     for (int ii = 0; ii < ncolors; ii++)
     {
-        colors[ii].r = apply_gamma(red(ii));
-        colors[ii].g = apply_gamma(green(ii));
-        colors[ii].b = apply_gamma(blue(ii));
+        colors[ii].r = gamma_channels[red(ii)];
+        colors[ii].g = gamma_channels[green(ii)];
+        colors[ii].b = gamma_channels[blue(ii)];
         colors[ii].a = 255;
     }
-    SDL_Palette *surface_palette = SDL_CreateSurfacePalette(surface);
+    // Keep the palette object so its version advances across fades. The DOS
+    // backend uses that version to decide when to update the VGA palette.
+    SDL_Palette *surface_palette = SDL_GetSurfacePalette(surface);
+    if (!surface_palette)
+        surface_palette = SDL_CreateSurfacePalette(surface);
     if (!surface_palette || !SDL_SetPaletteColors(surface_palette, colors.data(), 0, ncolors))
     {
         fprintf(stderr, "Video: Unable to set palette: %s\n", SDL_GetError());

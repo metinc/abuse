@@ -446,6 +446,14 @@ void CacheList::preload_cache_object(int type)
 
 void CacheList::preload_cache(level *lev)
 {
+    // Effects can be triggered by scripts without appearing in an object's
+    // cache list or the level's recorded profile. Decode them before gameplay
+    // and mark loaded effects as needed so level changes keep them resident.
+    if (sound_is_initialized())
+        for (int id = 0; id < total; ++id)
+            if (list[id].file_number >= 0 && list[id].type == SPEC_EXTERN_SFX)
+                note_need(id);
+
     game_object *f;
     int i;
     for (i = 0; i < total_objects; i++) // mark all types as not needing loading

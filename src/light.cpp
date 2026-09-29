@@ -706,6 +706,102 @@ void apply_uniform_light(image *source, image *destination, ivec2 clip_min, ivec
     }
 }
 
+// Fixed cell sizes let the compiler replace interpolation divisions with
+// shifts. Colored lights only need tint interpolation in cells they reach;
+// the rest of the view keeps the inexpensive white-light pixel loop.
+template <int StepX, int StepY, bool Colored>
+void apply_sampled_light(image *source, ivec2 clip_min, ivec2 clip_max, int first_local_x, int first_local_y,
+                         int columns, int rows, std::vector<light_sample> const &samples, uint8_t *light_lookup)
+{
+    const int width = clip_max.x - clip_min.x;
+    const int height = clip_max.y - clip_min.y;
+    for (int row = 0; row + 1 < rows; ++row)
+    {
+        const int local_y0 = first_local_y + row * StepY;
+        const int y_begin = std::max(0, local_y0);
+        const int y_end = std::min(height, local_y0 + StepY);
+        light_sample const *top = samples.data() + static_cast<size_t>(row) * columns;
+        light_sample const *bottom = top + columns;
+        int first_colored_column = columns;
+        int last_colored_column = -1;
+        if constexpr (Colored)
+        {
+            // Each sample can color the cells on either side. Find their span
+            // once per grid row, instead of interpolating RGB across the view.
+            for (int column = 0; column < columns; ++column)
+            {
+                if (top[column].red | top[column].green | top[column].blue | bottom[column].red | bottom[column].green |
+                    bottom[column].blue)
+                {
+                    first_colored_column = std::min(first_colored_column, column - 1);
+                    last_colored_column = column;
+                }
+            }
+        }
+        for (int local_y = y_begin; local_y < y_end; ++local_y)
+        {
+            const int y_fraction = local_y - local_y0;
+            uint8_t *input = source->scan_line(clip_min.y + local_y) + clip_min.x;
+            auto vertical = [y_fraction](uint8_t a, uint8_t b) {
+                return (a * (StepY - y_fraction) + b * y_fraction + StepY / 2) / StepY;
+            };
+            int left = vertical(top[0].intensity, bottom[0].intensity);
+            for (int column = 0; column + 1 < columns; ++column)
+            {
+                const int local_x0 = first_local_x + column * StepX;
+                const int x_begin = std::max(0, local_x0);
+                const int x_end = std::min(width, local_x0 + StepX);
+                const int right = vertical(top[column + 1].intensity, bottom[column + 1].intensity);
+                const int delta = right - left;
+                // Keep the original rounding at both interpolation stages.
+                // The numerator stays nonnegative throughout the cell.
+                int numerator = left * StepX + delta * (x_begin - local_x0) + StepX / 2;
+                if (Colored && column >= first_colored_column && column <= last_colored_column)
+                {
+                    const int red_left = vertical(top[column].red, bottom[column].red);
+                    const int red_right = vertical(top[column + 1].red, bottom[column + 1].red);
+                    const int green_left = vertical(top[column].green, bottom[column].green);
+                    const int green_right = vertical(top[column + 1].green, bottom[column + 1].green);
+                    const int blue_left = vertical(top[column].blue, bottom[column].blue);
+                    const int blue_right = vertical(top[column + 1].blue, bottom[column + 1].blue);
+                    if (red_left | red_right | green_left | green_right | blue_left | blue_right)
+                    {
+                        const int red_delta = red_right - red_left;
+                        const int green_delta = green_right - green_left;
+                        const int blue_delta = blue_right - blue_left;
+                        const int fraction = x_begin - local_x0;
+                        int red_numerator = red_left * StepX + red_delta * fraction + StepX / 2;
+                        int green_numerator = green_left * StepX + green_delta * fraction + StepX / 2;
+                        int blue_numerator = blue_left * StepX + blue_delta * fraction + StepX / 2;
+                        for (int x = x_begin; x < x_end; ++x)
+                        {
+                            const unsigned intensity = static_cast<unsigned>(numerator) / StepX;
+                            const int red = static_cast<unsigned>(red_numerator) / StepX;
+                            const int green = static_cast<unsigned>(green_numerator) / StepX;
+                            const int blue = static_cast<unsigned>(blue_numerator) / StepX;
+                            const uint8_t color = light_lookup[(intensity << 8) + input[x]];
+                            input[x] = apply_colored_tint(tint_from_channels(red, green, blue),
+                                                          std::max({red, green, blue}), color);
+                            numerator += delta;
+                            red_numerator += red_delta;
+                            green_numerator += green_delta;
+                            blue_numerator += blue_delta;
+                        }
+                        left = right;
+                        continue;
+                    }
+                }
+                for (int x = x_begin; x < x_end; ++x, numerator += delta)
+                {
+                    const unsigned intensity = static_cast<unsigned>(numerator) / StepX;
+                    input[x] = light_lookup[(intensity << 8) + input[x]];
+                }
+                left = right;
+            }
+        }
+    }
+}
+
 void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint8_t *light_lookup, uint16_t ambient,
                          image *destination, int output_scale, int32_t out_x, int32_t out_y)
 {
@@ -772,6 +868,37 @@ void smooth_light_screen(image *source, int32_t screen_x, int32_t screen_y, uint
             const int32_t world_x = first_world_x + column * step_x;
             grid.samples[static_cast<size_t>(row) * columns + column] =
                 radial_light_value(grid.radial, world_x, world_y);
+        }
+    }
+
+    if (grid.solid.empty() && output_scale == 1)
+    {
+        switch (light_detail)
+        {
+        case HIGH_DETAIL:
+            if (has_colored_lights)
+                apply_sampled_light<4, 2, true>(source, clip_min, clip_max, first_local_x, first_local_y, columns, rows,
+                                                grid.samples, light_lookup);
+            else
+                apply_sampled_light<4, 2, false>(source, clip_min, clip_max, first_local_x, first_local_y, columns,
+                                                 rows, grid.samples, light_lookup);
+            return;
+        case MEDIUM_DETAIL:
+            if (has_colored_lights)
+                apply_sampled_light<8, 4, true>(source, clip_min, clip_max, first_local_x, first_local_y, columns, rows,
+                                                grid.samples, light_lookup);
+            else
+                apply_sampled_light<8, 4, false>(source, clip_min, clip_max, first_local_x, first_local_y, columns,
+                                                 rows, grid.samples, light_lookup);
+            return;
+        case LOW_DETAIL:
+            if (has_colored_lights)
+                apply_sampled_light<16, 8, true>(source, clip_min, clip_max, first_local_x, first_local_y, columns,
+                                                 rows, grid.samples, light_lookup);
+            else
+                apply_sampled_light<16, 8, false>(source, clip_min, clip_max, first_local_x, first_local_y, columns,
+                                                  rows, grid.samples, light_lookup);
+            return;
         }
     }
 

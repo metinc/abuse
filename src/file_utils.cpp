@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <fcntl.h>
+#include <cctype>
 #include <cstring> // for strcpy, strchr
 
 static char *filename_prefix = nullptr;
@@ -67,7 +68,11 @@ ReturnType prefix_open_impl(const char *filename, const bool is_write, const boo
     }
 
     // Handle absolute paths directly
-    if (filename[0] == '/' || filename[0] == '\\')
+    if (filename[0] == '/' || filename[0] == '\\'
+#if defined(WIN32) || defined(__DJGPP__)
+        || (std::isalpha(static_cast<unsigned char>(filename[0])) && filename[1] == ':')
+#endif
+    )
     {
         return opener(filename, args...);
     }

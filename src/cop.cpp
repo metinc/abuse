@@ -810,6 +810,11 @@ void *ladder_ai()
 void *player_draw(int just_fired_var, int num)
 {
     game_object *o = current_object;
+    // Ladder animations contain the whole body in one sprite; top_draw()
+    // does not draw a separate torso in these states.
+    if (o->controller() && (o->state == S_climbing || o->state == S_climb_on || o->state == S_climb_off))
+        num = o->controller()->get_upper_tint();
+
     if (num == 0)
     {
         if (o->lvars[just_fired_var])

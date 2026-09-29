@@ -212,6 +212,7 @@ bool apply_language(const std::string &language)
 
 void show_general_settings()
 {
+    bool settings_changed = false;
     while (true)
     {
         std::array<char *, languages.size()> labels;
@@ -313,8 +314,7 @@ void show_general_settings()
                     }
                     else
                     {
-                        if (!settings.Save())
-                            fprintf(stderr, "Unable to save language setting\n");
+                        settings_changed = true;
                     }
                     rebuild = true;
                     continue;
@@ -342,8 +342,7 @@ void show_general_settings()
                                     current->set_upper_tint(selected_skin);
                             }
                     }
-                    if (!settings.Save())
-                        fprintf(stderr, "Unable to save player skin setting\n");
+                    settings_changed = true;
                     window->redraw();
                 }
             }
@@ -355,6 +354,10 @@ void show_general_settings()
         if (!close_requested)
             continue;
         wm->flush_screen();
+        // Saving reparses and rewrites the TOML document. Keep it out of the
+        // skin controls, where it otherwise interrupts every preview change.
+        if (settings_changed && !settings.Save())
+            fprintf(stderr, "Unable to save general settings\n");
         return;
     }
 }
