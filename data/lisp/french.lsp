@@ -423,6 +423,38 @@ plan \n"
 
          (setq load_warn T)
 
+         (setq original_plot_start
+               (concatenate 'string
+                            "  Les Fourmis étaient des tueurs efficaces et sans peur. La seule "
+                            "chance de la Résistance unifiée tenait au fait que les systèmes de "
+                            "défense des Fourmis avaient été conçus par des ingénieurs trop "
+                            "arrogants pour envisager la menace d'un individu isolé. Cela "
+                            "suffisait à justifier les missions secrètes Abuse.\\n"
+                            "  Le 31 août 2021, huit octets furent mis à zéro dans un ordinateur, "
+                            "et l'identité de Nick Vrenna fut effacée. Une armure se tenait dans "
+                            "l'ombre, un fusil automatique encore fumant au creux des bras, "
+                            "savourant la puanteur de la première Fourmi mise à la retraite "
+                            "ce jour-là. L'âme sous l'armure craignait que cette tentative ne "
+                            "s'achève aussi pitoyablement que les conditions de capitulation "
+                            "de la Terre, mais l'humanité n'avait plus rien d'autre. "))
+
+         (setq original_plot_middle
+               (concatenate 'string
+                            "Contre tout espoir, la première étape des missions Abuse était un "
+                            "succès, songea l'armure, tandis qu'elle était happée par le "
+                            "téléporteur du site vers Dieu sait où. Mais les félicitations "
+                            "sonnaient creux. Tout cela n'était manifestement qu'une façade. "
+                            "Le véritable combat restait à venir. "))
+
+         (setq original_plot_end
+               (concatenate 'string
+                            "L'armure s'était engagée en sachant ce qui l'attendait. Alors même "
+                            "que le module de refroidissement solide était retiré, la réaction "
+                            "dévastatrice commençait à se propager de façon chaotique. Nick "
+                            "était mort lorsque les données de son identité avaient été mises "
+                            "à zéro. Ce n'était pas si terrible la seconde fois. Le repos "
+                            "était bienvenu. "))
+
          (setq plot_start
                (concatenate 'string
                             "Vous êtes Nick Vrenna. C'est l'année 2009. À tort, vous avez été incarcéré "

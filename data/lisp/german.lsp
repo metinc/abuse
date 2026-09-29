@@ -422,6 +422,36 @@
 
          (setq load_warn T)
 
+         (setq original_plot_start
+               (concatenate 'string
+                            "  Die Ameisen waren furchtlose, effiziente Killer. Die einzige Chance der "
+                            "Vereinigten Untergrundbewegung lag darin, dass die Verteidigungssysteme "
+                            "der Ameisen von Ingenieuren entworfen worden waren, die zu überheblich "
+                            "waren, um einen Einzelnen als Bedrohung in Betracht zu ziehen. Das "
+                            "genügte, um die geheimen Abuse-Missionen zu rechtfertigen.\\n"
+                            "  Am 31. August 2021 wurden acht Bytes in einem Computer auf null gesetzt "
+                            "und Nick Vrennas Identität gelöscht. Im Schatten stand ein Kampfanzug, "
+                            "ein rauchendes Sturmgewehr im Arm, und genoss den Gestank der ersten "
+                            "Ameise, die an diesem Tag aus dem Verkehr gezogen worden war. Die Seele "
+                            "in der Rüstung fürchtete, dass dieser Versuch ebenso erbärmlich enden "
+                            "würde wie die Kapitulationsbedingungen der Erde. Doch der Menschheit "
+                            "blieb nichts anderes. "))
+
+         (setq original_plot_middle
+               (concatenate 'string
+                            "Wider alle Hoffnung war die erste Etappe der Abuse-Missionen ein Erfolg, "
+                            "dachte der Kampfanzug, während er durch den Ortsteleporter gerissen "
+                            "wurde, weiß Gott wohin. Doch die Glückwünsche waren hohl. Das hier war "
+                            "offensichtlich nur eine Fassade. Der wahre Kampf lag noch vor ihm. "))
+
+         (setq original_plot_end
+               (concatenate 'string
+                            "Der Kampfanzug hatte von Anfang an gewusst, was als Nächstes kommen "
+                            "würde. Noch während das Feststoff-Kühlmodul entfernt wurde, begann "
+                            "die verheerende Reaktion, sich unkontrolliert auszubreiten. Nick war "
+                            "gestorben, als sein Identitätseintrag auf null gesetzt worden war. "
+                            "Ein zweites Mal war es nicht so schlimm. Die Ruhe war willkommen. "))
+
          (setq plot_start
                (concatenate 'string
                             "Ihr Name ist Nick Vrenna. Wir schreiben das Jahr 2009. Sie werden zu Unrecht in \n"

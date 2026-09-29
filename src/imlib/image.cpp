@@ -77,8 +77,8 @@ void image::PutPixel(ivec2 pos, uint8_t color)
 {
     CONDITION(pos.x >= 0 && pos.x < m_size.x && pos.y >= 0 && pos.y < m_size.y, "image::PutPixel Bad pixel xy");
 
-    if (m_special && pos.x >= m_special->x1_clip() && pos.x < m_special->x2_clip() && pos.y >= m_special->y1_clip() &&
-        pos.y < m_special->y2_clip())
+    if (m_special && (pos.x < m_special->x1_clip() || pos.x >= m_special->x2_clip() ||
+                      pos.y < m_special->y1_clip() || pos.y >= m_special->y2_clip()))
         return;
 
     scan_line(pos.y)[pos.x] = color;

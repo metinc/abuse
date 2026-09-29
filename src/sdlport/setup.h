@@ -58,6 +58,7 @@ class Settings
     std::string quick_load; //quick load
     bool player_touching_console; //only allow quicksave if player is touching the console
     bool skip_intro;
+    bool original_plot; // original Ant story and animated planet ending
     bool menu_demos;
     bool record_replays;
 

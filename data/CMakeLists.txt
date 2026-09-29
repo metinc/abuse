@@ -132,6 +132,7 @@ INSTALL(FILES
 DESTINATION ${ASSETDIR}/art/chars)
 
 INSTALL(FILES
+    art/fore/original_endgame.spe
     art/fore/alien.spe art/fore/cave.spe art/fore/endgame.spe
     art/fore/foregrnd.spe art/fore/techno2.spe art/fore/techno3.spe
     art/fore/techno4.spe art/fore/techno.spe art/fore/trees2.spe

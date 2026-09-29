@@ -54,7 +54,7 @@ static mask_line *make_mask_lines(image *mask, int map_width)
         // find the start of the run..
         uint8_t *sl = mask->scan_line(y);
         int x = 0;
-        while (*sl == 0)
+        while (x < mask->Size().x && *sl == 0)
         {
             sl++;
             x++;
@@ -64,7 +64,7 @@ static mask_line *make_mask_lines(image *mask, int map_width)
         // find the length of the run
         int size = 0;
         uint8_t *sl_start = sl;
-        while (*sl != 0 && x < mask->Size().x)
+        while (x < mask->Size().x && *sl != 0)
         {
             sl++;
             x++;
@@ -73,33 +73,28 @@ static mask_line *make_mask_lines(image *mask, int map_width)
         p[y].size = size;
 
         // now calculate remap for line
-        p[y].remap = (uint16_t *)malloc(size * 2);
+        p[y].remap = (uint16_t *)malloc(size * sizeof(uint16_t));
         p[y].light = (uint8_t *)malloc(size);
         uint16_t *rem = p[y].remap;
         uint8_t *lrem = p[y].light;
         for (x = 0; x < size; x++, rem++)
         {
             *(lrem++) = *(sl_start++);
-            /*      if (x==size/2 || x==size/2-1 || x==size/2+1)
-        *rem=(int)(sqrt(0.5)*map_width/2.0);
-      else*/
             if (x <= size / 2)
                 *rem = (int)(sqrt(x / (double)(size * 2.0)) * map_width / 2.0);
             else
                 *rem = map_width / 2 - (int)(sqrt((size - x) / (double)(size * 2.0)) * map_width / 2.0);
-
-            //      (int)(mask->Size().x-(sqrt((size-x)/(double)size)*map_width/2.0)+mask->Size().x/2);
         }
     }
     return p;
 }
 
-void scan_map(image *screen, int sx, int sy, image *im1, image *im2, int fade256, int32_t *paddr, mask_line *p,
-              int mask_height, int xoff, int coff)
+static void scan_map(image *screen, int sx, int sy, image *im1, image *im2, int fade256, int32_t *paddr, mask_line *p,
+                     int mask_height, int xoff)
 {
     int x1 = 10000, x2 = 0;
     int iw = im1->Size().x;
-    uint16_t r, off;
+    int r, off;
     int y = 0;
     uint8_t *l;
 
@@ -118,9 +113,7 @@ void scan_map(image *screen, int sx, int sy, image *im1, image *im2, int fade256
         {
             r = *rem;
 
-            off = (r + xoff);
-            if (off >= iw)
-                off -= iw;
+            off = (r + xoff) % iw;
 
             int32_t p1 = *(paddr + sl2[off]);
             int32_t p2 = *(paddr + sl3[off]);
@@ -164,14 +157,13 @@ void scale_put_trans(image *im, image *screen, int x, int y, short new_width, sh
 
 void show_end2()
 {
-    //AR this crashes the game, probably because there are no images with those names in art/fore/endgame.spe
-    //looking at the names my guess would be it was meant for the original plot with aliens/ants
+    // The planet, mask and escape ship come from Abuse 0.33.
 
     int i;
-    int planet = cache.reg("art/fore/endgame.spe", "planet", SPEC_IMAGE, 1);
-    int planet2 = cache.reg("art/fore/endgame.spe", "dead_planet", SPEC_IMAGE, 1);
-    int mask = cache.reg("art/fore/endgame.spe", "mask", SPEC_IMAGE, 1);
-    int ship = cache.reg("art/fore/endgame.spe", "ship", SPEC_IMAGE, 1);
+    int planet = cache.reg("art/fore/original_endgame.spe", "planet", SPEC_IMAGE, 1);
+    int planet2 = cache.reg("art/fore/original_endgame.spe", "dead_planet", SPEC_IMAGE, 1);
+    int mask = cache.reg("art/fore/original_endgame.spe", "mask", SPEC_IMAGE, 1);
+    int ship = cache.reg("art/fore/original_endgame.spe", "ship", SPEC_IMAGE, 1);
 
     int explo_snd = lnumber_value(LSymbol::FindOrCreate("P_EXPLODE_SND")->GetValue());
     int space_snd = lnumber_value(LSymbol::FindOrCreate("SPACE_SND")->GetValue());
@@ -195,16 +187,18 @@ void show_end2()
         explo_frames2[i] = cache.reg("art/exp1.spe", nm, SPEC_CHARACTER, 1);
     }
 
-    int eoff = 0, coff = 0;
+    int eoff = 0;
+    const int map_width = cache.img(planet)->Size().x;
 
-    int ex = xres / 2 - cache.img(mask)->Size().x / 2;
-    int ey = yres / 2 - cache.img(mask)->Size().y / 2;
+    int ex = (xres + 1) / 2 - cache.img(mask)->Size().x / 2;
+    int ey = (yres + 1) / 2 - cache.img(mask)->Size().y / 2;
     fade_out(16);
 
     image blank(ivec2(2));
     blank.clear();
     wm->SetMouseShape(blank.copy(), ivec2(0, 0)); // don't show mouse
 
+    const int dx = (xres + 1) / 2 - 320 / 2, dy = (yres + 1) / 2 - 200 / 2;
     main_screen->clear();
     int c[4] = {pal->find_closest(222, 222, 22), pal->find_closest(200, 200, 200), pal->find_closest(100, 100, 100),
                 pal->find_closest(64, 64, 64)};
@@ -215,30 +209,49 @@ void show_end2()
         *(si++) = jrand() % 320;
         *(si++) = jrand() % 200;
         *(si++) = c[jrand() % 4];
-        main_screen->PutPixel(ivec2(si[-3], si[-2]), si[-1]);
+        main_screen->PutPixel(ivec2(dx + si[-3], dy + si[-2]), si[-1]);
     }
     int32_t paddr[256];
     for (i = 0; i < 256; i++)
         paddr[i] = (pal->red(i) << 16) | (pal->green(i) << 8) | (pal->blue(i));
 
-    int dx = (xres + 1) / 2 - 320 / 2, dy = (yres + 1) / 2 - 200 / 2;
-
-    scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 0, paddr, p, cache.img(mask)->Size().y, eoff,
-             coff);
+    scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 0, paddr, p, cache.img(mask)->Size().y, eoff);
     image *tcopy = cache.img(planet)->copy();
     fade_in(NULL, 32);
 
-    time_marker old_time;
+    // Pump events during the animation and yield between frames. A key or
+    // mouse press skips to the epilogue; a second press returns to the menu.
+    bool quit_requested = false;
+    auto wait_frame = [&](int milliseconds) {
+        const Uint64 deadline = SDL_GetTicks() + milliseconds;
+        do
+        {
+            while (wm->IsPending())
+            {
+                Event event;
+                wm->get_event(event);
+                if (event.type == EV_QUIT)
+                {
+                    quit_requested = true;
+                    wm->Push(event); // Let the main game loop handle shutdown.
+                    return false;
+                }
+                if (event.type == EV_KEY || (event.type == EV_MOUSE_BUTTON && event.mouse_button))
+                    return false;
+            }
+            SDL_Delay(1);
+        } while (SDL_GetTicks() < deadline);
+        return true;
+    };
+    bool skipped = false;
 
-    for (i = 0; i < 80;)
+    for (i = 0; i < 80 && !skipped;)
     {
-        time_marker new_time;
-        if (new_time.diff_time(&old_time) > 0.1)
+        if (!(skipped = !wait_frame(100)))
         {
             if ((i % 10) == 0 && sound_is_initialized())
-                cache.sfx(space_snd)->play(0.5f);
+                cache.sfx(space_snd)->play(0.5f * sfx_volume);
 
-            old_time.get_time();
             main_screen->clear();
             int j;
             for (si = sinfo, j = 0; j < 800; j++, si += 3)
@@ -248,12 +261,11 @@ void show_end2()
             {
                 tcopy->PutImage(cache.img(planet), ivec2(0, 0));
                 cache.fig(explo_frames1[i - 30])->forward->PutImage(tcopy, ivec2(100, 50));
-                scan_map(main_screen, ex, ey, tcopy, cache.img(planet2), 0, paddr, p, cache.img(mask)->Size().y, eoff,
-                         coff);
+                scan_map(main_screen, ex, ey, tcopy, cache.img(planet2), 0, paddr, p, cache.img(mask)->Size().y, eoff);
             }
             else
                 scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 0, paddr, p,
-                         cache.img(mask)->Size().y, eoff, coff);
+                         cache.img(mask)->Size().y, eoff);
             if (i > 38)
             {
                 int t = i - 38;
@@ -263,15 +275,10 @@ void show_end2()
                 scale_put_trans(s, main_screen, ex - (i - 38) * 5, ey + cache.img(mask)->Size().y / 2 + t * 4, nw, nh);
                 if (i == 77)
                     if (sound_is_initialized())
-                        cache.sfx(zip_snd)->play(1.0f);
+                        cache.sfx(zip_snd)->play(sfx_volume);
             }
 
-            eoff += 2;
-            if (eoff >= 320)
-                eoff -= 320;
-            coff += 1;
-            if (coff >= 320)
-                coff -= 320;
+            eoff = (eoff + 2) % map_width;
             wm->flush_screen();
             i++;
         }
@@ -279,29 +286,22 @@ void show_end2()
     delete tcopy;
 
     ex_char *clist = NULL;
-    for (i = 0; i < 200;)
+    for (i = 0; i < 200 && !skipped;)
     {
-        time_marker new_time;
-        if (new_time.diff_time(&old_time) > 0.1)
+        if (!(skipped = !wait_frame(100)))
         {
             if ((i % 10) == 0 && sound_is_initialized())
-                cache.sfx(space_snd)->play(0.5f);
+                cache.sfx(space_snd)->play(0.5f * sfx_volume);
 
-            old_time.get_time();
             main_screen->clear();
             int j;
             for (si = sinfo, j = 0; j < 800; j++, si += 3)
                 main_screen->PutPixel(ivec2(dx + si[0], dy + si[1]), si[2]);
 
             scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), i * 256 / 200, paddr, p,
-                     cache.img(mask)->Size().y, eoff, coff);
+                     cache.img(mask)->Size().y, eoff);
 
-            eoff += 2;
-            if (eoff >= 320)
-                eoff -= 320;
-            coff += 1;
-            if (coff >= 320)
-                coff -= 320;
+            eoff = (eoff + 2) % map_width;
 
             i++;
             if (i < 150 || (i < 170 && ((i - 149) % 2) == 0) || (i < 180 && ((i - 149) % 4) == 0) ||
@@ -311,11 +311,8 @@ void show_end2()
                                     ey + jrand() % (cache.img(mask)->Size().y - cache.img(mask)->Size().y / 3), 0, 1,
                                     clist);
                 if (sound_is_initialized())
-                    cache.sfx(explo_snd)->play(1.0f);
+                    cache.sfx(explo_snd)->play(sfx_volume);
             }
-
-            //      clist=new ex_char(ex+jrand()%(cache.img(mask)->Size().x,
-            //            ey+jrand()%(cache.img(mask)->Size().y,0,1,clist);
 
             ex_char *c = clist, *last = NULL;
             for (; c;)
@@ -355,46 +352,28 @@ void show_end2()
     main_screen->clear();
     int j;
     for (si = sinfo, j = 0; j < 800; j++, si += 3)
-        main_screen->PutPixel(ivec2(si[0], si[1]), si[2]);
+        main_screen->PutPixel(ivec2(dx + si[0], dy + si[1]), si[2]);
 
-    Event ev;
     i = 0;
-    do
+    while (!skipped && wait_frame(100))
     {
-        time_marker new_time;
-        if (new_time.diff_time(&old_time) > 0.1)
-        {
-            if ((i % 10) == 0 && sound_is_initialized())
-                cache.sfx(space_snd)->play(0.5f);
-
-            old_time.get_time();
-            scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 256, paddr, p,
-                     cache.img(mask)->Size().y, eoff, coff);
-            eoff += 2;
-            if (eoff >= 320)
-                eoff -= 320;
-            coff += 1;
-            if (coff >= 320)
-                coff -= 320;
-            wm->flush_screen();
-            i++;
-        }
-
-        if (wm->IsPending())
-            wm->get_event(ev);
-
-    } while (ev.type != EV_KEY && ev.type != EV_MOUSE_BUTTON);
+        if ((i++ % 10) == 0 && sound_is_initialized())
+            cache.sfx(space_snd)->play(0.5f * sfx_volume);
+        scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 256, paddr, p, cache.img(mask)->Size().y,
+                 eoff);
+        eoff = (eoff + 2) % map_width;
+        wm->flush_screen();
+    }
 
     uint8_t cmap[32];
     for (i = 0; i < 32; i++)
         cmap[i] = pal->find_closest(i * 256 / 32, i * 256 / 32, i * 256 / 32);
 
-    void *end_plot = LSymbol::FindOrCreate("plot_end")->GetValue();
+    void *end_plot = LSymbol::FindOrCreate("original_plot_end")->GetValue();
 
-    time_marker start;
+    PtrRef end_plot_ref(end_plot);
 
-    ev.type = EV_SPURIOUS;
-    for (i = 0; i < 320 && ev.type != EV_KEY; i++)
+    for (i = 0; i < 320 && !quit_requested; i++)
     {
         main_screen->clear();
         int j;
@@ -402,17 +381,12 @@ void show_end2()
             main_screen->PutPixel(ivec2(dx + si[0], dy + si[1]), si[2]);
 
         scan_map(main_screen, ex, ey, cache.img(planet), cache.img(planet2), 256, paddr, p, cache.img(mask)->Size().y,
-                 eoff, coff);
+                 eoff);
         text_draw(205 - i, dx + 10, dy, dx + 319 - 10, dy + 199, lstring_value(end_plot), wm->font(), cmap,
                   wm->bright_color());
         wm->flush_screen();
-        time_marker now;
-        while (now.diff_time(&start) < 0.18)
-            now.get_time();
-        start.get_time();
-
-        while (wm->IsPending() && ev.type != EV_KEY)
-            wm->get_event(ev);
+        if (!wait_frame(180))
+            break;
     }
 
     for (i = 0; i < cache.img(mask)->Size().y; i++)
@@ -450,7 +424,7 @@ void share_end()
     void *to_be = LSymbol::FindOrCreate("to_be_continued")->GetValue();
     PtrRef r1(to_be);
 
-    void *mid_plot = LSymbol::FindOrCreate("plot_middle")->GetValue();
+    void *mid_plot = LSymbol::FindOrCreate(settings.original_plot ? "original_plot_middle" : "plot_middle")->GetValue();
     PtrRef r2(mid_plot);
 
     int dx = (xres + 1) / 2 - im->Size().x / 2, dy = (yres + 1) / 2 - im->Size().y / 2;
@@ -501,6 +475,12 @@ void share_end()
 
 void show_end()
 {
+    if (settings.original_plot)
+    {
+        show_end2();
+        return;
+    }
+
     //AR real end screen
     // Since there is victory music, play it during the end screen.
     //you can even hear him howling in the track, it matches the on screen text

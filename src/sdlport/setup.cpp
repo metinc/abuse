@@ -149,6 +149,7 @@ Settings::Settings()
 
     this->cheat_god = false;
     this->skip_intro = false;
+    this->original_plot = false;
     this->menu_demos = false;
     this->record_replays = false;
     this->player_name = get_login();
@@ -783,6 +784,7 @@ bool Settings::ReadTomlFile()
         read_integer(gameplay, "gameplay", "physics_tick_ms", physics_update);
         read_integer(gameplay, "gameplay", "max_fps", max_fps);
         read_boolean(gameplay, "gameplay", "skip_intro", skip_intro);
+        read_boolean(gameplay, "gameplay", "original_plot", original_plot);
         read_boolean(gameplay, "gameplay", "menu_demos", menu_demos);
         read_boolean(gameplay, "gameplay", "record_replays", record_replays);
 
@@ -945,6 +947,7 @@ bool Settings::Save() const
         set_value(gameplay, "physics_tick_ms", physics_update);
         set_value(gameplay, "max_fps", max_fps);
         set_value(gameplay, "skip_intro", skip_intro);
+        set_value(gameplay, "original_plot", original_plot);
         set_value(gameplay, "menu_demos", menu_demos);
         set_value(gameplay, "record_replays", record_replays);
 

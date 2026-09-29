@@ -431,6 +431,34 @@
 
          (setq load_warn T)
 
+         (setq original_plot_start
+               (concatenate 'string
+                            "  The Ants were fearless, efficient killers.  The Unified Underground's "
+                            "only opening was that the Ant defense systems were designed by engineers "
+                            "too arrogant to consider the threat of an individual.  It was enough to "
+                            "justify the covert Abuse Missions.\\n"
+                            "  On August 31, 2021, eight bytes were zeroed in a computer, and Nick "
+                            "Vrenna's identity was erased.  A suit of armor cradling a smoking auto "
+                            "rifle stood in shadows appreciating the stench coming from the first "
+                            "retired Ant of the day.  The armored soul feared the effort would end up "
+                            "as pathetic as the Terran Surrender Terms, but humanity had nothing "
+                            "else. "))
+
+         (setq original_plot_middle
+               (concatenate 'string
+                            "Against all hope, the first leg of the Abuse Missions was a success, "
+                            "thought the armor while being wrenched through the site-teleporter to "
+                            "god knows where.  But the congratulations were empty.  This much was "
+                            "clearly a front.  The real action lay ahead.. "))
+
+
+         (setq original_plot_end
+               (concatenate 'string
+                            "The armor went into it knowing what came next.  Even as the solid "
+                            "coolant module was removed, the messy reaction started its jagged "
+                            "growth.  Nick died when his identity record was zeroed out.  It wasn't "
+                            "bad a second time.  The peace was welcome. "))
+
          (setq plot_start
                (concatenate 'string
                             "You are Nick Vrenna. It is the year 2009.  You have been falsely incarcerated "

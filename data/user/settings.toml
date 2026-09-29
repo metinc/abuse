@@ -38,6 +38,8 @@ difficulty = "hard"
 physics_tick_ms = 65
 max_fps = 300
 skip_intro = false
+# Use the original Ant story in the selected language and animated planet ending.
+original_plot = false
 # Play recorded demos after the main menu has been idle.
 menu_demos = false
 # Record every game as a timestamped replay under the save path's replays folder.

@@ -1884,7 +1884,7 @@ void do_title()
     fade_out(32);
 
     void *space_snd = LSymbol::FindOrCreate("SPACE_SND")->GetValue();
-    char *str = lstring_value(leval(LSymbol::FindOrCreate("plot_start")));
+    char *str = lstring_value(leval(LSymbol::FindOrCreate(settings.original_plot ? "original_plot_start" : "plot_start")));
 
     //AR plot screen
     bFILE *fp = open_file("art/smoke.spe", "rb");
