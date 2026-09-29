@@ -916,7 +916,7 @@ void dev_init(int argc, char **argv)
     mouse_scrolling = prop->getd("mouse_scrolling", 0);
     palettes_locked = prop->getd("palettes_locked", 0);
     view_shift_disabled = prop->getd("view_shift_disabled", 0);
-    fps_on = prop->getd("fps_on", 0);
+    fps_on = settings.show_fps;
     show_names = prop->getd("show_names", 0);
     raise_all = prop->getd("raise_all", 0);
 }
@@ -2752,7 +2752,10 @@ void dev_controll::handle_event(Event &ev)
         break;
 
         case ID_SHOW_FPS: {
-            fps_on = !fps_on;
+            settings.show_fps = !settings.show_fps;
+            fps_on = settings.show_fps;
+            if (!settings.Save())
+                fprintf(stderr, "Unable to save FPS display setting\n");
         }
         break;
         case ID_PROFILE: {

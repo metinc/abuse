@@ -125,6 +125,7 @@ Settings::Settings()
     this->widescreen_support = true;
     this->scale = 2; // default window scale
     this->linear_filter = false; // don't "anti-alias"
+    this->show_fps = false;
     this->hires = 0;
 
     //sound
@@ -763,6 +764,7 @@ bool Settings::ReadTomlFile()
         read_integer(video, "video", "editor_framebuffer_height", editor_yres);
         read_integer(video, "video", "window_scale", scale);
         read_boolean(video, "video", "linear_filter", linear_filter);
+        read_boolean(video, "video", "show_fps", show_fps);
         read_integer(video, "video", "hires", hires);
         read_boolean(video, "video", "big_font", big_font);
         read_number(video, "video", "gamma", gamma);
@@ -930,6 +932,7 @@ bool Settings::Save() const
         set_value(video, "editor_framebuffer_height", saved_editor_yres);
         set_value(video, "window_scale", scale);
         set_value(video, "linear_filter", command_line_overrides ? file_linear_filter : linear_filter);
+        set_value(video, "show_fps", show_fps);
         set_value(video, "hires", hires);
         set_value(video, "big_font", big_font);
         set_fixed_number(video, "gamma", gamma);

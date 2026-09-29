@@ -455,6 +455,11 @@ int window_state(int state)
 
 void Game::set_state(int new_state)
 {
+    if (new_state != state)
+    {
+        fps_frame_count = 0;
+        fps = 0;
+    }
     int d = 0;
     if (new_state != RUN_STATE)
     {
@@ -981,6 +986,8 @@ void Game::reconcile_coop_players(const std::vector<coop_connected_player> &conn
 
 void Game::load_level(char const *name)
 {
+    fps_frame_count = 0;
+    fps = 0;
     const bool loading_coop_checkpoint = is_coop_checkpoint_path(name);
     if (!current_level && !loading_coop_checkpoint)
         clear_coop_checkpoint();
@@ -2215,22 +2222,40 @@ Game::Game(int argc, char **argv)
 }
 
 time_marker *led_last_time = NULL;
-static float avg_ms = 1000.0f / 15, possible_ms = 1000.0f / 15;
 
 void Game::toggle_delay()
 {
     no_delay = !no_delay;
     show_help(symbol_str(no_delay ? "delay_off" : "delay_on"));
-    avg_ms = possible_ms = 1000.0f / 15;
+}
+
+void Game::record_frame(uint64_t now)
+{
+    // Measure complete frame intervals, including rendering, VSync and the
+    // frame limiter. The first presented frame only establishes the baseline.
+    if (fps_frame_count++ == 0)
+    {
+        fps_sample_start = now;
+        return;
+    }
+
+    constexpr uint64_t sample_duration = 1000000000;
+    const uint64_t elapsed = now - fps_sample_start;
+    if (elapsed >= sample_duration)
+    {
+        fps = static_cast<uint32_t>(((fps_frame_count - 1) * sample_duration + elapsed / 2) / elapsed);
+        fps_sample_start = now;
+        fps_frame_count = 1;
+    }
 }
 
 void Game::show_time()
 {
-    if (!first_view || !fps_on)
+    if (!first_view || !settings.show_fps)
         return;
 
     char str[16];
-    sprintf(str, "%ld", (long)(1000.0f / avg_ms));
+    snprintf(str, sizeof(str), "%lu", static_cast<unsigned long>(fps));
     console_font->PutString(main_screen, first_view->m_aa, str);
 
     sprintf(str, "%d", total_active);
@@ -2272,6 +2297,7 @@ void Game::update_screen(uint32_t elapsedMsFixed)
         cache.prof_poll_end();
 
     wm->flush_screen();
+    record_frame(SDL_GetTicksNS());
 }
 
 extern int start_edit;

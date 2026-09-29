@@ -72,7 +72,10 @@ class Game
     int bright_color, med_color, dark_color, // for boundaries and windows, etc
         morph_bright_color, morph_med_color, morph_dark_color;
 
-    int32_t last_time, fps;
+    uint64_t fps_sample_start = 0;
+    uint64_t fps_frame_count = 0;
+    uint32_t fps = 0;
+    void record_frame(uint64_t now);
     char mapname[100], command[200], help_text[200];
     int refresh, mousex, mousey;
 

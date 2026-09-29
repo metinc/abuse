@@ -34,6 +34,7 @@ class Settings
     bool widescreen_support; //expand the framebuffer to the desktop aspect ratio
     short scale; //windows scale
     bool linear_filter; //"antialias"
+    bool show_fps; //show measured FPS and active object count
     int hires; //enable hires screens and icons
 
     //sound

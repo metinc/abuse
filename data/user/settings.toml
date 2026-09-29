@@ -15,6 +15,8 @@ editor_framebuffer_height = 400
 # Integer scale from 1 to 20
 window_scale = 2
 linear_filter = false
+# Show measured FPS and active object count in the level view.
+show_fps = false
 # 0 = original artwork, 1 = high-resolution artwork, 2 = high-resolution artwork and logo
 hires = 0
 big_font = false
