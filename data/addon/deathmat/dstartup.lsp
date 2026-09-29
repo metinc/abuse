@@ -122,27 +122,7 @@
 	    "art/back/green2.spe"
 	    "art/back/galien.spe")
 
-(defun end_game_ai ()
-  (if (activated)
-      (if (eq (aistate) 8)
-          (if (not (next_picture))
-              (request_end_game))
-        (set_aistate (+ (aistate) 1))))
-  T)
-
-(def_char END_GAME
-  (funs (ai_fun end_game_ai))
-  (range 0 0)
-  (states "art/fore/endgame.spe"
-          (stopped (app (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)
-                        (seq "pipe" 1 9)))))
+(load "lisp/endgame.lsp")
 
 
 (setf title_screen      '("art/title.spe" . "title_screen"))

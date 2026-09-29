@@ -13,6 +13,7 @@ INSTALL(FILES
     lisp/common.lsp
     lisp/doors.lsp
     lisp/duong.lsp
+    lisp/endgame.lsp
     lisp/english.lsp
     lisp/explo.lsp
     lisp/flyer.lsp
