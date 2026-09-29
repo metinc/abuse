@@ -441,7 +441,9 @@ void level::try_pushback(game_object *subject, game_object *target)
 game_object *level::boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, bool all,
                                      bool projectile)
 {
-    const bool enemy_projectile = projectile && subject && subject->is_enemy();
+    // Turrets retain their original collisions and can damage enemies too.
+    const bool enemy_projectile = projectile && subject && subject->is_enemy() &&
+                                  subject->otype != S_TRACK_GUN && subject->otype != S_SPRAY_GUN;
     game_object *l = NULL;
     int32_t tx1, ty1, tx2, ty2, t_centerx;
     game_object *target = first_active;
