@@ -142,6 +142,20 @@ std::string tab_difficulty_text;
 
 std::string current_level_text()
 {
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::DEATHMATCH)
+    {
+        if (!current_level)
+            return "-";
+        std::string filename = current_level->original_name();
+        const auto separator = filename.find_last_of("/\\");
+        if (separator != std::string::npos)
+            filename.erase(0, separator + 1);
+        const auto extension = filename.find_last_of('.');
+        if (extension != std::string::npos)
+            filename.erase(extension);
+        return std::string(symbol_str("current_level_label")) + " " + filename;
+    }
+
     return std::string(symbol_str("current_level_label")) + " " +
            (current_level ? current_level->display_name() : "-");
 }
@@ -406,13 +420,17 @@ void create_tab_player_status_window()
 }
 }
 
-bool handle_net_player_status_event(Event const &event)
+bool handle_net_player_status_event(Event const &event, bool &visible)
 {
     if (!tab_player_status_window)
         return false;
 
     if (event.type == EV_CLOSE_WINDOW && event.window == tab_player_status_window)
+    {
+        visible = false;
+        close_tab_player_status_window();
         return true;
+    }
 
     if (event.type == EV_MESSAGE && event.message.id == ID_NET_COPY_ROOM_CODE)
     {

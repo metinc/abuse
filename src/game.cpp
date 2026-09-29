@@ -2316,8 +2316,11 @@ void Game::get_input()
             return;
         }
 
-        if (handle_net_player_status_event(ev))
+        if (handle_net_player_status_event(ev, net_player_status_visible))
+        {
+            last_demo_mbut = 0;
             continue;
+        }
 
         if (chat && chat->showing())
         {
@@ -2355,6 +2358,14 @@ void Game::get_input()
                 chat->toggle();
                 clear_player_input();
             }
+            continue;
+        }
+
+        if (net_player_status_visible && ev.window == nullptr && ev.type == EV_KEY && ev.key == JK_ESC)
+        {
+            net_player_status_visible = false;
+            update_net_player_status(false);
+            last_demo_mbut = 0;
             continue;
         }
 
