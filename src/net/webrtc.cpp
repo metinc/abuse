@@ -953,9 +953,20 @@ int webrtc_stream_socket::write(void const *buffer, const int size, net_address 
         return -1;
     try
     {
-        // libdatachannel returns false when it buffers a successfully accepted
-        // message. The high-water check in ready_to_write() controls pressure.
-        channel->send(static_cast<const std::byte *>(buffer), static_cast<size_t>(size));
+        // Present a byte stream even when a write exceeds the negotiated message size.
+        const size_t message_size = channel->maxMessageSize();
+        if (!message_size)
+            return -1;
+        const auto *data = static_cast<const std::byte *>(buffer);
+        size_t remaining = size;
+        while (remaining)
+        {
+            const size_t amount = std::min(remaining, message_size);
+            // false means the message was accepted into libdatachannel's send buffer.
+            channel->send(data, amount);
+            data += amount;
+            remaining -= amount;
+        }
         return size;
     }
     catch (const std::exception &)

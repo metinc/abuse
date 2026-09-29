@@ -1321,32 +1321,40 @@ void net_reload()
             current_level->save(NET_STARTFILE, 1);
             base->mem_lock = 0;
 
-            DEBUG_LOG("Creating resync window");
             game_server *host_server = dynamic_cast<game_server *>(game_face);
             std::vector<player_status_row> player_rows;
-            Jwindow *j;
-            if (host_server)
-                j = create_player_status_window(host_server, player_rows, symbol_str("resync"), symbol_str("hold!"));
-            else
-                j = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1),
-                                     new info_field(0, 0, 0, symbol_str("resync"), NULL), symbol_str("hold!"));
-
-            wm->flush_screen();
+            Jwindow *j = nullptr;
 
             if (!reload_start())
             {
                 DEBUG_LOG("Reload start failed");
-                wm->close_window(j);
                 return;
             }
 
             base->input_state = INPUT_RELOAD;
+            const std::uint64_t wait_started = SDL_GetTicks();
+            constexpr std::uint64_t resync_window_delay_ms = 200;
 
             DEBUG_LOG("Waiting for clients to reload");
-            do
+            while (true)
             {
                 service_net_request();
-                if (host_server && !refresh_player_status_window(j, host_server, player_rows))
+                if (reload_end())
+                    break;
+
+                // Quick reloads finish without flashing a status window.
+                if (!j && SDL_GetTicks() - wait_started >= resync_window_delay_ms)
+                {
+                    DEBUG_LOG("Creating resync window");
+                    if (host_server)
+                        j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
+                                                        symbol_str("hold!"));
+                    else
+                        j = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1),
+                                             new info_field(0, 0, 0, symbol_str("resync"), NULL), symbol_str("hold!"));
+                    wm->flush_screen();
+                }
+                else if (j && host_server && !refresh_player_status_window(j, host_server, player_rows))
                 {
                     wm->close_window(j);
                     j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
@@ -1358,7 +1366,7 @@ void net_reload()
                     do
                     {
                         wm->get_event(ev);
-                        if (ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
+                        if (j && ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
                             ev.message.id < ID_NET_KICK_PLAYER_END)
                         {
                             const int client_id = ev.message.id - ID_NET_KICK_PLAYER_FIRST;
@@ -1371,12 +1379,14 @@ void net_reload()
                         }
                     } while (wm->IsPending());
 
-                    wm->flush_screen();
+                    if (j)
+                        wm->flush_screen();
                 }
-            } while (!reload_end());
+            }
 
             DEBUG_LOG("Reload complete, cleaning up");
-            wm->close_window(j);
+            if (j)
+                wm->close_window(j);
             unlink(NET_STARTFILE);
 
             the_game->reset_keymap();

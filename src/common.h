@@ -114,6 +114,7 @@ static inline uint32_t lltl(uint32_t x)
 #ifndef __DEBUG_LOG_HPP_
 #define __DEBUG_LOG_HPP_
 
+#define TCPIP_DEBUG
 #ifdef TCPIP_DEBUG
 #include <SDL3/SDL_time.h>
 
