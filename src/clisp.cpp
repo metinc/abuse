@@ -2166,12 +2166,15 @@ long c_caller(CFunc number, void *args)
         if (demo_man.current_state() == demo_manager::PLAYING)
         {
             if (!demo_man.save_playback_checkpoint())
+            {
                 std::fprintf(stderr, "Unable to update the replay checkpoint\n");
+                return 0;
+            }
         }
         else if (net_game_active() && main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
         {
             if (!all_players_are_alive())
-                break;
+                return 0;
             if (!the_game->save_coop_checkpoint() && client_number() == 0)
             {
                 std::fprintf(stderr, "Unable to update the co-op checkpoint\n");
@@ -2181,12 +2184,14 @@ long c_caller(CFunc number, void *args)
         }
         else
         {
-            current_level->save(fn, 1);
+            if (!current_level->save(fn, 1))
+                return 0;
 
             //AR
             settings.quick_load = get_save_filename_prefix();
             settings.quick_load += fn;
         }
+        return 1;
     }
     break;
     case CFunc::SetHp: {
