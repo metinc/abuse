@@ -55,7 +55,11 @@ extern Settings settings;
 extern int xres, yres; //video.cpp
 extern float sfx_volume, music_volume; //loader.cpp
 
+#ifdef __DJGPP__
+const char *settings_filename = "abuse.cfg";
+#else
 const char *settings_filename = "settings.toml";
+#endif
 
 namespace
 {
@@ -141,6 +145,11 @@ Settings::Settings()
     this->grab_input = false; // don't grab the input
     this->physics_update = 65; // original 65ms/15 FPS
     this->max_fps = 300;
+#ifdef __DJGPP__
+    this->widescreen_support = false;
+    this->max_fps = 30;
+    this->soundfont.clear();
+#endif
     this->big_font = false;
     this->language = DEFAULT_LANGUAGE;
     this->player_lower_skin = 0;
@@ -1252,7 +1261,14 @@ void setup(int argc, char **argv)
 
     atexit(SDL_Quit);
 
+#ifdef __DJGPP__
+    // Keep saves beside the executable, with names usable on an 8.3 filesystem.
+    const std::string save_path = append_path(SDL_GetBasePath(), "save");
+    SDL_CreateDirectory(save_path.c_str());
+    char *prefPath = SDL_strdup((save_path + "/").c_str());
+#else
     char *prefPath = SDL_GetPrefPath("abuse", ".");
+#endif
 
     if (prefPath == NULL)
     {

@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <limits>
 #include <vector>
+#include <SDL3/SDL_timer.h>
 
 #include "common.h"
 
@@ -309,6 +310,9 @@ void calc_colored_light_table(palette *pal)
     {
         for (int step = 0; step < LIGHT_TINT_STEPS; ++step)
         {
+#ifdef __DJGPP__
+            SDL_Delay(0); // DOS audio mixing runs cooperatively.
+#endif
             const int weight = step * 63 / (LIGHT_TINT_STEPS - 1);
             for (int color = 0; color < 256; ++color)
             {
@@ -380,6 +384,9 @@ void calc_light_table(palette *pal)
         int color = 0;
         for (; color < 256; color++)
         {
+#ifdef __DJGPP__
+            SDL_Delay(0);
+#endif
             uint8_t r, g, b;
             pal->get(color, r, g, b);
             if (stat_man)

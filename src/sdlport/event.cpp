@@ -274,6 +274,11 @@ void EventHandler::RefreshMouseCursor()
         SDL_HideCursor();
     };
 
+#ifdef __DJGPP__
+    use_software_cursor();
+    return;
+#endif
+
     image *visual = m_sprite->m_visual;
     palette *colors = last_loaded();
     if (!visual || !colors)

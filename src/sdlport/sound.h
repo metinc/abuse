@@ -12,6 +12,7 @@
 #define __SOUND_H__
 
 #include <string>
+#include <memory>
 
 #include <SDL3_mixer/SDL_mixer.h>
 
@@ -79,9 +80,9 @@ class song
     bool load();
     bool start_playback(Sint64 start_milliseconds = 0);
 
+    struct Playback;
     std::string m_filename;
-    MIX_Audio *m_audio;
-    MIX_Track *m_track;
+    std::unique_ptr<Playback> m_playback;
     float m_gain;
 };
 

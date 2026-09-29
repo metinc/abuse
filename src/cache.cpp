@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <string.h>
 
+#include <SDL3/SDL_timer.h>
+
 #include "common.h"
 
 #include "cache.h"
@@ -1060,6 +1062,10 @@ sound_effect *CacheList::sfx(int id)
         touch(me); // hold me, feel me, be me!
         char *fn = crc_manager.get_filename(me->file_number);
         me->data = (void *)new sound_effect(fn);
+#ifdef __DJGPP__
+        // Let the cooperative audio thread run between decoded effects.
+        SDL_Delay(0);
+#endif
         return (sound_effect *)me->data;
     }
 }

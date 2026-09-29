@@ -56,6 +56,51 @@ SDL_Texture *game_texture = nullptr;
 image *presentation_screen = nullptr;
 int requested_renderer_vsync = SDL_RENDERER_VSYNC_DISABLED;
 
+#ifdef __DJGPP__
+SDL_Surface *dos_window_surface = nullptr; // Owned by SDL's window.
+
+bool configure_dos_display(int width, int height)
+{
+    const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
+    int count = 0;
+    SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes(display, &count);
+    const SDL_DisplayMode *best = nullptr;
+    for (int i = 0; modes && i < count; ++i)
+    {
+        const SDL_DisplayMode *mode = modes[i];
+        if (mode->format == SDL_PIXELFORMAT_INDEX8 && mode->w >= width && mode->h >= height &&
+            (!best || mode->w * mode->h < best->w * best->h))
+            best = mode;
+    }
+    if (!best)
+    {
+        SDL_free(modes);
+        return SDL_SetError("No 8-bit DOS video mode fits %dx%d", width, height);
+    }
+
+    const bool selected = SDL_SetWindowFullscreenMode(window, best);
+    SDL_free(modes);
+    if (!selected || !SDL_SetWindowFullscreen(window, true) || !SDL_SyncWindow(window))
+        return false;
+
+    dos_window_surface = SDL_GetWindowSurface(window);
+    if (!dos_window_surface || dos_window_surface->format != SDL_PIXELFORMAT_INDEX8 ||
+        dos_window_surface->w < width || dos_window_surface->h < height)
+        return SDL_SetError("Unable to create the DOS indexed framebuffer");
+
+    SDL_SetWindowSurfaceVSync(window, 0);
+    SDL_FillSurfaceRect(dos_window_surface, nullptr, 0);
+    printf("Video: DOS indexed framebuffer %dx%d\n", dos_window_surface->w, dos_window_surface->h);
+    return true;
+}
+
+ivec2 dos_view_origin()
+{
+    return dos_window_surface ? ivec2((dos_window_surface->w - xres) / 2, (dos_window_surface->h - yres) / 2)
+                              : ivec2(0);
+}
+#endif
+
 struct WindowedBounds
 {
     int x = 0;
@@ -130,6 +175,18 @@ SDL_Window *video_window()
 //
 void set_mode()
 {
+#ifdef __DJGPP__
+    // Keep the game's palette indices all the way to VGA/VESA. Converting to
+    // RGBA and scaling a software renderer is prohibitively expensive in DOS.
+    SDL_SetHint(SDL_HINT_DOS_ALLOW_DIRECT_FRAMEBUFFER, "1");
+    if (!window)
+        window = SDL_CreateWindow("Abuse", xres, yres, 0);
+    if (!window || !configure_dos_display(xres, yres))
+    {
+        show_startup_error("Video: Unable to configure DOS display: %s", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+#else
     const bool create_window = window == nullptr;
     const int requested_window_w = xres * settings.scale;
     const int requested_window_h = display_height() * settings.scale;
@@ -217,6 +274,7 @@ void set_mode()
         exit(EXIT_FAILURE);
     }
     SDL_SetTextureScaleMode(game_texture, settings.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+#endif
 
     // Keep the game canvas separate from the composited image shown by SDL.
     // Window movement relies on the canvas retaining the pixels underneath
@@ -234,10 +292,15 @@ void set_mode()
 
     // Cursor visuals are handled by SDL so their movement is independent of
     // the VSync-limited game framebuffer.
+#ifdef __DJGPP__
+    // The direct framebuffer bypasses SDL's cursor compositor. WindowManager
+    // draws the paletted cursor into the image before presenting it.
+    SDL_HideCursor();
+#else
     SDL_ShowCursor();
-
     if (settings.fullscreen && create_window)
         video_set_fullscreen(true);
+#endif
 
     video_update_mouse_confinement();
 }
@@ -282,6 +345,11 @@ void video_update_mouse_confinement()
 
 ivec2 video_window_to_game(float window_x, float window_y)
 {
+#ifdef __DJGPP__
+    const ivec2 origin = dos_view_origin();
+    return ivec2(std::clamp(static_cast<int>(window_x) - origin.x, 0, xres - 1),
+                 std::clamp(static_cast<int>(window_y) - origin.y, 0, yres - 1));
+#else
     if (!renderer || !main_screen)
         return ivec2(0);
 
@@ -298,6 +366,7 @@ ivec2 video_window_to_game(float window_x, float window_y)
     game_y *= static_cast<float>(main_screen->Size().y) / logical_height;
     return ivec2(std::clamp(static_cast<int>(::lround(game_x)), 0, main_screen->Size().x - 1),
                  std::clamp(static_cast<int>(::lround(game_y)), 0, main_screen->Size().y - 1));
+#endif
 }
 
 ivec2 video_game_to_window_size(ivec2 size)
@@ -325,6 +394,13 @@ ivec2 video_game_to_window_size(ivec2 size)
 
 void video_warp_mouse(ivec2 position)
 {
+#ifdef __DJGPP__
+    if (window)
+    {
+        const ivec2 target = position + dos_view_origin();
+        SDL_WarpMouseInWindow(window, target.x, target.y);
+    }
+#else
     if (!window || !renderer || !main_screen)
         return;
 
@@ -341,6 +417,7 @@ void video_warp_mouse(ivec2 position)
     float window_y;
     if (SDL_RenderCoordinatesToWindow(renderer, logical_x, logical_y, &window_x, &window_y))
         SDL_WarpMouseInWindow(window, window_x, window_y);
+#endif
 }
 
 bool video_start_text_input()
@@ -361,6 +438,10 @@ bool video_save_screenshot(char const *filename)
 
 bool video_set_fullscreen(bool enabled)
 {
+#ifdef __DJGPP__
+    // DOS owns the entire display. Host window scaling belongs to DOSBox.
+    return enabled && window;
+#else
     if (!window)
         return false;
 
@@ -402,6 +483,7 @@ bool video_set_fullscreen(bool enabled)
 
     video_update_mouse_confinement();
     return window_is_fullscreen() == enabled;
+#endif
 }
 
 void video_change_settings(int scale_add, bool toggle_fullscreen)
@@ -449,7 +531,7 @@ void video_change_settings(int scale_add, bool toggle_fullscreen)
 
 bool resize_framebuffer(int width, int height)
 {
-    if (!window || !renderer || !main_screen || !presentation_screen)
+    if (!window || !main_screen || !presentation_screen)
         return false;
     if (width < 320 || height < 200 || width > std::numeric_limits<int16_t>::max() ||
         height > std::numeric_limits<int16_t>::max())
@@ -482,11 +564,15 @@ bool resize_framebuffer(int width, int height)
         return false;
     }
 
+#ifdef __DJGPP__
+    if (!configure_dos_display(width, height))
+#else
     SDL_SetTextureScaleMode(new_texture, settings.linear_filter ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
     const int new_display_height = display_height_for(width, height);
     if (!SDL_SetRenderLogicalPresentation(renderer, width, new_display_height, SDL_LOGICAL_PRESENTATION_LETTERBOX))
+#endif
     {
-        fprintf(stderr, "Video: Unable to resize logical presentation to %dx%d: %s\n", width, new_display_height,
+        fprintf(stderr, "Video: Unable to resize presentation to %dx%d: %s\n", width, height,
                 SDL_GetError());
         SDL_DestroyTexture(new_texture);
         SDL_DestroySurface(new_surface);
@@ -512,7 +598,7 @@ bool resize_framebuffer(int width, int height)
         SDL_GetWindowPosition(window, &old_x, &old_y);
         SDL_GetWindowSize(window, &old_w, &old_h);
         const int new_w = width * settings.scale;
-        const int new_h = new_display_height * settings.scale;
+        const int new_h = display_height_for(width, height) * settings.scale;
         SDL_SetWindowSize(window, new_w, new_h);
         SDL_SetWindowPosition(window, old_x + (old_w - new_w) / 2, old_y + (old_h - new_h) / 2);
         SDL_SyncWindow(window);
@@ -556,6 +642,9 @@ void close_graphics()
         SDL_DestroyWindow(window);
     renderer = nullptr;
     window = nullptr;
+#ifdef __DJGPP__
+    dos_window_surface = nullptr;
+#endif
     requested_renderer_vsync = SDL_RENDERER_VSYNC_DISABLED;
 
     windowed_bounds = {};
@@ -678,6 +767,10 @@ void palette::load()
         fprintf(stderr, "Video: Unable to set palette: %s\n", SDL_GetError());
         return;
     }
+#ifdef __DJGPP__
+    if (dos_window_surface)
+        SDL_SetSurfacePalette(dos_window_surface, surface_palette);
+#endif
 }
 
 //
@@ -692,6 +785,25 @@ void palette::load_nice()
 
 void present_framebuffer()
 {
+#ifdef __DJGPP__
+    if (!surface || !dos_window_surface || !window)
+        return;
+
+    // DOS audio threads only run when the main thread yields. Service them
+    // around every present, including event-driven menus without a frame cap.
+    SDL_Delay(0);
+    const ivec2 origin = dos_view_origin();
+    if (!SDL_LockSurface(dos_window_surface))
+        return;
+    auto *destination = static_cast<uint8_t *>(dos_window_surface->pixels) +
+                        origin.y * dos_window_surface->pitch + origin.x;
+    const auto *source = static_cast<const uint8_t *>(surface->pixels);
+    for (int row = 0; row < yres; ++row)
+        std::memcpy(destination + row * dos_window_surface->pitch, source + row * surface->pitch, xres);
+    SDL_UnlockSurface(dos_window_surface);
+    SDL_UpdateWindowSurface(window);
+    SDL_Delay(0);
+#else
     if (!surface || !game_texture || !renderer || !window)
         return;
 
@@ -743,4 +855,5 @@ void present_framebuffer()
 
     // Present the renderer
     SDL_RenderPresent(renderer);
+#endif
 }

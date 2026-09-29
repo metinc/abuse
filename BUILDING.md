@@ -12,6 +12,20 @@ cmake --build build-container
 Packages are written to `build-container/packages/`. Docker layers and the
 Flatpak cache are reused; missing dependencies require internet access.
 
+### DOSBox package
+
+Build only the DOS singleplayer ZIP with the same container project:
+
+```sh
+cmake -S packaging/container -B build-container
+cmake --build build-container --target dos-container
+```
+
+The result is `build-container/packages/abuse-dos.zip`; it is also included in
+`packages-container`. The DJGPP compiler, SDL libraries, and music-conversion
+tools run inside Docker. See [the DOSBox instructions](packaging/dos/README.md)
+for running the game and build options.
+
 ## Local development
 
 Use the root CMake project for local builds, including the VS Code CMake
@@ -50,4 +64,4 @@ cmake -S . -B build && cmake --build build --target packages-container
 ```
 
 The Linux DEB, RPM, TGZ, AppImage and Flatpak packages, Windows ZIP and MSI
-packages, and macOS ZIP packages are written to `build/packages/`.
+packages, macOS ZIP packages, and the DOSBox ZIP are written to `build/packages/`.

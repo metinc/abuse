@@ -19,6 +19,9 @@ To report a bug, please create a new issue here on GitHub. Pull requests are wel
 
 To install the game, see the last release available for your platform in the release section.
 
+For the singleplayer DOSBox build and its build instructions, see
+[Abuse for DOSBox](packaging/dos/README.md).
+
 ### Data Files
 
 While this repository contains all data files needed to play the base game, these assets come from different sources with varying licenses and historical records. My hope is that the educational and non-profit intentions of this repository will enable it to stay hosted and available. If you prefer to use only clearly-licensed content, please replace the included assets with the public domain subset of the original shareware content available from various archives online.

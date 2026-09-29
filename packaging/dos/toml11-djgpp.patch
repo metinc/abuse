@@ -1,0 +1,22 @@
+--- a/include/toml11/serializer.hpp
++++ b/include/toml11/serializer.hpp
+@@ -1171,7 +1171,7 @@
+ 
+     string_type format_indent(const indent_char indent_type) const // {{{
+     {
+-        const auto indent = static_cast<std::size_t>((std::max)(0, this->current_indent_));
++        const auto indent = static_cast<std::size_t>((std::max)(std::int32_t(0), this->current_indent_));
+         if(indent_type == indent_char::space)
+         {
+             return string_conv<string_type>(make_string(indent, ' '));
+--- a/include/toml11/parser.hpp
++++ b/include/toml11/parser.hpp
+@@ -580,7 +580,7 @@
+     }
+     else if(str == "-nan")
+     {
+-        using std::copysign;
++        using ::copysign;
+         TOML11_CONSTEXPR_IF(std::numeric_limits<floating_type>::has_quiet_NaN)
+         {
+             val = copysign(std::numeric_limits<floating_type>::quiet_NaN(), floating_type(-1));

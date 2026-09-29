@@ -24,7 +24,18 @@ if(WIN32)
 endif()
 
 # Options
-option(ABUSE_NETWORK "Build LAN and online multiplayer transports" ON)
+if(CMAKE_SYSTEM_NAME STREQUAL "DOS")
+    set(ABUSE_DOS ON)
+    # DJGPP hides POSIX declarations (mode_t, strdup, etc.) in strict ANSI mode.
+    set(CMAKE_CXX_EXTENSIONS ON)
+    set(_abuse_network_default OFF)
+else()
+    set(_abuse_network_default ON)
+endif()
+option(ABUSE_NETWORK "Build LAN and online multiplayer transports" ${_abuse_network_default})
+if(ABUSE_DOS AND ABUSE_NETWORK)
+    message(FATAL_ERROR "The DOS build currently supports singleplayer only")
+endif()
 if(NOT ABUSE_NETWORK)
     add_compile_definitions(ABUSE_NO_NETWORK)
 endif()
@@ -124,7 +135,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DI
 
 # Keep install destinations relative so CMake, CPack, and linuxdeploy staging all
 # consume the same install rules. ASSETDIR remains the compiled-in fallback.
-if(WIN32)
+if(ABUSE_DOS)
+    set(ASSETDIR "." CACHE PATH "Asset installation directory")
+    set(ABUSE_ASSETDIR_FROM_BASE ".")
+elseif(WIN32)
     set(ASSETDIR "." CACHE PATH "Asset installation directory")
     set(ABUSE_ASSETDIR_FROM_BASE ".")
 elseif(APPLE)
@@ -166,6 +180,15 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_subdirectory(src)
 add_subdirectory(data)
+
+if(ABUSE_DOS)
+    install(TARGETS abuse RUNTIME DESTINATION .)
+    install(FILES COPYING DESTINATION licenses RENAME abuse.txt)
+    install(FILES COPYING.GPL DESTINATION licenses RENAME gpl.txt)
+    install(FILES COPYING.WTFPL DESTINATION licenses RENAME wtfpl.txt)
+    install(FILES COPYING.toml11 DESTINATION licenses RENAME toml11.txt)
+    return()
+endif()
 
 # Container-built distribution packages carry the pinned SDL runtime in a
 # private directory. This keeps the native packages usable on distributions
@@ -451,6 +474,8 @@ else()
             USES_TERMINAL
             VERBATIM)
 
+        include("${CMAKE_CURRENT_SOURCE_DIR}/packaging/dos/Container.cmake")
+
         add_custom_target(packages-container
             COMMAND "${CMAKE_COMMAND}" -E remove_directory
                 "${CMAKE_BINARY_DIR}/packages"
@@ -480,8 +505,9 @@ else()
                 --volume "${CMAKE_BINARY_DIR}/packages:/output"
                 "abuse-rpm-package-builder:${PROJECT_VERSION}"
             ${_abuse_macos_container_commands}
+            ${_abuse_dos_container_commands}
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Building Linux, Windows, and macOS packages in containers"
+            COMMENT "Building Linux, Windows, macOS, and DOS packages in containers"
             USES_TERMINAL
             VERBATIM
         )

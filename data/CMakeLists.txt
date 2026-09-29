@@ -354,10 +354,13 @@ INSTALL(FILES
     user/defaults.prp
 DESTINATION ${ASSETDIR})
 
-INSTALL(FILES
-    user/settings.toml
-DESTINATION ${ASSETDIR}/user)
+if(ABUSE_DOS)
+    install(FILES ../packaging/dos/abuse.cfg DESTINATION ${ASSETDIR}/user)
+else()
+    install(FILES user/settings.toml DESTINATION ${ASSETDIR}/user)
+endif()
 
+if(NOT ABUSE_DOS)
 INSTALL(FILES
     soundfonts/FluidR3\ GM.sf2
     soundfonts/MuseScore.sf3
@@ -365,6 +368,7 @@ INSTALL(FILES
     soundfonts/LICENSES.md
     ../COPYING.GPL
 DESTINATION ${ASSETDIR}/soundfonts)
+endif()
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/music)
     message(WARNING "Non-free music found. Build will include non-free data!")

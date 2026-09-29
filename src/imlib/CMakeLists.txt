@@ -39,6 +39,13 @@ include_directories(
 )
 add_definitions(-DNO_CHECK)
 target_link_libraries(imlib SDL3::SDL3 SDL3_mixer::SDL3_mixer toml11::toml11)
+if(ABUSE_DOS)
+    find_package(libADLMIDI CONFIG REQUIRED)
+    target_sources(imlib PRIVATE ../sdlport/music_dos.cpp)
+    target_link_libraries(imlib libADLMIDI::ADLMIDI_static)
+else()
+    target_sources(imlib PRIVATE ../sdlport/music.cpp)
+endif()
 #INCLUDES = -I$(srcdir) -I$(srcdir)/.. $(SDL3_CFLAGS)
 
 #CPPFLAGS = @CPPFLAGS@ -DNO_CHECK

@@ -34,6 +34,7 @@ if(ID_EXECUTABLE)
             --user "${_abuse_host_uid}:${_abuse_host_gid}")
     endif()
 endif()
+include("${ABUSE_SOURCE_DIR}/packaging/dos/Container.cmake")
 add_custom_target(packages-container ALL
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/packages"
     COMMAND "${DOCKER_EXECUTABLE}" build
@@ -57,8 +58,9 @@ add_custom_target(packages-container ALL
         --volume "abuse-flatpak-cache:/cache"
         --volume "${CMAKE_BINARY_DIR}/packages:/output"
         "abuse-rpm-package-builder:${PROJECT_VERSION}"
+    ${_abuse_dos_container_commands}
     WORKING_DIRECTORY "${ABUSE_SOURCE_DIR}"
-    COMMENT "Building all packages in two containers"
+    COMMENT "Building Linux, Windows, and DOS packages in containers"
     USES_TERMINAL VERBATIM
 )
 
