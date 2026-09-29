@@ -840,6 +840,38 @@ int game_server::kill_slackers()
     return 1;
 }
 
+void game_server::finish_game()
+{
+    // Use the reliable channel: a client may still be waiting for the last
+    // gameplay packet when the host reaches the ending.
+    const uint8_t command = SRVCMD_GAME_END;
+    for (player_client *client = player_list; client; client = client->next)
+        if (!client->delete_me() && client->comm->write(&command, 1) != 1)
+            client->set_delete_me(1);
+
+    // Let clients acknowledge by unjoining before closing their connections.
+    // A disconnected peer must not keep the completed server alive forever.
+    base->input_state = INPUT_PROCESSING;
+    const Uint64 deadline = SDL_GetTicks() + 2000;
+    bool pending;
+    do
+    {
+        pending = false;
+        prot->select(false);
+        for (player_client *client = player_list; client; client = client->next)
+        {
+            if (client->delete_me())
+                continue;
+            if (client->comm->error() ||
+                (client->comm->ready_to_read() && !process_client_command(client)))
+                client->set_delete_me(1);
+            pending |= !client->delete_me();
+        }
+        if (pending)
+            SDL_Delay(1);
+    } while (pending && SDL_GetTicks() < deadline);
+}
+
 // Clean shutdown of server
 int game_server::quit()
 {

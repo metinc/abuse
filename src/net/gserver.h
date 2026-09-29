@@ -126,6 +126,7 @@ class game_server : public game_handler
     virtual int add_client(int type, net_socket *sock, net_address *from);
     virtual int kill_slackers();
     virtual int quit();
+    void finish_game();
     game_server();
     ~game_server();
 };

@@ -2711,6 +2711,11 @@ void Game::run_multiplayer_menu_tick()
     // sockets first and only consume a tick once its authoritative packet is
     // complete; net_receive() is deliberately blocking in normal gameplay.
     service_net_request();
+    if (req_end)
+    {
+        set_state(RUN_STATE);
+        return;
+    }
     if (!multiplayer_menu_active())
         return;
     if (!net_input_ready())
@@ -2736,6 +2741,11 @@ void Game::run_multiplayer_menu_tick()
 
     net_send();
     service_net_request();
+    if (req_end)
+    {
+        set_state(RUN_STATE);
+        return;
+    }
     if (!multiplayer_menu_active())
         return;
 
@@ -3339,6 +3349,10 @@ int main(int argc, char *argv[])
 
             if (req_end)
             {
+                const bool multiplayer = net_game_active();
+                if (multiplayer)
+                    finish_net_game();
+
                 delete current_level;
                 current_level = NULL;
 
@@ -3346,6 +3360,19 @@ int main(int argc, char *argv[])
 
                 the_game->set_state(MENU_STATE);
                 req_end = 0;
+                if (multiplayer)
+                {
+                    main_net_cfg->resume_coop = false;
+                    main_net_cfg->waiting_for_host = false;
+                    main_net_cfg->returning_to_menu = true;
+                    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+                    start_running = 0;
+                    strcpy(lsf, "abuse.lsp");
+                    // Do not reopen a command-line server or reconnect after
+                    // rebuilding the single-player menu.
+                    argc = start_argc = 1;
+                    break;
+                }
             }
 
             // Opening the menu with Escape is only a pause in the current
@@ -3376,6 +3403,8 @@ int main(int argc, char *argv[])
                     }
 
                     net_receive();
+                    if (req_end)
+                        continue;
 
                     // Consume the current lockstep packet before load_level()
                     // resets the level tick, then build the next packet from
@@ -3404,6 +3433,8 @@ int main(int argc, char *argv[])
                 }
 
                 service_net_request();
+                if (req_end)
+                    continue;
 
                 // AR update game at custom framerate, original is 15 FPS, physics are locked at 15 FPS
                 lastFixedUpdate = SDL_GetTicks();

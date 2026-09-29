@@ -27,6 +27,7 @@
 #include "common.h"
 
 #include "netcfg.h"
+#include "game.h"
 #include "gclient.h"
 #include "netface.h"
 
@@ -65,6 +66,14 @@ int game_client::process_server_command()
 
     switch (cmd)
     {
+
+    case SRVCMD_GAME_END: {
+        the_game->request_end();
+        // Release a pending lockstep wait without simulating another tick.
+        base->packet.packet_reset();
+        base->input_state = INPUT_PROCESSING;
+        return 1;
+    }
 
     case SRVCMD_RELOAD_START_OK: {
         // I think this happens if the client joined the server that was already in an active game

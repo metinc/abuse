@@ -802,6 +802,15 @@ void disconnect_net_game()
         game_face->quit();
 }
 
+void finish_net_game()
+{
+    if (auto *server = dynamic_cast<game_server *>(game_face))
+        server->finish_game();
+    else
+        disconnect_net_game();
+    net_uninit();
+}
+
 int NF_set_file_server(net_address *addr)
 {
     DEBUG_LOG("Setting file server address");
