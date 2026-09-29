@@ -290,11 +290,12 @@ void load_data(int argc, char **argv)
     const std::string effective_language = settings.GetEffectiveLanguage();
     char const *lang = effective_language.c_str();
 
-    // Temporarily switch to permanent space for the language string
+    // Expose local presentation settings to the Lisp game layer.
     LSpace *sp = LSpace::Current;
     LSpace::Current = &LSpace::Perm;
     LSymbol *sym = LSymbol::FindOrCreate("current_language");
     sym->SetValue(LString::Create(lang));
+    LSymbol::FindOrCreate("original_plot")->SetValue(settings.original_plot ? true_symbol : NULL);
     LSpace::Current = sp;
 
     // don't let them specify a startup file we are connect elsewhere
