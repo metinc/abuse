@@ -42,6 +42,7 @@
 #include "nfserver.h"
 
 #include "net/sock.h"
+#include "net/netface.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -212,21 +213,39 @@ static void create_audio_settings_window()
     audio_settings_window = nullptr;
 }
 
-void save_difficulty()
+static bool can_change_difficulty()
 {
-    if (DEFINEDP(symbol_value(l_difficulty)))
+    return !net_game_active() || client_number() == 0;
+}
+
+static int current_difficulty_index()
+{
+    const auto difficulty = l_difficulty->GetValue();
+    return difficulty == l_easy ? 0 : difficulty == l_medium ? 1 : difficulty == l_hard ? 2 : 3;
+}
+
+static void change_difficulty(LSymbol *difficulty)
+{
+    if (!can_change_difficulty())
+        return;
+
+    if (demo_man.is_automatic_recording())
+        demo_man.set_state(demo_manager::NORMAL);
+    if (net_game_active())
     {
-        if (symbol_value(l_difficulty) == l_extreme)
-            settings.difficulty = "extreme";
-        else if (symbol_value(l_difficulty) == l_hard)
-            settings.difficulty = "hard";
-        else if (symbol_value(l_difficulty) == l_easy)
-            settings.difficulty = "easy";
-        else
-            settings.difficulty = "medium";
+        const uint8_t value = difficulty == l_easy      ? NET_DIFFICULTY_EASY
+                              : difficulty == l_medium  ? NET_DIFFICULTY_MEDIUM
+                              : difficulty == l_extreme ? NET_DIFFICULTY_EXTREME
+                                                        : NET_DIFFICULTY_HARD;
+        the_game->request_difficulty_change(value);
     }
     else
-        settings.difficulty = "medium";
+        l_difficulty->SetValue(difficulty);
+
+    settings.difficulty = difficulty == l_easy      ? "easy"
+                          : difficulty == l_medium  ? "medium"
+                          : difficulty == l_extreme ? "extreme"
+                                                    : "hard";
 
     if (!settings.Save())
         fprintf(stderr, "Unable to save difficulty setting\n");
@@ -453,31 +472,19 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_MEDIUM: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_medium);
-            save_difficulty();
+            change_difficulty(l_medium);
         }
         break;
         case ID_HARD: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_hard);
-            save_difficulty();
+            change_difficulty(l_hard);
         }
         break;
         case ID_EXTREME: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_extreme);
-            save_difficulty();
+            change_difficulty(l_extreme);
         }
         break;
         case ID_EASY: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_easy);
-            save_difficulty();
+            change_difficulty(l_easy);
         }
         break;
 
@@ -560,26 +567,12 @@ static ico_button *load_icon(int num, int id, int x, int y, int &h, ifield *next
     return new ico_button(x, y, id, b, b, c, a, next, -1, key);
 }
 
-ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
+ico_button *make_default_buttons(int x, int &y, ico_button *append_list, ico_switch_button *&difficulty_button)
 {
     //AR main menu buttons, reenabled the credits button
 
     int h;
-    int diff_on;
-
-    if (DEFINEDP(symbol_value(l_difficulty)))
-    {
-        if (symbol_value(l_difficulty) == l_extreme)
-            diff_on = 3;
-        else if (symbol_value(l_difficulty) == l_hard)
-            diff_on = 2;
-        else if (symbol_value(l_difficulty) == l_easy)
-            diff_on = 0;
-        else
-            diff_on = 1;
-    }
-    else
-        diff_on = 3;
+    const int diff_on = current_difficulty_index();
 
     ico_button *general_settings = load_icon(12, ID_GENERAL_SETTINGS, x, y, h, NULL, "ic_general");
     y += h;
@@ -598,6 +591,8 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
                             "ic_medium"),
                   "ic_easy"),
         NULL);
+    set->set_enabled(can_change_difficulty());
+    difficulty_button = set;
     y += h;
 
     ico_button *color = load_icon(4, ID_LIGHT_OFF, x, y, h, NULL, "ic_gamma");
@@ -670,7 +665,8 @@ void main_menu()
     int y = 0;
     ico_button *load_game_button;
     ico_button *list = make_context_buttons(0, y, load_game_button);
-    list = make_default_buttons(0, y, list);
+    ico_switch_button *difficulty_button;
+    list = make_default_buttons(0, y, list, difficulty_button);
 
     int editor_h;
     ico_button *editor = load_icon(2, ID_EDITOR, 0, 0, editor_h, list, "ic_editor");
@@ -760,6 +756,11 @@ void main_menu()
 
         if (update_multiplayer_menu())
         {
+            if (!can_change_difficulty() && difficulty_button->set_selection(current_difficulty_index()))
+            {
+                inm->redraw();
+                wm->flush_screen();
+            }
             if (the_game->multiplayer_menu_active())
             {
                 const bool enabled = load_player_game_enabled();

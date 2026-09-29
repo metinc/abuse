@@ -72,6 +72,7 @@ class ico_switch_button : public ifield
 {
     ifield *blist, *cur_but;
     int act;
+    bool enabled = true;
 
   public:
     ico_switch_button(int X, int Y, int ID, int start_on, ifield *butts, ifield *Next);
@@ -87,6 +88,8 @@ class ico_switch_button : public ifield
         act = active;
     }
     virtual void handle_event(Event &ev, image *screen, InputManager *im);
+    void set_enabled(bool value);
+    bool set_selection(int index);
     virtual ifield *unlink(int id);
     virtual char *read()
     {

@@ -2549,6 +2549,19 @@ void Game::flush_pending_input()
     pending_input_events.clear();
 }
 
+void Game::request_difficulty_change(uint8_t difficulty)
+{
+    if (net_game_active() && client_number() == 0 && difficulty <= NET_DIFFICULTY_EXTREME)
+        pending_difficulty = difficulty;
+}
+
+int Game::consume_difficulty_change()
+{
+    const int difficulty = pending_difficulty;
+    pending_difficulty = -1;
+    return difficulty;
+}
+
 void net_send(int force = 0)
 {
     // Networking can run before the first local player has been created.
@@ -2580,8 +2593,10 @@ void net_send(int force = 0)
                 if (p->local_player())
                     p->get_input();
 
-            // sync difficulty
-            if (client_number() == 0 && player_list->next)
+            // Apply menu changes through the authoritative packet, so every
+            // peer starts using the new difficulty on the same world tick.
+            const int requested_difficulty = the_game->consume_difficulty_change();
+            if (client_number() == 0 && (player_list->next || net_game_active()))
             {
                 uint8_t difficulty = NET_DIFFICULTY_HARD;
                 if (l_difficulty->GetValue() == l_easy)
@@ -2590,6 +2605,8 @@ void net_send(int force = 0)
                     difficulty = NET_DIFFICULTY_MEDIUM;
                 else if (l_difficulty->GetValue() == l_extreme)
                     difficulty = NET_DIFFICULTY_EXTREME;
+                if (requested_difficulty >= 0)
+                    difficulty = static_cast<uint8_t>(requested_difficulty);
 
                 base->packet.write_uint8(SCMD_SET_DIFFICULTY);
                 base->packet.write_uint8(difficulty);

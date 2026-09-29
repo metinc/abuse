@@ -120,6 +120,7 @@ class Game
     JCFont *game_font;
     uint8_t keymap[JK_KEY_COUNT / 8];
     std::vector<pending_input_event> pending_input_events;
+    int pending_difficulty = -1;
     std::vector<coop_level_start_ammo> coop_start_ammo;
     coop_state coop_session;
     std::string editor_level_name;
@@ -264,6 +265,8 @@ class Game
     void update_screen(uint32_t elapsedMsFixed = 0);
     void get_input();
     void flush_pending_input();
+    void request_difficulty_change(uint8_t difficulty);
+    int consume_difficulty_change();
     void menu_select(Event &ev2);
     int can_morph_into(int type);
     void morph_into(int type);

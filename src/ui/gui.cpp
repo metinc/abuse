@@ -187,6 +187,9 @@ ifield *ico_switch_button::unlink(int id)
 
 void ico_switch_button::handle_event(Event &ev, image *screen, InputManager *im)
 {
+    if (!enabled)
+        return;
+
     bool validEvent =
         (ev.type == EV_KEYRELEASE && ev.key == 13) || (ev.type == EV_MOUSE_BUTTON && ev.mouse_button == 0);
     if (validEvent)
@@ -197,6 +200,25 @@ void ico_switch_button::handle_event(Event &ev, image *screen, InputManager *im)
         cur_but->draw(act, screen);
     }
     cur_but->handle_event(ev, screen, im);
+}
+
+void ico_switch_button::set_enabled(bool value)
+{
+    enabled = value;
+    for (ifield *field = blist; field; field = field->next)
+        if (auto *icon = dynamic_cast<ico_button *>(field))
+            icon->set_enabled(value);
+}
+
+bool ico_switch_button::set_selection(int index)
+{
+    ifield *selected = blist;
+    while (selected && index-- > 0)
+        selected = selected->next;
+    if (!selected || selected == cur_but)
+        return false;
+    cur_but = selected;
+    return true;
 }
 
 void ico_button::draw(int hover, image *screen)
