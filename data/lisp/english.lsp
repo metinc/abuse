@@ -211,6 +211,7 @@
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Name              Level Total")   ; V-E
 	 (setq space_cont "Press SPACEBAR to continue")        ; V-E
+	 (setq space_spectate "Press SPACEBAR to spectate your teammate")
 	 (setq no_saved "No saved game")
 
 	 (setq lvl_2   "Small") ; V-C added

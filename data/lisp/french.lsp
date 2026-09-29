@@ -207,6 +207,7 @@ plan \n"
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Nom          Total du niveau")   ; V-E
 	 (setq space_cont "Appuyez sur la BARRE D'ESPACE pour continuer")        ; V-E
+	 (setq space_spectate "Appuyez sur ESPACE pour suivre votre coéquipier")
 	 (setq no_saved "Pas de jeu sauvegardé")
 
 	 (setq lvl_2   "Petit") ; V-C added

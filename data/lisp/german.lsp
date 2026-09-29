@@ -208,6 +208,7 @@
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Name              Level gesamt")   ; V-E
 	 (setq space_cont "LEERTASTE, um fortzufahren ")        ; V-E
+	 (setq space_spectate "LEERTASTE, um deinem Teamkameraden zuzusehen")
 	 (setq no_saved "Kein gespeichertes Spiel")
 
 	 (setq lvl_2   "Klein") ; V-C added
