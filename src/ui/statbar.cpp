@@ -102,6 +102,9 @@ void status_bar::redraw(image *screen)
     if (!v || !is_visible())
         return;
 
+    game_object *focus = v->camera_focus();
+    view *display = focus && focus->controller() ? focus->controller() : v;
+
     if (total_weapons)
     {
         if (!playing_state(the_game->state))
@@ -135,8 +138,8 @@ void status_bar::redraw(image *screen)
         int sel_off = small_render ? 8 : 4;
         scale_put_trans(sb, screen, sx, sy, sb_w, sb_h);
 
-        if (v->m_focus)
-            draw_num(screen, sx + (small_render ? 17 * 2 : 17), sy + (small_render ? 11 * 2 : 11), v->m_focus->hp(),
+        if (focus)
+            draw_num(screen, sx + (small_render ? 17 * 2 : 17), sy + (small_render ? 11 * 2 : 11), focus->hp(),
                      bnum);
 
         int ammo_x, ammo_y;
@@ -156,21 +159,21 @@ void status_bar::redraw(image *screen)
             t = total_weapons;
         for (i = 0; i < t; i++, x_on += wa, ammo_x += wa)
         {
-            if (v->has_weapon(i))
+            if (display->has_weapon(i))
             {
-                if (v->current_weapon == i)
+                if (display->current_weapon == i)
                     scale_put_trans(cache.img(bweap[i]), screen, x_on, sy, ww, wh);
                 else
                     scale_put_trans(cache.img(dweap[i]), screen, x_on, sy, ww, wh);
 
                 scale_put_trans(cache.img(sbar_numpad), screen, x_on - 2, sy + np_yo, np_w, np_h);
 
-                if (v->current_weapon == i)
-                    draw_num(screen, ammo_x, ammo_y, v->weapon_total(i), bnum + 20);
+                if (display->current_weapon == i)
+                    draw_num(screen, ammo_x, ammo_y, display->weapon_total(i), bnum + 20);
                 else
-                    draw_num(screen, ammo_x, ammo_y, v->weapon_total(i), bnum + 10);
+                    draw_num(screen, ammo_x, ammo_y, display->weapon_total(i), bnum + 10);
 
-                if (i == icon_in_selection)
+                if (!v->spectating() && i == icon_in_selection)
                     scale_put_trans(cache.img(sbar_select), screen, x_on + sel_off, sy, sel_w, sel_h);
             }
         }
@@ -248,7 +251,7 @@ void status_bar::draw_ammo(image *screen, int weapon_num, int amount, int light)
 
 int status_bar::mouse_in_area()
 {
-    if (!v || !is_visible())
+    if (!v || !is_visible() || v->spectating())
         return 0;
     int x1, y1, x2, y2;
     area(x1, y1, x2, y2);
@@ -302,6 +305,11 @@ void status_bar::step()
 {
     if (!v || !is_visible())
         return;
+    if (v->spectating())
+    {
+        icon_in_selection = -1;
+        return;
+    }
     if (!DEFINEDP(symbol_value(l_mouse_can_switch)) || !symbol_value(l_mouse_can_switch))
         return;
 

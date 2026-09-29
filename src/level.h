@@ -17,6 +17,7 @@
 #include "id.h"
 
 #include <stdlib.h>
+#include <string>
 #define ASPECT 4 // foreground scrolls 4 times faster than background
 
 // the following defines the area of activity for objects
@@ -79,6 +80,7 @@ class level // contain map info and objects
         else
             return Name;
     }
+    std::string display_name() const;
     uint32_t tick_counter()
     {
         return ctick;
@@ -233,7 +235,7 @@ class level // contain map info and objects
 
     game_object *damage_intersect(int32_t x1, int32_t y1, int32_t &x2, int32_t &y2, game_object *exclude);
     game_object *boundary_setback(game_object *subject, int32_t x1, int32_t y1, int32_t &x2, int32_t &y2,
-                                  bool all = false);
+                                  bool all = false, bool projectile = false);
     int crush(game_object *by_who, int xamount, int yamount);
     int push_characters(game_object *by_who, int xamount, int yamount); // return 0 if fail on any.
     int platform_push(game_object *by_who, int xamount, int yamount);
@@ -260,7 +262,7 @@ class level // contain map info and objects
     //  game_object *find_enemy(game_object *exclude1, game_object *exclude2);
 
     bFILE *create_dir(char *filename, int save_all, object_node *save_list, object_node *exclude_list,
-                      bool save_player_keys);
+                      bool save_player_keys, const std::string &coop_data);
     view *make_view_list(int nplayers);
     int32_t total_light_links(object_node *list);
     int32_t total_object_links(object_node *save_list);

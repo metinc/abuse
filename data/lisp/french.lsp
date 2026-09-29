@@ -17,8 +17,10 @@
 	 (setq kick_player        "Kick")
 	 (setq last_packet_age    "Temps depuis le dernier paquet")
 	 (setq host_player        "Hôte")
-	 (setq player_status      "Statut des joueurs")
+	 (setq game_status      "État de la partie")
+	 (setq current_level_label "Niveau")
 	 (setq player_status_columns "Joueur              Score Age paquet")
+	 (setq coop_status_columns "Joueur                 Dégâts Dégâts totaux Age paquet")
 	 (setq hold!              "Attendez !")
 	 (setq waiting            "Chargement des données...")
 	 (setq Error              "Erreur")
@@ -205,6 +207,7 @@ plan \n"
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Nom          Total du niveau")   ; V-E
 	 (setq space_cont "Appuyez sur la BARRE D'ESPACE pour continuer")        ; V-E
+	 (setq space_spectate "Appuyez sur ESPACE pour suivre votre coéquipier")
 	 (setq no_saved "Pas de jeu sauvegardé")
 
 	 (setq lvl_2   "Petit") ; V-C added
@@ -257,6 +260,8 @@ plan \n"
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ANNULER")
 	 (setq kills_to_win    "Morts pour gagner")
+         (setq ant_multiplier "Multiplicateur d'ennemis")
+         (setq ant_multiplier_error "Le multiplicateur des ennemis doit être entre 1 et 99")
 	 (setq max_play        "Nombre max. de joueurs")
 	 (setq min_play        "\nNombre min. de joueurs")          ; V-B (added \n)
 	 (setq use_port        "Numéro du jeu")
@@ -269,6 +274,8 @@ plan \n"
 	 (setq room_code       "Code de salon")
 	 (setq room_code_error "Code : exactement 6 caractères")
 	 (setq online_join_error "Impossible de rejoindre la partie en ligne.\nVérifiez le code et réessayez.")
+         (setq online_host_error "Impossible de créer une salle en ligne.\nVérifiez votre connexion et réessayez.")
+         (setq server_host_error "Impossible de démarrer le serveur.\nVérifiez vos paramètres réseau et réessayez.")
 
 (setq max_players     "Ce serveur est complet.\nVeuillez réessayer plus tard.")
 	 (setq connection_lost "Connexion interrompue")
@@ -278,8 +285,12 @@ plan \n"
          (setq online_ready_streamer "Code masqué pour le streaming.\nCopiez-le pour le partager en privé.\nDémarrez quand vous êtes prêt.")
          (setq start_game_button "Démarrer")
 	 (setq coop_lobby_title "Co-op")
+         (setq coop_continue "Continuer")
+         (setq coop_save_failed "Impossible de sauvegarder la partie coop.")
+         (setq coop_load_failed "Impossible de charger la sauvegarde coop.")
+         (setq player_identity_failed "Impossible de sauvegarder votre identité.")
 	 (setq deathmatch_lobby_title "Deathmatch")
-	 (setq coop_lobby_instructions "Le niveau est terminé dès qu’au moins un\njoueur atteint l’objectif.\nLes consoles de sauvegarde sont utilisables\ntant que tous les joueurs sont en vie.\nLes bonus sont automatiquement partagés\nentre tous les joueurs.\nRestez groupés pour que personne ne reste\nbloqué seul dans une salle.\nL’hôte peut charger la dernière sauvegarde\nà tout moment depuis le menu principal.\nTAB affiche/masque le code et les scores.")
+	 (setq coop_lobby_instructions "Le niveau est terminé dès qu’au moins un\njoueur atteint l’objectif.\nLes consoles de sauvegarde sont utilisables\ntant que tous les joueurs sont en vie.\nLes bonus sont automatiquement partagés\nentre tous les joueurs.\nRestez groupés pour que personne ne reste\nbloqué seul dans une salle.\nL’hôte peut recharger le dernier checkpoint\ndepuis le menu. Choisissez Continuer en créant\nune partie coop pour reprendre la sauvegarde.\nTAB affiche/masque le code et les scores.")
 	 (setq deathmatch_lobby_instructions "Le premier à atteindre %d frags gagne.\nTous les joueurs sont des ennemis.\nArmes et munitions réapparaissent.\nTAB affiche/masque le code et les scores.")
 	 (setq lobby_players "Joueurs connectés : %d")
 	 (setq online_lobby_players "Code du salon : %s\nJoueurs connectés : %d")
@@ -287,7 +298,8 @@ plan \n"
 	 (setq client_lobby_players "Joueurs connectés : %d\nEn attente du lancement de la partie par l’hôte.")
          (setq copy_room_code  "Copier le code")
          (setq searching_local_games "Recherche de parties locales")
-         (setq lev_complete    "Niveau terminé !")
+         (setq lev_complete    "Niveau terminé")
+         (setq lev_next        "Prochain niveau")
          (setq no_low_mem         (concatenate 'string "Gestionnaire de mémoire : Pas assez de mémoire disponible\n"
                                            "  Suggestions...\n"
                                            "    - créez une disquette de démarrage (consultez le manuel)\n"

@@ -114,6 +114,7 @@ static inline uint32_t lltl(uint32_t x)
 #ifndef __DEBUG_LOG_HPP_
 #define __DEBUG_LOG_HPP_
 
+#define TCPIP_DEBUG
 #ifdef TCPIP_DEBUG
 #include <SDL3/SDL_time.h>
 
@@ -126,7 +127,7 @@ static inline uint32_t lltl(uint32_t x)
             printf("[%02d:%02d:%02d.%03d] %s: " fmt "\n", date_time.hour, date_time.minute, date_time.second,          \
                    date_time.nanosecond / 1000000, __FILE__, ##__VA_ARGS__);                                           \
         else                                                                                                           \
-            printf("[time unavailable] %s: " fmt "\n", __FILE__, ##__VA_ARGS__);                                      \
+            printf("[time unavailable] %s: " fmt "\n", __FILE__, ##__VA_ARGS__);                                       \
     } while (0)
 #else
 #define DEBUG_LOG(fmt, ...) ((void)0)

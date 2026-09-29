@@ -42,6 +42,7 @@
 #include "nfserver.h"
 
 #include "net/sock.h"
+#include "net/netface.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -54,6 +55,49 @@ extern int get_key_binding(char const *dir, int i);
 extern net_protocol *prot;
 
 static AudioSettingsWindow *audio_settings_window;
+
+bool update_multiplayer_menu()
+{
+    static Uint64 last_update = SDL_GetTicks();
+    static bool updating = false;
+    if (updating)
+        return false;
+    if (!the_game || !the_game->multiplayer_menu_active())
+    {
+        last_update = SDL_GetTicks();
+        return false;
+    }
+    if (SDL_GetTicks() - last_update < settings.physics_update)
+        return false;
+
+    // Network error dialogs can enter another menu loop during this call.
+    updating = true;
+    the_game->run_multiplayer_menu_tick();
+    last_update = SDL_GetTicks();
+    updating = false;
+    return true;
+}
+
+void get_menu_event(Event &event)
+{
+    for (;;)
+    {
+        update_multiplayer_menu();
+        if (application_quit_requested())
+        {
+            event = Event{};
+            event.type = EV_QUIT;
+            return;
+        }
+        if (wm->IsPending() || !the_game || !the_game->multiplayer_menu_active())
+        {
+            wm->get_event(event);
+            return;
+        }
+        // SDL's ordinary event wait would also stop lockstep networking.
+        SDL_Delay(10);
+    }
+}
 
 static bool load_player_game_enabled()
 {
@@ -102,13 +146,13 @@ static void create_audio_settings_window()
     wm->grab_focus(window);
     wm->flush_screen();
 
-    while (audio_settings_window)
+    while (audio_settings_window && !application_quit_requested())
     {
         Event ev;
 
         do
         {
-            wm->get_event(ev);
+            get_menu_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
 
         if (ev.type == EV_CLOSE_WINDOW || (ev.type == EV_KEY && ev.key == JK_ESC))
@@ -169,21 +213,39 @@ static void create_audio_settings_window()
     audio_settings_window = nullptr;
 }
 
-void save_difficulty()
+static bool can_change_difficulty()
 {
-    if (DEFINEDP(symbol_value(l_difficulty)))
+    return !net_game_active() || client_number() == 0;
+}
+
+static int current_difficulty_index()
+{
+    const auto difficulty = l_difficulty->GetValue();
+    return difficulty == l_easy ? 0 : difficulty == l_medium ? 1 : difficulty == l_hard ? 2 : 3;
+}
+
+static void change_difficulty(LSymbol *difficulty)
+{
+    if (!can_change_difficulty())
+        return;
+
+    if (demo_man.is_automatic_recording())
+        demo_man.set_state(demo_manager::NORMAL);
+    if (net_game_active())
     {
-        if (symbol_value(l_difficulty) == l_extreme)
-            settings.difficulty = "extreme";
-        else if (symbol_value(l_difficulty) == l_hard)
-            settings.difficulty = "hard";
-        else if (symbol_value(l_difficulty) == l_easy)
-            settings.difficulty = "easy";
-        else
-            settings.difficulty = "medium";
+        const uint8_t value = difficulty == l_easy      ? NET_DIFFICULTY_EASY
+                              : difficulty == l_medium  ? NET_DIFFICULTY_MEDIUM
+                              : difficulty == l_extreme ? NET_DIFFICULTY_EXTREME
+                                                        : NET_DIFFICULTY_HARD;
+        the_game->request_difficulty_change(value);
     }
     else
-        settings.difficulty = "medium";
+        l_difficulty->SetValue(difficulty);
+
+    settings.difficulty = difficulty == l_easy      ? "easy"
+                          : difficulty == l_medium  ? "medium"
+                          : difficulty == l_extreme ? "extreme"
+                                                    : "hard";
 
     if (!settings.Save())
         fprintf(stderr, "Unable to save difficulty setting\n");
@@ -232,7 +294,7 @@ static bool choose_new_game_campaign()
         Event event;
         do
         {
-            wm->get_event(event);
+            get_menu_event(event);
         } while (event.type == EV_MOUSE_MOVE && wm->IsPending());
 
         if (event.type == EV_CLOSE_WINDOW || (event.type == EV_KEY && event.key == JK_ESC))
@@ -291,7 +353,7 @@ void show_sell(int abortable)
 
         LObject *tmp = (LObject *)ss->GetValue();
         int quit = 0;
-        while (tmp && !quit)
+        while (tmp && !quit && !application_quit_requested())
         {
             if (settings.hires && credits_hires)
                 fade_in(credits_hires, 16);
@@ -305,8 +367,8 @@ void show_sell(int abortable)
             do
             {
                 wm->flush_screen();
-                wm->get_event(ev);
-            } while (ev.type != EV_KEY);
+                get_menu_event(ev);
+            } while (ev.type != EV_KEY && !application_quit_requested());
             if (ev.key == JK_ESC && abortable)
                 quit = 1;
             fade_out(16);
@@ -364,7 +426,7 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_EDITOR:
-            if (!audio_settings_window)
+            if (!audio_settings_window && !net_game_active())
             {
                 if (demo_man.is_automatic_recording())
                     demo_man.set_state(demo_manager::NORMAL);
@@ -410,31 +472,19 @@ void menu_handler(Event &ev, InputManager *inm)
             break;
 
         case ID_MEDIUM: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_medium);
-            save_difficulty();
+            change_difficulty(l_medium);
         }
         break;
         case ID_HARD: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_hard);
-            save_difficulty();
+            change_difficulty(l_hard);
         }
         break;
         case ID_EXTREME: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_extreme);
-            save_difficulty();
+            change_difficulty(l_extreme);
         }
         break;
         case ID_EASY: {
-            if (demo_man.is_automatic_recording())
-                demo_man.set_state(demo_manager::NORMAL);
-            l_difficulty->SetValue(l_easy);
-            save_difficulty();
+            change_difficulty(l_easy);
         }
         break;
 
@@ -517,26 +567,12 @@ static ico_button *load_icon(int num, int id, int x, int y, int &h, ifield *next
     return new ico_button(x, y, id, b, b, c, a, next, -1, key);
 }
 
-ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
+ico_button *make_default_buttons(int x, int &y, ico_button *append_list, ico_switch_button *&difficulty_button)
 {
     //AR main menu buttons, reenabled the credits button
 
     int h;
-    int diff_on;
-
-    if (DEFINEDP(symbol_value(l_difficulty)))
-    {
-        if (symbol_value(l_difficulty) == l_extreme)
-            diff_on = 3;
-        else if (symbol_value(l_difficulty) == l_hard)
-            diff_on = 2;
-        else if (symbol_value(l_difficulty) == l_easy)
-            diff_on = 0;
-        else
-            diff_on = 1;
-    }
-    else
-        diff_on = 3;
+    const int diff_on = current_difficulty_index();
 
     ico_button *general_settings = load_icon(12, ID_GENERAL_SETTINGS, x, y, h, NULL, "ic_general");
     y += h;
@@ -555,6 +591,8 @@ ico_button *make_default_buttons(int x, int &y, ico_button *append_list)
                             "ic_medium"),
                   "ic_easy"),
         NULL);
+    set->set_enabled(can_change_difficulty());
+    difficulty_button = set;
     y += h;
 
     ico_button *color = load_icon(4, ID_LIGHT_OFF, x, y, h, NULL, "ic_gamma");
@@ -627,10 +665,12 @@ void main_menu()
     int y = 0;
     ico_button *load_game_button;
     ico_button *list = make_context_buttons(0, y, load_game_button);
-    list = make_default_buttons(0, y, list);
+    ico_switch_button *difficulty_button;
+    list = make_default_buttons(0, y, list, difficulty_button);
 
     int editor_h;
     ico_button *editor = load_icon(2, ID_EDITOR, 0, 0, editor_h, list, "ic_editor");
+    editor->set_enabled(!net_game_active());
     list = editor;
 
     int icon_x1, icon_y1, icon_x2, icon_y2;
@@ -708,19 +748,19 @@ void main_menu()
 
     int stop_menu = 0;
     time_marker start;
-    Uint64 last_multiplayer_update = SDL_GetTicks();
     bool load_game_enabled = load_player_game_enabled();
     wm->flush_screen();
     do
     {
         time_marker new_time;
 
-        if (the_game->multiplayer_menu_active() &&
-            SDL_GetTicks() - last_multiplayer_update >= settings.physics_update)
+        if (update_multiplayer_menu())
         {
-            the_game->run_multiplayer_menu_tick();
-            last_multiplayer_update = SDL_GetTicks();
-
+            if (!can_change_difficulty() && difficulty_button->set_selection(current_difficulty_index()))
+            {
+                inm->redraw();
+                wm->flush_screen();
+            }
             if (the_game->multiplayer_menu_active())
             {
                 const bool enabled = load_player_game_enabled();
@@ -738,7 +778,7 @@ void main_menu()
         {
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm->handle_event(ev, NULL);
             if (ev.type == EV_KEY && ev.key == JK_ESC && current_level)
@@ -784,7 +824,7 @@ void main_menu()
             stop_menu = 1;
         else if (ev.type == EV_MESSAGE)
         {
-            if (ev.message.id == ID_RETURN || ev.message.id == ID_EDITOR)
+            if (ev.message.id == ID_RETURN || (ev.message.id == ID_EDITOR && !net_game_active()))
                 stop_menu = 1;
             else if (ev.message.id == ID_QUIT)
             {

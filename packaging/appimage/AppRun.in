@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Bundled OpenSSL retains the build distribution's certificate paths. Use the
+# running system's trust store, while preserving explicit user overrides.
+if [ -z "${SSL_CERT_FILE+x}" ] && [ -z "${SSL_CERT_DIR+x}" ]; then
+    for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem; do
+        if [ -r "$bundle" ]; then
+            export SSL_CERT_FILE="$bundle"
+            break
+        fi
+    done
+fi
+
+appdir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+exec "$appdir/usr/@ABUSE_INSTALL_BINDIR@/abuse" "$@"

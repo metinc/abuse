@@ -117,6 +117,79 @@ bool is_coop_checkpoint_path(char const *name)
     return name && std::filesystem::path(name).lexically_normal() == coop_checkpoint_path().lexically_normal();
 }
 
+std::string coop_save_path()
+{
+    const char *prefix = get_save_filename_prefix();
+    return (std::filesystem::path(prefix ? prefix : "") / "coop-save.spe").string();
+}
+
+bool coop_save_available()
+{
+    std::error_code error;
+    return std::filesystem::is_regular_file(coop_save_path(), error);
+}
+
+static bool read_coop_snapshot(const std::string &path, coop_state &state)
+{
+    jFILE file(path.c_str(), "rb");
+    if (file.open_failure())
+        return false;
+    spec_directory directory(&file);
+    const auto size = file.file_size();
+    for (int i = 0; i < directory.total; ++i)
+    {
+        const spec_entry *entry = directory.entries[i];
+        if (entry->offset > static_cast<unsigned long>(size) ||
+            entry->size > static_cast<unsigned long>(size) - entry->offset)
+            return false;
+    }
+    const spec_entry *players = directory.find("player_info");
+    const spec_entry *ids = directory.find("player_ids");
+    const spec_entry *metadata = directory.find("coop_state.v1");
+    if (!players || players->size < 8 || (players->size - 4) % 4 || !ids ||
+        ids->size != (players->size - 4) / 4 * PLAYER_ID_LENGTH || !metadata || metadata->size > 1024 * 1024)
+        return false;
+    std::string data(metadata->size, '\0');
+    file.seek(metadata->offset, 0);
+    if (file.read(data.data(), data.size()) != static_cast<int>(data.size()) ||
+        !coop_state::decode(data, total_weapons, state))
+        return false;
+    file.seek(players->offset, 0);
+    const uint32_t count = file.read_uint32();
+    if (count != (players->size - 4) / 4)
+        return false;
+    file.seek(ids->offset, 0);
+    std::vector<std::string> seen;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        char id[PLAYER_ID_LENGTH + 1] = {};
+        if (file.read(id, PLAYER_ID_LENGTH) != PLAYER_ID_LENGTH || !valid_player_id(id) ||
+            state.players.find(id) == state.players.end() || std::find(seen.begin(), seen.end(), id) != seen.end())
+            return false;
+        seen.emplace_back(id);
+    }
+    return true;
+}
+
+static bool replace_coop_file(const std::filesystem::path &temporary, const std::filesystem::path &destination)
+{
+#ifdef WIN32
+    return MoveFileExW(temporary.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+#else
+    std::error_code error;
+    std::filesystem::rename(temporary, destination, error);
+    return !error;
+#endif
+}
+
+static bool copy_coop_file(const std::filesystem::path &source, const std::filesystem::path &destination)
+{
+    const std::filesystem::path temporary = destination.string() + ".tmp";
+    std::error_code error;
+    std::filesystem::copy_file(source, temporary, std::filesystem::copy_options::overwrite_existing, error);
+    return !error && replace_coop_file(temporary, destination);
+}
+
 char **start_argv;
 int start_argc;
 char req_name[100];
@@ -161,6 +234,8 @@ void handle_no_space()
 
 void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float frequency_ratio)
 {
+    if (ScopedSoundMute::active())
+        return;
     if (!sound_is_initialized())
         return;
     if (source_gain <= 0.0f)
@@ -169,13 +244,16 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
         return;
 
     int mindist = 500;
-    view *cd = NULL;
+    int32_t listener_x = 0;
     for (view *f = player_list; f; f = f->next)
     {
         if (!f->local_player())
             continue;
 
-        int d, cx = abs(f->x_center() - x), cy = abs(f->y_center() - y);
+        game_object *focus = f->camera_focus();
+        const int32_t fx = focus ? focus->x : f->x_center();
+        const int32_t fy = focus ? focus->y : f->y_center();
+        int d, cx = abs(fx - x), cy = abs(fy - y);
         if (cx < cy)
             d = cx + cy - (cx >> 1);
         else
@@ -183,7 +261,7 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
 
         if (d < mindist)
         {
-            cd = f;
+            listener_x = fx;
             mindist = d;
         }
     }
@@ -195,8 +273,8 @@ void Game::play_sound(int id, float source_gain, int32_t x, int32_t y, float fre
     else
         mindist -= 100;
 
-    // Calculate the position of the sound relative to the player
-    int p = (cd->x_center() - x) / 2 + 128;
+    // Calculate the position of the sound relative to the viewed player.
+    int p = (listener_x - x) / 2 + 128;
     if (p < 0)
         p = 0;
     if (p > 255)
@@ -544,6 +622,84 @@ void Game::clear_coop_checkpoint()
     coop_checkpoint_level_name.clear();
 }
 
+void Game::remember_coop_player(const view *player)
+{
+    if (!main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP || client_number() != 0 || !player ||
+        !valid_player_id(player->persistent_id))
+        return;
+    coop_inventory &inventory = coop_session.players[player->persistent_id];
+    inventory.weapons.assign(player->weapons, player->weapons + total_weapons);
+    inventory.current_weapon = player->current_weapon;
+    inventory.damage = player->damage;
+    inventory.total_damage = player->total_damage;
+}
+
+void Game::restore_coop_player(view *player)
+{
+    if (!main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP || client_number() != 0 || !player)
+        return;
+
+    auto saved = coop_session.players.find(player->persistent_id);
+    if (saved == coop_session.players.end())
+    {
+        // A new teammate receives the host's current loadout, including which
+        // weapons are owned. This is independent of connection order or name.
+        for (view *host = player_list; host; host = host->next)
+            if (host->player_number == 0 && host != player)
+            {
+                std::copy(host->weapons, host->weapons + total_weapons, player->weapons);
+                player->current_weapon = host->current_weapon;
+                break;
+            }
+    }
+    else if (saved->second.weapons.size() == static_cast<size_t>(total_weapons))
+    {
+        std::copy(saved->second.weapons.begin(), saved->second.weapons.end(), player->weapons);
+        player->current_weapon = saved->second.current_weapon;
+        player->damage = saved->second.damage;
+        player->total_damage = saved->second.total_damage;
+    }
+    std::copy(player->weapons, player->weapons + total_weapons, player->last_weapons);
+    player->last_ammo = -1;
+    player->suggest.send_weapon_change = 0;
+    remember_coop_player(player);
+}
+
+std::string Game::serialize_coop_state() const
+{
+    if (!main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP || !current_level)
+        return {};
+    coop_state state = coop_session;
+    state.ant_multiplier = main_net_cfg->ant_multiplier;
+    state.level_path = coop_level_start_path.empty() ? current_level->transition_name() : coop_level_start_path;
+    const auto difficulty = symbol_value(l_difficulty);
+    state.difficulty = difficulty == l_easy      ? "easy"
+                       : difficulty == l_medium  ? "medium"
+                       : difficulty == l_extreme ? "extreme"
+                                                 : "hard";
+    for (view *v = player_list; v; v = v->next)
+        if (valid_player_id(v->persistent_id))
+            state.players[v->persistent_id] = {{v->weapons, v->weapons + total_weapons}, v->current_weapon,
+                                               v->damage, v->total_damage};
+    return state.encode();
+}
+
+bool Game::deserialize_coop_state(const std::string &data)
+{
+    coop_state saved;
+    if (!coop_state::decode(data, total_weapons, saved))
+        return false;
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        main_net_cfg->ant_multiplier = saved.ant_multiplier;
+    coop_level_start_path = saved.level_path;
+    l_difficulty->SetValue(saved.difficulty == "easy"      ? l_easy
+                           : saved.difficulty == "medium"  ? l_medium
+                           : saved.difficulty == "extreme" ? l_extreme
+                                                           : l_hard);
+    coop_session = std::move(saved);
+    return true;
+}
+
 bool Game::save_coop_checkpoint()
 {
     if (!current_level)
@@ -551,13 +707,33 @@ bool Game::save_coop_checkpoint()
 
     coop_checkpoint_level_name = current_level->original_name();
 
-    // Every peer reaches the save console in lockstep, but only the host owns
-    // the temporary file which will later become the authoritative snapshot.
+    // Every peer reaches the console in lockstep. Only the host writes the
+    // checkpoint and the durable save, which includes disconnected players.
     if (client_number() != 0)
         return true;
 
-    const std::string path = coop_checkpoint_path().string();
-    return current_level->save(path.c_str(), 1) == 1;
+    const std::string temporary = coop_checkpoint_path().string() + ".tmp";
+    coop_state checked;
+    if (temporary.size() >= 255 || current_level->save(temporary.c_str(), 1) != 1 ||
+        !read_coop_snapshot(temporary, checked) || !replace_coop_file(temporary, coop_checkpoint_path()))
+        return false;
+    return copy_coop_file(coop_checkpoint_path(), coop_save_path());
+}
+
+bool Game::resume_coop_save()
+{
+    if (!current_level || client_number() != 0 || !main_net_cfg || main_net_cfg->game_mode != net_configuration::COOP)
+        return false;
+    coop_state checked;
+    if (!read_coop_snapshot(coop_save_path(), checked) ||
+        checked.players.find(settings.player_id) == checked.players.end() ||
+        !copy_coop_file(coop_save_path(), coop_checkpoint_path()))
+        return false;
+    const auto connected = connected_coop_players();
+    load_level(coop_checkpoint_path().string().c_str());
+    coop_checkpoint_level_name = current_level->original_name();
+    reconcile_coop_players(connected);
+    return true;
 }
 
 void Game::request_coop_restart()
@@ -587,15 +763,13 @@ void Game::remember_coop_level_start_ammo()
 
     for (view *v = player_list; v; v = v->next)
     {
-        const auto existing = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(), [&](auto const &ammo) {
-            return ammo.player_number == v->player_number && ammo.player_name == v->name;
-        });
+        const auto existing = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(),
+                                           [&](auto const &ammo) { return ammo.player_id == v->persistent_id; });
         if (existing != coop_start_ammo.end())
             continue;
 
         coop_level_start_ammo ammo;
-        ammo.player_number = v->player_number;
-        ammo.player_name = v->name;
+        ammo.player_id = v->persistent_id;
         ammo.current_weapon = v->current_weapon;
         if (total_weapons)
             ammo.weapons.assign(v->weapons, v->weapons + total_weapons);
@@ -607,9 +781,8 @@ void Game::restore_coop_level_start_ammo()
 {
     for (view *v = player_list; v; v = v->next)
     {
-        const auto saved = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(), [&](auto const &ammo) {
-            return ammo.player_number == v->player_number && ammo.player_name == v->name;
-        });
+        const auto saved = std::find_if(coop_start_ammo.begin(), coop_start_ammo.end(),
+                                        [&](auto const &ammo) { return ammo.player_id == v->persistent_id; });
         if (saved == coop_start_ammo.end() || saved->weapons.size() != static_cast<std::size_t>(total_weapons))
             continue;
 
@@ -633,21 +806,7 @@ bool Game::restart_coop_from_checkpoint()
     if (demo_man.current_state() == demo_manager::PLAYING && demo_man.load_playback_checkpoint())
         return true;
 
-    struct connected_player
-    {
-        int number;
-        std::string name;
-        int tint;
-        int upper_tint;
-        int team;
-        ivec2 aa;
-        ivec2 bb;
-    };
-
-    std::vector<connected_player> connected;
-    for (view *v = player_list; v; v = v->next)
-        connected.push_back(
-            {v->player_number, v->name, v->get_tint(), v->get_upper_tint(), v->get_team(), v->m_aa, v->m_bb});
+    const auto connected = connected_coop_players();
 
     // Saved levels can contain historical DOS paths such as
     // C:\\ABUSE\\LEVELS\\LEVEL06.SPE.  Keep using the path with which the
@@ -661,6 +820,18 @@ bool Game::restart_coop_from_checkpoint()
 
     if (!have_checkpoint)
     {
+        // Discard damage from the failed attempt, including disconnected players.
+        for (view *v = player_list; v; v = v->next)
+        {
+            v->total_damage -= v->damage;
+            v->damage = 0;
+        }
+        for (auto &[id, inventory] : coop_session.players)
+        {
+            inventory.total_damage -= inventory.damage;
+            inventory.damage = 0;
+        }
+
         // Match the single-player fallback: revive the existing roster and
         // reload the original level, which applies set_player_defaults.
         restore_coop_level_start_ammo();
@@ -682,6 +853,21 @@ bool Game::restart_coop_from_checkpoint()
 
     load_level(checkpoint.string().c_str());
 
+    reconcile_coop_players(connected);
+    return true;
+}
+
+std::vector<Game::coop_connected_player> Game::connected_coop_players() const
+{
+    std::vector<coop_connected_player> connected;
+    for (view *v = player_list; v; v = v->next)
+        connected.push_back({v->player_number, v->persistent_id, v->name, v->get_tint(), v->get_upper_tint(),
+                             v->get_team(), v->m_aa, v->m_bb});
+    return connected;
+}
+
+void Game::reconcile_coop_players(const std::vector<coop_connected_player> &connected)
+{
     bool checkpoint_position_found = false;
     ivec2 checkpoint_position;
     for (view *v = player_list; v; v = v->next)
@@ -701,9 +887,10 @@ bool Game::restart_coop_from_checkpoint()
     while (saved)
     {
         view *next = saved->next;
-        const auto identity = std::find_if(connected.begin(), connected.end(), [&](connected_player const &player) {
-            return saved->m_focus && player.number == saved->player_number && player.name == saved->name;
-        });
+        const auto identity =
+            std::find_if(connected.begin(), connected.end(), [&](coop_connected_player const &player) {
+                return saved->m_focus && player.id == saved->persistent_id;
+            });
 
         if (identity == connected.end())
         {
@@ -729,11 +916,11 @@ bool Game::restart_coop_from_checkpoint()
         saved = next;
     }
 
-    for (connected_player const &identity : connected)
+    for (coop_connected_player const &identity : connected)
     {
         view *v = player_list;
         for (; v; v = v->next)
-            if (v->m_focus && v->player_number == identity.number && identity.name == v->name)
+            if (v->m_focus && identity.id == v->persistent_id)
                 break;
 
         if (!v)
@@ -769,8 +956,11 @@ bool Game::restart_coop_from_checkpoint()
             else
                 player_list = v;
             previous = v;
+            snprintf(v->persistent_id, sizeof(v->persistent_id), "%s", identity.id.c_str());
+            restore_coop_player(v);
         }
 
+        v->player_number = identity.number;
         copy_player_name(v->name, sizeof(v->name), identity.name.c_str());
         v->m_aa = identity.aa;
         v->m_bb = identity.bb;
@@ -787,7 +977,6 @@ bool Game::restart_coop_from_checkpoint()
         first_view = player_list;
     recalc_local_view_space();
     sbar.need_refresh();
-    return true;
 }
 
 void Game::load_level(char const *name)
@@ -817,7 +1006,15 @@ void Game::load_level(char const *name)
             coop_level_start_path = name;
 
         spec_directory sd(fp);
+        const bool starting_level = sd.find("player_info") == nullptr;
         current_level = new level(&sd, fp, name);
+        if (starting_level && main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        {
+            for (view *v = player_list; v; v = v->next)
+                v->damage = 0;
+            for (auto &[id, inventory] : coop_session.players)
+                inventory.damage = 0;
+        }
         delete fp;
     }
 
@@ -1803,6 +2000,16 @@ void Game::request_end()
     req_end = 1;
 }
 
+static void restart_after_host_failure()
+{
+    main_net_cfg->host_failed = true;
+    main_net_cfg->resume_coop = false;
+    main_net_cfg->returning_to_menu = true;
+    main_net_cfg->state = net_configuration::RESTART_SINGLE;
+    strcpy(lsf, "abuse.lsp");
+    start_running = 0;
+}
+
 Game::Game(int argc, char **argv)
 {
     int i;
@@ -1848,6 +2055,10 @@ Game::Game(int argc, char **argv)
 
     //    ProfilerInit(collectDetailed, bestTimeBase, 2000, 200); //prof
     load_data(argc, argv);
+    // Multiplayer startup scripts call start_server(), but do not abort when
+    // it fails. Never load a solo level in place of the requested server.
+    if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER && main_net_cfg->host_failed)
+        restart_after_host_failure();
     //    ProfilerDump("\pabuse.prof");  //prof
     //    ProfilerTerm();
 
@@ -1964,12 +2175,22 @@ Game::Game(int argc, char **argv)
         (main_net_cfg->state != net_configuration::SERVER && main_net_cfg->state != net_configuration::CLIENT))
     {
         if (!start_edit && !net_start() && !settings.skip_intro && !returning_to_menu &&
-            !(main_net_cfg && main_net_cfg->join_failed))
+            !(main_net_cfg && (main_net_cfg->join_failed || main_net_cfg->host_failed)))
             do_title();
     }
     else if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
     {
         the_game->load_level(level_file);
+        if (main_net_cfg->resume_coop)
+        {
+            main_net_cfg->resume_coop = false;
+            if (!resume_coop_save())
+            {
+                show_multiplayer_error(symbol_str("coop_load_failed"));
+                main_net_cfg->state = net_configuration::RESTART_SINGLE;
+                strcpy(lsf, "abuse.lsp");
+            }
+        }
         start_running = 1;
     }
 
@@ -2123,8 +2344,11 @@ void Game::get_input()
             return;
         }
 
-        if (handle_net_player_status_event(ev))
+        if (handle_net_player_status_event(ev, net_player_status_visible))
+        {
+            last_demo_mbut = 0;
             continue;
+        }
 
         if (chat && chat->showing())
         {
@@ -2162,6 +2386,14 @@ void Game::get_input()
                 chat->toggle();
                 clear_player_input();
             }
+            continue;
+        }
+
+        if (net_player_status_visible && ev.window == nullptr && ev.type == EV_KEY && ev.key == JK_ESC)
+        {
+            net_player_status_visible = false;
+            update_net_player_status(false);
+            last_demo_mbut = 0;
             continue;
         }
 
@@ -2356,6 +2588,19 @@ void Game::flush_pending_input()
     pending_input_events.clear();
 }
 
+void Game::request_difficulty_change(uint8_t difficulty)
+{
+    if (net_game_active() && client_number() == 0 && difficulty <= NET_DIFFICULTY_EXTREME)
+        pending_difficulty = difficulty;
+}
+
+int Game::consume_difficulty_change()
+{
+    const int difficulty = pending_difficulty;
+    pending_difficulty = -1;
+    return difficulty;
+}
+
 void net_send(int force = 0)
 {
     // Networking can run before the first local player has been created.
@@ -2387,8 +2632,10 @@ void net_send(int force = 0)
                 if (p->local_player())
                     p->get_input();
 
-            // sync difficulty
-            if (client_number() == 0 && player_list->next)
+            // Apply menu changes through the authoritative packet, so every
+            // peer starts using the new difficulty on the same world tick.
+            const int requested_difficulty = the_game->consume_difficulty_change();
+            if (client_number() == 0 && (player_list->next || net_game_active()))
             {
                 uint8_t difficulty = NET_DIFFICULTY_HARD;
                 if (l_difficulty->GetValue() == l_easy)
@@ -2397,6 +2644,8 @@ void net_send(int force = 0)
                     difficulty = NET_DIFFICULTY_MEDIUM;
                 else if (l_difficulty->GetValue() == l_extreme)
                     difficulty = NET_DIFFICULTY_EXTREME;
+                if (requested_difficulty >= 0)
+                    difficulty = static_cast<uint8_t>(requested_difficulty);
 
                 base->packet.write_uint8(SCMD_SET_DIFFICULTY);
                 base->packet.write_uint8(difficulty);
@@ -2938,7 +3187,15 @@ bool game_net_init(int argc, char **argv)
 {
     int nonet = !net_init(argc, argv);
     if (nonet)
+    {
         printf("No network driver, or network driver returned failure\n");
+        if (main_net_cfg && main_net_cfg->state == net_configuration::SERVER)
+        {
+            net_uninit();
+            restart_after_host_failure();
+            return false;
+        }
+    }
     else
     {
         set_file_opener(open_nfs_file);
@@ -3015,6 +3272,15 @@ int main(int argc, char *argv[])
         dev_cont = new dev_controll();
         dev_cont->load_stuff();
 
+        if (main_net_cfg && main_net_cfg->host_failed &&
+            main_net_cfg->state == net_configuration::SINGLE_PLAYER)
+        {
+            show_multiplayer_error(symbol_str(main_net_cfg->online ? "online_host_error" : "server_host_error"));
+            main_net_cfg->host_failed = false;
+            main_net_cfg->online = false;
+            main_net_cfg->room_code[0] = '\0';
+        }
+
         if (main_net_cfg && main_net_cfg->join_failed)
         {
             const bool server_full = main_net_cfg->server_full;
@@ -3037,12 +3303,13 @@ int main(int argc, char *argv[])
 
         for (int i = 1; i + 1 < argc; i++)
         {
-            if (!strcmp(argv[i], "-server"))
+            if (!strcmp(argv[i], "-server") && main_net_cfg->state == net_configuration::SERVER &&
+                !net_game_active())
             {
                 if (!become_server(argv[i + 1]))
                 {
                     printf("unable to become a server\n");
-                    exit(EXIT_SUCCESS);
+                    restart_after_host_failure();
                 }
                 break;
             }

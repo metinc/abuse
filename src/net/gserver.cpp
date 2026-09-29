@@ -38,6 +38,8 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_timer.h>
 
+extern Settings settings;
+
 namespace
 {
 constexpr int ID_COPY_ROOM_CODE = 0x7f00;
@@ -708,7 +710,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
 {
     DEBUG_LOG("Adding new client connection type %d", type);
 
-    if (type == CLIENT_ABUSE)
+    if (type == CLIENT_ABUSE_ID)
     {
         if (total_players() >= main_net_cfg->max_players)
         {
@@ -729,6 +731,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         // Exchange initial connection data
         uint16_t our_port = lstl(main_net_cfg->port + 1), cport;
         char name[256];
+        char persistent_id[PLAYER_ID_LENGTH + 1] = {};
         uint8_t len, lower_skin, upper_skin;
         int16_t nkills = lstl(main_net_cfg->kills);
         uint8_t gmode = (uint8_t)main_net_cfg->game_mode;
@@ -737,6 +740,7 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         uint8_t max_players = static_cast<uint8_t>(main_net_cfg->max_players);
 
         if (sock->read(/* client_name_length */ &len, 1) != 1 || sock->read(/* client_name_data */ name, len) != len ||
+            sock->read(/* client_identity */ persistent_id, PLAYER_ID_LENGTH) != PLAYER_ID_LENGTH ||
             sock->read(/* client_lower_skin */ &lower_skin, 1) != 1 ||
             sock->read(/* client_upper_skin */ &upper_skin, 1) != 1 || sock->read(/* client_port */ &cport, 2) != 2 ||
             sock->write(/* server_port */ &our_port, 2) != 2 || sock->write(/* server_kills */ &nkills, 2) != 2 ||
@@ -749,6 +753,16 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
             return 0;
         }
         name[len] = '\0';
+
+        if (!valid_player_id(persistent_id) || persistent_id == settings.player_id)
+            return 0;
+        for (player_client *client = player_list; client; client = client->next)
+            if (client->persistent_id == persistent_id)
+                return 0;
+        // A disconnected view can survive until its lockstep deletion packet.
+        for (view *v = ::player_list; v; v = v->next)
+            if (!strcmp(v->persistent_id, persistent_id))
+                return 0;
 
         cport = lstl(cport);
         DEBUG_LOG("Client connection data - Name: %s, Port: %d", name, cport);
@@ -794,7 +808,9 @@ int game_server::add_client(int type, net_socket *sock, net_address *from)
         join_array[client_id].lower_skin = static_cast<uint8_t>(std::clamp<int>(lower_skin, 0, PLAYER_SKIN_COUNT - 1));
         join_array[client_id].upper_skin = static_cast<uint8_t>(std::clamp<int>(upper_skin, 0, PLAYER_SKIN_COUNT - 1));
         copy_player_name(join_array[client_id].name, sizeof(join_array[client_id].name), name);
+        memcpy(join_array[client_id].persistent_id, persistent_id, sizeof(persistent_id));
         player_list = new player_client(f, join_array[client_id].name, sock, from, player_list);
+        player_list->persistent_id = persistent_id;
 
         cache.sfx(cache.reg("sfx/endlvl02.wav", "player_join", SPEC_EXTERN_SFX, 1))->play(sfx_volume * 0.3f);
         DEBUG_LOG("Client %d successfully added", client_id);

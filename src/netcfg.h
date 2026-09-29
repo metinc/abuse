@@ -14,6 +14,10 @@
 class net_configuration
 {
   public:
+    static constexpr int DEFAULT_ANT_MULTIPLIER = 2;
+    static constexpr int MAX_ANT_MULTIPLIER = 99;
+    int ant_multiplier = DEFAULT_ANT_MULTIPLIER;
+
     enum
     {
         SINGLE_PLAYER,
@@ -34,12 +38,14 @@ class net_configuration
     char room_code[7];
     bool online;
     bool join_failed;
+    bool host_failed = false;
     bool server_full;
     bool host_ended_server;
     bool waiting_for_host;
     bool returning_to_menu;
     int lobby_players;
     bool streamer_mode;
+    bool resume_coop = false;
 
     char min_players, max_players;
     short kills;

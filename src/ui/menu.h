@@ -12,6 +12,11 @@
 #define GRUE_MENU_HPP
 #include "fonts.h"
 
+class Event;
+
+// Share one multiplayer tick clock across the main menu and nested dialogs.
+bool update_multiplayer_menu();
+void get_menu_event(Event &event);
 void main_menu();
 
 #endif

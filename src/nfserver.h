@@ -28,7 +28,7 @@ int net_start();
 bool net_game_active();
 bool net_input_ready();
 void request_net_input_resend();
-bool handle_net_player_status_event(Event const &event);
+bool handle_net_player_status_event(Event const &event, bool &visible);
 void update_net_player_status(bool show);
 bFILE *open_nfs_file(char const *filename, char const *mode);
 

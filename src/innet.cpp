@@ -21,6 +21,8 @@
 #include "common.h"
 
 #include "cop.h"
+#include "lisp.h"
+#include "clisp.h"
 #include "specs.h"
 #include "level.h"
 #include "game.h"
@@ -135,6 +137,38 @@ class tab_action_button : public button
 Jwindow *tab_player_status_window = nullptr;
 std::vector<tab_player_status_row> tab_player_status_rows;
 std::uint64_t tab_player_status_refresh = 0;
+std::string tab_level_text;
+std::string tab_difficulty_text;
+
+std::string current_level_text()
+{
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::DEATHMATCH)
+    {
+        if (!current_level)
+            return "-";
+        std::string filename = current_level->original_name();
+        const auto separator = filename.find_last_of("/\\");
+        if (separator != std::string::npos)
+            filename.erase(0, separator + 1);
+        const auto extension = filename.find_last_of('.');
+        if (extension != std::string::npos)
+            filename.erase(extension);
+        return std::string(symbol_str("current_level_label")) + " " + filename;
+    }
+
+    return std::string(symbol_str("current_level_label")) + " " +
+           (current_level ? current_level->display_name() : "-");
+}
+
+char const *current_difficulty_text()
+{
+    // Multiplayer clients apply the host's difficulty to this live value.
+    LObject *difficulty = l_difficulty->GetValue();
+    return symbol_str(difficulty == l_easy      ? "ic_easy"
+                      : difficulty == l_medium  ? "ic_medium"
+                      : difficulty == l_extreme ? "ic_extreme"
+                                                : "ic_hard");
+}
 
 std::string player_status_text(char const *name, std::uint64_t milliseconds_since_packet)
 {
@@ -233,8 +267,16 @@ std::vector<view *> sorted_score_players()
     std::vector<view *> players;
     for (view *player = player_list; player; player = player->next)
         players.push_back(player);
-    std::sort(players.begin(), players.end(), [](view const *left, view const *right) {
-        if (left->kills != right->kills)
+    const bool coop = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
+    std::sort(players.begin(), players.end(), [coop](view const *left, view const *right) {
+        if (coop)
+        {
+            if (left->damage != right->damage)
+                return left->damage > right->damage;
+            if (left->total_damage != right->total_damage)
+                return left->total_damage > right->total_damage;
+        }
+        else if (left->kills != right->kills)
             return left->kills > right->kills;
         return left->player_number < right->player_number;
     });
@@ -265,12 +307,19 @@ std::string tab_player_status_text(view *player, game_server *server, game_clien
     }
 
     char text[256];
-    snprintf(text, sizeof(text), "%-18s %5ld %10s", player->name, static_cast<long>(player->kills), packet_age);
+    if (main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP)
+        snprintf(text, sizeof(text), "%-18s %10ld %13ld %10s", player->name, static_cast<long>(player->damage),
+                 static_cast<long>(player->total_damage), packet_age);
+    else
+        snprintf(text, sizeof(text), "%-18s %5ld %10s", player->name, static_cast<long>(player->kills), packet_age);
     return text;
 }
 
 bool refresh_tab_player_status_window(game_server *server, game_client *client)
 {
+    if (tab_level_text != current_level_text() || tab_difficulty_text != current_difficulty_text())
+        return false;
+
     const std::vector<view *> players = sorted_score_players();
     if (players.size() != tab_player_status_rows.size())
         return false;
@@ -295,6 +344,8 @@ void close_tab_player_status_window()
     tab_player_status_window = nullptr;
     tab_player_status_rows.clear();
     tab_player_status_refresh = 0;
+    tab_level_text.clear();
+    tab_difficulty_text.clear();
 }
 
 void create_tab_player_status_window()
@@ -304,11 +355,20 @@ void create_tab_player_status_window()
     if (!server && !client)
         return;
 
+    const bool coop = main_net_cfg && main_net_cfg->game_mode == net_configuration::COOP;
     const int row_height = wm->font()->Size().y + 7;
-    const int kick_x = wm->font()->Size().x * 36;
+    const int kick_x = wm->font()->Size().x * (coop ? 55 : 36);
     ifield *fields = nullptr;
     int y = 0;
 
+    tab_level_text = current_level_text();
+    fields = new info_field(0, y + 3, ID_NULL, tab_level_text.c_str(), fields);
+    y += row_height;
+    tab_difficulty_text = current_difficulty_text();
+    fields = new info_field(0, y + 3, ID_NULL, tab_difficulty_text.c_str(), fields);
+    y += row_height;
+
+    tab_action_button *copy_room_button = nullptr;
     const bool show_room = main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0];
     if (show_room)
     {
@@ -316,12 +376,16 @@ void create_tab_player_status_window()
         snprintf(room, sizeof(room), "%s: %s", symbol_str("room_code"),
                  main_net_cfg->streamer_mode ? "******" : main_net_cfg->room_code);
         fields = new info_field(0, y + 3, ID_NULL, room, fields);
-        y += row_height;
-        fields = new tab_action_button(0, y, ID_NET_COPY_ROOM_CODE, symbol_str("copy_room_code"), fields);
+        int x1, y1, x2, y2;
+        fields->area(x1, y1, x2, y2);
+        copy_room_button = new tab_action_button(x2 + 1 + wm->font()->Size().x, y, ID_NET_COPY_ROOM_CODE,
+                                                 symbol_str("copy_room_code"), fields);
+        fields = copy_room_button;
         y += row_height;
     }
 
-    fields = new info_field(0, y + 3, ID_NULL, symbol_str("player_status_columns"), fields);
+    fields = new info_field(0, y + 3, ID_NULL,
+                            symbol_str(coop ? "coop_status_columns" : "player_status_columns"), fields);
     y += row_height;
 
     const std::vector<game_server::client_status> statuses = server ? server->client_statuses()
@@ -344,8 +408,21 @@ void create_tab_player_status_window()
         y += row_height;
     }
 
+    if (copy_room_button)
+    {
+        int right = 0;
+        int x1, y1, x2, y2;
+        for (ifield *field = fields; field; field = field->next)
+        {
+            field->area(x1, y1, x2, y2);
+            right = std::max(right, x2);
+        }
+        copy_room_button->area(x1, y1, x2, y2);
+        copy_room_button->Move(ivec2(right - (x2 - x1), y1));
+    }
+
     tab_player_status_window =
-        wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("player_status"));
+        wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("game_status"));
     wm->move_window(tab_player_status_window, std::max(0, (xres - tab_player_status_window->m_size.x) / 2),
                     std::max(0, (yres - tab_player_status_window->m_size.y) / 2));
 
@@ -357,13 +434,17 @@ void create_tab_player_status_window()
 }
 }
 
-bool handle_net_player_status_event(Event const &event)
+bool handle_net_player_status_event(Event const &event, bool &visible)
 {
     if (!tab_player_status_window)
         return false;
 
     if (event.type == EV_CLOSE_WINDOW && event.window == tab_player_status_window)
+    {
+        visible = false;
+        close_tab_player_status_window();
         return true;
+    }
 
     if (event.type == EV_MESSAGE && event.message.id == ID_NET_COPY_ROOM_CODE)
     {
@@ -512,6 +593,8 @@ int net_init(int argc, char **argv)
         }
         else if (!strcmp(argv[i], "-server"))
         {
+            if (main_net_cfg->host_failed)
+                continue;
             DEBUG_LOG("Setting state to SERVER");
             main_net_cfg->online = false;
             main_net_cfg->room_code[0] = '\0';
@@ -958,7 +1041,7 @@ int request_server_entry()
             return 0;
         }
 
-        uint8_t ctype = CLIENT_ABUSE;
+        uint8_t ctype = CLIENT_ABUSE_ID;
         uint16_t port = lstl(client_port), cnum;
         uint8_t reg, lobby, connected_players, max_players;
 
@@ -1004,8 +1087,9 @@ int request_server_entry()
         int16_t nkills;
 
         DEBUG_LOG("Sending client info - username: %s", uname);
-        if (sock->write(/* client_name_length */ &len, 1) != 1 ||
+        if (!valid_player_id(settings.player_id) || sock->write(/* client_name_length */ &len, 1) != 1 ||
             sock->write(/* client_name_data */ uname, len) != len ||
+            sock->write(/* client_identity */ settings.player_id.data(), PLAYER_ID_LENGTH) != PLAYER_ID_LENGTH ||
             sock->write(/* client_lower_skin */ &lower_skin, 1) != 1 ||
             sock->write(/* client_upper_skin */ &upper_skin, 1) != 1 ||
             sock->write(/* client_port */ &our_port, 2) != 2 || sock->read(/* server_port */ &port, 2) != 2 ||
@@ -1216,6 +1300,7 @@ void net_reload()
                 DEBUG_LOG("Creating new view for player %d", join_list->client_id);
                 f->next = new view(o, NULL, join_list->client_id);
                 copy_player_name(f->next->name, sizeof(f->next->name), join_list->name);
+                memcpy(f->next->persistent_id, join_list->persistent_id, sizeof(f->next->persistent_id));
                 o->set_controller(f->next);
                 f->next->set_tint(join_list->lower_skin);
                 f->next->set_upper_tint(join_list->upper_skin);
@@ -1225,6 +1310,7 @@ void net_reload()
                     current_level->add_object(o);
 
                 view *v = f->next;
+                the_game->restore_coop_player(v);
                 v->m_aa = ivec2(5);
                 v->m_bb = ivec2(319, 199) - ivec2(5);
                 join_list = join_list->next;
@@ -1235,32 +1321,40 @@ void net_reload()
             current_level->save(NET_STARTFILE, 1);
             base->mem_lock = 0;
 
-            DEBUG_LOG("Creating resync window");
             game_server *host_server = dynamic_cast<game_server *>(game_face);
             std::vector<player_status_row> player_rows;
-            Jwindow *j;
-            if (host_server)
-                j = create_player_status_window(host_server, player_rows, symbol_str("resync"), symbol_str("hold!"));
-            else
-                j = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1),
-                                     new info_field(0, 0, 0, symbol_str("resync"), NULL), symbol_str("hold!"));
-
-            wm->flush_screen();
+            Jwindow *j = nullptr;
 
             if (!reload_start())
             {
                 DEBUG_LOG("Reload start failed");
-                wm->close_window(j);
                 return;
             }
 
             base->input_state = INPUT_RELOAD;
+            const std::uint64_t wait_started = SDL_GetTicks();
+            constexpr std::uint64_t resync_window_delay_ms = 200;
 
             DEBUG_LOG("Waiting for clients to reload");
-            do
+            while (true)
             {
                 service_net_request();
-                if (host_server && !refresh_player_status_window(j, host_server, player_rows))
+                if (reload_end())
+                    break;
+
+                // Quick reloads finish without flashing a status window.
+                if (!j && SDL_GetTicks() - wait_started >= resync_window_delay_ms)
+                {
+                    DEBUG_LOG("Creating resync window");
+                    if (host_server)
+                        j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
+                                                        symbol_str("hold!"));
+                    else
+                        j = wm->CreateWindow(ivec2(0, yres / 2), ivec2(-1),
+                                             new info_field(0, 0, 0, symbol_str("resync"), NULL), symbol_str("hold!"));
+                    wm->flush_screen();
+                }
+                else if (j && host_server && !refresh_player_status_window(j, host_server, player_rows))
                 {
                     wm->close_window(j);
                     j = create_player_status_window(host_server, player_rows, symbol_str("resync"),
@@ -1272,7 +1366,7 @@ void net_reload()
                     do
                     {
                         wm->get_event(ev);
-                        if (ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
+                        if (j && ev.type == EV_MESSAGE && host_server && ev.message.id >= ID_NET_KICK_PLAYER_FIRST &&
                             ev.message.id < ID_NET_KICK_PLAYER_END)
                         {
                             const int client_id = ev.message.id - ID_NET_KICK_PLAYER_FIRST;
@@ -1285,12 +1379,14 @@ void net_reload()
                         }
                     } while (wm->IsPending());
 
-                    wm->flush_screen();
+                    if (j)
+                        wm->flush_screen();
                 }
-            } while (!reload_end());
+            }
 
             DEBUG_LOG("Reload complete, cleaning up");
-            wm->close_window(j);
+            if (j)
+                wm->close_window(j);
             unlink(NET_STARTFILE);
 
             the_game->reset_keymap();
@@ -1447,6 +1543,8 @@ int get_inputs_from_server(unsigned char *buf)
 int become_server(char *name)
 {
     DEBUG_LOG("Attempting to become server: %s", name);
+    if (main_net_cfg)
+        main_net_cfg->host_failed = true;
     if (prot && main_net_cfg)
     {
         if (comm_sock)
@@ -1457,7 +1555,6 @@ int become_server(char *name)
         if (!comm_sock)
         {
             DEBUG_LOG("Failed to create communication socket");
-            prot = NULL;
             return 0;
         }
         if (main_net_cfg->online && prot == &webrtc)
@@ -1482,7 +1579,6 @@ int become_server(char *name)
             if (comm_sock)
                 delete comm_sock;
             comm_sock = NULL;
-            prot = NULL;
             return 0;
         }
         game_sock->read_selectable();
@@ -1491,6 +1587,7 @@ int become_server(char *name)
         delete game_face;
         game_face = new game_server;
         local_client_number = 0;
+        main_net_cfg->host_failed = false;
         return 1;
     }
     return 0;

@@ -19,6 +19,7 @@
 #include "netcfg.h"
 #include "nfserver.h"
 #include "multiplayer.h"
+#include "menu.h"
 #include "input.h"
 #include "cache.h"
 #include "timing.h"
@@ -32,6 +33,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <memory>
 #include "imlib/scroller.h"
 #include "file_utils.h"
 #include "sdlport/setup.h"
@@ -69,11 +71,13 @@ static void build_level_list(bool is_coop)
     SDL_free(matches);
 
     std::sort(g_net_levels.begin(), g_net_levels.end());
+    if (is_coop && coop_save_available())
+        g_net_levels.insert(g_net_levels.begin(), ""); // Resume the host's last console save.
     g_net_levels_display.clear();
     g_net_levels_display.reserve(g_net_levels.size());
     for (auto &s : g_net_levels)
     {
-        std::string disp = s.substr(0, s.size() - 4); // strip .spe
+        std::string disp = s.empty() ? symbol_str("coop_continue") : s.substr(0, s.size() - 4);
         if (disp.size() > 12)
             disp = disp.substr(0, 12);
         else if (disp.size() < 12)
@@ -111,6 +115,8 @@ enum
     NET_ROOM_CODE,
     NET_STREAMER_MODE,
     NET_LOCAL_SEARCH,
+    NET_STREAMER_LABEL,
+    NET_ANT_MULTIPLIER,
     NET_GAME = 400,
     MIN_1,
     MIN_2,
@@ -136,10 +142,40 @@ enum
     LEVEL_BOX
 };
 
+class start_net_game_button : public button
+{
+  public:
+    using button::button;
+
+    int selectable() override
+    {
+        return !net_game_active();
+    }
+
+    void draw_first(image *screen) override
+    {
+        button::draw_first(screen);
+        if (net_game_active())
+            wm->font()->PutString(screen, m_pos + ivec2(3, 4), symbol_str("server"), wm->dark_color());
+    }
+
+    void draw(int active, image *screen) override
+    {
+        button::draw(net_game_active() ? 0 : active, screen);
+    }
+
+    void handle_event(Event &event, image *screen, InputManager *input) override
+    {
+        if (!net_game_active())
+            button::handle_event(event, screen, input);
+    }
+};
+
 class MultiplayerUI
 {
   public:
-    explicit MultiplayerUI(net_configuration &config) : config(config)
+    explicit MultiplayerUI(net_configuration &config)
+        : config(config), ant_multiplier_input(std::to_string(config.ant_multiplier))
     {
     }
 
@@ -152,6 +188,7 @@ class MultiplayerUI
     int get_options(int server, bool online_join = false);
 
     net_configuration &config;
+    std::string ant_multiplier_input;
 };
 
 void show_multiplayer_error(char const *msg, char const *title)
@@ -167,11 +204,11 @@ void show_multiplayer_error(char const *msg, char const *title)
         wm->flush_screen();
         do
         {
-            wm->get_event(ev);
+            get_menu_event(ev);
         } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
-    } while (!application_quit_requested() &&
-             (ev.type != EV_MESSAGE || ev.message.id != CFG_ERR_OK || ev.type == EV_CLOSE_WINDOW ||
-              (ev.type == EV_KEY && ev.key == JK_ESC)));
+    } while (!application_quit_requested() && ev.type != EV_CLOSE_WINDOW &&
+             !(ev.type == EV_KEY && ev.key == JK_ESC) &&
+             !(ev.type == EV_MESSAGE && ev.message.id == CFG_ERR_OK));
     wm->close_window(j);
     wm->flush_screen();
 }
@@ -248,6 +285,17 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             }
             config.kills = kl;
         }
+        else
+        {
+            char *end;
+            const long multiplier = strtol(i->get(NET_ANT_MULTIPLIER)->read(), &end, 10);
+            if (*end || multiplier < 1 || multiplier > net_configuration::MAX_ANT_MULTIPLIER)
+            {
+                error(symbol_str("ant_multiplier_error"));
+                return 0;
+            }
+            config.ant_multiplier = static_cast<int>(multiplier);
+        }
 
         char *nm = i->get(NET_NAME)->read();
         if (!*nm || strstr(nm, "\""))
@@ -284,23 +332,31 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
             strcpy(lsf, "addon/deathmat/deathmat.lsp"); // Use same networking infrastructure for co-op
         }
 
+        config.resume_coop = false;
+        int sel_index = -1;
+        if (ifield *lvl_if = i->get(LEVEL_BOX))
+            sel_index = static_cast<pick_list *>(lvl_if)->get_selection();
+        if (config.game_mode == net_configuration::COOP && sel_index >= 0 &&
+            sel_index < static_cast<int>(g_net_levels.size()) && g_net_levels[sel_index].empty())
+        {
+            if (!coop_save_available())
+            {
+                error(symbol_str("coop_load_failed"));
+                return 0;
+            }
+            config.resume_coop = true;
+        }
+
         bFILE *fp = open_file("addon/deathmat/levelset.lsp", "wb");
         if (!fp->open_failure())
         {
-            int sel_index = -1;
-            ifield *lvl_if = i->get(LEVEL_BOX);
-            if (lvl_if)
-            {
-                pick_list *pl = (pick_list *)lvl_if; /* lvl_if is pick_list (LEVEL_BOX) */
-                if (pl)
-                    sel_index = pl->get_selection();
-            }
             if (sel_index >= 0 && sel_index < (int)g_net_levels.size())
             {
                 char str[512];
                 // Use correct directory path based on game mode
                 const char *dir = (config.game_mode == net_configuration::COOP) ? "levels" : "netlevel";
-                snprintf(str, sizeof(str), "(setq net_levels '(\"%s/%s\"))\n", dir, g_net_levels[sel_index].c_str());
+                const char *level = config.resume_coop ? "level00.spe" : g_net_levels[sel_index].c_str();
+                snprintf(str, sizeof(str), "(setq net_levels '(\"%s/%s\"))\n", dir, level);
                 fp->write(str, strlen(str) + 1);
             }
         }
@@ -341,8 +397,13 @@ int MultiplayerUI::confirm_inputs(InputManager *i, int server, bool online_join)
     settings.streamer_mode = config.streamer_mode;
     if (server)
         settings.server_name = game_name;
+    if (!valid_player_id(settings.player_id))
+        settings.player_id = generate_player_id();
     if (!settings.Save())
-        fprintf(stderr, "Unable to save multiplayer names to settings.toml\n");
+    {
+        error(symbol_str("player_identity_failed"));
+        return 0;
+    }
 
     return 1;
 }
@@ -389,7 +450,7 @@ void MultiplayerUI::error(char const *message)
             wm->flush_screen();
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm.handle_event(ev, NULL);
             if ((ev.type == EV_KEY && (ev.key == JK_ESC || ev.key == JK_ENTER)) || ev.type == EV_MESSAGE)
@@ -427,6 +488,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
           *cancel_image = cache.img(cache.reg("art/frame.spe", "cancel", SPEC_IMAGE, 1))->copy();
 
     ifield *list = NULL;
+    std::unique_ptr<ifield> hidden_streamer_label;
+    std::unique_ptr<ifield> hidden_streamer_box;
 
     if (server)
     {
@@ -459,14 +522,23 @@ int MultiplayerUI::get_options(int server, bool online_join)
         connection_box->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + gap;
 
-        info_field *streamer_lbl = new info_field(right_x, right_y, 0, symbol_str("streamer_mode"), list);
-        list = streamer_lbl;
+        info_field *streamer_lbl = new info_field(right_x, right_y, NET_STREAMER_LABEL, symbol_str("streamer_mode"), NULL);
         streamer_lbl->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + 1;
-        button_box *streamer_box = make_streamer_mode_box(right_x, right_y, config.streamer_mode, list);
-        list = streamer_box;
+        button_box *streamer_box = make_streamer_mode_box(right_x, right_y, config.streamer_mode, NULL);
         streamer_box->area(cx1, cy1, cx2, cy2);
         right_y = cy2 + gap;
+        if (config.online)
+        {
+            streamer_lbl->next = list;
+            streamer_box->next = streamer_lbl;
+            list = streamer_box;
+        }
+        else
+        {
+            hidden_streamer_label.reset(streamer_lbl);
+            hidden_streamer_box.reset(streamer_box);
+        }
 
         // Game mode selection
         info_field *mode_lbl = new info_field(left_x, left_y, 0, symbol_str("game_mode"), list);
@@ -541,6 +613,12 @@ int MultiplayerUI::get_options(int server, bool online_join)
             list = new text_field(left_x, left_y, NET_KILLS, symbol_str("kills_to_win"), "***", "25", list);
             left_y += fnt->Size().y + gap;
         }
+        else
+        {
+            list = new text_field(left_x, left_y, NET_ANT_MULTIPLIER, symbol_str("ant_multiplier"), "**",
+                                  ant_multiplier_input.c_str(), list);
+            left_y += fnt->Size().y + gap;
+        }
 
         // Right column : level selection list
         build_level_list(config.game_mode == net_configuration::COOP);
@@ -548,7 +626,7 @@ int MultiplayerUI::get_options(int server, bool online_join)
         {
             list = new info_field(right_x, right_y, 0, symbol_str("select_level"), list);
             right_y += fnt->Size().y + 4;
-            // Leave room for the local privacy controls above the list.
+            // Keep the level list in place when the online privacy controls are hidden.
             constexpr int visible_level_rows = 7;
             pick_list *pl = new pick_list(right_x, right_y, LEVEL_BOX, visible_level_rows, g_net_levels_c.data(),
                                           (int)g_net_levels_c.size(), 0, list, cache.img(window_texture));
@@ -602,13 +680,35 @@ int MultiplayerUI::get_options(int server, bool online_join)
             wm->flush_screen();
             do
             {
-                wm->get_event(ev);
+                get_menu_event(ev);
             } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
             inm.handle_event(ev, NULL);
             if (ev.type == EV_MESSAGE)
             {
                 switch (ev.message.id)
                 {
+                case CONNECTION_LOCAL:
+                case CONNECTION_ONLINE: {
+                    bool online = ev.message.id == CONNECTION_ONLINE;
+                    if (online == config.online)
+                        break;
+                    config.online = online;
+                    if (online)
+                    {
+                        hidden_streamer_label->next = NULL;
+                        hidden_streamer_box->next = hidden_streamer_label.release();
+                        inm.add(hidden_streamer_box.release());
+                    }
+                    else
+                    {
+                        read_streamer_mode(&inm, config);
+                        hidden_streamer_box.reset(inm.unlink(NET_STREAMER_MODE));
+                        hidden_streamer_label.reset(inm.unlink(NET_STREAMER_LABEL));
+                    }
+                    main_screen->PutImage(ns, ivec2(x, y));
+                    inm.redraw();
+                }
+                break;
                 case STREAMER_MODE_OFF:
                 case STREAMER_MODE_ON: {
                     if (text_field *field = static_cast<text_field *>(inm.get(NET_ROOM_CODE)))
@@ -647,6 +747,8 @@ int MultiplayerUI::get_options(int server, bool online_join)
                         config.online = selected && selected->id == CONNECTION_ONLINE;
                     }
                     read_streamer_mode(&inm, config);
+                    if (ifield *multiplier = inm.get(NET_ANT_MULTIPLIER))
+                        ant_multiplier_input = multiplier->read();
                     config.min_players = ((ifield *)inm.get(NET_MIN)->read())->id - MIN_1 + 1;
                     config.max_players = ((ifield *)inm.get(NET_MAX)->read())->id - MAX_2 + 2;
 
@@ -704,7 +806,7 @@ int MultiplayerUI::run()
     {
 
         char const *server_str = symbol_str("server");
-        button *sb = new button(x + 40, y + ns_h - 23 - fnt->Size().y, NET_SERVER, server_str, NULL);
+        button *sb = new start_net_game_button(x + 40, y + ns_h - 23 - fnt->Size().y, NET_SERVER, server_str, NULL);
 
         if (main_net_cfg &&
             (main_net_cfg->state == net_configuration::CLIENT || main_net_cfg->state == net_configuration::SERVER))
@@ -744,11 +846,12 @@ int MultiplayerUI::run()
 
         do
         {
+            update_multiplayer_menu();
             if (wm->IsPending())
             {
                 do
                 {
-                    wm->get_event(ev);
+                    get_menu_event(ev);
                 } while (ev.type == EV_MOUSE_MOVE && wm->IsPending());
                 inm.handle_event(ev, NULL);
                 if (ev.type == EV_MESSAGE)
@@ -759,7 +862,8 @@ int MultiplayerUI::run()
                         done = 1;
                         break;
                     case NET_SERVER:
-                        done = 1;
+                        if (!net_game_active())
+                            done = 1;
                         break;
                     case NET_SINGLE:
                         done = 1;
@@ -883,7 +987,7 @@ int MultiplayerUI::run()
             }
             return 0;
         }
-        else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER)
+        else if (ev.type == EV_MESSAGE && ev.message.id == NET_SERVER && !net_game_active())
         {
             int options_result;
             do

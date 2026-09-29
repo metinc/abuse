@@ -63,6 +63,7 @@ class Settings
 
     //multiplayer
     std::string player_name;
+    std::string player_id; // Persistent identity, independent of name and transport.
     std::string server_name;
     bool streamer_mode; //keep room codes out of captured video and console output
 

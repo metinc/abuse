@@ -21,6 +21,9 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <algorithm>
+#include <climits>
+#include <vector>
 #ifdef WIN32
 #include <io.h>
 #endif
@@ -33,9 +36,6 @@
 #include "specache.h"
 
 extern net_protocol *prot;
-
-// FIXME: Where is this supposed to be coming from?
-typedef unsigned short ushort;
 
 file_manager *fman = NULL;
 
@@ -63,8 +63,6 @@ void file_manager::process_net()
             ok = 0;
             // fprintf(stderr,"Killing nfs client, socket went bad\n");
         }
-        else if (nc->size_to_read && nc->sock->ready_to_write())
-            ok = nc->send_read();
         else if (nc->sock->ready_to_read())
             ok = process_nfs_command(nc); // if we couldn't process the packet, delete the connection
 
@@ -95,13 +93,39 @@ int file_manager::process_nfs_command(nfs_client *c)
     switch (cmd)
     {
     case NFCMD_READ: {
-        int32_t size;
-        if (c->sock->read(/* client_read_size */ &size, sizeof(size)) != sizeof(size))
+        int32_t requested;
+        if (c->sock->read(&requested, sizeof(requested)) != sizeof(requested))
             return 0;
-        size = lltl(size);
+        requested = lltl(requested);
+        if (requested < 0 || requested > INT_MAX - static_cast<int>(sizeof(int32_t)))
+            return 0;
 
-        c->size_to_read = size;
-        return c->send_read();
+        const auto offset = lseek(c->file_fd, 0, SEEK_CUR);
+        if (offset < 0)
+            return 0;
+        const int32_t available = offset < c->size ? c->size - offset : 0;
+        const int32_t count = std::min(requested, available);
+        std::vector<char> response(sizeof(int32_t) + count);
+        int32_t received = 0;
+        while (received < count)
+        {
+            const int got = read(c->file_fd, response.data() + sizeof(int32_t) + received, count - received);
+            if (got < 0)
+            {
+                if (errno == EINTR)
+                    continue;
+                return 0;
+            }
+            if (got == 0)
+                break;
+            received += got;
+        }
+
+        // One length followed by the complete payload. The transport handles packet boundaries.
+        const int32_t length = lltl(received);
+        memcpy(response.data(), &length, sizeof(length));
+        const int response_size = sizeof(length) + received;
+        return c->sock->write(response.data(), response_size) == response_size;
     }
     break;
     case NFCMD_CLOSE: {
@@ -134,59 +158,6 @@ int file_manager::process_nfs_command(nfs_client *c)
         return 0;
     }
     }
-}
-
-int file_manager::nfs_client::send_read() // return 0 if failure on socket, not failure to read
-{
-    if (file_fd >= 0 && sock)
-    {
-        // first make sure the socket isn't 'full'
-        if (sock->ready_to_write())
-        {
-            char buf[READ_PACKET_SIZE];
-            short read_total;
-            short actual;
-
-            do
-            {
-                read_total = size_to_read > (READ_PACKET_SIZE - 2) ? (READ_PACKET_SIZE - 2) : size_to_read;
-
-                actual = read(file_fd, buf + 2, read_total);
-                ushort tmp = lstl(actual);
-                memcpy(buf, &tmp, sizeof(tmp));
-
-                int write_amount = sock->write(/* server_read_data */ buf, actual + 2);
-                if (write_amount != actual + 2)
-                {
-                    fprintf(stderr, "write failed\n");
-                    return 0;
-                }
-
-                size_to_read -= actual;
-
-                if (!sock->ready_to_write())
-                {
-                    sock->read_unselectable();
-                    sock->write_selectable();
-                    return 1; // not ok to write anymore, try again latter
-                }
-
-            } while (size_to_read && actual == read_total);
-
-            sock->read_selectable();
-            sock->write_unselectable();
-
-            size_to_read = 0;
-            return 1;
-        }
-        else
-        {
-            sock->read_unselectable();
-            sock->write_selectable();
-            return 1;
-        }
-    }
-    return 0;
 }
 
 void file_manager::secure_filename(char *filename, char *mode)
@@ -227,7 +198,7 @@ void file_manager::secure_filename(char *filename, char *mode)
 }
 
 file_manager::nfs_client::nfs_client(net_socket *sock, int file_fd, nfs_client *next)
-    : sock(sock), file_fd(file_fd), next(next), size_to_read(0)
+    : sock(sock), file_fd(file_fd), next(next), size(0)
 {
     sock->read_selectable();
 }
@@ -321,7 +292,7 @@ void file_manager::add_nfs_client(net_socket *sock)
         }
 
         nfs_list = new nfs_client(sock, f, nfs_list);
-        nfs_list->size = size;
+        nfs_list->size = lltl(size);
     }
 }
 
@@ -337,7 +308,7 @@ void file_manager::remote_file::r_close(char const *reason)
 }
 
 file_manager::remote_file::remote_file(net_socket *sock, char const *filename, char const *mode, remote_file *Next)
-    : sock(sock)
+    : sock(sock), socket_fd(sock->get_fd())
 {
     next = Next;
     open_local = 0;
@@ -384,58 +355,37 @@ file_manager::remote_file::remote_file(net_socket *sock, char const *filename, c
 
 int file_manager::remote_file::unbuffered_read(void *buffer, size_t count)
 {
-    if (sock && count)
+    if (!sock || !count)
+        return 0;
+
+    const int32_t requested = std::min(count, static_cast<size_t>(INT_MAX - sizeof(int32_t)));
+    const int32_t length = lltl(requested);
+    uint8_t request[1 + sizeof(length)] = {NFCMD_READ};
+    memcpy(request + 1, &length, sizeof(length));
+    if (sock->write(request, sizeof(request)) != sizeof(request))
     {
-        uint8_t cmd = NFCMD_READ;
-        if (sock->write(/* client_nfs_command */ &cmd, sizeof(cmd)) != sizeof(cmd))
-        {
-            r_close("read : could not send command");
-            return 0;
-        }
-
-        int32_t rsize = lltl(count);
-        if (sock->write(/* client_read_size */ &rsize, sizeof(rsize)) != sizeof(rsize))
-        {
-            r_close("read : could not send size");
-            return 0;
-        }
-
-        int32_t total_read = 0;
-        char buf[READ_PACKET_SIZE];
-
-        ushort packet_size;
-        do
-        {
-            if (sock->read(/* server_read_size */ &packet_size, sizeof(packet_size)) != sizeof(packet_size))
-            {
-                fprintf(stderr, "could not read packet size\n");
-                return 0;
-            }
-
-            packet_size = lstl(packet_size);
-
-            // Read exactly packet_size bytes into buf
-            size_t received = 0;
-            while (received < packet_size)
-            {
-                ushort chunk = sock->read(/* server_read_data */ buf + received, packet_size - received);
-                if (chunk == 0)
-                {
-                    fprintf(stderr, "incomplete packet\n");
-                    return 0;
-                }
-                received += chunk;
-            }
-
-            memcpy(buffer, buf, packet_size);
-            buffer = (void *)(((char *)buffer) + packet_size);
-
-            total_read += packet_size;
-            count -= packet_size;
-        } while (packet_size == READ_PACKET_SIZE - 2 && count);
-        return total_read;
+        r_close("read : could not send request");
+        return 0;
     }
-    return 0;
+
+    int32_t received;
+    if (sock->read(&received, sizeof(received)) != sizeof(received))
+    {
+        r_close("read : could not read size");
+        return 0;
+    }
+    received = lltl(received);
+    if (received < 0 || received > requested)
+    {
+        r_close("read : invalid size");
+        return 0;
+    }
+    if (received && sock->read(buffer, received) != received)
+    {
+        r_close("read : incomplete payload");
+        return 0;
+    }
+    return received;
 }
 
 int32_t file_manager::remote_file::unbuffered_tell() // ask server where the offset of the file pointer is
@@ -531,7 +481,7 @@ int file_manager::rf_open_file(char const *&filename, char const *mode)
         else
         {
             remote_list = rf;
-            return rf->sock->get_fd();
+            return rf->fd();
         }
     }
 
@@ -579,9 +529,9 @@ int file_manager::rf_open_file(char const *&filename, char const *mode)
 file_manager::remote_file *file_manager::find_rf(int fd)
 {
     remote_file *r = remote_list;
-    for (; r && r->sock->get_fd() != fd; r = r->next)
+    for (; r && r->fd() != fd; r = r->next)
     {
-        if (r->sock->get_fd() == -1)
+        if (r->fd() == -1)
         {
             fprintf(stderr, "bad sock\n");
         }
@@ -623,7 +573,7 @@ int file_manager::rf_read(int fd, void *buffer, size_t count)
 int file_manager::rf_close(int fd)
 {
     remote_file *rf = remote_list, *last = NULL;
-    while (rf && rf->sock->get_fd() != fd)
+    while (rf && rf->fd() != fd)
     {
         last = rf;
         rf = rf->next;

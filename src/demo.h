@@ -20,6 +20,7 @@ class demo_manager
 {
     LObject *initial_difficulty;
     int initial_game_mode;
+    int initial_ant_multiplier;
     bFILE *record_file;
     int skip_next;
     bool automatic_recording;

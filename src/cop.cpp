@@ -764,7 +764,7 @@ void *cop_mover(int xm, int ym, int but)
                 else if (host_can_restart)
                     the_game->show_help(symbol_str("space_cont"));
                 else if (!team_is_dead && local_player && !o->controller()->spectating())
-                    the_game->show_help(symbol_str("space_cont"));
+                    the_game->show_help(symbol_str("space_spectate"));
             }
             else if ((!o->controller() || but || o->controller()->key_down(JK_SPACE) ||
                       o->controller()->key_down(JK_ENTER)))

@@ -14,6 +14,7 @@
 #include "light.h"
 #include "jwindow.h"
 #include "player_name.h"
+#include "player_identity.h"
 
 class object_node;
 class game_object;
@@ -61,6 +62,7 @@ class view
     }
 
     char name[100];
+    char persistent_id[PLAYER_ID_LENGTH + 1] = {};
     struct suggest_struct suggest;
 
     int god; // :) if you believe in such things
@@ -83,6 +85,7 @@ class view
     int32_t last_left, last_right, last_up, last_down, // how many frames ago were these pressed (<=0)
         last_b1, last_b2, last_b3, last_b4, last_hp, last_ammo, last_type;
     int32_t secrets, kills, tsecrets, tkills;
+    int32_t damage = 0, total_damage = 0;
 
     void draw_character_damage(); // draws the characters 'status' on the viewer
 

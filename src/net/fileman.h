@@ -20,10 +20,8 @@ class file_manager
         int file_fd;
 
         nfs_client *next;
-        int32_t size_to_read;
         int32_t size;
         nfs_client(net_socket *sock, int file_fd, nfs_client *next);
-        int send_read(); // flushes as much of size_to_read as possible
         ~nfs_client();
     };
 
@@ -31,6 +29,7 @@ class file_manager
     {
       public:
         net_socket *sock;
+        int socket_fd; // Keep the handle valid for cleanup after a failed transfer.
         void r_close(char const *reason);
         int32_t size; // server tells us the size of the file when we open it
         int open_local;
@@ -55,10 +54,7 @@ class file_manager
         ~remote_file();
         int fd()
         {
-            if (sock)
-                return sock->get_fd();
-            else
-                return -1;
+            return socket_fd;
         }
     };
 

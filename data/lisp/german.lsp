@@ -17,8 +17,10 @@
 	 (setq kick_player        "Kick")
 	 (setq last_packet_age    "Zeit seit letztem Paket")
 	 (setq host_player        "Host")
-	 (setq player_status      "Spielerstatus")
+	 (setq game_status      "Spielstatus")
+	 (setq current_level_label "Level")
 	 (setq player_status_columns "Spieler             Score Paketalter")
+	 (setq coop_status_columns "Spieler               Schaden Gesamtschaden Paketalter")
 	 (setq hold!              "Bitte warten!")
 	 (setq waiting            "Wartet auf Daten...")
 	 (setq Error              "Fehler")
@@ -206,6 +208,7 @@
                            ; 012345678901234567 (please keep same allignment of Name level & total)
 	 (setq score_header "Name              Level gesamt")   ; V-E
 	 (setq space_cont "LEERTASTE, um fortzufahren ")        ; V-E
+	 (setq space_spectate "LEERTASTE, um deinem Teamkameraden zuzusehen")
 	 (setq no_saved "Kein gespeichertes Spiel")
 
 	 (setq lvl_2   "Klein") ; V-C added
@@ -256,6 +259,8 @@
 	 (setq ok_button       "OK")
 	 (setq cancel_button   "ABBRECHEN")
 	 (setq kills_to_win    "Kills zum Sieg")
+         (setq ant_multiplier "Gegner-Multiplikator")
+         (setq ant_multiplier_error "Gegner-Multiplikator muss zwischen 1 und 99 sein.")
 	 (setq max_play        "Maximale Spielerzahl")
 	 (setq min_play        "\nMinimale Spielerzahl")          ; V-B (added \n)
 	 (setq use_port        "Spielzahl")
@@ -268,6 +273,8 @@
 	 (setq room_code       "Raumcode")
 	 (setq room_code_error "Raumcode: genau 6 Zeichen")
 	 (setq online_join_error "Onlinespiel konnte nicht beigetreten werden.\nPrüfe den Raumcode und versuche es erneut.")
+         (setq online_host_error "Onlineraum konnte nicht erstellt werden.\nPrüfe deine Verbindung und versuche es erneut.")
+         (setq server_host_error "Server konnte nicht gestartet werden.\nPrüfe deine Netzwerkeinstellungen und versuche es erneut.")
 
          (setq min_error       "Min. Spielerzahl 1-8")
          (setq max_players     "Dieser Server ist voll.\nBitte versuche es später erneut.")
@@ -278,8 +285,12 @@
          (setq online_ready_streamer "Raumcode beim Streamen verborgen.\nKopiere ihn zum privaten Teilen.\nStarte das Spiel, wenn du bereit bist.")
          (setq start_game_button "Spiel starten")
 	 (setq coop_lobby_title "Co-op")
+         (setq coop_continue "Fortsetzen")
+         (setq coop_save_failed "Co-op-Spiel konnte nicht gespeichert werden.")
+         (setq coop_load_failed "Co-op-Spielstand konnte nicht geladen werden.")
+         (setq player_identity_failed "Spielerkennung konnte nicht gespeichert werden.")
 	 (setq deathmatch_lobby_title "Deathmatch")
-	 (setq coop_lobby_instructions "Das Level ist geschafft, sobald mindestens ein\nSpieler das Ziel erreicht.\nSpeicherkonsolen können nur genutzt werden,\nsolange alle Spieler leben.\nPick-ups werden automatisch\nan alle Spieler verteilt.\nBleibt zusammen, damit niemand allein\nin einem Raum festsitzt.\nDer Host kann jederzeit über das Hauptmenü\nden letzten Spielstand laden.\nTAB blendet Raumcode und Highscores ein/aus.")
+	 (setq coop_lobby_instructions "Das Level ist geschafft, sobald mindestens ein\nSpieler das Ziel erreicht.\nSpeicherkonsolen können nur genutzt werden,\nsolange alle Spieler leben.\nPick-ups werden automatisch\nan alle Spieler verteilt.\nBleibt zusammen, damit niemand allein\nin einem Raum festsitzt.\nDer Host kann im Hauptmenü den letzten\nCheckpoint laden. Konsolenspielstände lassen\nsich beim Hosten mit Fortsetzen laden.\nTAB blendet Raumcode und Highscores ein/aus.")
 	 (setq deathmatch_lobby_instructions "Wer das Kill-Limit von %d erreicht, gewinnt.\nJeder Spieler ist ein Gegner.\nWaffen und Munition respawnen.\nTAB blendet Raumcode und Highscores ein/aus.")
 	 (setq lobby_players "Verbundene Spieler: %d")
 	 (setq online_lobby_players "Raumcode: %s\nVerbundene Spieler: %d")
@@ -288,6 +299,7 @@
          (setq copy_room_code  "Raumcode kopieren")
          (setq searching_local_games "Suche nach lokalen Spielen")
          (setq lev_complete    "Level abgeschlossen")
+         (setq lev_next        "Nächstes Level")
          (setq no_low_mem         (concatenate 'string "Nicht genügend Grundspeicher\n"
                                            "  Vorschläge...\n"
                                            "    - Startdiskette erstellen (Info im Handbuch)\n"

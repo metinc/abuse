@@ -283,7 +283,7 @@
       (if (and (< (distx) (xvel)) (< (disty) (yvel)))
 	   (progn
 		(if (eq (aistate) 1) (request_end_game))
-		(if (eq (aitype) 1) (show_stats))
+		(if (eq (aitype) 1) (show_stats (xacel)))
 		(request_level_load (concatenate 'string "addon/twist/levels/l" (digstr (xacel) 2) "s" (digstr (yacel) 2) ".lvl"))
 	   )
 		T)

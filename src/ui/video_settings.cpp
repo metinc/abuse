@@ -29,6 +29,7 @@
 #include "id.h"
 #include "cache.h"
 #include "video_settings.h"
+#include "menu.h"
 
 //AR
 #include "sdlport/setup.h"
@@ -187,11 +188,11 @@ void show_video_settings(palette *pal)
 
     Event event;
     wm->flush_screen();
-    while (!abort_menu)
+    while (!abort_menu && !application_quit_requested())
     {
         do
         {
-            wm->get_event(event);
+            get_menu_event(event);
         } while (event.type == EV_MOUSE_MOVE && wm->IsPending());
 
         if (event.type == EV_CLOSE_WINDOW || (event.type == EV_KEY && event.key == JK_ESC))

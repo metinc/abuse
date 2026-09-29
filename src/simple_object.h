@@ -16,6 +16,9 @@
 #define FLAG_JUST_BLOCKED 2
 #define FLOATING_FLAG 4
 #define KNOWN_FLAG 8
+// Saved with the object and retained when a hidden ANT changes type.
+#define FLAG_COOP_ANT_MULTIPLIED 16
+#define FLAG_COOP_ANT_SILENT 32
 
 // Object types
 #define TYPE_PLAYER_BOTTOM 56

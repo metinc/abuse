@@ -18,6 +18,7 @@ endif()
 
 add_executable(abuse
     common.h
+    coop_state.cpp coop_state.h player_identity.h
     file_utils.cpp file_utils.h
     lol/matrix.cpp lol/matrix.h
     specache.cpp specache.h

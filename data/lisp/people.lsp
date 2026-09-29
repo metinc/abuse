@@ -125,6 +125,11 @@
 ; i.e. not for savegames
 ; this function is called once for each player object
 (defun set_player_defaults ()
+  ;; Every teammate starts a new co-op level alive and at full health.
+  (if (cooperative)
+      (progn
+	(set_hp 100)
+	(set_state stopped)))
   (set_ambient_light (me) 35)
   (set_aistate 0)
   (set_fade_count 0)
@@ -867,21 +872,21 @@
       (3 (set_aistate 4))
       (4
 	;; In multiplayer, activate the console without opening the save UI.
-	(let ((spot (if (eq (total_players) 1) (get_save_slot) 0)))
+	(let ((spot (if (and (not (cooperative)) (eq (total_players) 1)) (get_save_slot) 0)))
 	  (set_state stopped)
 	  (set_aistate 1)
 	  (if (cooperative)
 	      (progn
 		(apply_player_pickup
 		  (bg) (list 'update_coop_checkpoint (x) (y)))
-		;; Multiplayer uses a single host-owned temporary snapshot. No save
-		;; slot UI is opened, but the complete state of every player is saved.
-		(save_game "coop-checkpoint")
-		(with_object (bg)
-		  (if (local_player)
-		      ;; One second fully visible, followed by the one-second fade.
-		      (show_help (get_train_msg 12) 1000)))
-		(play_sound SAVE_SND 127 (x) (y)))
+		;; The host keeps both the current checkpoint and a durable co-op save.
+		(if (save_game "coop-checkpoint")
+		    (progn
+		      (with_object (bg)
+			(if (local_player)
+			    ;; One second fully visible, followed by the one-second fade.
+			    (show_help (get_train_msg 12) 1000)))
+		      (play_sound SAVE_SND 127 (x) (y)))))
 	    (if (not (eq spot 0));; did they escape ?
 		(progn
 		  (show_help (concatenate 'string Station (num2str (xvel)) secured))
@@ -916,7 +921,7 @@
       (if (eq (aistate) end_level)
 	  (request_end_game)
 	(progn
-	  (show_stats)
+	  (show_stats (aistate))
 	  (request_level_load (next_level_filename (aistate))))))
   T)
 

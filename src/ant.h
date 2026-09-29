@@ -27,7 +27,9 @@ enum
     ANT_CEIL_SHOOT = 14
 };
 
+class game_object;
+bool is_ant_enemy(game_object *object);
 void *ant_ai();
-void show_stats();
+void show_stats(int next_level = -1);
 
 #endif

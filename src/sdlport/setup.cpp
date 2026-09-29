@@ -45,6 +45,7 @@
 #include "setup.h"
 #include "errorui.h"
 #include "player_name.h"
+#include "player_identity.h"
 
 //AR
 #include <fstream>
@@ -797,6 +798,7 @@ bool Settings::ReadTomlFile()
 
         const settings_document *multiplayer = find_table(document, "multiplayer");
         read_string(multiplayer, "multiplayer", "player_name", player_name);
+        read_string(multiplayer, "multiplayer", "player_id", player_id);
         read_string(multiplayer, "multiplayer", "server_name", server_name);
         read_boolean(multiplayer, "multiplayer", "streamer_mode", streamer_mode);
 
@@ -857,13 +859,21 @@ bool Settings::ReadTomlFile()
 bool Settings::Load()
 {
     const std::filesystem::path path = settings_path(settings_filename);
-    if (std::filesystem::exists(path))
-        return ReadTomlFile();
+    const bool existing = std::filesystem::exists(path);
+    if (existing)
+    {
+        if (!ReadTomlFile())
+            return false;
+        if (valid_player_id(player_id))
+            return true;
+    }
 
     Validate();
+    player_id = generate_player_id();
     if (!Save())
         return false;
-    printf("Default \"settings.toml\" created\n");
+    if (!existing)
+        printf("Default \"settings.toml\" created\n");
     return true;
 }
 
@@ -949,6 +959,7 @@ bool Settings::Save() const
 
         settings_document &multiplayer = ensure_table(document, "multiplayer");
         set_value(multiplayer, "player_name", player_name);
+        set_value(multiplayer, "player_id", player_id);
         set_value(multiplayer, "server_name", server_name);
         set_value(multiplayer, "streamer_mode", streamer_mode);
 

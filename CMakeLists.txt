@@ -480,8 +480,10 @@ else()
         DOC "Path to linuxdeploy or its official AppImage")
     if(LINUXDEPLOY)
         set(APPDIR "${CMAKE_BINARY_DIR}/AppDir")
+        configure_file(packaging/appimage/AppRun.in "${CMAKE_BINARY_DIR}/AppRun" @ONLY)
         set(LINUXDEPLOY_APPDIR_ARGS
             --appdir "${APPDIR}"
+            --custom-apprun "${CMAKE_BINARY_DIR}/AppRun"
             --deploy-deps-only "${APPDIR}/usr/${ABUSE_INSTALL_BINDIR}/abuse")
         if(FLUIDSYNTH_RUNTIME_LIBRARY)
             list(APPEND LINUXDEPLOY_APPDIR_ARGS --library "${FLUIDSYNTH_RUNTIME_LIBRARY}")
@@ -517,7 +519,8 @@ else()
                 "LINUXDEPLOY_OUTPUT_VERSION=${PROJECT_VERSION}"
                 "APPIMAGE_EXTRACT_AND_RUN=1"
                 "NO_STRIP=1"
-                "${LINUXDEPLOY}" --appdir "${APPDIR}" --output appimage
+                "${LINUXDEPLOY}" --appdir "${APPDIR}"
+                --custom-apprun "${CMAKE_BINARY_DIR}/AppRun" --output appimage
             DEPENDS appdir
             WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
             COMMENT "Creating Abuse-${PROJECT_VERSION}-${APPIMAGE_ARCH}.AppImage"

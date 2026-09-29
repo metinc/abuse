@@ -20,6 +20,8 @@
 #include <unistd.h>
 #endif
 #include <ctype.h>
+#include <algorithm>
+#include <vector>
 
 #include "common.h"
 
@@ -39,7 +41,9 @@ class nfs_file : public bFILE
 {
     jFILE *local;
     int nfs_fd;
-    int offset;
+    int offset = 0;
+    bool snapshot_loaded = false;
+    std::vector<uint8_t> snapshot;
 
   public:
     nfs_file(char const *filename, char const *mode);
@@ -145,6 +149,22 @@ nfs_file::nfs_file(char const *filename, char const *mode)
             }
             nfs_fd = -1;
         }
+        else if (nfs_fd >= 0 && !strcmp(filename, NET_STARTFILE))
+        {
+            // Download the snapshot once; level loading can then read and seek locally.
+            const long size = NF_filelength(nfs_fd);
+            if (size >= 0)
+            {
+                snapshot.resize(size);
+                snapshot_loaded = NF_read(nfs_fd, snapshot.data(), size) == size;
+            }
+            if (!snapshot_loaded)
+            {
+                NF_close(nfs_fd);
+                nfs_fd = -1;
+                snapshot.clear();
+            }
+        }
     }
 }
 
@@ -160,6 +180,15 @@ int nfs_file::unbuffered_read(void *buf, size_t count) // returns number of byte
 {
     if (local)
         return local->read(buf, count);
+    else if (snapshot_loaded)
+    {
+        const size_t available = offset < snapshot.size() ? snapshot.size() - offset : 0;
+        const int amount = std::min(count, available);
+        if (amount)
+            memcpy(buf, snapshot.data() + offset, amount);
+        offset += amount;
+        return amount;
+    }
     else if (nfs_fd >= 0)
     {
         long a = NF_read(nfs_fd, buf, count);
@@ -189,6 +218,13 @@ int nfs_file::unbuffered_seek(long off, int whence) // whence=SEEK_SET, SEEK_CUR
 {
     if (local)
         return local->seek(off, whence);
+    else if (snapshot_loaded)
+    {
+        if (whence != SEEK_SET || off < 0 || off > INT32_MAX)
+            return -1;
+        offset = off;
+        return offset;
+    }
     else if (nfs_fd >= 0)
     {
         if (whence != SEEK_SET)
@@ -203,6 +239,8 @@ int nfs_file::unbuffered_tell()
 {
     if (local)
         return local->tell();
+    else if (snapshot_loaded)
+        return offset;
     else if (nfs_fd >= 0)
         return NF_tell(nfs_fd);
     else
@@ -213,6 +251,8 @@ int nfs_file::file_size()
 {
     if (local)
         return local->file_size();
+    else if (snapshot_loaded)
+        return snapshot.size();
     else if (nfs_fd >= 0)
         return NF_filelength(nfs_fd);
     else

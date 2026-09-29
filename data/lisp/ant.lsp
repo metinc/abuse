@@ -68,7 +68,7 @@
 		      ('hard    17)
 		      ('extreme 22) ))
   (set_frame_angle 0 359 (aistate))
-  (let ((stat (bmove nil)))
+  (let ((stat (bmove (if (> (total_objects) 0) (get_object 0) nil))))
     (if (eq stat T)
 	T
     (progn
@@ -610,7 +610,7 @@
 
 
 (defun dead_part_render_order ()
-  (if (> (y) (with_object (bg) (y)))
+  (if (> (fade_dir) 0)
       (if (not (eq (yacel) 2))
 	  (progn
 	    (raise)
@@ -627,7 +627,7 @@
 	   (next_picture)
 	   (set_yvel (+ (yvel) 3))
 	   (bounce_move T T T
-			'(if (try_move 0 1)
+			'(if (try_move 0 1 nil)
 			     ;; Diagonal wall impacts can also report BLOCKED_DOWN.
 			     ;; Keep falling unless there really is ground below.
 			     (set_yvel 1)
