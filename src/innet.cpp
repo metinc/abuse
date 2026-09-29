@@ -21,6 +21,8 @@
 #include "common.h"
 
 #include "cop.h"
+#include "lisp.h"
+#include "clisp.h"
 #include "specs.h"
 #include "level.h"
 #include "game.h"
@@ -135,6 +137,24 @@ class tab_action_button : public button
 Jwindow *tab_player_status_window = nullptr;
 std::vector<tab_player_status_row> tab_player_status_rows;
 std::uint64_t tab_player_status_refresh = 0;
+std::string tab_level_text;
+std::string tab_difficulty_text;
+
+std::string current_level_text()
+{
+    return std::string(symbol_str("current_level_label")) + " " +
+           (current_level ? current_level->display_name() : "-");
+}
+
+char const *current_difficulty_text()
+{
+    // Multiplayer clients apply the host's difficulty to this live value.
+    LObject *difficulty = l_difficulty->GetValue();
+    return symbol_str(difficulty == l_easy      ? "ic_easy"
+                      : difficulty == l_medium  ? "ic_medium"
+                      : difficulty == l_extreme ? "ic_extreme"
+                                                : "ic_hard");
+}
 
 std::string player_status_text(char const *name, std::uint64_t milliseconds_since_packet)
 {
@@ -271,6 +291,9 @@ std::string tab_player_status_text(view *player, game_server *server, game_clien
 
 bool refresh_tab_player_status_window(game_server *server, game_client *client)
 {
+    if (tab_level_text != current_level_text() || tab_difficulty_text != current_difficulty_text())
+        return false;
+
     const std::vector<view *> players = sorted_score_players();
     if (players.size() != tab_player_status_rows.size())
         return false;
@@ -295,6 +318,8 @@ void close_tab_player_status_window()
     tab_player_status_window = nullptr;
     tab_player_status_rows.clear();
     tab_player_status_refresh = 0;
+    tab_level_text.clear();
+    tab_difficulty_text.clear();
 }
 
 void create_tab_player_status_window()
@@ -309,6 +334,14 @@ void create_tab_player_status_window()
     ifield *fields = nullptr;
     int y = 0;
 
+    tab_level_text = current_level_text();
+    fields = new info_field(0, y + 3, ID_NULL, tab_level_text.c_str(), fields);
+    y += row_height;
+    tab_difficulty_text = current_difficulty_text();
+    fields = new info_field(0, y + 3, ID_NULL, tab_difficulty_text.c_str(), fields);
+    y += row_height;
+
+    tab_action_button *copy_room_button = nullptr;
     const bool show_room = main_net_cfg && main_net_cfg->online && main_net_cfg->room_code[0];
     if (show_room)
     {
@@ -316,8 +349,11 @@ void create_tab_player_status_window()
         snprintf(room, sizeof(room), "%s: %s", symbol_str("room_code"),
                  main_net_cfg->streamer_mode ? "******" : main_net_cfg->room_code);
         fields = new info_field(0, y + 3, ID_NULL, room, fields);
-        y += row_height;
-        fields = new tab_action_button(0, y, ID_NET_COPY_ROOM_CODE, symbol_str("copy_room_code"), fields);
+        int x1, y1, x2, y2;
+        fields->area(x1, y1, x2, y2);
+        copy_room_button = new tab_action_button(x2 + 1 + wm->font()->Size().x, y, ID_NET_COPY_ROOM_CODE,
+                                                 symbol_str("copy_room_code"), fields);
+        fields = copy_room_button;
         y += row_height;
     }
 
@@ -344,8 +380,21 @@ void create_tab_player_status_window()
         y += row_height;
     }
 
+    if (copy_room_button)
+    {
+        int right = 0;
+        int x1, y1, x2, y2;
+        for (ifield *field = fields; field; field = field->next)
+        {
+            field->area(x1, y1, x2, y2);
+            right = std::max(right, x2);
+        }
+        copy_room_button->area(x1, y1, x2, y2);
+        copy_room_button->Move(ivec2(right - (x2 - x1), y1));
+    }
+
     tab_player_status_window =
-        wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("player_status"));
+        wm->CreateWindow(ivec2(0), ivec2(-1), fields, symbol_str("game_status"));
     wm->move_window(tab_player_status_window, std::max(0, (xres - tab_player_status_window->m_size.x) / 2),
                     std::max(0, (yres - tab_player_status_window->m_size.y) / 2));
 

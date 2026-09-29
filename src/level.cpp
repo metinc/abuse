@@ -13,6 +13,7 @@
 #endif
 
 #include <string.h>
+#include <ctype.h>
 #include <limits.h>
 #include <time.h>
 #include <errno.h>
@@ -48,6 +49,19 @@
 level *current_level;
 
 extern Settings settings;
+
+std::string level::display_name() const
+{
+    std::string level_name = first_name ? first_name : Name;
+    if (level_name.size() >= 6)
+    {
+        const size_t digits = level_name.size() - 6;
+        if (isdigit(static_cast<unsigned char>(level_name[digits])) &&
+            isdigit(static_cast<unsigned char>(level_name[digits + 1])))
+            level_name = level_name.substr(digits + (level_name[digits] == '0'), level_name[digits] == '0' ? 1 : 2);
+    }
+    return level_name;
+}
 
 game_object *level::attacker(game_object *who)
 {

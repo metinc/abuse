@@ -17,6 +17,7 @@
 #include "id.h"
 
 #include <stdlib.h>
+#include <string>
 #define ASPECT 4 // foreground scrolls 4 times faster than background
 
 // the following defines the area of activity for objects
@@ -79,6 +80,7 @@ class level // contain map info and objects
         else
             return Name;
     }
+    std::string display_name() const;
     uint32_t tick_counter()
     {
         return ctick;

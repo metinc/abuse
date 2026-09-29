@@ -13,7 +13,6 @@
 #include "config.h"
 #endif
 
-#include <ctype.h>
 #include <string>
 
 #include "common.h"
@@ -543,17 +542,8 @@ void show_stats(int next_level)
 
         fade_in(NULL, 16);
 
-        std::string level_name = current_level->original_name();
-        if (level_name.size() >= 6)
-        {
-            const size_t digits = level_name.size() - 6;
-            if (isdigit(static_cast<unsigned char>(level_name[digits])) &&
-                isdigit(static_cast<unsigned char>(level_name[digits + 1])))
-                level_name = level_name.substr(digits + (level_name[digits] == '0'), level_name[digits] == '0' ? 1 : 2);
-        }
-
         const std::string lines[] = {
-            std::string(symbol_str("lev_complete")) + ": " + level_name,
+            std::string(symbol_str("lev_complete")) + ": " + current_level->display_name(),
             next_level >= 0 ? std::string(symbol_str("lev_next")) + ": " + std::to_string(next_level) : ""};
         const int line_count = next_level >= 0 ? 2 : 1;
         const ivec2 font_size = wm->font()->Size();
