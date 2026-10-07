@@ -6,7 +6,8 @@
   <name>Abuse</name>
   <summary>Dark 2D side-scrolling platform game</summary>
   <description>
-    <p>This is an SDL port of the original game from 1995. It is a run and gun game which features pixel based lighting.</p>
+    <p>This is an SDL port of the original game from 1995. It is a run and gun game which features
+      pixel based lighting.</p>
   </description>
   <!-- AppStream before 1.0 (including Debian 12) uses developer_name. -->
   <developer_name>Crack dot Com</developer_name>
@@ -21,18 +22,19 @@
     <content_attribute id="violence-bloodshed">moderate</content_attribute>
   </content_rating>
   <releases>
-    <release date="2026-09-04" version="1.0.8"/>
-    <release date="2026-09-04" version="1.0.7"/>
-    <release date="2026-09-04" version="1.0.6"/>
-    <release date="2026-02-28" version="1.0.5"/>
-    <release date="2025-11-16" version="1.0.4"/>
-    <release date="2025-11-02" version="1.0.3"/>
-    <release date="2025-03-15" version="1.0.2"/>
-    <release date="2025-03-09" version="1.0.1"/>
-    <release date="2025-03-02" version="1.0.0"/>
-    <release date="2022-10-27" version="0.9.1"/>
-    <release date="2021-08-11" version="0.9.0"/>
-    <release date="2011-05-09" version="0.8"/>
+    <release date="2026-10-08" version="1.0.9" />
+    <release date="2026-09-04" version="1.0.8" />
+    <release date="2026-09-04" version="1.0.7" />
+    <release date="2026-09-04" version="1.0.6" />
+    <release date="2026-02-28" version="1.0.5" />
+    <release date="2025-11-16" version="1.0.4" />
+    <release date="2025-11-02" version="1.0.3" />
+    <release date="2025-03-15" version="1.0.2" />
+    <release date="2025-03-09" version="1.0.1" />
+    <release date="2025-03-02" version="1.0.0" />
+    <release date="2022-10-27" version="0.9.1" />
+    <release date="2021-08-11" version="0.9.0" />
+    <release date="2011-05-09" version="0.8" />
   </releases>
   <screenshots>
     <screenshot type="default">
