@@ -1,5 +1,31 @@
 # Changelog
 
+## Abuse 1.0.9 by Metin Çelik (2026-10-08)
+
+- Added macOS packages for Intel and Apple Silicon.
+- Added a DOSBox singleplayer package with VGA/VESA rendering, Sound Blaster effects, and OPL FM music.
+- Restored the original burning-planet ending and added an option to use the original plot.
+- Added persistent co-op player identities and saved sessions, preserving weapons and ammunition across reconnects and allowing the host to resume the last checkpoint.
+- Added an ant multiplier for co-op games.
+- Expanded the multiplayer status window with the current level, difficulty, and damage dealt by each player in co-op.
+- Added level names to deathmatch and the next level to the level-completion screen.
+- Synchronized difficulty changes across multiplayer peers.
+- Made co-op sessions close cleanly after completing the final level.
+- Fixed co-op spectator HUD and positional audio.
+- Fixed multiplayer being blocked while menus and settings are open.
+- Improved network error handling and data transfer speed.
+- Fixed online multiplayer in AppImage packages.
+- Added multiplayer replay support, including player joins, network resynchronization, and the recorded player's perspective.
+- Fixed player health not resetting to 100 when starting a new level in singleplayer and multiplayer.
+- Fixed turrets not damaging enemies and enemy projectiles colliding with other enemies.
+- Fixed alien gibs getting stuck in the air and drawing in the wrong order.
+- Fixed ladder animations using the wrong player skin.
+- Fixed the save confirmation sound so it plays only after a successful save.
+- Fixed a deadlock when acquiring a music track and preloaded sound effects to avoid loading pauses during gameplay.
+- Improved lighting performance, especially with colored lights, and reduced the cost of gamma and palette updates.
+- Fixed FPS measurement and added a persistent `show_fps` setting.
+- Improved cross-platform portability, DOS-compatible paths, and support for builds without multiplayer.
+
 ## Abuse 1.0.8 by Metin Çelik (2026-09-04)
 
 - Fixed level transitions.
