@@ -100,14 +100,16 @@ std::filesystem::path replay_write_path(char const *filename)
 
 std::string automatic_replay_filename()
 {
-    // Use eight-character names on every platform; skip existing recordings.
-    uint32_t stamp = static_cast<uint32_t>(SDL_GetTicks());
+    // Count in decimal from zero; reserve both files and keep DOS 8.3 names.
     char filename[32];
-    do
+    for (uint32_t number = 0; number <= 99999999; ++number)
     {
-        std::snprintf(filename, sizeof(filename), "replays/%08lx.dat", static_cast<unsigned long>(stamp++));
-    } while (std::filesystem::exists(replay_write_path(filename)));
-    return filename;
+        std::snprintf(filename, sizeof(filename), "replays/%08lu.dat", static_cast<unsigned long>(number));
+        if (!std::filesystem::exists(replay_write_path(filename)) &&
+            !std::filesystem::exists(replay_write_path(filename).replace_extension(".spe")))
+            return filename;
+    }
+    return {};
 }
 
 std::filesystem::path temporary_replay_checkpoint_path()
@@ -256,6 +258,7 @@ int demo_manager::start_recording(char const *filename)
     record_file->write_uint8(client_number());
 
     network_reloaded = false;
+    recording_level_changed = false;
     state = RECORDING;
     std::printf("Recording replay to %s\n", replay_write_path(filename).string().c_str());
 
@@ -277,11 +280,29 @@ int demo_manager::start_automatic_recording()
     return 1;
 }
 
+void demo_manager::prepare_recording()
+{
+    if (state != RECORDING || !recording_level_changed)
+        return;
+
+    // Level loading can occur between input processing and the world tick.
+    // Capture the next segment only at the next packet boundary, after that
+    // tick, so its snapshot and first input describe the same simulation state.
+    const bool was_automatic = automatic_recording;
+    set_state(NORMAL);
+    const std::string filename = automatic_replay_filename();
+    if (start_recording(filename.c_str()))
+        automatic_recording = was_automatic;
+    else
+        std::fprintf(stderr, "Unable to start replay recording for the loaded level\n");
+}
+
 void demo_manager::do_inputs()
 {
     switch (state)
     {
     case RECORDING: {
+        prepare_recording();
         base->packet.packet_reset(); // reset input buffer
         view *p = player_list; // get current inputs
         for (; p; p = p->next)
@@ -505,6 +526,7 @@ int demo_manager::set_state(demo_state new_state, char const *filename)
         delete record_file;
         record_file = NULL;
         automatic_recording = false;
+        recording_level_changed = false;
     }
     break;
     case PLAYING: {

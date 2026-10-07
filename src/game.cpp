@@ -1051,6 +1051,8 @@ void Game::load_level(char const *name)
     if (!loading_coop_checkpoint && !coop_checkpoint_level_name.empty() &&
         coop_checkpoint_level_name != current_level->original_name())
         clear_coop_checkpoint();
+
+    demo_man.notify_level_load();
 }
 
 int Game::done()
@@ -2718,6 +2720,7 @@ void net_receive()
             size = get_inputs_from_server(buf);
         }
 
+        demo_man.prepare_recording();
         process_packet_commands(buf, size);
         // A join or resynchronization can replace the world while processing
         // the packet. Record that resulting state before the simulation steps.

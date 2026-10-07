@@ -24,6 +24,7 @@ class demo_manager
     bFILE *record_file;
     int skip_next;
     bool automatic_recording;
+    bool recording_level_changed;
     bool game_mode_overridden;
     bool reload_snapshots;
     bool network_reloaded;
@@ -61,6 +62,12 @@ class demo_manager
     int start_playing(char const *filename);
     int start_recording(char const *filename);
     int start_automatic_recording();
+    void notify_level_load()
+    {
+        if (state == RECORDING)
+            recording_level_changed = true;
+    }
+    void prepare_recording();
     bool save_playback_checkpoint();
     bool load_playback_checkpoint();
     bool is_automatic_recording() const
@@ -86,6 +93,7 @@ class demo_manager
         initial_difficulty = NULL;
         initial_game_mode = 0;
         automatic_recording = false;
+        recording_level_changed = false;
         game_mode_overridden = false;
         reload_snapshots = false;
         network_reloaded = false;
