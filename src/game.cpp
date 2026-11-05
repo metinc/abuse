@@ -3364,8 +3364,12 @@ int main(int argc, char *argv[])
         if (!g->done() && main_net_cfg)
             wait_min_players();
 
+        bool input_pending = false;
         if (!g->done())
+        {
             net_send(1);
+            input_pending = true;
+        }
         if (!g->done() && net_start())
         {
             g->Step(); // process all the objects in the world
@@ -3438,7 +3442,17 @@ int main(int argc, char *argv[])
                         }
                     }
 
+                    // Local games apply input on the tick it is sampled
+                    const bool same_tick_input = !net_game_active();
+
+                    if (!input_pending)
+                    {
+                        net_send();
+                        input_pending = true;
+                    }
+
                     net_receive();
+                    input_pending = false;
                     if (req_end)
                         continue;
 
@@ -3454,7 +3468,11 @@ int main(int argc, char *argv[])
                         g->draw(g->state == SCENE_STATE);
                     }
 
-                    net_send();
+                    if (!same_tick_input)
+                    {
+                        net_send();
+                        input_pending = true;
+                    }
                 }
                 else
                 {
