@@ -7,6 +7,10 @@
       "name": "sdl3-mixer",
       "features": ["fluidsynth"]
     },
+    {
+      "name": "fluidsynth",
+      "features": ["sndfile"]
+    },
     "sdl3-net",
     {
       "name": "libdatachannel",
